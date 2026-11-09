@@ -38,5 +38,13 @@
     "content_entity_missing": {
       "message": "Die Entität „Inhalt“ dieser Dose ist nicht verfügbar (deaktiviert?)."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Scan-Webhook",
+        "description": "Diese URL trägst du **einmalig** im iOS-Kurzbefehl ein. Sie ist geheim: Wer sie kennt, kann damit Dosen abfragen.\n\n`{webhook_url}`\n\nNur der Pfad: `{webhook_path}`\n\nDie Anleitung steht in der README des Projekts."
+      }
+    }
   }
 }

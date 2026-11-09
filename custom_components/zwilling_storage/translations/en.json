@@ -38,5 +38,13 @@
     "content_entity_missing": {
       "message": "The \"Contents\" entity of this container is not available (disabled?)."
     }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Scan webhook",
+        "description": "Enter this URL **once** in the iOS shortcut. It is secret: anyone who knows it can look up containers.\n\n`{webhook_url}`\n\nPath only: `{webhook_path}`\n\nSee the project README for the shortcut instructions."
+      }
+    }
   }
 }

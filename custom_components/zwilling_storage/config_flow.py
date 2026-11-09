@@ -6,18 +6,30 @@ from typing import Any
 
 import voluptuous as vol
 
-from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.config_entries import (
+    ConfigEntry,
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlow,
+)
 from homeassistant.const import CONF_NAME
+from homeassistant.core import callback
 from homeassistant.helpers.selector import TextSelector
 
 from .const import CONF_CC, CONF_QR_CODE, CONF_SIZE, CONF_TC, DOMAIN
 from .qr import parse_qr
+from .scan import async_get_webhook_id, webhook_urls
 
 
 class ZwillingStorageConfigFlow(ConfigFlow, domain=DOMAIN):
     """Eine Config Entry entspricht einer Dose (eindeutig über 'cc')."""
 
     VERSION = 1
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
+        return ZwillingOptionsFlow()
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -52,4 +64,22 @@ class ZwillingStorageConfigFlow(ConfigFlow, domain=DOMAIN):
             step_id="user",
             data_schema=self.add_suggested_values_to_schema(schema, user_input),
             errors=errors,
+        )
+
+
+class ZwillingOptionsFlow(OptionsFlow):
+    """Zeigt die geheime Webhook-URL für den iOS-Kurzbefehl an."""
+
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        if user_input is not None:
+            return self.async_create_entry(data=self.config_entry.options)
+
+        webhook_id = await async_get_webhook_id(self.hass)
+        url, path = webhook_urls(self.hass, webhook_id)
+        return self.async_show_form(
+            step_id="init",
+            data_schema=vol.Schema({}),
+            description_placeholders={"webhook_url": url, "webhook_path": path},
         )
