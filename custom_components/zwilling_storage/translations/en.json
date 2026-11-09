@@ -27,6 +27,16 @@
       "content": {
         "name": "Contents"
       }
+    },
+    "button": {
+      "empty_container": {
+        "name": "Empty container"
+      }
+    }
+  },
+  "exceptions": {
+    "content_entity_missing": {
+      "message": "The \"Contents\" entity of this container is not available (disabled?)."
     }
   }
 }

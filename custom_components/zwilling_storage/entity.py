@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import State
@@ -9,6 +11,16 @@ from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 
 from .const import CONF_CC, CONF_SIZE, CONF_TC, DOMAIN, MANUFACTURER
+
+
+@dataclass
+class ZwillingRuntime:
+    """Laufzeitdaten einer Dose: Verweis auf die Inhalt-Entität (setzt die text-Plattform)."""
+
+    content: ZwillingEntity | None = None
+
+
+type ZwillingConfigEntry = ConfigEntry[ZwillingRuntime]
 
 
 class ZwillingEntity(RestoreEntity):

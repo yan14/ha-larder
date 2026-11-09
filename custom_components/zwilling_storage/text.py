@@ -3,19 +3,20 @@
 from __future__ import annotations
 
 from homeassistant.components.text import TextEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .entity import ZwillingEntity
+from .entity import ZwillingConfigEntry, ZwillingEntity
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: ZwillingConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    async_add_entities([ZwillingContent(entry)])
+    content = ZwillingContent(entry)
+    entry.runtime_data.content = content
+    async_add_entities([content])
 
 
 class ZwillingContent(TextEntity, ZwillingEntity):

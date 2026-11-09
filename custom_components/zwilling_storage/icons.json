@@ -9,6 +9,11 @@
       "content": {
         "default": "mdi:food-variant"
       }
+    },
+    "button": {
+      "empty_container": {
+        "default": "mdi:delete-empty"
+      }
     }
   }
 }

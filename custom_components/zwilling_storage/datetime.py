@@ -5,17 +5,16 @@ from __future__ import annotations
 from datetime import datetime
 
 from homeassistant.components.datetime import DateTimeEntity
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
-from .entity import ZwillingEntity
+from .entity import ZwillingConfigEntry, ZwillingEntity
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: ZwillingConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     async_add_entities([ZwillingFilledAt(entry)])

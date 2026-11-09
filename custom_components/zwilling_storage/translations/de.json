@@ -27,6 +27,16 @@
       "content": {
         "name": "Inhalt"
       }
+    },
+    "button": {
+      "empty_container": {
+        "name": "Behälter leeren"
+      }
+    }
+  },
+  "exceptions": {
+    "content_entity_missing": {
+      "message": "Die Entität „Inhalt“ dieser Dose ist nicht verfügbar (deaktiviert?)."
     }
   }
 }

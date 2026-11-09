@@ -72,8 +72,12 @@ async def test_flow_creates_device_with_entities(hass: HomeAssistant) -> None:
     assert device.serial_number == "34OL"
 
     entities = er.async_entries_for_device(er.async_get(hass), device.id)
-    assert {e.domain for e in entities} == {"datetime", "text"}
-    assert {e.unique_id for e in entities} == {"34OL_filled_at", "34OL_content"}
+    assert {e.domain for e in entities} == {"button", "datetime", "text"}
+    assert {e.unique_id for e in entities} == {
+        "34OL_filled_at",
+        "34OL_content",
+        "34OL_empty_container",
+    }
 
 
 async def test_flow_invalid_code(hass: HomeAssistant) -> None:
@@ -184,3 +188,59 @@ async def test_restore_state(hass: HomeAssistant) -> None:
 
     assert hass.states.get(dt_entity.entity_id).state == "2026-11-01T08:30:00+00:00"
     assert hass.states.get(text_entity.entity_id).state == "Lasagne"
+
+
+async def test_empty_button_clears_content_only(hass: HomeAssistant) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="34OL",
+        title="Dose 34OL",
+        data={"cc": "34OL", "tc": "42ML30", "size": "m"},
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    dt_id = next(s.entity_id for s in hass.states.async_all("datetime"))
+    text_id = next(s.entity_id for s in hass.states.async_all("text"))
+    button_id = next(s.entity_id for s in hass.states.async_all("button"))
+    assert button_id.startswith("button.dose_34ol_")
+
+    await hass.services.async_call(
+        "datetime",
+        "set_value",
+        {"entity_id": dt_id, "datetime": "2026-11-09 10:00:00+00:00"},
+        blocking=True,
+    )
+    await hass.services.async_call(
+        "text", "set_value", {"entity_id": text_id, "value": "Gulasch"}, blocking=True
+    )
+    assert hass.states.get(text_id).state == "Gulasch"
+
+    await hass.services.async_call(
+        "button", "press", {"entity_id": button_id}, blocking=True
+    )
+    assert hass.states.get(text_id).state == ""
+    # Befüll-Datum bleibt unverändert
+    assert hass.states.get(dt_id).state == "2026-11-09T10:00:00+00:00"
+
+
+async def test_empty_button_without_content_entity_raises(hass: HomeAssistant) -> None:
+    from homeassistant.exceptions import HomeAssistantError
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="34OL",
+        title="Dose 34OL",
+        data={"cc": "34OL", "tc": "42ML30", "size": "m"},
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    button_id = next(s.entity_id for s in hass.states.async_all("button"))
+    entry.runtime_data.content = None
+    with pytest.raises(HomeAssistantError):
+        await hass.services.async_call(
+            "button", "press", {"entity_id": button_id}, blocking=True
+        )
