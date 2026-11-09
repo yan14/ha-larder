@@ -1,0 +1,32 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Frischhaltedose hinzufügen",
+        "description": "Scanne den QR-Code auf der Dose (z. B. mit einem Kurzbefehl) und füge den Inhalt hier ein. Alternativ reicht die ID allein (Wert von `cc`, z. B. `34OL`).",
+        "data": {
+          "qr_code": "QR-Code-Inhalt oder ID",
+          "name": "Name (optional)"
+        }
+      }
+    },
+    "error": {
+      "invalid_code": "Im QR-Code wurde keine gültige ID (cc) gefunden."
+    },
+    "abort": {
+      "already_configured": "Diese Dose ist bereits angelegt."
+    }
+  },
+  "entity": {
+    "datetime": {
+      "filled_at": {
+        "name": "Befüllt am"
+      }
+    },
+    "text": {
+      "content": {
+        "name": "Inhalt"
+      }
+    }
+  }
+}

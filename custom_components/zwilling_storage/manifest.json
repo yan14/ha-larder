@@ -1,0 +1,15 @@
+{
+  "domain": "zwilling_storage",
+  "name": "Zwilling Food Storage",
+  "codeowners": [
+    "@yan14"
+  ],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/yan14/ha-zwilling-storage",
+  "integration_type": "device",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/yan14/ha-zwilling-storage/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

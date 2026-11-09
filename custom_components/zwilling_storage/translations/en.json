@@ -1,0 +1,32 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Add food container",
+        "description": "Scan the QR code on the container (e.g. with a shortcut) and paste its content here. Alternatively the ID alone is enough (value of `cc`, e.g. `34OL`).",
+        "data": {
+          "qr_code": "QR code content or ID",
+          "name": "Name (optional)"
+        }
+      }
+    },
+    "error": {
+      "invalid_code": "No valid ID (cc) found in the QR code."
+    },
+    "abort": {
+      "already_configured": "This container has already been added."
+    }
+  },
+  "entity": {
+    "datetime": {
+      "filled_at": {
+        "name": "Filled on"
+      }
+    },
+    "text": {
+      "content": {
+        "name": "Contents"
+      }
+    }
+  }
+}

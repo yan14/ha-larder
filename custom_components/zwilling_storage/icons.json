@@ -1,0 +1,14 @@
+{
+  "entity": {
+    "datetime": {
+      "filled_at": {
+        "default": "mdi:calendar-check"
+      }
+    },
+    "text": {
+      "content": {
+        "default": "mdi:food-variant"
+      }
+    }
+  }
+}
