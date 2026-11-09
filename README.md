@@ -45,12 +45,12 @@ Die lange ID ist der Zugriffsschutz, behandle die URL also wie ein Passwort. Wel
 App **Kurzbefehle** → neuer Kurzbefehl mit diesen Aktionen, in dieser Reihenfolge:
 
 1. **„QR-/Barcode scannen“** (*Scan QR/Bar Code*)
-2. **„In Zwischenablage kopieren“** (*Copy to Clipboard*): kopiert den gescannten Text. Das brauchst du nur, wenn die Dose noch nicht angelegt ist.
+2. **„In die Zwischenablage kopieren“** (*Copy to Clipboard*): kopiert den gescannten Text. Das brauchst du nur, wenn die Dose noch nicht angelegt ist.
 3. **„Inhalt von URL abrufen“** (*Get Contents of URL*):
    - URL: deine Webhook-URL aus Schritt 1
    - „Mehr anzeigen“ antippen, Methode **POST**, Anfragetext **JSON**
    - „Neues Feld hinzufügen“: Typ **Text**, Schlüssel `code`, Wert: das Ergebnis aus Aktion 1 (die Variable „QR-/Barcode“ aus der Variablenleiste wählen)
-4. **„Wert für Schlüssel abrufen“** (*Get Dictionary Value*): Schlüssel `app_url`, aus „Inhalt der URL“
+4. **„Wörterbuchwert abrufen“** (*Get Dictionary Value*, in der Suche nach „Wörterbuch“ suchen): Schlüssel `app_url`, aus „Inhalt von URL“. Nicht zu verwechseln mit „Gespeicherten Inhalt abrufen“, das ist eine andere Aktion.
 5. **„URLs öffnen“** (*Open URLs*): öffnet den Wert aus Aktion 4
 
 Namen vergeben, z. B. „Dose scannen“. Über das Teilen-Symbol lässt er sich zum Home-Bildschirm hinzufügen oder auf die Aktionstaste legen. Beim ersten Lauf fragt iOS nach dem Kamerazugriff und ob der Kurzbefehl die URL aufrufen darf.
