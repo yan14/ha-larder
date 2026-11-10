@@ -35,26 +35,7 @@ Zusätzlich gibt es:
 2. URL: `https://github.com/yan14/ha-larder`, Kategorie **Integration**
 3. „Larder“ installieren, Home Assistant neu starten.
 
-> **Du kommst von „Zwilling Food Storage“?** Deine Dosen lassen sich ohne Verlust übernehmen, siehe [Umstieg von Zwilling Food Storage](#umstieg-von-zwilling-food-storage).
-
-## Umstieg von Zwilling Food Storage
-
-Bis Version 0.10 hieß die Integration *Zwilling Food Storage* (Domain `zwilling_storage`). Ab 1.0 heißt sie **Larder** (Domain `larder`). Home Assistant kann eine Domain nicht an Ort und Stelle umbenennen, deshalb übernimmt Larder die Dosen. **Erhalten bleiben:** Entity-IDs (und damit Verlauf, Dashboards und Automationen, die die Entitäten nutzen), Bereiche, Labels, letzte Werte, gemerkte Schätzungen, NFC-Tags, die Kalender-Verknüpfung und der Scan-Webhook (der iOS-Kurzbefehl läuft also weiter). Wie immer vorher ein Home-Assistant-Backup machen.
-
-1. **In HACS aktualisieren.** Das Repository heißt jetzt `yan14/ha-larder`. HACS folgt der Umbenennung meist von selbst. Bietet es Larder nicht an, entferne den alten Eintrag unter „Benutzerdefinierte Repositories“, füge `https://github.com/yan14/ha-larder` (Kategorie *Integration*) neu hinzu und lade **Larder** herunter.
-2. **Home Assistant neu starten.** Die alte Integration läuft weiter, bis du sie übernimmst.
-3. Einstellungen → Geräte & Dienste → **Integration hinzufügen** → **Larder** → **Von Zwilling Food Storage übernehmen** → **Absenden**.
-
-Die alten Einträge werden entfernt und der alte Ordner `custom_components/zwilling_storage` wird gelöscht. Der Schritt erscheint nur, solange alte Einträge vorhanden sind.
-
-**Was umbenannt wurde**
-
-| Vorher | Jetzt |
-| --- | --- |
-| Services `zwilling_storage.*` | `larder.*` (die alten Namen laufen vorerst weiter und schreiben eine Warnung ins Log) |
-| Ereignis `zwilling_storage_dose_scanned` | `larder_dose_scanned` (vorerst werden beide ausgelöst) |
-| Seitenleisten-Panel „Zwilling Dosen“ unter `/zwilling-storage` | „Larder“ unter `/larder` (Lesezeichen anpassen) |
-| Blueprint `zwilling_storage/expiry_notification.yaml` | `larder/expiry_notification.yaml` (neu importieren; Automationen aus der alten Kopie laufen über den alten Service-Namen weiter) |
+> **Du kommst vom alten „Zwilling Food Storage“ (bis 0.10)?** Larder ist eine neue Integration (Domain `larder`). Entferne die alte Integration, füge Larder hinzu und lege deine Dosen neu an.
 
 ## Dose anlegen
 
@@ -263,13 +244,17 @@ App **Kurzbefehle** → neuer Kurzbefehl mit diesen Aktionen, in dieser Reihenfo
 3. **„Wörterbuchwert abrufen“** (*Get Dictionary Value*, in der Suche nach „Wörterbuch“ suchen): Schlüssel `app_url`, aus „Inhalt von URL“. Nicht zu verwechseln mit „Gespeicherten Inhalt abrufen“, das ist eine andere Aktion.
 4. **„URLs öffnen“** (*Open URLs*): öffnet den Wert aus Aktion 3
 
+<p align="center"><img src="docs/images/ios-shortcut.png" width="360" alt="Der fertige Kurzbefehl (Beispiel-URL)"></p>
+
+Der Screenshot zeigt den fertigen Kurzbefehl. Ersetze `ha.example.org` und `DEINE-WEBHOOK-ID` durch deine eigene Adresse und die ID aus Schritt 1.
+
 Namen vergeben, z. B. „Dose scannen“. Über das Teilen-Symbol lässt er sich zum Home-Bildschirm hinzufügen oder auf die Aktionstaste legen. Beim ersten Lauf fragt iOS nach dem Kamerazugriff und ob der Kurzbefehl die URL aufrufen darf.
 
 ### 3. Benutzen
 
 Kurzbefehl starten, QR-Code auf der Dose scannen. Die Home-Assistant-App öffnet sich dann:
 
-- **Dose bekannt:** direkt auf der **Geräteseite** dieser Dose (mit Befüllt am, Inhalt und Behälter leeren).
+- **Dose bekannt:** im Dashboard „Larder“, wo die Dose hervorgehoben wird. Eine leere Dose öffnet gleich den Dialog **Befüllen** (siehe [Dose schnell befüllen](#dose-schnell-befüllen)).
 - **Dose neu:** im Dashboard „Larder“. Dort öffnet sich der Dialog **Dose hinzufügen** mit bereits eingetragenem Code. Optional Name und Bereich eingeben und **Hinzufügen** tippen. Das geht nur mit einem Administrator-Konto, andere Nutzer sehen einen Hinweis mit dem gescannten Code.
 
 Hast du mehrere Home-Assistant-Server in der App, fragt sie beim Öffnen, welcher gemeint ist.

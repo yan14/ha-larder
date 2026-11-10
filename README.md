@@ -35,26 +35,7 @@ You also get:
 2. URL: `https://github.com/yan14/ha-larder`, category **Integration**
 3. Install "Larder" and restart Home Assistant.
 
-> **Coming from "Zwilling Food Storage"?** Your containers can be taken over without losing anything, see [Upgrading from Zwilling Food Storage](#upgrading-from-zwilling-food-storage).
-
-## Upgrading from Zwilling Food Storage
-
-Up to version 0.10 the integration was called *Zwilling Food Storage* (domain `zwilling_storage`). Since 1.0 it is **Larder** (domain `larder`). Home Assistant cannot rename a domain in place, so Larder takes the containers over. **Kept:** entity IDs (and with them history, dashboards and automations that use the entities), areas, labels, last values, remembered estimates, NFC tags, the calendar link and the scan webhook (so the iOS Shortcut keeps working). Make a Home Assistant backup first, as always.
-
-1. **Update in HACS.** The repository is now `yan14/ha-larder`. HACS usually follows the rename. If it does not offer Larder, remove the old custom repository entry, add `https://github.com/yan14/ha-larder` (category *Integration*) and download **Larder**.
-2. **Restart Home Assistant.** The old integration keeps running until you take it over.
-3. Settings → Devices & services → **Add integration** → **Larder** → **Take over from Zwilling Food Storage** → **Submit**.
-
-The old entries are removed and the old folder `custom_components/zwilling_storage` is deleted. The step only appears while old entries exist.
-
-**What is renamed**
-
-| Before | Now |
-| --- | --- |
-| Services `zwilling_storage.*` | `larder.*` (the old names keep working for now and log a warning) |
-| Event `zwilling_storage_dose_scanned` | `larder_dose_scanned` (both are fired for now) |
-| Sidebar panel "Zwilling Dosen" at `/zwilling-storage` | "Larder" at `/larder` (update bookmarks) |
-| Blueprint `zwilling_storage/expiry_notification.yaml` | `larder/expiry_notification.yaml` (import it again; automations made from the old copy keep working through the old service name) |
+> **Coming from the old "Zwilling Food Storage" (up to 0.10)?** Larder is a new integration (domain `larder`). Remove the old one, add Larder and add your containers again.
 
 ## Adding a container
 
@@ -263,13 +244,17 @@ Shortcuts app → new shortcut with these actions, in this order:
 3. **Get Dictionary Value**: key `app_url`, from "Contents of URL"
 4. **Open URLs**: opens the value from action 3
 
+<p align="center"><img src="docs/images/ios-shortcut.png" width="360" alt="The finished Shortcut (German iOS, example URL)"></p>
+
+The screenshot shows the finished Shortcut. Replace `ha.example.org` and `DEINE-WEBHOOK-ID` with your own address and the ID from step 1.
+
 Give it a name, e.g. "Scan container". Using the share icon you can add it to the Home Screen or assign it to the Action button. On the first run iOS asks for camera access and whether the Shortcut may access the URL.
 
 ### 3. Use it
 
 Run the Shortcut and scan the QR code on the container. The Home Assistant app then opens:
 
-- **Container known:** directly on the **device page** of this container (with Filled on, Contents and Empty container).
+- **Container known:** on the dashboard "Larder", where the container is highlighted. An empty container opens the **Fill** dialog straight away (see [Filling a container quickly](#filling-a-container-quickly)).
 - **Container new:** on the dashboard "Larder", where the **Add container** dialog opens with the scanned code already filled in. Optionally enter a name and area and tap **Add**. This needs an administrator account; other users get a note with the scanned code.
 
 If you have several Home Assistant servers in the app, it asks which one you mean when opening.
