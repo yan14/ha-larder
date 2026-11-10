@@ -2,10 +2,25 @@
   "config": {
     "step": {
       "user": {
-        "title": "Frischhaltedose hinzufügen",
+        "title": "Dose hinzufügen",
+        "description": "Wie soll die Dose angelegt werden?",
+        "menu_options": {
+          "scan": "Zwilling QR Code einlesen",
+          "create": "Neuen QR Code erstellen"
+        }
+      },
+      "scan": {
+        "title": "Zwilling QR Code einlesen",
         "description": "Scanne den QR-Code auf der Dose (z. B. mit einem Kurzbefehl) und füge den Inhalt hier ein. Alternativ reicht die ID allein (Wert von `cc`, z. B. `34OL`).",
         "data": {
           "qr_code": "QR-Code-Inhalt oder ID",
+          "name": "Name (optional)"
+        }
+      },
+      "create": {
+        "title": "Neuen QR Code erstellen",
+        "description": "Es wird eine neue, eindeutige ID erzeugt (Format `HA-XXXXXXXX`), die nicht mit den Zwilling-Codes kollidiert. Den passenden QR-Code findest du danach als Bild am Gerät und kannst ihn ausdrucken und aufkleben.",
+        "data": {
           "name": "Name (optional)"
         }
       }
@@ -31,6 +46,16 @@
     "button": {
       "empty_container": {
         "name": "Behälter leeren"
+      }
+    },
+    "date": {
+      "best_before": {
+        "name": "MHD"
+      }
+    },
+    "image": {
+      "qr_code": {
+        "name": "QR-Code"
       }
     }
   },

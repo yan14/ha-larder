@@ -16,8 +16,17 @@ from homeassistant.const import CONF_NAME
 from homeassistant.core import callback
 from homeassistant.helpers.selector import TextSelector
 
-from .const import CONF_CC, CONF_QR_CODE, CONF_SIZE, CONF_TC, DOMAIN
-from .qr import parse_qr
+from .const import (
+    CONF_CC,
+    CONF_QR_CODE,
+    CONF_SIZE,
+    CONF_SOURCE,
+    CONF_TC,
+    DOMAIN,
+    SOURCE_GENERATED,
+    SOURCE_ZWILLING,
+)
+from .qr import generate_code, parse_qr
 from .scan import async_get_webhook_id, webhook_urls
 
 
@@ -34,6 +43,13 @@ class ZwillingStorageConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
+        """Auswahl: vorhandenen Zwilling-QR-Code einlesen oder neuen erstellen."""
+        return self.async_show_menu(step_id="user", menu_options=["scan", "create"])
+
+    async def async_step_scan(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Inhalt eines vorhandenen Zwilling-QR-Codes einfügen."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -51,6 +67,7 @@ class ZwillingStorageConfigFlow(ConfigFlow, domain=DOMAIN):
                         CONF_CC: parsed.cc,
                         CONF_TC: parsed.tc,
                         CONF_SIZE: parsed.size,
+                        CONF_SOURCE: SOURCE_ZWILLING,
                     },
                 )
 
@@ -61,9 +78,34 @@ class ZwillingStorageConfigFlow(ConfigFlow, domain=DOMAIN):
             }
         )
         return self.async_show_form(
-            step_id="user",
+            step_id="scan",
             data_schema=self.add_suggested_values_to_schema(schema, user_input),
             errors=errors,
+        )
+
+    async def async_step_create(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Neue Dose mit selbst erzeugter, eindeutiger ID anlegen."""
+        if user_input is not None:
+            code = generate_code(self._async_current_ids())
+            await self.async_set_unique_id(code)
+            self._abort_if_unique_id_configured()
+
+            name = (user_input.get(CONF_NAME) or "").strip() or f"Dose {code}"
+            return self.async_create_entry(
+                title=name,
+                data={
+                    CONF_CC: code,
+                    CONF_TC: None,
+                    CONF_SIZE: None,
+                    CONF_SOURCE: SOURCE_GENERATED,
+                },
+            )
+
+        return self.async_show_form(
+            step_id="create",
+            data_schema=vol.Schema({vol.Optional(CONF_NAME): TextSelector()}),
         )
 
 

@@ -1,0 +1,11 @@
+{
+  "name": "ha-zwilling-storage-frontend-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"tests/js/*.test.mjs\""
+  },
+  "devDependencies": {
+    "jsdom": "^26.0.0"
+  }
+}

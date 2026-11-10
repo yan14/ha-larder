@@ -14,7 +14,7 @@ from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 
 from custom_components.zwilling_storage.const import DOMAIN
-from custom_components.zwilling_storage.qr import parse_qr
+from custom_components.zwilling_storage.qr import generate_code, parse_qr
 
 QR = "zwilling://zwillingapp/food-storage/in/?tc=42ML30&s=m&cc=34OL"
 
@@ -22,6 +22,18 @@ QR = "zwilling://zwillingapp/food-storage/in/?tc=42ML30&s=m&cc=34OL"
 @pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(enable_custom_integrations):
     yield
+
+
+async def _start_scan(hass: HomeAssistant):
+    """Config Flow starten und im Menü 'Zwilling QR Code einlesen' wählen."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    assert result["type"] is FlowResultType.MENU
+    assert result["menu_options"] == ["scan", "create"]
+    return await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": "scan"}
+    )
 
 
 @pytest.mark.parametrize(
@@ -49,17 +61,21 @@ def test_parse_invalid(raw):
 
 
 async def test_flow_creates_device_with_entities(hass: HomeAssistant) -> None:
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_USER}
-    )
+    result = await _start_scan(hass)
     assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "scan"
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {"qr_code": QR}
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "Dose 34OL"
-    assert result["data"] == {"cc": "34OL", "tc": "42ML30", "size": "m"}
+    assert result["data"] == {
+        "cc": "34OL",
+        "tc": "42ML30",
+        "size": "m",
+        "source": "zwilling",
+    }
     await hass.async_block_till_done()
 
     entry = hass.config_entries.async_entries(DOMAIN)[0]
@@ -72,18 +88,18 @@ async def test_flow_creates_device_with_entities(hass: HomeAssistant) -> None:
     assert device.serial_number == "34OL"
 
     entities = er.async_entries_for_device(er.async_get(hass), device.id)
-    assert {e.domain for e in entities} == {"button", "datetime", "text"}
+    assert {e.domain for e in entities} == {"button", "date", "datetime", "image", "text"}
     assert {e.unique_id for e in entities} == {
         "34OL_filled_at",
         "34OL_content",
         "34OL_empty_container",
+        "34OL_best_before",
+        "34OL_qr_code",
     }
 
 
 async def test_flow_invalid_code(hass: HomeAssistant) -> None:
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_USER}
-    )
+    result = await _start_scan(hass)
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {"qr_code": "zwilling://x/?tc=1"}
     )
@@ -96,9 +112,7 @@ async def test_flow_duplicate_aborts(hass: HomeAssistant) -> None:
         domain=DOMAIN, unique_id="34OL", data={"cc": "34OL"}, title="x"
     ).add_to_hass(hass)
 
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_USER}
-    )
+    result = await _start_scan(hass)
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {"qr_code": "cc=34ol"}
     )
@@ -107,9 +121,7 @@ async def test_flow_duplicate_aborts(hass: HomeAssistant) -> None:
 
 
 async def test_flow_custom_name(hass: HomeAssistant) -> None:
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": SOURCE_USER}
-    )
+    result = await _start_scan(hass)
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"], {"qr_code": QR, "name": "Suppendose"}
     )

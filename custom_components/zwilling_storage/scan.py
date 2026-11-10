@@ -19,7 +19,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.network import NoURLAvailableError
 from homeassistant.helpers.storage import Store
 
-from .const import DOMAIN
+from .const import APP_URL_PREFIX, DOMAIN, device_app_url, device_path
 from .qr import parse_qr
 
 STORAGE_VERSION = 1
@@ -28,7 +28,6 @@ STORAGE_KEY = f"{DOMAIN}.webhook"
 DATA_LOCK = "lock"
 DATA_WEBHOOK_ID = "webhook_id"
 
-APP_URL_PREFIX = "homeassistant://navigate"
 INTEGRATION_PATH = f"/config/integrations/integration/{DOMAIN}"
 
 
@@ -120,14 +119,13 @@ async def _async_handle_webhook(
             }
         )
 
-    path = f"/config/devices/device/{device.id}"
     return web.json_response(
         {
             "known": True,
             "cc": parsed.cc,
             "name": device.name_by_user or device.name,
             "device_id": device.id,
-            "path": path,
-            "app_url": f"{APP_URL_PREFIX}{path}",
+            "path": device_path(device.id),
+            "app_url": device_app_url(device.id),
         }
     )

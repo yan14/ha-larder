@@ -5,12 +5,17 @@ Home-Assistant-Integration für Zwilling-Frischhaltedosen mit QR-Code. Pro Dose 
 | Entität | Typ | Zweck |
 | --- | --- | --- |
 | **Befüllt am** | `datetime` | Wann wurde die Dose befüllt? |
+| **MHD** | `date` | Mindesthaltbarkeitsdatum |
 | **Inhalt** | `text` | Was ist in der Dose? |
-| **Behälter leeren** | `button` | Setzt den **Inhalt** auf leer (das Datum „Befüllt am“ bleibt unverändert) |
+| **Behälter leeren** | `button` | Setzt den **Inhalt** auf leer (MHD und „Befüllt am“ bleiben unverändert) |
+| **QR-Code** | `image` | QR-Code der Dose als Bild: Scannen mit der Kamera-App öffnet direkt das Gerät in der Home-Assistant-App |
 
 Die Werte bleiben über Neustarts erhalten. „Behälter leeren“ ist eine normale Button-Entität, lässt sich also auf Dashboards und in Automationen über `button.press` verwenden.
 
-Zusätzlich bringt die Integration einen **Scan-Webhook** mit: Ein iOS-Kurzbefehl scannt den QR-Code, und die Home-Assistant-App springt direkt auf das passende Gerät (siehe unten). Dafür ist keine eigene Automation nötig.
+Zusätzlich gibt es:
+
+- ein **Dashboard** „Zwilling Dosen“ in der Seitenleiste mit allen Dosen, das sich selbst aktualisiert,
+- einen **Scan-Webhook** für die originalen Zwilling-QR-Codes (iOS-Kurzbefehl, siehe unten).
 
 ## Installation über HACS
 
@@ -20,7 +25,15 @@ Zusätzlich bringt die Integration einen **Scan-Webhook** mit: Ein iOS-Kurzbefeh
 
 ## Dose anlegen
 
-Einstellungen → Geräte & Dienste → **Integration hinzufügen** → „Zwilling Food Storage“. Dort den Inhalt des QR-Codes einfügen, z. B.
+Einstellungen → Geräte & Dienste → **Integration hinzufügen** → „Zwilling Food Storage“. Dann gibt es zwei Wege:
+
+**Neuen QR Code erstellen**
+
+Für Dosen ohne (lesbaren) Zwilling-Code. Die Integration erzeugt eine neue, eindeutige ID im Format `HA-XXXXXXXX` (8 Zeichen ohne die leicht verwechselbaren 0/O und 1/I). Das Präfix `HA-` hält sie klar von den Zwilling-IDs getrennt (z. B. `34OL`), eine Überschneidung ist damit ausgeschlossen. Du kannst optional einen Namen vergeben. Den QR-Code findest du danach als Bild am Gerät (siehe „QR-Code direkt scannen“).
+
+**Zwilling QR Code einlesen**
+
+Für vorhandene Zwilling-Dosen. Dort den Inhalt des QR-Codes einfügen, z. B.
 
 ```
 zwilling://zwillingapp/food-storage/in/?tc=42ML30&s=m&cc=34OL
@@ -30,7 +43,29 @@ Es reicht auch nur die ID (`cc`, hier `34OL`). Optional kannst du einen Namen ve
 
 Home Assistant bietet im Dialog keine Kamera zum Scannen. Den Text liest du unter iOS mit dem Kurzbefehl aus (nächster Abschnitt) und fügst ihn ein.
 
-## iOS-Kurzbefehl: scannen und Gerät öffnen
+## QR-Code direkt scannen
+
+Jede Dose hat die Bild-Entität **QR-Code**. Sie enthält einen Link, der die Home-Assistant-App direkt auf die Geräteseite der Dose springen lässt (`homeassistant://navigate/config/devices/device/<Geräte-ID>`). Dafür brauchst du keinen Kurzbefehl.
+
+1. Öffne das Gerät der Dose in Home Assistant (oder das Panel „Zwilling Dosen“, dort ist der QR-Code klein zu sehen) und öffne die Entität **QR-Code**. Bild speichern oder ausdrucken und auf die Dose kleben. Der Inhalt des Codes steht auch im Attribut `qr_content` der Entität.
+2. Scanne den Aufkleber mit der Kamera-App. iOS bietet an, den Link in der Home-Assistant-App zu öffnen, und die App zeigt die Dose.
+
+Der Code verweist auf die Geräte-ID in Home Assistant. Wird die Dose gelöscht und neu angelegt, bekommt sie eine neue Geräte-ID, und der Aufkleber muss neu gedruckt werden. Hast du mehrere Home-Assistant-Server in der App, fragt sie beim Öffnen, welcher gemeint ist.
+
+## Dashboard „Zwilling Dosen“
+
+Sobald mindestens eine Dose angelegt ist, erscheint in der Seitenleiste der Eintrag **Zwilling Dosen**. Er braucht keine Konfiguration:
+
+- Alle Dosen der Integration, gruppiert nach **Bereich** (Area des Geräts) und sortiert nach Name.
+- Pro Dose: Bereich, **Inhalt**, **MHD** (mit Hinweis „abgelaufen“ oder „noch n Tage“ ab 3 Tagen davor), **Eingelagert am** (= „Befüllt am“), der Button **Behälter leeren** und der QR-Code als kleines Bild.
+- Inhalt, MHD und Datum lassen sich direkt im Panel ändern. „Jetzt“ setzt „Eingelagert am“ auf die aktuelle Zeit.
+- Neue Dosen, geänderte Werte und geänderte Bereiche erscheinen sofort, ohne dass du etwas neu laden musst.
+
+Das Panel ist für alle Nutzer sichtbar, nicht nur für Administratoren. Es ist kein klassisches Lovelace-Dashboard und lässt sich nicht mit dem Karten-Editor bearbeiten. Dafür aktualisiert es sich selbst.
+
+## iOS-Kurzbefehl für die originalen Zwilling-Codes
+
+Dieser Weg ist für die **aufgedruckten Zwilling-QR-Codes** gedacht. Für selbst erstellte Codes brauchst du ihn nicht, dort scannst du einfach mit der Kamera-App.
 
 Der QR-Code enthält einen Link mit dem Schema `zwilling://`, der zur eingestellten Zwilling-App gehört. Die **Kamera-App ist dafür ungeeignet**: Sie will den Link in der Zwilling-App öffnen und liefert den Text nicht zum Kopieren. Der Kurzbefehl liest dagegen nur den Text aus und öffnet den Link nicht.
 
@@ -97,4 +132,7 @@ Bei unbekannter Dose ist `known` gleich `false`, `path` und `app_url` zeigen auf
 ```
 pip install -r requirements_test.txt
 pytest
+
+npm install
+npm test        # Tests für das Panel (jsdom)
 ```

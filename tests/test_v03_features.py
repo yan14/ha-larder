@@ -1,0 +1,225 @@
+"""Tests: MHD, QR-Bild, 'Neuen QR Code erstellen' und das Dosen-Panel."""
+
+from datetime import date
+import re
+
+import pytest
+from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+from homeassistant.components import frontend
+from homeassistant.config_entries import SOURCE_USER
+from homeassistant.core import HomeAssistant
+from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.helpers import device_registry as dr, entity_registry as er
+
+from custom_components.zwilling_storage.const import DOMAIN
+from custom_components.zwilling_storage.qr import generate_code, parse_qr
+
+
+@pytest.fixture(autouse=True)
+def auto_enable_custom_integrations(enable_custom_integrations):
+    yield
+
+
+async def _setup(hass: HomeAssistant, cc: str = "34OL") -> MockConfigEntry:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=cc,
+        title=f"Dose {cc}",
+        data={"cc": cc, "tc": "42ML30", "size": "m"},
+    )
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    return entry
+
+
+def _entity_id(hass: HomeAssistant, domain: str, cc: str = "34OL") -> str:
+    reg = er.async_get(hass)
+    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, cc)})
+    return next(
+        e.entity_id
+        for e in er.async_entries_for_device(reg, device.id)
+        if e.domain == domain
+    )
+
+
+# ---------- MHD ----------
+
+
+async def test_best_before_set_and_restore(hass: HomeAssistant) -> None:
+    from pytest_homeassistant_custom_component.common import mock_restore_cache
+    from homeassistant.core import State
+
+    entry = await _setup(hass)
+    mhd = _entity_id(hass, "date")
+    assert hass.states.get(mhd).state == "unknown"
+
+    await hass.services.async_call(
+        "date", "set_value", {"entity_id": mhd, "date": "2026-12-24"}, blocking=True
+    )
+    assert hass.states.get(mhd).state == "2026-12-24"
+
+    # Wiederherstellung nach Neustart
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    mock_restore_cache(hass, (State(mhd, "2027-01-15"),))
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert hass.states.get(mhd).state == "2027-01-15"
+    assert date.fromisoformat(hass.states.get(mhd).state) == date(2027, 1, 15)
+
+
+async def test_empty_button_leaves_best_before(hass: HomeAssistant) -> None:
+    await _setup(hass)
+    mhd, text, button = (_entity_id(hass, d) for d in ("date", "text", "button"))
+    await hass.services.async_call(
+        "date", "set_value", {"entity_id": mhd, "date": "2026-12-24"}, blocking=True
+    )
+    await hass.services.async_call(
+        "text", "set_value", {"entity_id": text, "value": "Suppe"}, blocking=True
+    )
+    await hass.services.async_call("button", "press", {"entity_id": button}, blocking=True)
+    assert hass.states.get(text).state == ""
+    assert hass.states.get(mhd).state == "2026-12-24"
+
+
+# ---------- QR-Bild ----------
+
+
+async def test_qr_image_contains_device_deep_link(hass: HomeAssistant, hass_client) -> None:
+    await _setup(hass)
+    image_id = _entity_id(hass, "image")
+    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "34OL")})
+    expected = f"homeassistant://navigate/config/devices/device/{device.id}"
+
+    state = hass.states.get(image_id)
+    assert state.attributes["qr_content"] == expected
+
+    client = await hass_client()
+    resp = await client.get(state.attributes["entity_picture"])
+    assert resp.status == 200
+    assert resp.content_type == "image/png"
+    body = await resp.read()
+    assert body.startswith(b"\x89PNG\r\n\x1a\n")
+
+    # PNG zurücklesen und mit dem erwarteten Inhalt vergleichen
+    from io import BytesIO
+
+    import segno
+
+    expected_png = BytesIO()
+    segno.make_qr(expected, error="m").save(expected_png, kind="png", scale=10, border=4)
+    assert body == expected_png.getvalue()
+
+
+def test_qr_png_decodes_to_deep_link() -> None:
+    """Das erzeugte PNG enthält exakt den Deep Link (per OpenCV zurückgelesen, falls vorhanden)."""
+    cv2 = pytest.importorskip("cv2")
+    import numpy as np
+
+    from custom_components.zwilling_storage.image import render_qr_png
+
+    content = "homeassistant://navigate/config/devices/device/0123456789abcdef0123456789abcdef"
+    png = render_qr_png(content)
+    img = cv2.imdecode(np.frombuffer(png, dtype=np.uint8), cv2.IMREAD_GRAYSCALE)
+    decoded, _, _ = cv2.QRCodeDetector().detectAndDecode(img)
+    assert decoded == content
+
+
+# ---------- Neuen QR Code erstellen ----------
+
+
+async def test_flow_create_generates_unique_id(hass: HomeAssistant) -> None:
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": "create"}
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "create"
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"name": "Gefrierdose"}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["title"] == "Gefrierdose"
+    cc = result["data"]["cc"]
+    assert re.fullmatch(r"HA-[2-9A-HJ-NP-Z]{8}", cc)
+    assert result["data"]["source"] == "generated"
+    assert result["data"]["tc"] is None
+    await hass.async_block_till_done()
+
+    # Gerät existiert mit allen fünf Entitäten und das Webhook-Parsing erkennt die ID
+    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, cc)})
+    assert device is not None
+    entities = er.async_entries_for_device(er.async_get(hass), device.id)
+    assert {e.domain for e in entities} == {"button", "date", "datetime", "image", "text"}
+    assert parse_qr(cc).cc == cc
+
+
+async def test_flow_create_default_name_and_two_distinct_ids(hass: HomeAssistant) -> None:
+    codes = []
+    for _ in range(2):
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": SOURCE_USER}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"next_step_id": "create"}
+        )
+        result = await hass.config_entries.flow.async_configure(result["flow_id"], {})
+        assert result["type"] is FlowResultType.CREATE_ENTRY
+        assert result["title"] == f"Dose {result['data']['cc']}"
+        codes.append(result["data"]["cc"])
+        await hass.async_block_till_done()
+    assert codes[0] != codes[1]
+
+
+def test_generate_code_never_collides() -> None:
+    first = generate_code()
+    assert first.startswith("HA-") and len(first) == 11
+    # Kollisionen mit bestehenden IDs werden übersprungen (hier: Alphabet-Trick mit festem Zufall)
+    taken = {generate_code() for _ in range(200)}
+    fresh = generate_code(taken)
+    assert fresh not in taken
+    # Zwilling-IDs haben kein "HA-"-Präfix, die Formate überschneiden sich nicht
+    assert not re.fullmatch(r"HA-[A-Z0-9]{8}", "34OL")
+    assert generate_code(["34OL", None]).startswith("HA-")
+
+
+# ---------- Panel ----------
+
+
+async def test_panel_registered_and_static_js_served(hass: HomeAssistant, hass_client) -> None:
+    entry = await _setup(hass)
+    panels = hass.data[frontend.DATA_PANELS]
+    assert "zwilling-storage" in panels
+    panel = panels["zwilling-storage"]
+    assert panel.sidebar_title == "Zwilling Dosen"
+    assert panel.require_admin is False
+    module_url = panel.config["_panel_custom"]["module_url"]
+    assert module_url.startswith("/zwilling_storage_static/zwilling-storage-panel.js?v=0.3.0")
+    assert panel.config["_panel_custom"]["name"] == "zwilling-storage-panel"
+
+    client = await hass_client()
+    resp = await client.get("/zwilling_storage_static/zwilling-storage-panel.js")
+    assert resp.status == 200
+    assert "customElements.define" in await resp.text()
+
+    # Zweite Dose: Panel bleibt, nur eine Registrierung
+    second = await _setup(hass, "77AB")
+    assert "zwilling-storage" in hass.data[frontend.DATA_PANELS]
+
+    assert await hass.config_entries.async_unload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert "zwilling-storage" in hass.data[frontend.DATA_PANELS]
+
+    assert await hass.config_entries.async_unload(second.entry_id)
+    await hass.async_block_till_done()
+    assert "zwilling-storage" not in hass.data[frontend.DATA_PANELS]
+
+    # Neu laden: Panel wird wieder registriert (statischer Pfad nur einmal)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    assert "zwilling-storage" in hass.data[frontend.DATA_PANELS]

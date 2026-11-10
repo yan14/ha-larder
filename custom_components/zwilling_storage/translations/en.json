@@ -2,10 +2,25 @@
   "config": {
     "step": {
       "user": {
-        "title": "Add food container",
+        "title": "Add container",
+        "description": "How should the container be added?",
+        "menu_options": {
+          "scan": "Read Zwilling QR code",
+          "create": "Create new QR code"
+        }
+      },
+      "scan": {
+        "title": "Read Zwilling QR code",
         "description": "Scan the QR code on the container (e.g. with a shortcut) and paste its content here. Alternatively the ID alone is enough (value of `cc`, e.g. `34OL`).",
         "data": {
           "qr_code": "QR code content or ID",
+          "name": "Name (optional)"
+        }
+      },
+      "create": {
+        "title": "Create new QR code",
+        "description": "A new unique ID is generated (format `HA-XXXXXXXX`) that cannot collide with Zwilling codes. Afterwards you find the matching QR code as an image on the device, ready to print and stick on.",
+        "data": {
           "name": "Name (optional)"
         }
       }
@@ -31,6 +46,16 @@
     "button": {
       "empty_container": {
         "name": "Empty container"
+      }
+    },
+    "date": {
+      "best_before": {
+        "name": "Best before"
+      }
+    },
+    "image": {
+      "qr_code": {
+        "name": "QR code"
       }
     }
   },
