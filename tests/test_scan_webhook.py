@@ -77,7 +77,7 @@ async def test_webhook_accepts_plain_body_query_and_bare_id(
         assert data["device_id"] == device_id
 
 
-async def test_webhook_unknown_code_points_to_integration_page(
+async def test_webhook_unknown_code_points_to_panel_add_dialog(
     hass, hass_client_no_auth
 ) -> None:
     await _setup_entry(hass)
@@ -91,8 +91,8 @@ async def test_webhook_unknown_code_points_to_integration_page(
     assert await resp.json() == {
         "known": False,
         "cc": "NEU123",
-        "path": "/config/integrations/integration/zwilling_storage",
-        "app_url": "homeassistant://navigate/config/integrations/integration/zwilling_storage",
+        "path": "/zwilling-storage?add=NEU123",
+        "app_url": "homeassistant://navigate/zwilling-storage?add=NEU123",
     }
 
 

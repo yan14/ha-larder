@@ -14,14 +14,16 @@
         "description": "Scan the QR code on the container (e.g. with a shortcut) and paste its content here. Alternatively the ID alone is enough (value of `cc`, e.g. `34OL`).",
         "data": {
           "qr_code": "QR code content or ID",
-          "name": "Name (optional)"
+          "name": "Name (optional)",
+          "area_id": "Area (optional)"
         }
       },
       "create": {
         "title": "Create new QR code",
         "description": "A new unique ID is generated (format `HA-XXXXXXXX`) that cannot collide with Zwilling codes. Afterwards you find the matching QR code as an image on the device, ready to print and stick on.",
         "data": {
-          "name": "Name (optional)"
+          "name": "Name (optional)",
+          "area_id": "Area (optional)"
         }
       }
     },

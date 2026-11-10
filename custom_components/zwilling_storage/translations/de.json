@@ -14,14 +14,16 @@
         "description": "Scanne den QR-Code auf der Dose (z. B. mit einem Kurzbefehl) und füge den Inhalt hier ein. Alternativ reicht die ID allein (Wert von `cc`, z. B. `34OL`).",
         "data": {
           "qr_code": "QR-Code-Inhalt oder ID",
-          "name": "Name (optional)"
+          "name": "Name (optional)",
+          "area_id": "Bereich (optional)"
         }
       },
       "create": {
         "title": "Neuen QR Code erstellen",
         "description": "Es wird eine neue, eindeutige ID erzeugt (Format `HA-XXXXXXXX`), die nicht mit den Zwilling-Codes kollidiert. Den passenden QR-Code findest du danach als Bild am Gerät und kannst ihn ausdrucken und aufkleben.",
         "data": {
-          "name": "Name (optional)"
+          "name": "Name (optional)",
+          "area_id": "Bereich (optional)"
         }
       }
     },

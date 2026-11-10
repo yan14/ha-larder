@@ -63,9 +63,11 @@ Sobald mindestens eine Dose angelegt ist, erscheint in der Seitenleiste der Eint
 - Alle Dosen der Integration, gruppiert nach **Bereich** (Area des Geräts) und sortiert nach Name.
 - Pro Dose: Bereich, **Inhalt**, **MHD** (mit Hinweis „abgelaufen“ oder „noch n Tage“ ab 3 Tagen davor), **Eingelagert am** (= „Befüllt am“), der Button **Behälter leeren** und der QR-Code als kleines Bild.
 - Inhalt, MHD und Datum lassen sich direkt im Panel ändern. „Jetzt“ setzt „Eingelagert am“ auf die aktuelle Zeit.
+- Den **Bereich** einer Dose änderst du über das Auswahlfeld auf ihrer Karte, ohne Umweg über die Geräteseite.
+- **+ Dose hinzufügen** (oben rechts) legt eine Dose an: entweder *Neuen QR-Code erstellen* oder *Zwilling-QR-Code einlesen*, mit optionalem Namen und Bereich. Es ist derselbe Ablauf wie unter Einstellungen → Geräte & Dienste.
 - Neue Dosen, geänderte Werte und geänderte Bereiche erscheinen sofort, ohne dass du etwas neu laden musst.
 
-Das Panel ist für alle Nutzer sichtbar, nicht nur für Administratoren. Es ist kein klassisches Lovelace-Dashboard und lässt sich nicht mit dem Karten-Editor bearbeiten. Dafür aktualisiert es sich selbst.
+Das Panel ist für alle Nutzer sichtbar, aber nur **Administratoren** können Dosen hinzufügen und Bereiche ändern (dieselbe Einschränkung wie in den Einstellungen). Andere Nutzer sehen den Bereich als Text. Es ist kein klassisches Lovelace-Dashboard und lässt sich nicht mit dem Karten-Editor bearbeiten. Dafür aktualisiert es sich selbst.
 
 ## iOS-Kurzbefehl für die originalen Zwilling-Codes
 
@@ -84,13 +86,12 @@ Die lange ID ist der Zugriffsschutz, behandle die URL also wie ein Passwort. Wel
 App **Kurzbefehle** → neuer Kurzbefehl mit diesen Aktionen, in dieser Reihenfolge:
 
 1. **„QR-/Barcode scannen“** (*Scan QR/Bar Code*)
-2. **„In die Zwischenablage kopieren“** (*Copy to Clipboard*): kopiert den gescannten Text. Das brauchst du nur, wenn die Dose noch nicht angelegt ist.
-3. **„Inhalt von URL abrufen“** (*Get Contents of URL*):
+2. **„Inhalt von URL abrufen“** (*Get Contents of URL*):
    - URL: deine Webhook-URL aus Schritt 1
    - „Mehr anzeigen“ antippen, Methode **POST**, Anfragetext **JSON**
    - „Neues Feld hinzufügen“: Typ **Text**, Schlüssel `code`, Wert: das Ergebnis aus Aktion 1 (die Variable „QR-/Barcode“ aus der Variablenleiste wählen)
-4. **„Wörterbuchwert abrufen“** (*Get Dictionary Value*, in der Suche nach „Wörterbuch“ suchen): Schlüssel `app_url`, aus „Inhalt von URL“. Nicht zu verwechseln mit „Gespeicherten Inhalt abrufen“, das ist eine andere Aktion.
-5. **„URLs öffnen“** (*Open URLs*): öffnet den Wert aus Aktion 4
+3. **„Wörterbuchwert abrufen“** (*Get Dictionary Value*, in der Suche nach „Wörterbuch“ suchen): Schlüssel `app_url`, aus „Inhalt von URL“. Nicht zu verwechseln mit „Gespeicherten Inhalt abrufen“, das ist eine andere Aktion.
+4. **„URLs öffnen“** (*Open URLs*): öffnet den Wert aus Aktion 3
 
 Namen vergeben, z. B. „Dose scannen“. Über das Teilen-Symbol lässt er sich zum Home-Bildschirm hinzufügen oder auf die Aktionstaste legen. Beim ersten Lauf fragt iOS nach dem Kamerazugriff und ob der Kurzbefehl die URL aufrufen darf.
 
@@ -99,7 +100,7 @@ Namen vergeben, z. B. „Dose scannen“. Über das Teilen-Symbol lässt er sich
 Kurzbefehl starten, QR-Code auf der Dose scannen. Die Home-Assistant-App öffnet sich dann:
 
 - **Dose bekannt:** direkt auf der **Geräteseite** dieser Dose (mit Befüllt am, Inhalt und Behälter leeren).
-- **Dose neu:** auf der Seite der Integration. Dort **Eintrag hinzufügen** wählen, ins Feld lange tippen und **Einsetzen** wählen (der QR-Inhalt liegt dank Aktion 2 in der Zwischenablage). Fragt iOS „Einsetzen erlauben?“, bestätige mit **Erlauben**.
+- **Dose neu:** im Dashboard „Zwilling Dosen“. Dort öffnet sich der Dialog **Dose hinzufügen** mit bereits eingetragenem Code. Optional Name und Bereich eingeben und **Hinzufügen** tippen. Das geht nur mit einem Administrator-Konto, andere Nutzer sehen einen Hinweis mit dem gescannten Code.
 
 Hast du mehrere Home-Assistant-Server in der App, fragt sie beim Öffnen, welcher gemeint ist.
 
@@ -129,7 +130,7 @@ Antwort (`200`, JSON):
 }
 ```
 
-Bei unbekannter Dose ist `known` gleich `false`, `path` und `app_url` zeigen auf die Integrationsseite. Enthält die Anfrage keine gültige ID, antwortet der Webhook mit `400` und `{"error": "invalid_code"}`. Der Webhook liest nur und ändert keine Werte.
+Bei unbekannter Dose ist `known` gleich `false`, `path` und `app_url` zeigen auf das Dashboard mit dem Hinzufügen-Dialog (`/zwilling-storage?add=<ID>`). Enthält die Anfrage keine gültige ID, antwortet der Webhook mit `400` und `{"error": "invalid_code"}`. Der Webhook liest nur und ändert keine Werte.
 
 ## Entwicklung
 

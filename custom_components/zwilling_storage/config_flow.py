@@ -14,9 +14,10 @@ from homeassistant.config_entries import (
 )
 from homeassistant.const import CONF_NAME
 from homeassistant.core import callback
-from homeassistant.helpers.selector import TextSelector
+from homeassistant.helpers.selector import AreaSelector, TextSelector
 
 from .const import (
+    CONF_AREA,
     CONF_CC,
     CONF_QR_CODE,
     CONF_SIZE,
@@ -28,6 +29,12 @@ from .const import (
 )
 from .qr import generate_code, parse_qr
 from .scan import async_get_webhook_id, webhook_urls
+
+
+def _area_data(user_input: dict[str, Any]) -> dict[str, str]:
+    """Gewählten Bereich nur dann in den Eintrag schreiben, wenn einer gewählt wurde."""
+    area_id = user_input.get(CONF_AREA)
+    return {CONF_AREA: area_id} if area_id else {}
 
 
 class ZwillingStorageConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -68,6 +75,7 @@ class ZwillingStorageConfigFlow(ConfigFlow, domain=DOMAIN):
                         CONF_TC: parsed.tc,
                         CONF_SIZE: parsed.size,
                         CONF_SOURCE: SOURCE_ZWILLING,
+                        **_area_data(user_input),
                     },
                 )
 
@@ -75,6 +83,7 @@ class ZwillingStorageConfigFlow(ConfigFlow, domain=DOMAIN):
             {
                 vol.Required(CONF_QR_CODE): TextSelector(),
                 vol.Optional(CONF_NAME): TextSelector(),
+                vol.Optional(CONF_AREA): AreaSelector(),
             }
         )
         return self.async_show_form(
@@ -100,12 +109,18 @@ class ZwillingStorageConfigFlow(ConfigFlow, domain=DOMAIN):
                     CONF_TC: None,
                     CONF_SIZE: None,
                     CONF_SOURCE: SOURCE_GENERATED,
+                    **_area_data(user_input),
                 },
             )
 
         return self.async_show_form(
             step_id="create",
-            data_schema=vol.Schema({vol.Optional(CONF_NAME): TextSelector()}),
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(CONF_NAME): TextSelector(),
+                    vol.Optional(CONF_AREA): AreaSelector(),
+                }
+            ),
         )
 
 

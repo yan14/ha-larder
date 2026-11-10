@@ -13,7 +13,7 @@ for (const key of ["window", "document", "HTMLElement", "customElements", "Event
   globalThis[key] = dom.window[key];
 }
 
-const { STRINGS, collectDevices, daysUntil, toLocalInputValue } = await import(
+const { STRINGS, listAreas, collectDevices, daysUntil, toLocalInputValue } = await import(
   "../../custom_components/zwilling_storage/frontend/zwilling-storage-panel.js"
 );
 
@@ -384,4 +384,185 @@ test("Deutsche und englische Panel-Texte sind vollständig und gleichartig", () 
   // Der Text darf nicht versehentlich in beiden Sprachen identisch deutsch sein
   assert.notEqual(STRINGS.de.emptyContainer, STRINGS.en.emptyContainer);
   assert.notEqual(STRINGS.de.noneText, STRINGS.en.noneText);
+});
+
+// ---------- Dose hinzufügen, Bereich ändern ----------
+
+const flush = () => new Promise((r) => setTimeout(r, 0));
+
+function adminHass(doses = [{ id: "d1", name: "Dose A", area: "kitchen" }], responses = []) {
+  const hass = makeHass(doses, { areas: AREAS });
+  hass.user = { is_admin: true };
+  hass.apiCalls = [];
+  hass.wsCalls = [];
+  const queue = [...responses];
+  hass.callApi = async (method, path, body) => {
+    hass.apiCalls.push({ method, path, body });
+    return queue.length ? queue.shift() : {};
+  };
+  hass.callWS = async (msg) => {
+    hass.wsCalls.push(msg);
+    return {};
+  };
+  return hass;
+}
+
+const FLOW = [
+  { type: "menu", flow_id: "f1" },
+  { type: "form", flow_id: "f1", step_id: "create" },
+];
+
+test("Administrator sieht 'Dose hinzufügen' und die Bereichsauswahl, andere nicht", () => {
+  const admin = mount(adminHass());
+  assert.ok($(admin, "button.add").classList.contains("visible"));
+  assert.ok($(admin, ".arearow").classList.contains("visible"));
+  assert.ok($(admin, ".arealine").classList.contains("hidden"));
+  assert.deepEqual(
+    $$(admin, ".card select[data-f=area] option").map((o) => o.textContent),
+    ["Kein Bereich", "Keller", "Küche"],
+  );
+  assert.equal($(admin, ".card select[data-f=area]").value, "kitchen");
+
+  document.body.innerHTML = "";
+  const hass = adminHass();
+  hass.user = { is_admin: false };
+  const user = mount(hass);
+  assert.ok(!$(user, "button.add").classList.contains("visible"));
+  assert.ok(!$(user, ".arearow").classList.contains("visible"));
+  assert.match($(user, ".arealine").textContent, /Bereich: Küche/);
+});
+
+test("Bereich einer Dose ändern ruft die Geräte-Registry auf; 'Kein Bereich' entfernt ihn", async () => {
+  const hass = adminHass();
+  const el = mount(hass);
+  const select = $(el, ".card select[data-f=area]");
+  select.value = "cellar";
+  select.dispatchEvent(new dom.window.Event("change"));
+  select.value = "";
+  select.dispatchEvent(new dom.window.Event("change"));
+  await flush();
+  assert.deepEqual(hass.wsCalls, [
+    { type: "config/device_registry/update", device_id: "d1", area_id: "cellar" },
+    { type: "config/device_registry/update", device_id: "d1", area_id: null },
+  ]);
+});
+
+test("Bereich ändern: Fehler wird angezeigt", async () => {
+  const hass = adminHass();
+  hass.callWS = async () => {
+    throw new Error("nope");
+  };
+  const el = mount(hass);
+  const select = $(el, ".card select[data-f=area]");
+  select.value = "cellar";
+  select.dispatchEvent(new dom.window.Event("change"));
+  await flush();
+  assert.equal($(el, "#notice").hidden, false);
+  assert.match($(el, "#notice").textContent, /Bereich konnte nicht geändert/);
+});
+
+test("Dose hinzufügen: neuer QR-Code über den Config Flow, mit Name und Bereich", async () => {
+  const hass = adminHass(undefined, [...FLOW, { type: "create_entry", title: "Suppe" }]);
+  const el = mount(hass);
+  $(el, "button.add").click();
+  assert.equal($(el, ".overlay").hidden, false);
+  assert.equal($(el, '[data-w="code"]').hidden, true); // Code nur im Zwilling-Modus
+  $(el, '[data-f="name"]').value = "Suppe";
+  $(el, ".dialog select[data-f=area]").value = "cellar";
+  $(el, "form.dialog").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  await flush();
+  assert.deepEqual(hass.apiCalls, [
+    { method: "POST", path: "config/config_entries/flow", body: { handler: D, show_advanced_options: false } },
+    { method: "POST", path: "config/config_entries/flow/f1", body: { next_step_id: "create" } },
+    { method: "POST", path: "config/config_entries/flow/f1", body: { name: "Suppe", area_id: "cellar" } },
+  ]);
+  assert.equal($(el, ".overlay").hidden, true);
+});
+
+test("Dose hinzufügen: Zwilling-QR-Code einlesen, ungültiger Code zeigt Fehler und beendet den Flow", async () => {
+  const hass = adminHass(undefined, [
+    { type: "menu", flow_id: "f2" },
+    { type: "form", flow_id: "f2", step_id: "scan" },
+    { type: "form", flow_id: "f2", step_id: "scan", errors: { qr_code: "invalid_code" } },
+  ]);
+  const el = mount(hass);
+  $(el, "button.add").click();
+  const scan = $(el, 'input[name="mode"][value="scan"]');
+  scan.checked = true;
+  scan.dispatchEvent(new dom.window.Event("change"));
+  assert.equal($(el, '[data-w="code"]').hidden, false);
+  $(el, '[data-f="code"]').value = "kaputt!";
+  $(el, "form.dialog").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  await flush();
+  assert.equal(hass.apiCalls[1].body.next_step_id, "scan");
+  assert.deepEqual(hass.apiCalls[2].body, { qr_code: "kaputt!" });
+  assert.equal(hass.apiCalls[3].method, "DELETE");
+  assert.equal(hass.apiCalls[3].path, "config/config_entries/flow/f2");
+  assert.equal($(el, ".dialog .error").textContent, "Im QR-Code wurde keine gültige ID (cc) gefunden.");
+  assert.equal($(el, ".overlay").hidden, false); // Dialog bleibt offen
+});
+
+test("Dose hinzufügen: bereits vorhandene Dose und leerer Code im Zwilling-Modus", async () => {
+  const hass = adminHass(undefined, [
+    { type: "menu", flow_id: "f3" },
+    { type: "form", flow_id: "f3", step_id: "scan" },
+    { type: "abort", reason: "already_configured" },
+  ]);
+  const el = mount(hass);
+  $(el, "button.add").click();
+  const scan = $(el, 'input[name="mode"][value="scan"]');
+  scan.checked = true;
+  scan.dispatchEvent(new dom.window.Event("change"));
+
+  $(el, "form.dialog").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  await flush();
+  assert.equal(hass.apiCalls.length, 0); // ohne Code wird gar nichts gesendet
+  assert.match($(el, ".dialog .error").textContent, /keine gültige ID/);
+
+  $(el, '[data-f="code"]').value = "34OL";
+  $(el, "form.dialog").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  await flush();
+  assert.equal($(el, ".dialog .error").textContent, "Diese Dose wurde bereits hinzugefügt.");
+  assert.ok(hass.apiCalls.every((c) => c.method !== "DELETE")); // abgebrochener Flow braucht kein DELETE
+});
+
+test("Netzwerkfehler beim Hinzufügen zeigt allgemeine Meldung", async () => {
+  const hass = adminHass();
+  hass.callApi = async () => {
+    throw new Error("offline");
+  };
+  const el = mount(hass);
+  $(el, "button.add").click();
+  $(el, "form.dialog").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  await flush();
+  assert.equal($(el, ".dialog .error").textContent, "Die Dose konnte nicht hinzugefügt werden.");
+  assert.equal($(el, "button.submit").disabled, false);
+});
+
+test("?add=<ID> aus dem Scan-Webhook öffnet den Dialog mit vorbelegtem Code", () => {
+  dom.window.history.pushState(null, "", "/zwilling-storage?add=NEU123");
+  const el = mount(adminHass());
+  assert.equal($(el, ".overlay").hidden, false);
+  assert.equal($(el, 'input[name="mode"]:checked').value, "scan");
+  assert.equal($(el, '[data-f="code"]').value, "NEU123");
+  assert.equal($(el, '[data-w="code"]').hidden, false);
+  assert.equal(dom.window.location.search, ""); // Parameter wird entfernt, kein erneutes Öffnen
+  $(el, "button.cancel").click();
+  el.hass = adminHass();
+  assert.equal($(el, ".overlay").hidden, true);
+});
+
+test("?add=<ID> für Nutzer ohne Admin-Rechte zeigt einen Hinweis statt des Dialogs", () => {
+  dom.window.history.pushState(null, "", "/zwilling-storage?add=NEU123");
+  const hass = adminHass();
+  hass.user = { is_admin: false };
+  const el = mount(hass);
+  assert.equal($(el, ".overlay").hidden, true);
+  assert.equal($(el, "#notice").hidden, false);
+  assert.match($(el, "#notice").textContent, /Nur Administratoren.*NEU123/);
+});
+
+test("listAreas sortiert Bereiche nach Name", () => {
+  assert.deepEqual(listAreas({ language: "de", areas: AREAS }).map((a) => a.id), ["cellar", "kitchen"]);
+  assert.deepEqual(listAreas({}), []);
 });

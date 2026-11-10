@@ -63,9 +63,11 @@ As soon as at least one container exists, a sidebar entry **Zwilling containers*
 - All containers of the integration, grouped by **area** (the area of the device) and sorted by name.
 - Per container: area, **contents**, **best before** (with a hint "expired" or "n days left" starting 3 days before), **filled on**, the **Empty container** button and the QR code as a small image.
 - Contents, best-before date and filled-on date can be edited right in the panel. "Now" sets "Filled on" to the current time.
+- The **area** of a container can be changed with the dropdown on its card, no detour through the device page needed.
+- **+ Add container** (top right) adds a container: either *Create new QR code* or *Read Zwilling QR code*, with optional name and area. It uses the same flow as Settings → Devices & services.
 - New containers, changed values and changed areas show up immediately, no reload needed.
 
-The panel is visible to all users, not only administrators. It is not a classic Lovelace dashboard and cannot be edited with the card editor. In return it updates itself.
+The panel is visible to all users, but only **administrators** can add containers and change areas (the same restriction as in the settings). Other users see the area as text. It is not a classic Lovelace dashboard and cannot be edited with the card editor. In return it updates itself.
 
 ## iOS Shortcut for the original Zwilling codes
 
@@ -84,13 +86,12 @@ The long ID is the access protection, so treat the URL like a password. Which ad
 Shortcuts app → new shortcut with these actions, in this order:
 
 1. **Scan QR/Bar Code**
-2. **Copy to Clipboard**: copies the scanned text. You only need this when the container has not been added yet.
-3. **Get Contents of URL**:
+2. **Get Contents of URL**:
    - URL: your webhook URL from step 1
    - Tap "Show More", method **POST**, request body **JSON**
    - "Add new field": type **Text**, key `code`, value: the result of action 1 (pick the "QR/Bar Code" variable from the variable bar)
-4. **Get Dictionary Value**: key `app_url`, from "Contents of URL"
-5. **Open URLs**: opens the value from action 4
+3. **Get Dictionary Value**: key `app_url`, from "Contents of URL"
+4. **Open URLs**: opens the value from action 3
 
 Give it a name, e.g. "Scan container". Using the share icon you can add it to the Home Screen or assign it to the Action button. On the first run iOS asks for camera access and whether the Shortcut may access the URL.
 
@@ -99,7 +100,7 @@ Give it a name, e.g. "Scan container". Using the share icon you can add it to th
 Run the Shortcut and scan the QR code on the container. The Home Assistant app then opens:
 
 - **Container known:** directly on the **device page** of this container (with Filled on, Contents and Empty container).
-- **Container new:** on the page of the integration. Choose **Add entry** there, long-press the field and choose **Paste** (thanks to action 2 the QR content is on the clipboard). If iOS asks "Allow Paste?", confirm with **Allow Paste**.
+- **Container new:** on the dashboard "Zwilling containers", where the **Add container** dialog opens with the scanned code already filled in. Optionally enter a name and area and tap **Add**. This needs an administrator account; other users get a note with the scanned code.
 
 If you have several Home Assistant servers in the app, it asks which one you mean when opening.
 
@@ -129,7 +130,7 @@ Response (`200`, JSON):
 }
 ```
 
-For an unknown container `known` is `false`, and `path` and `app_url` point to the integration page. If the request contains no valid ID, the webhook answers with `400` and `{"error": "invalid_code"}`. The webhook only reads and never changes any values.
+For an unknown container `known` is `false`, and `path` and `app_url` point to the dashboard with the add dialog (`/zwilling-storage?add=<ID>`). If the request contains no valid ID, the webhook answers with `400` and `{"error": "invalid_code"}`. The webhook only reads and never changes any values.
 
 ## Development
 

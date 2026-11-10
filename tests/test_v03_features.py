@@ -247,3 +247,96 @@ async def test_panel_registered_and_static_js_served(hass: HomeAssistant, hass_c
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     assert "zwilling-storage" in hass.data[frontend.DATA_PANELS]
+
+
+async def _create_via_flow(hass: HomeAssistant, step: str, user_input: dict):
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": SOURCE_USER}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"next_step_id": step}
+    )
+    return await hass.config_entries.flow.async_configure(
+        result["flow_id"], user_input
+    )
+
+
+async def test_flow_create_applies_selected_area_once(hass: HomeAssistant) -> None:
+    """Bereich aus dem Anlegen landet am Gerät und überschreibt später keine Änderung."""
+    from homeassistant.helpers import area_registry as ar
+
+    kitchen = ar.async_get(hass).async_create("Küche")
+    cellar = ar.async_get(hass).async_create("Keller")
+
+    result = await _create_via_flow(
+        hass, "create", {"name": "Suppe", "area_id": kitchen.id}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    assert "area_id" not in entry.data  # nur einmalig angewendet
+    device = dr.async_get(hass).async_get_device(
+        identifiers={(DOMAIN, entry.data["cc"])}
+    )
+    assert device.area_id == kitchen.id
+
+    # Nutzer ändert den Bereich später; ein Neuladen darf ihn nicht zurücksetzen
+    dr.async_get(hass).async_update_device(device.id, area_id=cellar.id)
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+    assert dr.async_get(hass).async_get_device(
+        identifiers={(DOMAIN, entry.data["cc"])}
+    ).area_id == cellar.id
+
+
+async def test_flow_scan_with_area(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import area_registry as ar
+
+    cellar = ar.async_get(hass).async_create("Keller")
+    result = await _create_via_flow(
+        hass,
+        "scan",
+        {"qr_code": "zwilling://zwillingapp/food-storage/in/?tc=42ML30&s=m&cc=34OL", "area_id": cellar.id},
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "34OL")})
+    assert device.area_id == cellar.id
+
+
+async def test_flow_without_area_leaves_device_unassigned(hass: HomeAssistant) -> None:
+    result = await _create_via_flow(hass, "create", {})
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    await hass.async_block_till_done()
+    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    device = dr.async_get(hass).async_get_device(
+        identifiers={(DOMAIN, entry.data["cc"])}
+    )
+    assert device.area_id is None
+
+
+async def test_flow_works_via_rest_api_for_the_panel(hass: HomeAssistant, hass_client) -> None:
+    """Das Panel nutzt die REST-API des Config Flows: Menü → create → Eintrag."""
+    from homeassistant.setup import async_setup_component
+
+    assert await async_setup_component(hass, "config", {})
+    client = await hass_client()
+    resp = await client.post(
+        "/api/config/config_entries/flow", json={"handler": DOMAIN, "show_advanced_options": False}
+    )
+    assert resp.status == 200
+    flow = await resp.json()
+    assert flow["type"] == "menu"
+
+    resp = await client.post(
+        f"/api/config/config_entries/flow/{flow['flow_id']}", json={"next_step_id": "create"}
+    )
+    assert (await resp.json())["step_id"] == "create"
+
+    resp = await client.post(
+        f"/api/config/config_entries/flow/{flow['flow_id']}", json={"name": "Aus Panel"}
+    )
+    data = await resp.json()
+    assert data["type"] == "create_entry"
+    assert data["title"] == "Aus Panel"

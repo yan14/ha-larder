@@ -15,9 +15,8 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.core import HomeAssistant
 from homeassistant.loader import async_get_integration
 
-from .const import DOMAIN
+from .const import DOMAIN, PANEL_URL_PATH
 
-PANEL_URL_PATH = "zwilling-storage"
 PANEL_ELEMENT = "zwilling-storage-panel"
 STATIC_URL = f"/{DOMAIN}_static"
 FRONTEND_DIR = Path(__file__).parent / "frontend"

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import area_registry as ar, device_registry as dr
 
-from .const import DOMAIN, PLATFORMS
+from .const import CONF_AREA, CONF_CC, DOMAIN, PLATFORMS
 from .entity import ZwillingConfigEntry, ZwillingRuntime
 from .panel import async_setup_panel, async_teardown_panel
 from .scan import async_setup_webhook, async_teardown_webhook
@@ -16,7 +17,27 @@ async def async_setup_entry(hass: HomeAssistant, entry: ZwillingConfigEntry) -> 
     await async_setup_webhook(hass)
     await async_setup_panel(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
+    _async_apply_initial_area(hass, entry)
     return True
+
+
+def _async_apply_initial_area(hass: HomeAssistant, entry: ZwillingConfigEntry) -> None:
+    """Beim Anlegen gewählten Bereich einmalig auf das Gerät übertragen.
+
+    Danach wird der Wert aus dem Eintrag entfernt, damit ein später im Gerät geänderter
+    oder geleerter Bereich nicht bei jedem Neuladen überschrieben wird.
+    """
+    area_id = entry.data.get(CONF_AREA)
+    if CONF_AREA not in entry.data:
+        return
+    if area_id and ar.async_get(hass).async_get_area(area_id) is not None:
+        device = dr.async_get(hass).async_get_device(
+            identifiers={(DOMAIN, entry.data[CONF_CC])}
+        )
+        if device is not None and device.area_id is None:
+            dr.async_get(hass).async_update_device(device.id, area_id=area_id)
+    data = {key: value for key, value in entry.data.items() if key != CONF_AREA}
+    hass.config_entries.async_update_entry(entry, data=data)
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ZwillingConfigEntry) -> bool:

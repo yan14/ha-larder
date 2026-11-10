@@ -19,7 +19,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.network import NoURLAvailableError
 from homeassistant.helpers.storage import Store
 
-from .const import APP_URL_PREFIX, DOMAIN, device_app_url, device_path
+from .const import DOMAIN, device_app_url, device_path, panel_app_url, panel_path
 from .qr import parse_qr
 
 STORAGE_VERSION = 1
@@ -27,8 +27,6 @@ STORAGE_KEY = f"{DOMAIN}.webhook"
 
 DATA_LOCK = "lock"
 DATA_WEBHOOK_ID = "webhook_id"
-
-INTEGRATION_PATH = f"/config/integrations/integration/{DOMAIN}"
 
 
 async def async_get_webhook_id(hass: HomeAssistant) -> str:
@@ -109,13 +107,14 @@ async def _async_handle_webhook(
 
     device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, parsed.cc)})
     if device is None:
-        # Dose noch nicht angelegt: auf die Integrationsseite führen (dort "Eintrag hinzufügen").
+        # Dose noch nicht angelegt: ins Panel "Zwilling Dosen" führen, dort öffnet sich
+        # der Dialog "Dose hinzufügen" mit bereits eingetragenem Code.
         return web.json_response(
             {
                 "known": False,
                 "cc": parsed.cc,
-                "path": INTEGRATION_PATH,
-                "app_url": f"{APP_URL_PREFIX}{INTEGRATION_PATH}",
+                "path": panel_path(parsed.cc),
+                "app_url": panel_app_url(parsed.cc),
             }
         )
 
