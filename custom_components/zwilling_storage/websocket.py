@@ -8,10 +8,12 @@ import voluptuous as vol
 
 from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import config_validation as cv
 from homeassistant.exceptions import HomeAssistantError
 
 from .const import DOMAIN
 from .estimate import MAX_DAYS, MIN_DAYS, async_get_estimator
+from .nfc import async_get_nfc
 
 DATA_WS_REGISTERED = "websocket_registered"
 
@@ -28,6 +30,9 @@ def async_setup_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_set)
     websocket_api.async_register_command(hass, ws_add)
     websocket_api.async_register_command(hass, ws_delete)
+    websocket_api.async_register_command(hass, ws_nfc_tags)
+    websocket_api.async_register_command(hass, ws_nfc_link)
+    websocket_api.async_register_command(hass, ws_nfc_unlink)
     domain_data[DATA_WS_REGISTERED] = True
 
 
@@ -110,3 +115,69 @@ async def ws_delete(
         _error(connection, msg["id"], err)
         return
     connection.send_result(msg["id"], {"entries": estimator.list_entries()})
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/nfc_tags"})
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_nfc_tags(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    nfc = await async_get_nfc(hass)
+    connection.send_result(msg["id"], {"links": nfc.links(), "by_device": nfc.links_by_device()})
+
+
+@websocket_api.websocket_command(
+    vol.All(
+        vol.Schema(
+            {
+                vol.Required("type"): f"{DOMAIN}/nfc_link",
+                vol.Required("tag_id"): str,
+                vol.Exclusive("cc", "dose"): str,
+                vol.Exclusive("entry_id", "dose"): str,
+                vol.Exclusive("device_id", "dose"): str,
+            }
+        ),
+        cv.has_at_least_one_key("cc", "entry_id", "device_id"),
+    )
+)
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_nfc_link(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    nfc = await async_get_nfc(hass)
+    try:
+        cc = nfc.resolve_cc(msg.get("cc"), msg.get("entry_id"), msg.get("device_id"))
+        await nfc.async_link(msg["tag_id"], cc)
+    except HomeAssistantError as err:
+        _error(connection, msg["id"], err)
+        return
+    connection.send_result(msg["id"], {"links": nfc.links(), "by_device": nfc.links_by_device()})
+
+
+@websocket_api.websocket_command(
+    vol.All(
+        vol.Schema(
+            {
+                vol.Required("type"): f"{DOMAIN}/nfc_unlink",
+                vol.Exclusive("cc", "dose"): str,
+                vol.Exclusive("device_id", "dose"): str,
+            }
+        ),
+        cv.has_at_least_one_key("cc", "device_id"),
+    )
+)
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_nfc_unlink(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    nfc = await async_get_nfc(hass)
+    try:
+        cc = nfc.resolve_cc(msg.get("cc"), None, msg.get("device_id"))
+    except HomeAssistantError as err:
+        _error(connection, msg["id"], err)
+        return
+    await nfc.async_unlink(cc)
+    connection.send_result(msg["id"], {"links": nfc.links(), "by_device": nfc.links_by_device()})

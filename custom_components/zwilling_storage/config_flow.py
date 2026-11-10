@@ -17,6 +17,7 @@ from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.selector import (
     AreaSelector,
+    BooleanSelector,
     EntitySelector,
     EntitySelectorConfig,
     NumberSelector,
@@ -31,6 +32,7 @@ from homeassistant.helpers.selector import (
 from .const import (
     CONF_CALENDAR_ENTITY,
     CONF_ESTIMATE_MODE,
+    CONF_NFC_NOTIFY,
     CONF_OPENED_DAYS,
     DEFAULT_OPENED_DAYS,
     ESTIMATE_MODES,
@@ -160,6 +162,7 @@ class ZwillingOptionsFlow(OptionsFlow):
                 user_input.get(CONF_AI_TASK_ENTITY) or None,
                 user_input.get(CONF_OPENED_DAYS, DEFAULT_OPENED_DAYS),
                 user_input.get(CONF_CALENDAR_ENTITY) or None,
+                user_input.get(CONF_NFC_NOTIFY, True),
             )
             sync = await async_get_calendar_sync(self.hass)
             await sync.async_sync_all()
@@ -180,6 +183,7 @@ class ZwillingOptionsFlow(OptionsFlow):
                 vol.Optional(CONF_OPENED_DAYS, default=DEFAULT_OPENED_DAYS): NumberSelector(
                     NumberSelectorConfig(min=1, max=30, step=1, mode=NumberSelectorMode.BOX)
                 ),
+                vol.Optional(CONF_NFC_NOTIFY, default=True): BooleanSelector(),
                 vol.Optional(CONF_CALENDAR_ENTITY): EntitySelector(
                     EntitySelectorConfig(domain="calendar")
                 ),
@@ -188,7 +192,11 @@ class ZwillingOptionsFlow(OptionsFlow):
                 ),
             }
         )
-        suggested = {CONF_ESTIMATE_MODE: estimator.mode, CONF_OPENED_DAYS: estimator.opened_days}
+        suggested = {
+            CONF_ESTIMATE_MODE: estimator.mode,
+            CONF_OPENED_DAYS: estimator.opened_days,
+            CONF_NFC_NOTIFY: estimator.nfc_notify,
+        }
         if estimator.ai_task_entity:
             suggested[CONF_AI_TASK_ENTITY] = estimator.ai_task_entity
         if estimator.calendar_entity:

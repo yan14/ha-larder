@@ -115,6 +115,15 @@
     },
     "days_out_of_range": {
       "message": "Die Tage müssen zwischen {min} und {max} liegen."
+    },
+    "nfc_unknown_container": {
+      "message": "Diese Dose gibt es nicht."
+    },
+    "nfc_no_tag": {
+      "message": "Es wurde keine Tag-ID übergeben."
+    },
+    "nfc_tag_in_use": {
+      "message": "Dieser Tag ist bereits mit „{name}“ verknüpft. Löse ihn dort zuerst."
     }
   },
   "options": {
@@ -126,13 +135,15 @@
           "estimate_mode": "MHD-Schätzung",
           "ai_task_entity": "KI-Aufgabe (leer = Standard von Home Assistant)",
           "opened_days": "Haltbarkeit nach dem Öffnen (Tage)",
-          "calendar_entity": "Kalender für das MHD (optional)"
+          "calendar_entity": "Kalender für das MHD (optional)",
+          "nfc_notify": "NFC: Handy benachrichtigen"
         },
         "data_description": {
           "estimate_mode": "Zeigt im Dashboard den Button „MHD schätzen“, außer bei „Aus“.",
           "ai_task_entity": "Nur nötig, wenn du mehrere KI-Dienste eingerichtet hast und eine KI-Stufe gewählt ist.",
           "opened_days": "Der Button „Geöffnet“ im Dashboard kürzt das MHD auf höchstens so viele Tage ab heute.",
-          "calendar_entity": "Schreibt das MHD jeder Dose als Ganztags-Termin in diesen Kalender (anlegen, verschieben, löschen). Der Kalender muss Termine anlegen und löschen können, z. B. Google, CalDAV oder „Lokaler Kalender“. Leer lassen = aus."
+          "calendar_entity": "Schreibt das MHD jeder Dose als Ganztags-Termin in diesen Kalender (anlegen, verschieben, löschen). Der Kalender muss Termine anlegen und löschen können, z. B. Google, CalDAV oder „Lokaler Kalender“. Leer lassen = aus.",
+          "nfc_notify": "Scannt jemand einen verknüpften Tag, bekommt sein Handy (Companion-App) eine Benachrichtigung. Antippen öffnet die Dose im Dashboard."
         }
       }
     }

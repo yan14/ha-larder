@@ -187,6 +187,16 @@ Unter Einstellungen → Geräte & Dienste → **Zwilling Food Storage** → **Ko
 
 Der Kalender muss Termine anlegen **und** löschen können. Reine Lese-Kalender (z. B. ein iCal-Link) gehen nicht; die Integration *Lokaler Kalender* ist eine gute Wahl, wenn du keinen anderen hast.
 
+## NFC-Tags
+
+Statt einen QR-Code zu drucken, kannst du einen NFC-Tag auf die Dose kleben. Dafür werden die **Tags** von Home Assistant genutzt: Jeder Scan löst ein `tag_scanned`-Ereignis aus, und die Integration merkt sich, welcher Tag zu welcher Dose gehört. Andere Tags im Haus werden ignoriert.
+
+1. **Tag beschreiben** mit der Home-Assistant-App (Einstellungen → Companion-App → NFC, oder Einstellungen → Tags). Jede Tag-ID ist möglich.
+2. **Mit einer Dose verknüpfen** im Dashboard (Administratoren): Auf der Karte **NFC-Tag verknüpfen** drücken und das Handy an den Tag halten. Oder **+ Dose hinzufügen → NFC-Tag scannen**: Das legt eine neue Dose an und verknüpft den Tag gleich mit.
+3. **Später scannen.** Ist das Dashboard offen, springt es zur Dose und hebt sie hervor. Sonst bekommt das scannende Handy (Companion-App) eine Benachrichtigung, deren Antippen das Dashboard bei dieser Dose öffnet. Das iPhone zeigt nach dem Lesen eines Tags ein eigenes Banner, das zuerst angetippt wird.
+
+Für eigene Automationen löst ein verknüpfter Scan das Ereignis `zwilling_storage_dose_scanned` aus (`cc`, `device_id`, `name`, `scanned_by`). Die Benachrichtigung lässt sich in den Einstellungen abschalten („NFC: Handy benachrichtigen“). Eine Dose hat höchstens einen Tag, und ein Tag gehört zu genau einer Dose.
+
 ## iOS-Kurzbefehl für die originalen Zwilling-Codes
 
 Dieser Weg ist für die **aufgedruckten Zwilling-QR-Codes** gedacht. Für selbst erstellte Codes brauchst du ihn nicht, dort scannst du einfach mit der Kamera-App.

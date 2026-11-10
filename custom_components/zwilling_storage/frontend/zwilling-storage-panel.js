@@ -61,6 +61,15 @@ export const STRINGS = {
     sortDate: "Nach MHD",
     sortName: "Nach Name",
     noMatch: "Keine Dose passt zu Suche und Filter.",
+    nfcScan: "NFC-Tag scannen",
+    nfcWaiting: "Halte das Handy jetzt an den NFC-Tag …",
+    nfcGot: "Tag erkannt.",
+    nfcInUse: "Dieser Tag ist schon mit einer anderen Dose verknüpft.",
+    nfcLinked: "NFC-Tag verknüpft",
+    nfcNone: "Kein NFC-Tag",
+    nfcLink: "NFC-Tag verknüpfen",
+    nfcUnlink: "Lösen",
+    nfcFailed: "Der NFC-Tag konnte nicht verknüpft werden.",
     sourceTable: "Tabelle",
     sourceAi: "KI",
     sourceLearned: "von dir korrigiert",
@@ -140,6 +149,15 @@ export const STRINGS = {
     sortDate: "By best before",
     sortName: "By name",
     noMatch: "No container matches the search and filter.",
+    nfcScan: "Scan NFC tag",
+    nfcWaiting: "Hold your phone to the NFC tag now …",
+    nfcGot: "Tag detected.",
+    nfcInUse: "This tag is already linked to another container.",
+    nfcLinked: "NFC tag linked",
+    nfcNone: "No NFC tag",
+    nfcLink: "Link NFC tag",
+    nfcUnlink: "Unlink",
+    nfcFailed: "The NFC tag could not be linked.",
     sourceTable: "table",
     sourceAi: "AI",
     sourceLearned: "corrected by you",
@@ -409,6 +427,15 @@ const STYLE = `
   .quickrow button { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 6px; cursor: pointer;
     border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
   .quickrow button:disabled { opacity: .5; cursor: default; }
+  .nfcrow { display: none; align-items: center; gap: 8px; font-size: 13px; color: var(--secondary-text-color); }
+  .nfcrow.visible { display: flex; }
+  .nfcrow .nfcstate { flex: 1; }
+  .nfcrow button { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
+  .card.flash { animation: zwflash 3s ease-out; }
+  @keyframes zwflash { 0%, 60% { box-shadow: 0 0 0 4px var(--primary-color); } 100% { box-shadow: var(--ha-card-box-shadow, 0 1px 3px rgba(0,0,0,.2)); } }
+  .dialog .nfcstatus { font-size: 14px; color: var(--secondary-text-color); }
+  .dialog .nfcstatus[hidden] { display: none; }
   header .tabs { display: none; gap: 4px; }
   header .tabs.visible { display: flex; }
   header .tabs button { font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
@@ -484,6 +511,7 @@ class DoseCard {
       <div class="row"><label data-l="filledAt"></label><input data-f="filledAt" type="datetime-local"><button class="now" type="button"></button></div>
       <div class="estimaterow"><button class="estimate" type="button"></button><span class="tip" role="status"></span></div>
       <div class="row vacrow"><label class="check"><input type="checkbox" data-f="vacuum"><span data-l="vacuum"></span></label></div>
+      <div class="nfcrow"><span class="nfcstate"></span><button class="nfcbtn" type="button"></button></div>
       <div class="actions"><button class="empty" type="button"></button><span class="spacer"></span><img class="qr" alt=""></div>`;
     this.el = el;
     this.q = (sel) => el.querySelector(sel);
@@ -545,6 +573,7 @@ class DoseCard {
       if (this.ids.switch) this._call("switch", ev.target.checked ? "turn_on" : "turn_off", { entity_id: this.ids.switch });
     });
     this.q("button.estimate").addEventListener("click", () => this._estimate());
+    this.q("button.nfcbtn").addEventListener("click", () => this._panel.nfcAction(this.deviceId));
   }
 
   _setTip(text, isError = false) {
@@ -665,6 +694,14 @@ class DoseCard {
     this.q(".quickrow").classList.toggle("visible", ok(date) && hasContentNow);
     this.q("button.plus1").disabled = !isValidState(date);
 
+    // NFC: nur für Administratoren (Verknüpfen und Lösen sind Administrator-Befehle).
+    const nfc = this._panel.nfcState(this.deviceId);
+    this.q(".nfcrow").classList.toggle("visible", admin && nfc !== null);
+    if (nfc !== null) {
+      this.q(".nfcstate").textContent = { linked: t.nfcLinked, none: t.nfcNone, waiting: t.nfcWaiting }[nfc];
+      this.q("button.nfcbtn").textContent = { linked: t.nfcUnlink, none: t.nfcLink, waiting: t.cancel }[nfc];
+    }
+
     const vac = states[dev.entities.switch];
     const vacInput = this.q('[data-f="vacuum"]');
     this.q(".vacrow").style.display = vac ? "" : "none";
@@ -728,7 +765,9 @@ class ZwillingStoragePanel extends HTMLElement {
           <div class="modes">
             <label><input type="radio" name="mode" value="new" checked> <span data-l="modeNew"></span></label>
             <label><input type="radio" name="mode" value="scan"> <span data-l="modeZwilling"></span></label>
+            <label><input type="radio" name="mode" value="nfc"> <span data-l="nfcScan"></span></label>
           </div>
+          <div class="nfcstatus" data-w="nfc" role="status" hidden></div>
           <label class="field" data-w="code" hidden><span data-l="codeLabel"></span><input type="text" data-f="code" autocomplete="off"></label>
           <label class="field"><span data-l="nameLabel"></span><input type="text" data-f="name" autocomplete="off"></label>
           <label class="field"><span data-l="area"></span><select data-f="area"></select></label>
@@ -767,6 +806,11 @@ class ZwillingStoragePanel extends HTMLElement {
       });
     }
     this._layoutSig = "";
+    this._nfcLinks = {}; // device_id -> tag_id
+    this._nfcTag = null;
+    this._capture = null; // { source, deviceId?, onTag }
+    this._subscribed = false;
+    this._unsubs = [];
     this._estimatesEl = this.shadowRoot.querySelector("#estimates");
     this._tabs = this.shadowRoot.querySelector(".tabs");
     for (const btn of this._tabs.querySelectorAll("button")) {
@@ -801,7 +845,34 @@ class ZwillingStoragePanel extends HTMLElement {
   }
 
   _syncMode() {
-    this._form.querySelector('[data-w="code"]').hidden = this._mode() !== "scan";
+    const mode = this._mode();
+    this._form.querySelector('[data-w="code"]').hidden = mode !== "scan";
+    const status = this._form.querySelector('[data-w="nfc"]');
+    status.hidden = mode !== "nfc";
+    if (mode === "nfc") {
+      this._nfcTag = null;
+      this._setNfcStatus();
+      this.startCapture((tag) => this._dialogTag(tag), "dialog");
+    } else {
+      this.cancelCapture("dialog");
+    }
+  }
+
+  _setNfcStatus(message) {
+    const t = strings(this._hass);
+    this._form.querySelector('[data-w="nfc"]').textContent = message || (this._nfcTag ? t.nfcGot : t.nfcWaiting);
+  }
+
+  _dialogTag(tag) {
+    const t = strings(this._hass);
+    if (Object.values(this._nfcLinks).includes(tag)) {
+      this._nfcTag = null;
+      this._setNfcStatus(t.nfcInUse);
+      return false; // weiter auf einen anderen Tag warten
+    }
+    this._nfcTag = tag;
+    this._setNfcStatus();
+    return true;
   }
 
   /** Fehlermeldung oberhalb der Karten anzeigen (z. B. wenn das Ändern des Bereichs scheitert). */
@@ -819,6 +890,7 @@ class ZwillingStoragePanel extends HTMLElement {
     this._form.querySelector('[data-f="code"]').value = code;
     const radio = this._form.querySelector(`input[name="mode"][value="${code ? "scan" : "new"}"]`);
     radio.checked = true;
+    this._nfcTag = null;
     this._syncMode();
     this._fillAreaOptions(t);
     this._form.querySelector('[data-f="area"]').value = "";
@@ -829,6 +901,7 @@ class ZwillingStoragePanel extends HTMLElement {
 
   closeAddDialog() {
     this._overlay.hidden = true;
+    this.cancelCapture("dialog");
   }
 
   _fillAreaOptions(t) {
@@ -858,6 +931,10 @@ class ZwillingStoragePanel extends HTMLElement {
       errorEl.textContent = t.invalidCode;
       return;
     }
+    if (mode === "nfc" && !this._nfcTag) {
+      errorEl.textContent = t.nfcWaiting;
+      return;
+    }
 
     const input = {};
     if (mode === "scan") input.qr_code = code;
@@ -874,11 +951,19 @@ class ZwillingStoragePanel extends HTMLElement {
       });
       flowId = result.flow_id;
       result = await hass.callApi("POST", `config/config_entries/flow/${flowId}`, {
-        next_step_id: mode === "scan" ? "scan" : "create",
+        next_step_id: mode === "scan" ? "scan" : "create", // "nfc" legt wie "neu" eine neue ID an
       });
       result = await hass.callApi("POST", `config/config_entries/flow/${flowId}`, input);
       if (result.type === "create_entry") {
         flowId = null;
+        if (mode === "nfc") {
+          const entryId = result.result && result.result.entry_id;
+          try {
+            await this._linkTag({ tag_id: this._nfcTag, entry_id: entryId });
+          } catch (err) {
+            this.showError(t.nfcFailed + (err && err.message ? ` ${err.message}` : ""));
+          }
+        }
         this.closeAddDialog();
         return;
       }
@@ -1072,6 +1157,140 @@ class ZwillingStoragePanel extends HTMLElement {
     root.replaceChildren(frag);
   }
 
+  // ---------- NFC ----------
+
+  /** Zustand der NFC-Zeile einer Karte: "linked", "none", "waiting" oder null (nicht anzeigen). */
+  nfcState(deviceId) {
+    if (!isAdmin(this._hass)) return null;
+    if (this._capture && this._capture.deviceId === deviceId) return "waiting";
+    return this._nfcLinks[deviceId] ? "linked" : "none";
+  }
+
+  /** Klick auf den NFC-Knopf einer Karte: verknüpfen, Warten abbrechen oder lösen. */
+  async nfcAction(deviceId) {
+    const t = strings(this._hass);
+    const state = this.nfcState(deviceId);
+    this.showError("");
+    if (state === "waiting") {
+      this.cancelCapture("card");
+    } else if (state === "linked") {
+      try {
+        const res = await this._hass.callWS({ type: `${DOMAIN}/nfc_unlink`, device_id: deviceId });
+        this._nfcLinks = (res && res.by_device) || {};
+      } catch (err) {
+        this.showError((err && err.message) || t.nfcFailed);
+      }
+      this._update();
+    } else {
+      this.startCapture(async (tag) => {
+        if (Object.values(this._nfcLinks).includes(tag)) {
+          this.showError(t.nfcInUse);
+          return false;
+        }
+        try {
+          await this._linkTag({ tag_id: tag, device_id: deviceId });
+        } catch (err) {
+          this.showError((err && err.message) || t.nfcFailed);
+        }
+        return true;
+      }, "card", deviceId);
+      this._update();
+    }
+  }
+
+  async _linkTag(params) {
+    const res = await this._hass.callWS({ type: `${DOMAIN}/nfc_link`, ...params });
+    this._nfcLinks = (res && res.by_device) || this._nfcLinks;
+    this._update();
+  }
+
+  async loadNfc() {
+    const hass = this._hass;
+    if (!hass || !hass.callWS || !isAdmin(hass)) return;
+    try {
+      const res = await hass.callWS({ type: `${DOMAIN}/nfc_tags` });
+      this._nfcLinks = (res && res.by_device) || {};
+    } catch (err) {
+      this._nfcLinks = {};
+    }
+    this._update();
+  }
+
+  /** Auf den nächsten gescannten Tag warten. `onTag` liefert false, wenn der Tag nicht taugt (weiter warten). */
+  startCapture(onTag, source, deviceId = null) {
+    this._capture = { source, deviceId, onTag };
+  }
+
+  cancelCapture(source) {
+    if (this._capture && (!source || this._capture.source === source)) {
+      this._capture = null;
+      this._update();
+    }
+  }
+
+  async _tagScanned(tagId) {
+    const cap = this._capture;
+    if (!cap || !tagId) return;
+    const done = await cap.onTag(tagId);
+    if (done !== false && this._capture === cap) {
+      this._capture = null;
+      this._update();
+    }
+  }
+
+  /** Ereignisse abonnieren (nur Administratoren dürfen beliebige Ereignisse abonnieren). */
+  async _subscribe() {
+    const hass = this._hass;
+    if (this._subscribed || !hass || !isAdmin(hass) || !hass.connection || !hass.connection.subscribeEvents) return;
+    this._subscribed = true;
+    try {
+      this._unsubs.push(
+        await hass.connection.subscribeEvents((ev) => this._tagScanned(ev.data && ev.data.tag_id), "tag_scanned"),
+        await hass.connection.subscribeEvents((ev) => this.highlight(ev.data && ev.data.device_id), `${DOMAIN}_dose_scanned`),
+      );
+    } catch (err) {
+      this._subscribed = false;
+    }
+  }
+
+  disconnectedCallback() {
+    for (const unsub of this._unsubs.splice(0)) {
+      try {
+        unsub();
+      } catch (err) {
+        /* Verbindung schon getrennt */
+      }
+    }
+    this._subscribed = false;
+  }
+
+  /** Dose hervorheben (nach dem Scannen ihres Tags): Ansicht zurücksetzen, hinscrollen, kurz blinken lassen. */
+  highlight(deviceId) {
+    const hass = this._hass;
+    if (!hass || !deviceId || !this._devices.some((d) => d.deviceId === deviceId)) return false;
+    if (this._view !== "containers") this.setView("containers");
+    if (!this._arranged.some((d) => d.deviceId === deviceId)) {
+      this._opts = { query: "", filter: "all", sort: this._opts.sort };
+      saveViewOptions(this._opts);
+      this._update();
+    }
+    const card = this._cards.get(deviceId);
+    if (!card) return false;
+    card.el.classList.remove("flash");
+    void card.el.offsetWidth; // Animation neu starten
+    card.el.classList.add("flash");
+    if (card.el.scrollIntoView) card.el.scrollIntoView({ block: "center", behavior: "smooth" });
+    return true;
+  }
+
+  /** `?open=<Geräte-ID>` (aus der Benachrichtigung nach einem NFC-Scan): Dose hervorheben. */
+  _handleOpenParam() {
+    const id = new URLSearchParams(window.location.search).get("open");
+    if (!id || !this._devices.length) return;
+    window.history.replaceState(null, "", window.location.pathname);
+    this.highlight(id);
+  }
+
   _updateToolbar(t) {
     const bar = this._toolbar;
     bar.hidden = this._view !== "containers" || this._devices.length === 0;
@@ -1149,6 +1368,12 @@ class ZwillingStoragePanel extends HTMLElement {
     this._form.querySelector("button.cancel").textContent = t.cancel;
     this._form.querySelector("button.submit").textContent = t.submit;
     this._handleAddParam();
+    this._handleOpenParam();
+    this._subscribe();
+    if (!this._nfcLoaded && isAdmin(hass)) {
+      this._nfcLoaded = true;
+      this.loadNfc();
+    }
     for (const dev of this._devices) {
       const card = this._cards.get(dev.deviceId);
       if (card) card.update(hass, dev);

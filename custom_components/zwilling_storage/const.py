@@ -37,6 +37,8 @@ ESTIMATE_MODES = [ESTIMATE_OFF, ESTIMATE_TABLE, ESTIMATE_TABLE_AI, ESTIMATE_AI]
 CONF_AI_TASK_ENTITY = "ai_task_entity"
 CONF_OPENED_DAYS = "opened_days"
 CONF_CALENDAR_ENTITY = "calendar_entity"
+CONF_NFC_NOTIFY = "nfc_notify"
+EVENT_DOSE_SCANNED = f"{DOMAIN}_dose_scanned"  # verknüpfter NFC-Tag wurde gescannt
 DEFAULT_OPENED_DAYS = 3  # so lange hält eine geöffnete Dose noch
 SERVICE_ESTIMATE_BEST_BEFORE = "estimate_best_before"
 SERVICE_CLEAR_BEST_BEFORE = "clear_best_before"
@@ -63,10 +65,12 @@ def device_app_url(device_id: str) -> str:
     return f"{APP_URL_PREFIX}{device_path(device_id)}"
 
 
-def panel_path(add_code: str | None = None) -> str:
-    """Frontend-Pfad des Dosen-Panels, optional mit vorbelegtem Code zum Hinzufügen."""
+def panel_path(add_code: str | None = None, open_device: str | None = None) -> str:
+    """Frontend-Pfad des Dosen-Panels, optional mit Code zum Hinzufügen oder Dose zum Öffnen."""
     if add_code:
         return f"/{PANEL_URL_PATH}?add={add_code}"
+    if open_device:
+        return f"/{PANEL_URL_PATH}?open={open_device}"
     return f"/{PANEL_URL_PATH}"
 
 

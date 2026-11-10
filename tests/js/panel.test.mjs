@@ -403,7 +403,9 @@ function adminHass(doses = [{ id: "d1", name: "Dose A", area: "kitchen" }], resp
     hass.apiCalls.push({ method, path, body });
     return queue.length ? queue.shift() : {};
   };
+  hass.nfcLinks = {};
   hass.callWS = async (msg) => {
+    if (msg.type === `${D}/nfc_tags`) return { by_device: hass.nfcLinks }; // Hintergrundabruf, nicht mitzählen
     hass.wsCalls.push(msg);
     return {};
   };
@@ -609,6 +611,7 @@ test("MHD schätzen ruft den Service auf und zeigt Schätzung samt Tipp", async 
   const hass = adminHass([{ id: "d1", name: "A", content: "Suppe", ai: true }]);
   const dateId = "date.d1_mhd";
   hass.callWS = async (msg) => {
+    if (msg.type === `${D}/nfc_tags`) return { by_device: {} };
     hass.wsCalls.push(msg);
     return {
       response: { [dateId]: { status: "estimated", days: 4, tip: "Gut verschließen", source: "table", basis: "Suppe · Kühlschrank", best_before: "2026-11-14", applied: true } },
@@ -709,6 +712,7 @@ const ENTRIES = [
 function estimatesHass(entries = ENTRIES) {
   const hass = adminHass([{ id: "d1", name: "A", area: "kitchen" }]);
   hass.callWS = async (msg) => {
+    if (msg.type === `${D}/nfc_tags`) return { by_device: {} };
     hass.wsCalls.push(msg);
     if (msg.type === `${D}/estimates`) return { mode: "table", entries };
     return { entries: msg.type.endsWith("delete") ? entries.slice(1) : entries };
@@ -909,4 +913,174 @@ test("Schnellaktionen: ohne Inhalt versteckt, ohne MHD ist +1 Tag gesperrt", () 
   assert.equal($(noDate, ".quickrow").classList.contains("visible"), true);
   assert.equal($(noDate, "button.plus1").disabled, true);
   assert.equal($(noDate, "button.opened").disabled, false);
+});
+
+// ---------- NFC ----------
+
+/** hass mit Ereignis-Abo: `emit(type, data)` simuliert ein Ereignis aus Home Assistant. */
+function nfcHass(doses, { links = {} } = {}) {
+  const hass = adminHass(doses);
+  hass.nfcLinks = links;
+  const handlers = [];
+  hass.connection = {
+    subscribeEvents: async (cb, type) => {
+      handlers.push({ cb, type });
+      return () => handlers.splice(handlers.findIndex((h) => h.cb === cb), 1);
+    },
+  };
+  hass.emit = (type, data) => handlers.filter((h) => h.type === type).forEach((h) => h.cb({ event_type: type, data }));
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/nfc_link`) {
+      hass.wsCalls.push(msg);
+      hass.nfcLinks = { [msg.device_id || "neu"]: msg.tag_id };
+      return { by_device: hass.nfcLinks };
+    }
+    if (msg.type === `${D}/nfc_unlink`) {
+      hass.wsCalls.push(msg);
+      hass.nfcLinks = {};
+      return { by_device: {} };
+    }
+    return base(msg);
+  };
+  return hass;
+}
+
+test("Karte: NFC-Tag verknüpfen wartet auf den nächsten Scan und verknüpft ihn", async () => {
+  const hass = nfcHass([{ id: "d1", name: "A", content: "Pizza" }]);
+  const el = mount(hass);
+  await flush();
+  assert.equal($(el, ".nfcrow").classList.contains("visible"), true);
+  assert.equal($(el, ".nfcstate").textContent, "Kein NFC-Tag");
+  $(el, "button.nfcbtn").click();
+  await flush();
+  assert.equal($(el, ".nfcstate").textContent, "Halte das Handy jetzt an den NFC-Tag …");
+
+  hass.emit("tag_scanned", { tag_id: "abc-123" });
+  await flush();
+  assert.deepEqual(hass.wsCalls.pop(), { type: `${D}/nfc_link`, tag_id: "abc-123", device_id: "d1" });
+  assert.equal($(el, ".nfcstate").textContent, "NFC-Tag verknüpft");
+  assert.equal($(el, "button.nfcbtn").textContent, "Lösen");
+
+  // ohne Warten werden Scans ignoriert
+  hass.emit("tag_scanned", { tag_id: "zzz" });
+  await flush();
+  assert.equal(hass.wsCalls.length, 0);
+
+  $(el, "button.nfcbtn").click(); // Lösen
+  await flush();
+  assert.deepEqual(hass.wsCalls.pop(), { type: `${D}/nfc_unlink`, device_id: "d1" });
+  assert.equal($(el, ".nfcstate").textContent, "Kein NFC-Tag");
+});
+
+test("Karte: Warten lässt sich abbrechen, ein bereits verknüpfter Tag wird abgelehnt", async () => {
+  const hass = nfcHass(
+    [{ id: "d1", name: "A" }, { id: "d2", name: "B" }],
+    { links: { d2: "belegt" } },
+  );
+  const el = mount(hass);
+  await flush();
+  const row = (i) => $$(el, ".card")[i];
+  row(0).querySelector("button.nfcbtn").click();
+  await flush();
+  hass.emit("tag_scanned", { tag_id: "belegt" });
+  await flush();
+  assert.equal(hass.wsCalls.length, 0);
+  assert.match($(el, "#notice").textContent, /schon mit einer anderen Dose/);
+  assert.equal(row(0).querySelector(".nfcstate").textContent, "Halte das Handy jetzt an den NFC-Tag …"); // wartet weiter
+
+  row(0).querySelector("button.nfcbtn").click(); // Abbrechen
+  await flush();
+  assert.equal(row(0).querySelector(".nfcstate").textContent, "Kein NFC-Tag");
+});
+
+test("Nicht-Administratoren sehen keine NFC-Zeile", async () => {
+  const hass = nfcHass([{ id: "d1", name: "A" }]);
+  hass.user = { is_admin: false };
+  const el = mount(hass);
+  await flush();
+  assert.equal($(el, ".nfcrow").classList.contains("visible"), false);
+});
+
+test("Dialog: 'NFC-Tag scannen' wartet auf den Tag, legt die Dose an und verknüpft den Tag", async () => {
+  const hass = nfcHass([], {});
+  hass.callApi = async (method, path, body) => {
+    hass.apiCalls.push({ method, path, body });
+    if (path.endsWith("flow") ) return { flow_id: "f1" };
+    if (body && body.next_step_id) return { type: "form" };
+    return { type: "create_entry", result: { entry_id: "e1" } };
+  };
+  const el = mount(hass);
+  await flush();
+  el.openAddDialog();
+  const radio = $(el, 'input[name="mode"][value="nfc"]');
+  radio.checked = true;
+  radio.dispatchEvent(new dom.window.Event("change"));
+  assert.equal($(el, '.nfcstatus').hidden, false);
+  assert.equal($(el, '.nfcstatus').textContent, "Halte das Handy jetzt an den NFC-Tag …");
+
+  // ohne Tag kein Anlegen
+  $(el, "form.dialog").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  await flush();
+  assert.equal(hass.apiCalls.length, 0);
+  assert.equal($(el, ".dialog .error").textContent, "Halte das Handy jetzt an den NFC-Tag …");
+
+  hass.emit("tag_scanned", { tag_id: "neu-tag" });
+  await flush();
+  assert.equal($(el, ".nfcstatus").textContent, "Tag erkannt.");
+  $(el, '[data-f="name"]').value = "Dose 1";
+  $(el, "form.dialog").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  await flush();
+  assert.deepEqual(hass.apiCalls.map((c) => c.body), [
+    { handler: D, show_advanced_options: false },
+    { next_step_id: "create" },
+    { name: "Dose 1" },
+  ]);
+  assert.deepEqual(hass.wsCalls.pop(), { type: `${D}/nfc_link`, tag_id: "neu-tag", entry_id: "e1" });
+  assert.equal($(el, ".overlay").hidden, true);
+});
+
+test("Dialog schließen beendet das Warten auf einen Tag", async () => {
+  const hass = nfcHass([{ id: "d1", name: "A" }]);
+  const el = mount(hass);
+  await flush();
+  el.openAddDialog();
+  const radio = $(el, 'input[name="mode"][value="nfc"]');
+  radio.checked = true;
+  radio.dispatchEvent(new dom.window.Event("change"));
+  el.closeAddDialog();
+  hass.emit("tag_scanned", { tag_id: "x" });
+  await flush();
+  assert.equal(hass.wsCalls.length, 0);
+});
+
+test("Gescannte Dose wird hervorgehoben, auch wenn ein Filter sie ausblendet", async () => {
+  const hass = nfcHass([
+    { id: "d1", name: "A", content: "Pizza" },
+    { id: "d2", name: "B", content: "Suppe" },
+  ]);
+  const el = mount(hass);
+  await flush();
+  const query = $(el, '[data-f="query"]');
+  query.value = "pizza";
+  query.dispatchEvent(new dom.window.Event("input"));
+  assert.deepEqual(cardNames(el), ["A"]);
+
+  hass.emit("zwilling_storage_dose_scanned", { device_id: "d2" });
+  await flush();
+  assert.deepEqual(cardNames(el), ["A", "B"]); // Filter zurückgesetzt
+  const flashed = $$(el, ".card.flash");
+  assert.equal(flashed.length, 1);
+  assert.equal(flashed[0].querySelector(".name").textContent, "B");
+});
+
+test("?open=<Geräte-ID> hebt die Dose hervor (auch für Nicht-Administratoren)", async () => {
+  dom.window.history.pushState(null, "", "/zwilling-storage?open=d2");
+  const hass = makeHass([{ id: "d1", name: "A" }, { id: "d2", name: "B" }], { areas: AREAS });
+  hass.user = { is_admin: false };
+  const el = mount(hass);
+  await flush();
+  assert.equal($$(el, ".card.flash").length, 1);
+  assert.equal($(el, ".card.flash .name").textContent, "B");
+  assert.equal(dom.window.location.search, ""); // Parameter ist entfernt
 });

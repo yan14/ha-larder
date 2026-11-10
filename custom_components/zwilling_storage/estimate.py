@@ -34,6 +34,7 @@ from .const import (
     CONF_AI_TASK_ENTITY,
     CONF_CALENDAR_ENTITY,
     CONF_ESTIMATE_MODE,
+    CONF_NFC_NOTIFY,
     CONF_OPENED_DAYS,
     DEFAULT_OPENED_DAYS,
     DOMAIN,
@@ -202,6 +203,7 @@ class Estimator:
         self.mode = ESTIMATE_TABLE
         self.opened_days = DEFAULT_OPENED_DAYS
         self.calendar_entity: str | None = None
+        self.nfc_notify = True
         self.ai_task_entity: str | None = None
         self._cache: dict[str, dict[str, Any]] = {}
 
@@ -216,6 +218,7 @@ class Estimator:
         self.opened_days = min(max(int(settings.get(CONF_OPENED_DAYS, DEFAULT_OPENED_DAYS)), 1), 365)
         self.ai_task_entity = settings.get(CONF_AI_TASK_ENTITY) or None
         self.calendar_entity = settings.get(CONF_CALENDAR_ENTITY) or None
+        self.nfc_notify = bool(settings.get(CONF_NFC_NOTIFY, True))
         self._cache = data.get("cache", {})
 
     @property
@@ -232,6 +235,7 @@ class Estimator:
                 CONF_ESTIMATE_MODE: self.mode,
                 CONF_OPENED_DAYS: self.opened_days,
                 CONF_CALENDAR_ENTITY: self.calendar_entity,
+                CONF_NFC_NOTIFY: self.nfc_notify,
                 CONF_AI_TASK_ENTITY: self.ai_task_entity,
             },
             "cache": self._cache,
@@ -246,8 +250,11 @@ class Estimator:
         entity: str | None,
         opened_days: int | None = None,
         calendar_entity: str | None = None,
+        nfc_notify: bool | None = None,
     ) -> None:
         self.calendar_entity = calendar_entity or None
+        if nfc_notify is not None:
+            self.nfc_notify = nfc_notify
         self.mode = mode if mode in ESTIMATE_MODES else ESTIMATE_TABLE
         if opened_days is not None:
             self.opened_days = min(max(int(opened_days), 1), 365)

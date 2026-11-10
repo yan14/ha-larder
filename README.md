@@ -190,6 +190,16 @@ Under Settings → Devices & services → **Zwilling Food Storage** → **Config
 
 The calendar must be able to create **and** delete events. Read-only calendars (for example an iCal link) cannot be used; the *Local Calendar* integration is a good choice if you have no other one.
 
+## NFC tags
+
+Instead of printing a QR code you can stick an NFC tag on the container. This uses Home Assistant's own **tags**: every scan fires a `tag_scanned` event, and the integration remembers which tag belongs to which container. Other tags in your home are ignored.
+
+1. **Write a tag** with the Home Assistant app (Settings → Companion App → NFC, or Settings → Tags). Any tag ID works.
+2. **Link it to a container** in the dashboard (administrators): on the card press **Link NFC tag** and hold the phone to the tag. Or use **+ Add container → Scan NFC tag**, which creates a new container and links the tag in one go.
+3. **Scan it later.** If the dashboard is open, it jumps to the container and highlights it. Otherwise the scanning phone (Companion app) gets a notification, and tapping it opens the dashboard on that container. iPhones show their own banner after reading a tag, tap it first.
+
+For your own automations a linked scan fires the event `zwilling_storage_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`). The notification can be switched off in the settings ("NFC: notify the phone"). One container has at most one tag, and a tag belongs to one container.
+
 ## iOS Shortcut for the original Zwilling codes
 
 This way is meant for the **printed Zwilling QR codes**. For codes you created yourself you do not need it, just scan them with the camera app.
