@@ -61,7 +61,7 @@
   },
   "exceptions": {
     "nothing_to_reset": {
-      "message": "No entity to reset is available for this container (contents, best-before and stored-on are disabled?)."
+      "message": "No entity to reset is available for this container (contents, best before and filled on are disabled?)."
     }
   },
   "options": {

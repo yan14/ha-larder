@@ -13,7 +13,7 @@ for (const key of ["window", "document", "HTMLElement", "customElements", "Event
   globalThis[key] = dom.window[key];
 }
 
-const { collectDevices, daysUntil, toLocalInputValue } = await import(
+const { STRINGS, collectDevices, daysUntil, toLocalInputValue } = await import(
   "../../custom_components/zwilling_storage/frontend/zwilling-storage-panel.js"
 );
 
@@ -356,7 +356,7 @@ test("Englische Oberfläche", () => {
   const el = mount(
     makeHass([{ id: "d1", name: "Box 1", area: "kitchen", mhd: iso(2) }], { areas: AREAS, language: "en" }),
   );
-  assert.equal($(el, '[data-l="filledAt"]').textContent, "Stored on");
+  assert.equal($(el, '[data-l="filledAt"]').textContent, "Filled on");
   assert.equal($(el, "button.empty").textContent, "Empty container");
   assert.match($(el, ".arealine").textContent, /Area: Küche/);
   assert.equal($(el, ".badge").textContent, "2 days left");
@@ -367,4 +367,21 @@ test("Dose ohne Bereich bekommt 'Kein Bereich'", () => {
   const el = mount(makeHass([{ id: "d1", name: "Dose 1" }], { areas: AREAS }));
   assert.deepEqual(areaHeadings(el), ["Kein Bereich"]);
   assert.match($(el, ".arealine").textContent, /Bereich: Kein Bereich/);
+});
+
+test("Deutsche und englische Panel-Texte sind vollständig und gleichartig", () => {
+  assert.deepEqual(Object.keys(STRINGS.de).sort(), Object.keys(STRINGS.en).sort());
+  for (const key of Object.keys(STRINGS.de)) {
+    assert.equal(typeof STRINGS.de[key], typeof STRINGS.en[key], key);
+    if (typeof STRINGS.de[key] === "function") {
+      for (const n of [0, 1, 2]) {
+        assert.ok(String(STRINGS.de[key](n)).length > 0 && String(STRINGS.en[key](n)).length > 0, `${key}(${n})`);
+      }
+    } else {
+      assert.ok(STRINGS.de[key].length > 0 && STRINGS.en[key].length > 0, key);
+    }
+  }
+  // Der Text darf nicht versehentlich in beiden Sprachen identisch deutsch sein
+  assert.notEqual(STRINGS.de.emptyContainer, STRINGS.en.emptyContainer);
+  assert.notEqual(STRINGS.de.noneText, STRINGS.en.noneText);
 });

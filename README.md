@@ -1,118 +1,120 @@
 # Zwilling Food Storage
 
-Home-Assistant-Integration für Zwilling-Frischhaltedosen mit QR-Code. Pro Dose entsteht ein Gerät (eindeutig über den Parameter `cc` im QR-Code) mit:
+[🇩🇪 Deutsch](README.de.md) · 🇬🇧 English
 
-| Entität | Typ | Zweck |
+Home Assistant integration for Zwilling food storage containers with a QR code. Every container becomes a device (identified by the `cc` parameter of its QR code) with:
+
+| Entity | Type | Purpose |
 | --- | --- | --- |
-| **Befüllt am** | `datetime` | Wann wurde die Dose befüllt? |
-| **MHD** | `date` | Mindesthaltbarkeitsdatum |
-| **Inhalt** | `text` | Was ist in der Dose? |
-| **Behälter leeren** | `button` | Setzt die Dose komplett zurück: **Inhalt** wird leer, **MHD** und **Befüllt am** werden gelöscht |
-| **QR-Code** | `image` | QR-Code der Dose als Bild: Scannen mit der Kamera-App öffnet direkt das Gerät in der Home-Assistant-App |
+| **Filled on** | `datetime` | When was the container filled? |
+| **Best before** | `date` | Best-before date (MHD) |
+| **Contents** | `text` | What is in the container? |
+| **Empty container** | `button` | Resets the whole container: **Contents** become empty, **Best before** and **Filled on** are cleared |
+| **QR code** | `image` | The container's QR code as an image: scanning it with the camera app opens the device directly in the Home Assistant app |
 
-Die Werte bleiben über Neustarts erhalten. „Behälter leeren“ ist eine normale Button-Entität, lässt sich also auf Dashboards und in Automationen über `button.press` verwenden.
+The values survive restarts. "Empty container" is a regular button entity, so you can use it on dashboards and in automations via `button.press`.
 
-Zusätzlich gibt es:
+You also get:
 
-- ein **Dashboard** „Zwilling Dosen“ in der Seitenleiste mit allen Dosen, das sich selbst aktualisiert,
-- einen **Scan-Webhook** für die originalen Zwilling-QR-Codes (iOS-Kurzbefehl, siehe unten).
+- a **dashboard** "Zwilling containers" in the sidebar that lists all containers and updates itself,
+- a **scan webhook** for the original Zwilling QR codes (iOS Shortcut, see below).
 
-## Installation über HACS
+## Installation via HACS
 
-1. HACS → Drei-Punkte-Menü → **Benutzerdefinierte Repositories**
-2. URL: `https://github.com/yan14/ha-zwilling-storage`, Kategorie **Integration**
-3. „Zwilling Food Storage“ installieren, Home Assistant neu starten.
+1. HACS → three-dot menu → **Custom repositories**
+2. URL: `https://github.com/yan14/ha-zwilling-storage`, category **Integration**
+3. Install "Zwilling Food Storage" and restart Home Assistant.
 
-## Dose anlegen
+## Adding a container
 
-Einstellungen → Geräte & Dienste → **Integration hinzufügen** → „Zwilling Food Storage“. Dann gibt es zwei Wege:
+Settings → Devices & services → **Add integration** → "Zwilling Food Storage". There are two ways:
 
-**Neuen QR Code erstellen**
+**Create new QR code**
 
-Für Dosen ohne (lesbaren) Zwilling-Code. Die Integration erzeugt eine neue, eindeutige ID im Format `HA-XXXXXXXX` (8 Zeichen ohne die leicht verwechselbaren 0/O und 1/I). Das Präfix `HA-` hält sie klar von den Zwilling-IDs getrennt (z. B. `34OL`), eine Überschneidung ist damit ausgeschlossen. Du kannst optional einen Namen vergeben. Den QR-Code findest du danach als Bild am Gerät (siehe „QR-Code direkt scannen“).
+For containers without a (readable) Zwilling code. The integration generates a new, unique ID in the format `HA-XXXXXXXX` (8 characters, without the easily confused 0/O and 1/I). The `HA-` prefix keeps it clearly apart from Zwilling IDs (e.g. `34OL`), so the two cannot overlap. You can optionally give the container a name. Afterwards you find the QR code as an image on the device (see "Scanning the QR code directly").
 
-**Zwilling QR Code einlesen**
+**Read Zwilling QR code**
 
-Für vorhandene Zwilling-Dosen. Dort den Inhalt des QR-Codes einfügen, z. B.
+For existing Zwilling containers. Paste the content of the QR code, for example
 
 ```
 zwilling://zwillingapp/food-storage/in/?tc=42ML30&s=m&cc=34OL
 ```
 
-Es reicht auch nur die ID (`cc`, hier `34OL`). Optional kannst du einen Namen vergeben. Jede Dose lässt sich nur einmal anlegen.
+The ID alone (`cc`, here `34OL`) is enough as well. You can optionally give the container a name. Each container can only be added once.
 
-Home Assistant bietet im Dialog keine Kamera zum Scannen. Den Text liest du unter iOS mit dem Kurzbefehl aus (nächster Abschnitt) und fügst ihn ein.
+Home Assistant has no camera in this dialog. On iOS you read the text with a Shortcut (next sections) and paste it.
 
-## QR-Code direkt scannen
+## Scanning the QR code directly
 
-Jede Dose hat die Bild-Entität **QR-Code**. Sie enthält einen Link, der die Home-Assistant-App direkt auf die Geräteseite der Dose springen lässt (`homeassistant://navigate/config/devices/device/<Geräte-ID>`). Dafür brauchst du keinen Kurzbefehl.
+Every container has the image entity **QR code**. It contains a link that makes the Home Assistant app jump straight to the container's device page (`homeassistant://navigate/config/devices/device/<device-id>`). You do not need a Shortcut for this.
 
-1. Öffne das Gerät der Dose in Home Assistant (oder das Panel „Zwilling Dosen“, dort ist der QR-Code klein zu sehen) und öffne die Entität **QR-Code**. Bild speichern oder ausdrucken und auf die Dose kleben. Der Inhalt des Codes steht auch im Attribut `qr_content` der Entität.
-2. Scanne den Aufkleber mit der Kamera-App. iOS bietet an, den Link in der Home-Assistant-App zu öffnen, und die App zeigt die Dose.
+1. Open the container's device in Home Assistant (or the "Zwilling containers" panel, where the QR code is shown small) and open the **QR code** entity. Save or print the image and stick it on the container. The content of the code is also available in the `qr_content` attribute of the entity.
+2. Scan the sticker with the camera app. iOS offers to open the link in the Home Assistant app, and the app shows the container.
 
-Der Code verweist auf die Geräte-ID in Home Assistant. Wird die Dose gelöscht und neu angelegt, bekommt sie eine neue Geräte-ID, und der Aufkleber muss neu gedruckt werden. Hast du mehrere Home-Assistant-Server in der App, fragt sie beim Öffnen, welcher gemeint ist.
+The code points to the device ID in Home Assistant. If you delete the container and add it again, it gets a new device ID and the sticker has to be printed again. If you have several Home Assistant servers in the app, it asks which one you mean when opening.
 
-## Dashboard „Zwilling Dosen“
+## Dashboard "Zwilling containers"
 
-Sobald mindestens eine Dose angelegt ist, erscheint in der Seitenleiste der Eintrag **Zwilling Dosen**. Er braucht keine Konfiguration:
+As soon as at least one container exists, a sidebar entry **Zwilling containers** (German UI: "Zwilling Dosen") appears. It needs no configuration:
 
-- Alle Dosen der Integration, gruppiert nach **Bereich** (Area des Geräts) und sortiert nach Name.
-- Pro Dose: Bereich, **Inhalt**, **MHD** (mit Hinweis „abgelaufen“ oder „noch n Tage“ ab 3 Tagen davor), **Eingelagert am** (= „Befüllt am“), der Button **Behälter leeren** und der QR-Code als kleines Bild.
-- Inhalt, MHD und Datum lassen sich direkt im Panel ändern. „Jetzt“ setzt „Eingelagert am“ auf die aktuelle Zeit.
-- Neue Dosen, geänderte Werte und geänderte Bereiche erscheinen sofort, ohne dass du etwas neu laden musst.
+- All containers of the integration, grouped by **area** (the area of the device) and sorted by name.
+- Per container: area, **contents**, **best before** (with a hint "expired" or "n days left" starting 3 days before), **filled on**, the **Empty container** button and the QR code as a small image.
+- Contents, best-before date and filled-on date can be edited right in the panel. "Now" sets "Filled on" to the current time.
+- New containers, changed values and changed areas show up immediately, no reload needed.
 
-Das Panel ist für alle Nutzer sichtbar, nicht nur für Administratoren. Es ist kein klassisches Lovelace-Dashboard und lässt sich nicht mit dem Karten-Editor bearbeiten. Dafür aktualisiert es sich selbst.
+The panel is visible to all users, not only administrators. It is not a classic Lovelace dashboard and cannot be edited with the card editor. In return it updates itself.
 
-## iOS-Kurzbefehl für die originalen Zwilling-Codes
+## iOS Shortcut for the original Zwilling codes
 
-Dieser Weg ist für die **aufgedruckten Zwilling-QR-Codes** gedacht. Für selbst erstellte Codes brauchst du ihn nicht, dort scannst du einfach mit der Kamera-App.
+This way is meant for the **printed Zwilling QR codes**. For codes you created yourself you do not need it, just scan them with the camera app.
 
-Der QR-Code enthält einen Link mit dem Schema `zwilling://`, der zur eingestellten Zwilling-App gehört. Die **Kamera-App ist dafür ungeeignet**: Sie will den Link in der Zwilling-App öffnen und liefert den Text nicht zum Kopieren. Der Kurzbefehl liest dagegen nur den Text aus und öffnet den Link nicht.
+The QR code contains a link with the scheme `zwilling://`, which belongs to the discontinued Zwilling app. The **camera app is not suitable** for it: it wants to open the link in the Zwilling app and does not give you the text to copy. The Shortcut only reads out the text and does not open the link.
 
-### 1. Webhook-URL herausfinden
+### 1. Find the webhook URL
 
-Einstellungen → Geräte & Dienste → **Zwilling Food Storage** → bei einer Dose **Konfigurieren**. Der Dialog zeigt die Webhook-URL, die nach dem Muster `https://<deine-HA-URL>/api/webhook/<lange-geheime-ID>` aufgebaut ist. Die URL gilt für alle Dosen, du brauchst sie nur einmal. Das Konfigurieren-Fenster kannst du danach mit „Senden“ schließen, es ändert nichts.
+Settings → Devices & services → **Zwilling Food Storage** → **Configure** on one of the containers. The dialog shows the webhook URL, built like `https://<your-HA-URL>/api/webhook/<long-secret-ID>`. The URL is the same for all containers, so you only need it once. You can close the Configure window with "Submit" afterwards, it changes nothing.
 
-Die lange ID ist der Zugriffsschutz, behandle die URL also wie ein Passwort. Welche Adresse vorne steht (intern oder extern), richtet sich nach deiner Home-Assistant-Konfiguration. Unterwegs funktioniert der Kurzbefehl nur mit einer von außen erreichbaren Adresse.
+The long ID is the access protection, so treat the URL like a password. Which address is shown at the front (internal or external) depends on your Home Assistant configuration. When you are away from home the Shortcut only works with an address that is reachable from outside.
 
-### 2. Kurzbefehl anlegen (einmalig)
+### 2. Create the Shortcut (once)
 
-App **Kurzbefehle** → neuer Kurzbefehl mit diesen Aktionen, in dieser Reihenfolge:
+Shortcuts app → new shortcut with these actions, in this order:
 
-1. **„QR-/Barcode scannen“** (*Scan QR/Bar Code*)
-2. **„In die Zwischenablage kopieren“** (*Copy to Clipboard*): kopiert den gescannten Text. Das brauchst du nur, wenn die Dose noch nicht angelegt ist.
-3. **„Inhalt von URL abrufen“** (*Get Contents of URL*):
-   - URL: deine Webhook-URL aus Schritt 1
-   - „Mehr anzeigen“ antippen, Methode **POST**, Anfragetext **JSON**
-   - „Neues Feld hinzufügen“: Typ **Text**, Schlüssel `code`, Wert: das Ergebnis aus Aktion 1 (die Variable „QR-/Barcode“ aus der Variablenleiste wählen)
-4. **„Wörterbuchwert abrufen“** (*Get Dictionary Value*, in der Suche nach „Wörterbuch“ suchen): Schlüssel `app_url`, aus „Inhalt von URL“. Nicht zu verwechseln mit „Gespeicherten Inhalt abrufen“, das ist eine andere Aktion.
-5. **„URLs öffnen“** (*Open URLs*): öffnet den Wert aus Aktion 4
+1. **Scan QR/Bar Code**
+2. **Copy to Clipboard**: copies the scanned text. You only need this when the container has not been added yet.
+3. **Get Contents of URL**:
+   - URL: your webhook URL from step 1
+   - Tap "Show More", method **POST**, request body **JSON**
+   - "Add new field": type **Text**, key `code`, value: the result of action 1 (pick the "QR/Bar Code" variable from the variable bar)
+4. **Get Dictionary Value**: key `app_url`, from "Contents of URL"
+5. **Open URLs**: opens the value from action 4
 
-Namen vergeben, z. B. „Dose scannen“. Über das Teilen-Symbol lässt er sich zum Home-Bildschirm hinzufügen oder auf die Aktionstaste legen. Beim ersten Lauf fragt iOS nach dem Kamerazugriff und ob der Kurzbefehl die URL aufrufen darf.
+Give it a name, e.g. "Scan container". Using the share icon you can add it to the Home Screen or assign it to the Action button. On the first run iOS asks for camera access and whether the Shortcut may access the URL.
 
-### 3. Benutzen
+### 3. Use it
 
-Kurzbefehl starten, QR-Code auf der Dose scannen. Die Home-Assistant-App öffnet sich dann:
+Run the Shortcut and scan the QR code on the container. The Home Assistant app then opens:
 
-- **Dose bekannt:** direkt auf der **Geräteseite** dieser Dose (mit Befüllt am, Inhalt und Behälter leeren).
-- **Dose neu:** auf der Seite der Integration. Dort **Eintrag hinzufügen** wählen, ins Feld lange tippen und **Einsetzen** wählen (der QR-Inhalt liegt dank Aktion 2 in der Zwischenablage). Fragt iOS „Einsetzen erlauben?“, bestätige mit **Erlauben**.
+- **Container known:** directly on the **device page** of this container (with Filled on, Contents and Empty container).
+- **Container new:** on the page of the integration. Choose **Add entry** there, long-press the field and choose **Paste** (thanks to action 2 the QR content is on the clipboard). If iOS asks "Allow Paste?", confirm with **Allow Paste**.
 
-Hast du mehrere Home-Assistant-Server in der App, fragt sie beim Öffnen, welcher gemeint ist.
+If you have several Home Assistant servers in the app, it asks which one you mean when opening.
 
-## Webhook-Schnittstelle
+## Webhook interface
 
-Der Webhook ist ein normaler Home-Assistant-Webhook und akzeptiert `POST` (und `GET`).
+The webhook is a regular Home Assistant webhook and accepts `POST` (and `GET`).
 
-Anfrage, eine der folgenden Formen:
+Request, in one of these forms:
 
 ```
 POST /api/webhook/<ID>   {"code": "zwilling://zwillingapp/food-storage/in/?tc=42ML30&s=m&cc=34OL"}
 POST /api/webhook/<ID>   {"cc": "34OL"}
-POST /api/webhook/<ID>   zwilling://zwillingapp/food-storage/in/?tc=42ML30&s=m&cc=34OL   (Klartext)
+POST /api/webhook/<ID>   zwilling://zwillingapp/food-storage/in/?tc=42ML30&s=m&cc=34OL   (plain text)
 GET  /api/webhook/<ID>?code=34OL
 ```
 
-Antwort (`200`, JSON):
+Response (`200`, JSON):
 
 ```json
 {
@@ -125,14 +127,14 @@ Antwort (`200`, JSON):
 }
 ```
 
-Bei unbekannter Dose ist `known` gleich `false`, `path` und `app_url` zeigen auf die Integrationsseite. Enthält die Anfrage keine gültige ID, antwortet der Webhook mit `400` und `{"error": "invalid_code"}`. Der Webhook liest nur und ändert keine Werte.
+For an unknown container `known` is `false`, and `path` and `app_url` point to the integration page. If the request contains no valid ID, the webhook answers with `400` and `{"error": "invalid_code"}`. The webhook only reads and never changes any values.
 
-## Entwicklung
+## Development
 
 ```
 pip install -r requirements_test.txt
 pytest
 
 npm install
-npm test        # Tests für das Panel (jsdom)
+npm test        # tests for the panel (jsdom)
 ```

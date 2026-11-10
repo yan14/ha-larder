@@ -8,7 +8,7 @@
 
 const DOMAIN = "zwilling_storage";
 
-const STRINGS = {
+export const STRINGS = {
   de: {
     title: "Zwilling Dosen",
     area: "Bereich",
@@ -36,7 +36,7 @@ const STRINGS = {
     noArea: "No area",
     content: "Contents",
     bestBefore: "Best before",
-    filledAt: "Stored on",
+    filledAt: "Filled on",
     now: "Now",
     emptyContainer: "Empty container",
     openDevice: "Open device",
