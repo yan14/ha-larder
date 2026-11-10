@@ -54,6 +54,7 @@ DATA_ESTIMATOR_LOCK = "estimator_lock"
 
 MIN_DAYS = 1
 MAX_DAYS = 3650
+MAX_RECENT = 60
 
 
 class EstimateError(HomeAssistantError):
@@ -206,6 +207,7 @@ class Estimator:
         self.nfc_notify = True
         self.ai_task_entity: str | None = None
         self._cache: dict[str, dict[str, Any]] = {}
+        self._recent: list[str] = []
 
     async def async_load(self) -> None:
         data = await self._store.async_load() or {}
@@ -220,6 +222,7 @@ class Estimator:
         self.calendar_entity = settings.get(CONF_CALENDAR_ENTITY) or None
         self.nfc_notify = bool(settings.get(CONF_NFC_NOTIFY, True))
         self._cache = data.get("cache", {})
+        self._recent = [str(x) for x in data.get("recent", []) if str(x).strip()][:MAX_RECENT]
 
     @property
     def enabled(self) -> bool:
@@ -239,6 +242,7 @@ class Estimator:
                 CONF_AI_TASK_ENTITY: self.ai_task_entity,
             },
             "cache": self._cache,
+            "recent": self._recent,
         }
 
     def _schedule_save(self) -> None:
@@ -278,6 +282,28 @@ class Estimator:
             entry["origin"] = origin
         self._cache[key] = entry
         self._schedule_save()
+
+    # ----- Vorschläge für den Inhalt ("Dose befüllen") -----
+
+    def remember_content(self, content: str) -> None:
+        """Zuletzt eingetragene Inhalte merken (neueste zuerst, ohne Doppelte)."""
+        content = content.strip()
+        if not content:
+            return
+        folded = content.casefold()
+        recent = [c for c in self._recent if c.casefold() != folded]
+        self._recent = [content, *recent][:MAX_RECENT]
+        self._schedule_save()
+
+    def content_suggestions(self) -> list[str]:
+        """Bekannte Inhalte: zuletzt benutzte zuerst, danach die der gemerkten Schätzungen."""
+        seen: set[str] = set()
+        out: list[str] = []
+        for text in [*self._recent, *(e["content"] for e in self.list_entries())]:
+            if text.casefold() not in seen:
+                seen.add(text.casefold())
+                out.append(text)
+        return out
 
     # ----- Verwaltung der gemerkten Einträge (Dashboard-Liste) -----
 

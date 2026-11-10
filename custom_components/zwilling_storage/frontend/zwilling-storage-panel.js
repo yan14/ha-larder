@@ -47,6 +47,13 @@ export const STRINGS = {
     estimating: "Schätze …",
     estimated: (days) => `Geschätzt: ca. ${days} ${days === 1 ? "Tag" : "Tage"} haltbar`,
     estimateFailed: "Die Schätzung ist fehlgeschlagen.",
+    fill: "Befüllen",
+    fillTitle: "Dose befüllen",
+    fillPlaceholder: "z. B. Pizza, Suppe …",
+    fillEstimate: "MHD automatisch schätzen",
+    fillSave: "Speichern",
+    fillNoContent: "Bitte einen Inhalt eingeben.",
+    fillFailed: "Das Speichern ist fehlgeschlagen.",
     plusOneDay: "+1 Tag",
     opened: "Geöffnet",
     searchPlaceholder: "Suchen …",
@@ -135,6 +142,13 @@ export const STRINGS = {
     estimating: "Estimating…",
     estimated: (days) => `Estimated: about ${days} ${days === 1 ? "day" : "days"} shelf life`,
     estimateFailed: "The estimate failed.",
+    fill: "Fill",
+    fillTitle: "Fill container",
+    fillPlaceholder: "e.g. pizza, soup …",
+    fillEstimate: "Estimate best before automatically",
+    fillSave: "Save",
+    fillNoContent: "Please enter the contents.",
+    fillFailed: "Saving failed.",
     plusOneDay: "+1 day",
     opened: "Opened",
     searchPlaceholder: "Search …",
@@ -400,7 +414,7 @@ const STYLE = `
   .dialog h2 { margin: 0; font-size: 20px; font-weight: 500; }
   .dialog .field { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--secondary-text-color); }
   .dialog .field[hidden] { display: none; }
-  .dialog input[type="text"], .dialog select { font: inherit; color: var(--primary-text-color); background: var(--card-background-color, #fff);
+  .dialog input[type="text"], .dialog input[type="date"], .dialog input[type="datetime-local"], .dialog select { font: inherit; color: var(--primary-text-color); background: var(--card-background-color, #fff);
     border: 1px solid var(--divider-color); border-radius: 6px; padding: 8px; box-sizing: border-box; }
   .dialog .modes { display: flex; flex-direction: column; gap: 6px; color: var(--primary-text-color); font-size: 15px; }
   .dialog .error { color: var(--error-color, #db4437); font-size: 14px; min-height: 1em; }
@@ -434,6 +448,10 @@ const STYLE = `
     border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
   .card.flash { animation: zwflash 3s ease-out; }
   @keyframes zwflash { 0%, 60% { box-shadow: 0 0 0 4px var(--primary-color); } 100% { box-shadow: var(--ha-card-box-shadow, 0 1px 3px rgba(0,0,0,.2)); } }
+  .dialog .check { flex-direction: row; align-items: center; gap: 8px; color: var(--primary-text-color); }
+  .dialog .check[hidden] { display: none; }
+  .actions button.fill { display: none; }
+  .actions button.fill.visible { display: inline-block; background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: transparent; }
   .dialog .nfcstatus { font-size: 14px; color: var(--secondary-text-color); }
   .dialog .nfcstatus[hidden] { display: none; }
   header .tabs { display: none; gap: 4px; }
@@ -512,7 +530,7 @@ class DoseCard {
       <div class="estimaterow"><button class="estimate" type="button"></button><span class="tip" role="status"></span></div>
       <div class="row vacrow"><label class="check"><input type="checkbox" data-f="vacuum"><span data-l="vacuum"></span></label></div>
       <div class="nfcrow"><span class="nfcstate"></span><button class="nfcbtn" type="button"></button></div>
-      <div class="actions"><button class="empty" type="button"></button><span class="spacer"></span><img class="qr" alt=""></div>`;
+      <div class="actions"><button class="fill" type="button"></button><button class="empty" type="button"></button><span class="spacer"></span><img class="qr" alt=""></div>`;
     this.el = el;
     this.q = (sel) => el.querySelector(sel);
     this.inputs = {
@@ -573,6 +591,7 @@ class DoseCard {
       if (this.ids.switch) this._call("switch", ev.target.checked ? "turn_on" : "turn_off", { entity_id: this.ids.switch });
     });
     this.q("button.estimate").addEventListener("click", () => this._estimate());
+    this.q("button.fill").addEventListener("click", () => this._panel.openFillDialog(this.deviceId));
     this.q("button.nfcbtn").addEventListener("click", () => this._panel.nfcAction(this.deviceId));
   }
 
@@ -671,6 +690,7 @@ class DoseCard {
     this.q("button.plus1").textContent = t.plusOneDay;
     this.q("button.opened").textContent = t.opened;
     this.q("button.empty").textContent = t.emptyContainer;
+    this.q("button.fill").textContent = t.fill;
     this.q('[data-l="vacuum"]').textContent = t.vacuum;
     if (!this._estimating) this.q("button.estimate").textContent = t.estimate;
 
@@ -692,6 +712,7 @@ class DoseCard {
     // Schnellaktionen unter dem MHD: +1 Tag (nur mit MHD) und Geöffnet (sobald etwas drin ist).
     const hasContentNow = isValidState(text) && text.state.trim() !== "";
     this.q(".quickrow").classList.toggle("visible", ok(date) && hasContentNow);
+    this.q("button.fill").classList.toggle("visible", ok(text) && !hasContentNow);
     this.q("button.plus1").disabled = !isValidState(date);
 
     // NFC: nur für Administratoren (Verknüpfen und Lösen sind Administrator-Befehle).
@@ -774,6 +795,18 @@ class ZwillingStoragePanel extends HTMLElement {
           <div class="error" role="alert"></div>
           <div class="buttons"><button type="button" class="cancel"></button><button type="submit" class="submit"></button></div>
         </form>
+      </div>
+      <div class="overlay fill" hidden>
+        <form class="dialog fillform" novalidate>
+          <h2></h2>
+          <label class="field"><span data-l="content"></span><input type="text" data-f="content" maxlength="255" list="zs-contents" autocomplete="off"><datalist id="zs-contents"></datalist></label>
+          <label class="check" data-w="vacuum"><input type="checkbox" data-f="vacuum"><span data-l="vacuum"></span></label>
+          <label class="field"><span data-l="filledAt"></span><input type="datetime-local" data-f="filledAt"></label>
+          <label class="field"><span data-l="bestBefore"></span><input type="date" data-f="bestBefore"></label>
+          <label class="check" data-w="estimate"><input type="checkbox" data-f="estimate" checked><span data-l="fillEstimate"></span></label>
+          <div class="error" role="alert"></div>
+          <div class="buttons"><button type="button" class="cancel"></button><button type="submit" class="submit"></button></div>
+        </form>
       </div>`;
     this._main = this.shadowRoot.querySelector("#content");
     this._notice = this.shadowRoot.querySelector("#notice");
@@ -792,6 +825,18 @@ class ZwillingStoragePanel extends HTMLElement {
     this._form.addEventListener("submit", (ev) => {
       ev.preventDefault();
       this.submitAdd();
+    });
+    this._fillOverlay = this.shadowRoot.querySelector(".overlay.fill");
+    this._fillForm = this.shadowRoot.querySelector("form.fillform");
+    this._fillDevice = null;
+    this._contents = [];
+    this._fillOverlay.addEventListener("click", (ev) => {
+      if (ev.target === this._fillOverlay) this.closeFillDialog();
+    });
+    this._fillForm.querySelector("button.cancel").addEventListener("click", () => this.closeFillDialog());
+    this._fillForm.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      this.submitFill();
     });
     this._view = "containers";
     this._est = null;
@@ -998,6 +1043,108 @@ class ZwillingStoragePanel extends HTMLElement {
       this.openAddDialog(code);
     } else {
       this.showError(strings(hass).adminOnly(code));
+    }
+  }
+
+  /** Dialog "Dose befüllen": Inhalt (mit Vorschlägen), Vakuum, Eingelagert am, MHD, optional schätzen. */
+  openFillDialog(deviceId) {
+    const hass = this._hass;
+    const dev = hass && this._devices.find((d) => d.deviceId === deviceId);
+    if (!dev) return false;
+    const t = strings(hass);
+    const states = hass.states || {};
+    const f = (name) => this._fillForm.querySelector(`[data-f="${name}"]`);
+    const text = states[dev.entities.text];
+    const date = states[dev.entities.date];
+    const dt = states[dev.entities.datetime];
+    const vac = states[dev.entities.switch];
+    this._fillDevice = deviceId;
+    this._fillForm.querySelector("h2").textContent = `${t.fillTitle}: ${dev.name}`;
+    f("content").value = isValidState(text) ? text.state : "";
+    f("content").placeholder = t.fillPlaceholder;
+    f("vacuum").checked = !!vac && vac.state === "on";
+    this._fillForm.querySelector('[data-w="vacuum"]').hidden = !vac || vac.state === "unavailable";
+    f("filledAt").value = isValidState(dt) ? toLocalInputValue(dt.state) : toLocalInputValue(new Date().toISOString());
+    f("bestBefore").value = isValidState(date) ? date.state : "";
+    const canEstimate = !!(date && date.attributes && date.attributes.estimates) && date.state !== "unavailable";
+    this._fillForm.querySelector('[data-w="estimate"]').hidden = !canEstimate;
+    f("estimate").checked = true;
+    this._fillForm.querySelector(".error").textContent = "";
+    this._fillOverlay.hidden = false;
+    this._loadContents();
+    if (f("content").focus) f("content").focus();
+    return true;
+  }
+
+  closeFillDialog() {
+    this._fillOverlay.hidden = true;
+    this._fillDevice = null;
+  }
+
+  /** Vorschläge für den Inhalt vom Server holen (zuletzt benutzte zuerst). */
+  async _loadContents() {
+    const hass = this._hass;
+    if (!hass || !hass.callWS) return;
+    try {
+      const res = await hass.callWS({ type: `${DOMAIN}/contents` });
+      this._contents = (res && Array.isArray(res.contents) ? res.contents : []).slice(0, 100);
+    } catch (err) {
+      /* Vorschläge sind optional */
+    }
+    const list = this._fillForm.querySelector("datalist");
+    list.replaceChildren(
+      ...this._contents.map((c) => {
+        const opt = document.createElement("option");
+        opt.value = c;
+        return opt;
+      }),
+    );
+  }
+
+  async submitFill() {
+    const hass = this._hass;
+    const id = this._fillDevice;
+    const dev = hass && this._devices.find((d) => d.deviceId === id);
+    if (!dev || this._busy) return;
+    const t = strings(hass);
+    const f = (name) => this._fillForm.querySelector(`[data-f="${name}"]`);
+    const errorEl = this._fillForm.querySelector(".error");
+    const content = f("content").value.trim();
+    if (!content) {
+      errorEl.textContent = t.fillNoContent;
+      return;
+    }
+    const states = hass.states || {};
+    const ids = dev.entities;
+    const vac = states[ids.switch];
+    const filled = new Date(f("filledAt").value);
+    const bestBefore = f("bestBefore").value;
+    const wantEstimate =
+      f("estimate").checked && !this._fillForm.querySelector('[data-w="estimate"]').hidden && !bestBefore;
+    this._busy = true;
+    this._fillForm.querySelector("button.submit").disabled = true;
+    try {
+      await hass.callService("text", "set_value", { entity_id: ids.text, value: content });
+      if (vac && vac.state !== "unavailable") {
+        await hass.callService("switch", f("vacuum").checked ? "turn_on" : "turn_off", { entity_id: ids.switch });
+      }
+      if (ids.datetime && !Number.isNaN(filled.getTime())) {
+        await hass.callService("datetime", "set_value", { entity_id: ids.datetime, datetime: filled.toISOString() });
+      }
+      if (ids.date && bestBefore) {
+        await hass.callService("date", "set_value", { entity_id: ids.date, date: bestBefore });
+      }
+    } catch (err) {
+      errorEl.textContent = (err && err.message) || t.fillFailed;
+      return;
+    } finally {
+      this._busy = false;
+      this._fillForm.querySelector("button.submit").disabled = false;
+    }
+    this.closeFillDialog();
+    if (wantEstimate) {
+      const card = this._cards.get(id);
+      if (card) await card._estimate();
     }
   }
 
@@ -1265,7 +1412,7 @@ class ZwillingStoragePanel extends HTMLElement {
   }
 
   /** Dose hervorheben (nach dem Scannen ihres Tags): Ansicht zurücksetzen, hinscrollen, kurz blinken lassen. */
-  highlight(deviceId) {
+  highlight(deviceId, fill = false) {
     const hass = this._hass;
     if (!hass || !deviceId || !this._devices.some((d) => d.deviceId === deviceId)) return false;
     if (this._view !== "containers") this.setView("containers");
@@ -1280,6 +1427,14 @@ class ZwillingStoragePanel extends HTMLElement {
     void card.el.offsetWidth; // Animation neu starten
     card.el.classList.add("flash");
     if (card.el.scrollIntoView) card.el.scrollIntoView({ block: "center", behavior: "smooth" });
+    // Leere Dose: gleich "Dose befüllen" anbieten (nach dem Scan mit dem Handy).
+    if (fill) {
+      const dev = this._devices.find((d) => d.deviceId === deviceId);
+      const text = dev && (hass.states || {})[dev.entities.text];
+      if (text && text.state !== "unavailable" && !(isValidState(text) && text.state.trim() !== "")) {
+        this.openFillDialog(deviceId);
+      }
+    }
     return true;
   }
 
@@ -1288,7 +1443,7 @@ class ZwillingStoragePanel extends HTMLElement {
     const id = new URLSearchParams(window.location.search).get("open");
     if (!id || !this._devices.length) return;
     window.history.replaceState(null, "", window.location.pathname);
-    this.highlight(id);
+    this.highlight(id, true);
   }
 
   _updateToolbar(t) {
@@ -1367,6 +1522,9 @@ class ZwillingStoragePanel extends HTMLElement {
     for (const el of this._form.querySelectorAll("[data-l]")) el.textContent = t[el.dataset.l];
     this._form.querySelector("button.cancel").textContent = t.cancel;
     this._form.querySelector("button.submit").textContent = t.submit;
+    for (const el of this._fillForm.querySelectorAll("[data-l]")) el.textContent = t[el.dataset.l];
+    this._fillForm.querySelector("button.cancel").textContent = t.cancel;
+    this._fillForm.querySelector("button.submit").textContent = t.fillSave;
     this._handleAddParam();
     this._handleOpenParam();
     this._subscribe();

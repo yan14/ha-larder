@@ -153,6 +153,12 @@ The result contains `best_before`, `days`, `tip` (a short storage tip), `source`
 
 **Remembering.** Each result is stored for the combination of *contents + area + vacuum* and is not calculated or asked again. If you change a suggested date afterwards, your value is remembered for the same combination and wins over table and AI. The data lives in Home Assistant's `.storage/zwilling_storage.estimator`.
 
+### Filling a container quickly
+
+An empty container shows a **Fill** button. It opens a small dialog: **contents** (with suggestions from what you entered before, newest first, then your remembered estimates), **vacuum**, **filled on** (preset to now), optionally a **best-before date**, and **Estimate best before automatically** (only if estimating is on and the date is empty). **Save** sets everything and estimates the date.
+
+The dialog also opens by itself after a scan: when the Shortcut opens `app_url` or you tap the NFC notification and the container is empty. For a container that already has contents the dashboard only highlights it. This works for all users, not only administrators.
+
 ### Managing remembered estimates
 
 Administrators get a second tab, **Estimates**, in the dashboard. It lists everything that is remembered for a combination of contents, area and vacuum, with its source (table, AI, or corrected by you with the original source). There you can
@@ -256,12 +262,14 @@ Response (`200`, JSON):
   "cc": "34OL",
   "name": "Dose 34OL",
   "device_id": "0a1b2c…",
-  "path": "/config/devices/device/0a1b2c…",
-  "app_url": "homeassistant://navigate/config/devices/device/0a1b2c…"
+  "path": "/zwilling-storage?open=0a1b2c…",
+  "app_url": "homeassistant://navigate/zwilling-storage?open=0a1b2c…",
+  "device_path": "/config/devices/device/0a1b2c…",
+  "device_app_url": "homeassistant://navigate/config/devices/device/0a1b2c…"
 }
 ```
 
-For an unknown container `known` is `false`, and `path` and `app_url` point to the dashboard with the add dialog (`/zwilling-storage?add=<ID>`). If the request contains no valid ID, the webhook answers with `400` and `{"error": "invalid_code"}`. The webhook only reads and never changes any values.
+For a known container `path` and `app_url` open the dashboard on that container (an empty one gets the fill dialog straight away, see "Filling a container quickly"); `device_path` and `device_app_url` point to the device page instead. For an unknown container `known` is `false`, and `path` and `app_url` point to the dashboard with the add dialog (`/zwilling-storage?add=<ID>`). If the request contains no valid ID, the webhook answers with `400` and `{"error": "invalid_code"}`. The webhook only reads and never changes any values.
 
 ## Alternatives
 

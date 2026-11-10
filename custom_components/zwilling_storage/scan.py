@@ -100,7 +100,7 @@ async def _async_extract_code(request: web.Request) -> str | None:
 async def _async_handle_webhook(
     hass: HomeAssistant, webhook_id: str, request: web.Request
 ) -> web.Response:
-    """Passendes Gerät suchen und Link darauf zurückgeben."""
+    """Passendes Gerät suchen und Link zum Dashboard zurückgeben."""
     parsed = parse_qr(await _async_extract_code(request))
     if parsed is None:
         return web.json_response({"error": "invalid_code"}, status=400)
@@ -124,7 +124,10 @@ async def _async_handle_webhook(
             "cc": parsed.cc,
             "name": device.name_by_user or device.name,
             "device_id": device.id,
-            "path": device_path(device.id),
-            "app_url": device_app_url(device.id),
+            # Das Dashboard hebt die Dose hervor und öffnet bei leeren Dosen "Dose befüllen".
+            "path": panel_path(open_device=device.id),
+            "app_url": panel_app_url(open_device=device.id),
+            "device_path": device_path(device.id),
+            "device_app_url": device_app_url(device.id),
         }
     )

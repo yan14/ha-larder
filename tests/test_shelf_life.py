@@ -523,3 +523,20 @@ async def test_mark_opened_shortens_or_sets(hass: HomeAssistant) -> None:
     await _fill(hass, "34OL", "Käse", 30)
     out = (await hass.services.async_call(DOMAIN, "mark_opened", {"entity_id": date_id}, blocking=True, return_response=True))[date_id]
     assert out["best_before"] == (today + timedelta(days=7)).isoformat()
+
+
+async def test_content_suggestions_recent_first_and_non_admin(
+    hass: HomeAssistant, hass_ws_client, hass_admin_user
+) -> None:
+    await _setup(hass)
+    text = _eid(hass, "text")
+    for value in ("Pizza", "Suppe", "pizza", ""):
+        await hass.services.async_call(
+            "text", "set_value", {"entity_id": text, "value": value}, blocking=True
+        )
+    # Auch ein nicht-Admin darf die Vorschläge lesen
+    hass_admin_user.groups = []
+    hass_admin_user.is_admin = False
+    res = await _ws(hass, hass_ws_client, {"type": f"{DOMAIN}/contents"})
+    assert res["success"]
+    assert res["result"]["contents"] == ["pizza", "Suppe"]

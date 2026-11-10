@@ -150,6 +150,12 @@ Das Ergebnis enthält `best_before`, `days`, `tip` (ein kurzer Lagertipp), `sour
 
 **Merken.** Jedes Ergebnis wird für die Kombination *Inhalt + Bereich + Vakuum* gespeichert und nicht erneut berechnet oder abgefragt. Änderst du ein vorgeschlagenes Datum danach selbst, merkt sich die Integration deinen Wert für dieselbe Kombination, und er gewinnt gegen Tabelle und KI. Die Daten liegen in `.storage/zwilling_storage.estimator` von Home Assistant.
 
+### Dose schnell befüllen
+
+Eine leere Dose zeigt den Button **Befüllen**. Er öffnet einen kleinen Dialog: **Inhalt** (mit Vorschlägen aus früheren Eingaben, neueste zuerst, danach deine gemerkten Schätzungen), **Vakuum**, **Befüllt am** (vorbelegt mit jetzt), optional ein **MHD** und **MHD automatisch schätzen** (nur wenn die Schätzung aktiv und das MHD leer ist). **Speichern** setzt alles und schätzt das MHD.
+
+Der Dialog öffnet sich auch von selbst nach einem Scan: wenn der Kurzbefehl `app_url` öffnet oder du die NFC-Benachrichtigung antippst und die Dose leer ist. Hat die Dose schon einen Inhalt, wird sie nur hervorgehoben. Das funktioniert für alle Nutzer, nicht nur für Administratoren.
+
 ### Gemerkte Schätzungen verwalten
 
 Administratoren sehen im Dashboard einen zweiten Reiter, **Schätzungen**. Er listet alles, was für eine Kombination aus Inhalt, Bereich und Vakuum gemerkt ist, samt Quelle (Tabelle, KI oder von dir korrigiert mit ursprünglicher Quelle). Dort kannst du
@@ -253,12 +259,14 @@ Antwort (`200`, JSON):
   "cc": "34OL",
   "name": "Dose 34OL",
   "device_id": "0a1b2c…",
-  "path": "/config/devices/device/0a1b2c…",
-  "app_url": "homeassistant://navigate/config/devices/device/0a1b2c…"
+  "path": "/zwilling-storage?open=0a1b2c…",
+  "app_url": "homeassistant://navigate/zwilling-storage?open=0a1b2c…",
+  "device_path": "/config/devices/device/0a1b2c…",
+  "device_app_url": "homeassistant://navigate/config/devices/device/0a1b2c…"
 }
 ```
 
-Bei unbekannter Dose ist `known` gleich `false`, `path` und `app_url` zeigen auf das Dashboard mit dem Hinzufügen-Dialog (`/zwilling-storage?add=<ID>`). Enthält die Anfrage keine gültige ID, antwortet der Webhook mit `400` und `{"error": "invalid_code"}`. Der Webhook liest nur und ändert keine Werte.
+Bei bekannter Dose öffnen `path` und `app_url` das Dashboard bei dieser Dose (eine leere Dose bekommt gleich den Befüll-Dialog, siehe „Dose schnell befüllen“); `device_path` und `device_app_url` zeigen stattdessen auf die Geräteseite. Bei unbekannter Dose ist `known` gleich `false`, `path` und `app_url` zeigen auf das Dashboard mit dem Hinzufügen-Dialog (`/zwilling-storage?add=<ID>`). Enthält die Anfrage keine gültige ID, antwortet der Webhook mit `400` und `{"error": "invalid_code"}`. Der Webhook liest nur und ändert keine Werte.
 
 ## Alternativen
 

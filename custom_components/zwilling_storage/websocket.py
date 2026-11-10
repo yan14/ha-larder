@@ -30,6 +30,7 @@ def async_setup_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_set)
     websocket_api.async_register_command(hass, ws_add)
     websocket_api.async_register_command(hass, ws_delete)
+    websocket_api.async_register_command(hass, ws_contents)
     websocket_api.async_register_command(hass, ws_nfc_tags)
     websocket_api.async_register_command(hass, ws_nfc_link)
     websocket_api.async_register_command(hass, ws_nfc_unlink)
@@ -181,3 +182,12 @@ async def ws_nfc_unlink(
         return
     await nfc.async_unlink(cc)
     connection.send_result(msg["id"], {"links": nfc.links(), "by_device": nfc.links_by_device()})
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/contents"})
+@websocket_api.async_response
+async def ws_contents(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Vorschläge für das Feld Inhalt (für alle Nutzer, enthält nur Inhaltstexte)."""
+    connection.send_result(msg["id"], {"contents": (await async_get_estimator(hass)).content_suggestions()})

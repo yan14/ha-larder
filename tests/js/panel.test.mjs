@@ -1084,3 +1084,117 @@ test("?open=<Geräte-ID> hebt die Dose hervor (auch für Nicht-Administratoren)"
   assert.equal($(el, ".card.flash .name").textContent, "B");
   assert.equal(dom.window.location.search, ""); // Parameter ist entfernt
 });
+
+// ---------- Dose befüllen ----------
+
+function fillHass(doses, contents = ["Pizza", "Suppe"]) {
+  const hass = makeHass(doses, { areas: AREAS });
+  hass.wsCalls = [];
+  hass.callWS = async (msg) => {
+    hass.wsCalls.push(msg);
+    if (msg.type === `${D}/contents`) return { contents };
+    return {};
+  };
+  return hass;
+}
+
+test("'Befüllen' erscheint nur bei leerer Dose und öffnet den Dialog mit Vorschlägen", async () => {
+  const hass = fillHass([
+    { id: "d1", name: "Leer", content: "unknown" },
+    { id: "d2", name: "Voll", content: "Suppe", mhd: iso(5) },
+  ]);
+  const el = mount(hass);
+  const buttons = $$(el, "button.fill");
+  assert.deepEqual(buttons.map((b) => b.classList.contains("visible")), [true, false]);
+  assert.equal(buttons[0].textContent, "Befüllen");
+
+  buttons[0].click();
+  await flush();
+  const overlay = $(el, ".overlay.fill");
+  assert.equal(overlay.hidden, false);
+  assert.match($(el, "form.fillform h2").textContent, /Leer/);
+  assert.deepEqual($$(el, "datalist option").map((o) => o.value), ["Pizza", "Suppe"]);
+  assert.deepEqual(hass.wsCalls, [{ type: `${D}/contents` }]);
+  assert.equal($(el, 'form.fillform [data-f="vacuum"]').checked, true);
+  assert.ok($(el, 'form.fillform [data-f="filledAt"]').value.length > 0);
+
+  $(el, "form.fillform button.cancel").click();
+  assert.equal(overlay.hidden, true);
+});
+
+test("Dose befüllen: Pflichtfeld Inhalt, Speichern setzt Entitäten und schätzt das MHD", async () => {
+  const hass = fillHass([{ id: "d1", name: "Dose 1", content: "unknown", ai: true }]);
+  const el = mount(hass);
+  el.openFillDialog("d1");
+  await flush();
+  const form = $(el, "form.fillform");
+
+  form.dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  await flush();
+  assert.equal($(el, "form.fillform .error").textContent, STRINGS.de.fillNoContent);
+  assert.equal(hass.calls.length, 0);
+
+  $(el, 'form.fillform [data-f="content"]').value = "Pizza";
+  $(el, 'form.fillform [data-f="vacuum"]').checked = false;
+  $(el, 'form.fillform [data-f="filledAt"]').value = "2026-11-09T11:00";
+  form.dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  await flush();
+
+  assert.deepEqual(hass.calls, [
+    { domain: "text", service: "set_value", data: { entity_id: "text.d1_inhalt", value: "Pizza" } },
+    { domain: "switch", service: "turn_off", data: { entity_id: "switch.d1_vacuum" } },
+    { domain: "datetime", service: "set_value", data: { entity_id: "datetime.d1_befuellt", datetime: "2026-11-09T10:00:00.000Z" } },
+  ]);
+  assert.equal($(el, ".overlay.fill").hidden, true);
+  const est = hass.wsCalls.find((m) => m.type === "call_service");
+  assert.equal(est.service, "estimate_best_before");
+  assert.deepEqual(est.target, { entity_id: "date.d1_mhd" });
+});
+
+test("Dose befüllen: mit eingegebenem MHD oder abgewählter Schätzung wird nicht geschätzt", async () => {
+  const hass = fillHass([{ id: "d1", name: "Dose 1", content: "unknown", ai: true }]);
+  const el = mount(hass);
+  el.openFillDialog("d1");
+  await flush();
+  $(el, 'form.fillform [data-f="content"]').value = "Reis";
+  $(el, 'form.fillform [data-f="bestBefore"]').value = "2026-12-31";
+  $(el, "form.fillform").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  await flush();
+  assert.ok(hass.calls.some((c) => c.domain === "date" && c.data.date === "2026-12-31"));
+  assert.ok(!hass.wsCalls.some((m) => m.type === "call_service"));
+});
+
+test("Dose befüllen: Schätzoption nur sichtbar, wenn Schätzung aktiv ist", async () => {
+  const hass = fillHass([{ id: "d1", name: "Dose 1", content: "unknown", ai: false }]);
+  const el = mount(hass);
+  el.openFillDialog("d1");
+  assert.equal($(el, 'form.fillform [data-w="estimate"]').hidden, true);
+});
+
+test("?open=<ID> öffnet bei leerer Dose den Befüll-Dialog, bei gefüllter nur Hervorhebung (auch ohne Admin)", async () => {
+  const hass = fillHass([
+    { id: "d1", name: "Leer", content: "unknown" },
+    { id: "d2", name: "Voll", content: "Suppe" },
+  ]);
+  hass.user = { is_admin: false };
+  dom.window.history.replaceState(null, "", "/zwilling-storage?open=d2");
+  let el = mount(hass);
+  assert.equal($(el, ".overlay.fill").hidden, true);
+  assert.ok($$(el, ".card")[1].classList.contains("flash"));
+
+  document.body.innerHTML = "";
+  dom.window.history.replaceState(null, "", "/zwilling-storage?open=d1");
+  el = mount(hass);
+  assert.equal($(el, ".overlay.fill").hidden, false);
+  assert.match($(el, "form.fillform h2").textContent, /Leer/);
+  assert.equal(dom.window.location.search, "");
+});
+
+test("Dose befüllen: englische Texte", () => {
+  const hass = fillHass([{ id: "d1", name: "Dose 1", content: "unknown" }]);
+  hass.language = "en";
+  const el = mount(hass);
+  el.openFillDialog("d1");
+  assert.match($(el, "form.fillform h2").textContent, /Fill container/);
+  assert.equal($(el, "form.fillform button.submit").textContent, "Save");
+});

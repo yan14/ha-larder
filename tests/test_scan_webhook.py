@@ -52,8 +52,10 @@ async def test_webhook_known_device_post_json(hass, hass_client_no_auth) -> None
         "cc": "34OL",
         "name": "Dose 34OL",
         "device_id": device_id,
-        "path": f"/config/devices/device/{device_id}",
-        "app_url": f"homeassistant://navigate/config/devices/device/{device_id}",
+        "path": f"/zwilling-storage?open={device_id}",
+        "app_url": f"homeassistant://navigate/zwilling-storage?open={device_id}",
+        "device_path": f"/config/devices/device/{device_id}",
+        "device_app_url": f"homeassistant://navigate/config/devices/device/{device_id}",
     }
 
 
