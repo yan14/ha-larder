@@ -18,8 +18,10 @@ Die Werte bleiben über Neustarts erhalten. „Behälter leeren“ ist eine norm
 
 Zusätzlich gibt es:
 
-- ein **Dashboard** „Zwilling Dosen“ in der Seitenleiste mit allen Dosen, das sich selbst aktualisiert,
+- ein **Dashboard** „Zwilling Dosen“ in der Seitenleiste (siehe [unten](#dashboard-zwilling-dosen)), das alle Dosen zeigt, mit dem du Dosen hinzufügen und alles bearbeiten kannst und das sich selbst aktualisiert,
 - einen **Scan-Webhook** für die originalen Zwilling-QR-Codes (iOS-Kurzbefehl, siehe unten).
+
+<p align="center"><img src="docs/images/dashboard-de.png" width="720" alt="Dashboard Zwilling Dosen (Demo-Daten)"></p>
 
 ## Installation über HACS
 
@@ -47,6 +49,8 @@ Es reicht auch nur die ID (`cc`, hier `34OL`). Optional kannst du einen Namen ve
 
 Home Assistant bietet im Dialog keine Kamera zum Scannen. Den Text liest du unter iOS mit dem Kurzbefehl aus (nächster Abschnitt) und fügst ihn ein.
 
+Dosen lassen sich auch im Dashboard in der Seitenleiste hinzufügen (Button **+ Dose hinzufügen**), siehe [unten](#dose-im-dashboard-hinzufügen). Das ist der schnellste Weg, sobald die erste Dose existiert.
+
 ## QR-Code direkt scannen
 
 Jede Dose hat die Bild-Entität **QR-Code**. Sie enthält einen Link, der die Home-Assistant-App direkt auf die Geräteseite der Dose springen lässt (`homeassistant://navigate/config/devices/device/<Geräte-ID>`). Dafür brauchst du keinen Kurzbefehl.
@@ -58,7 +62,9 @@ Der Code verweist auf die Geräte-ID in Home Assistant. Wird die Dose gelöscht 
 
 ## Dashboard „Zwilling Dosen“
 
-Sobald mindestens eine Dose angelegt ist, erscheint in der Seitenleiste der Eintrag **Zwilling Dosen**. Er braucht keine Konfiguration:
+Sobald mindestens eine Dose angelegt ist, erscheint in der Seitenleiste der Eintrag **Zwilling Dosen**. Er braucht keine Konfiguration und zeigt jede Dose auf einer Karte (Screenshot ganz oben):
+
+*Die Screenshots zeigen Demo-Daten. Das Panel passt sich an Theme und Sprache von Home Assistant an (Deutsch und Englisch).*
 
 - Alle Dosen der Integration, gruppiert nach **Bereich** (Area des Geräts) und sortiert nach Name.
 - Pro Dose: Bereich, **Inhalt**, **MHD** (mit Hinweis „abgelaufen“ oder „noch n Tage“ ab 3 Tagen davor), **Eingelagert am** (= „Befüllt am“), der Button **Behälter leeren** und der QR-Code als kleines Bild.
@@ -68,6 +74,16 @@ Sobald mindestens eine Dose angelegt ist, erscheint in der Seitenleiste der Eint
 - Neue Dosen, geänderte Werte und geänderte Bereiche erscheinen sofort, ohne dass du etwas neu laden musst.
 
 Das Panel ist für alle Nutzer sichtbar, aber nur **Administratoren** können Dosen hinzufügen und Bereiche ändern (dieselbe Einschränkung wie in den Einstellungen). Andere Nutzer sehen den Bereich als Text. Es ist kein klassisches Lovelace-Dashboard und lässt sich nicht mit dem Karten-Editor bearbeiten. Dafür aktualisiert es sich selbst.
+
+### Dose im Dashboard hinzufügen
+
+**+ Dose hinzufügen** öffnet einen Dialog:
+
+<p align="center"><img src="docs/images/add-dialog-de.png" width="560" alt="Dialog Dose hinzufügen"></p>
+
+- **Neuen QR-Code erstellen** erzeugt eine neue eindeutige ID. Danach die Karte (oder das Gerät) öffnen und den QR-Code ausdrucken.
+- **Zwilling-QR-Code einlesen** braucht den Inhalt des originalen Codes oder nur die ID. Kommst du vom iOS-Kurzbefehl, ist das Feld schon ausgefüllt.
+- Name und Bereich sind optional. Beides lässt sich später ändern (den Bereich direkt auf der Karte).
 
 ## iOS-Kurzbefehl für die originalen Zwilling-Codes
 
@@ -141,3 +157,5 @@ pytest
 npm install
 npm test        # Tests für das Panel (jsdom)
 ```
+
+Die Screenshots stammen aus dem echten Panel-Code mit Demo-Daten: Repository per `python -m http.server` bereitstellen, `docs/demo/index.html?lang=de` (oder `en`, mit `&dialog=scan` für den Dialog) öffnen und einen Screenshot machen.

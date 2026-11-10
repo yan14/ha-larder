@@ -1,0 +1,87 @@
+<!doctype html>
+<!--
+  Demo-Seite für die README-Screenshots: lädt das echte Panel mit erfundenen Daten.
+  Aufruf: python -m http.server im Repo-Hauptverzeichnis, dann
+  /docs/demo/index.html?lang=en|de&dialog=0|1&width=...
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  :root {
+    --primary-color: #03a9f4; --primary-background-color: #fafafa; --card-background-color: #fff;
+    --primary-text-color: #212121; --secondary-text-color: #727272; --divider-color: #e0e0e0;
+    --app-header-background-color: #03a9f4; --app-header-text-color: #fff; --text-primary-color: #fff;
+    --error-color: #db4437; --warning-color: #ffa600;
+  }
+  body { margin: 0; font-family: Roboto, "Helvetica Neue", Arial, sans-serif; }
+</style>
+</head>
+<body>
+<script type="module">
+import { QR } from "./qr-data.js";
+import "/custom_components/zwilling_storage/frontend/zwilling-storage-panel.js";
+
+const q = new URLSearchParams(location.search);
+const lang = q.get("lang") || "en";
+const de = lang === "de";
+const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
+const ago = (h) => new Date(Date.now() - h * 3600e3).toISOString();
+
+const areas = de
+  ? { kitchen: "Küche", cellar: "Keller", pantry: "Vorratskammer" }
+  : { kitchen: "Kitchen", cellar: "Basement", pantry: "Pantry" };
+const doses = de ? [
+  ["Dose HA-K7M2PQ4X", "kitchen", "Tomatensuppe", 2, 20],
+  ["Dose 34OL", "kitchen", "Hähnchen-Curry", 1, 52],
+  ["Dose HA-9TQ3W6ZD", "kitchen", "", null, null],
+  ["Nudeln", "pantry", "Penne", 180, 400],
+  ["Reis", "pantry", "Basmati", 300, 700],
+  ["Gemüsebrühe", "cellar", "Gemüsebrühe selbst gekocht", -2, 30],
+  ["Bolognese", "cellar", "Bolognese-Sauce", 40, 96],
+] : [
+  ["Dose HA-K7M2PQ4X", "kitchen", "Tomato soup", 2, 20],
+  ["Dose 34OL", "kitchen", "Chicken curry", 1, 52],
+  ["Dose HA-9TQ3W6ZD", "kitchen", "", null, null],
+  ["Pasta", "pantry", "Penne", 180, 400],
+  ["Rice", "pantry", "Basmati", 300, 700],
+  ["Vegetable stock", "cellar", "Homemade vegetable stock", -2, 30],
+  ["Bolognese", "cellar", "Bolognese sauce", 40, 96],
+];
+const entities = {}, devices = {}, states = {};
+doses.forEach((d, i) => {
+  const id = `demo${String(i).padStart(2, "0")}`;
+  const [name, area, content, mhd, hoursAgo] = d;
+  devices[id] = { id, name, name_by_user: null, area_id: area };
+  const ids = { text: `text.${id}_c`, date: `date.${id}_b`, datetime: `datetime.${id}_f`, button: `button.${id}_e`, image: `image.${id}_q` };
+  for (const e of Object.values(ids)) entities[e] = { entity_id: e, device_id: id, platform: "zwilling_storage" };
+  const has = content !== "";
+  states[ids.text] = { entity_id: ids.text, state: has ? content : "", attributes: {} };
+  states[ids.date] = { entity_id: ids.date, state: has && mhd !== null ? day(mhd) : "unknown", attributes: {} };
+  states[ids.datetime] = { entity_id: ids.datetime, state: has && hoursAgo !== null ? ago(hoursAgo) : "unknown", attributes: {} };
+  states[ids.button] = { entity_id: ids.button, state: "unknown", attributes: {} };
+  states[ids.image] = { entity_id: ids.image, state: "x", attributes: { entity_picture: QR[i] } };
+});
+const hass = {
+  entities, devices, states, language: lang, user: { is_admin: true },
+  areas: Object.fromEntries(Object.entries(areas).map(([k, v]) => [k, { area_id: k, name: v }])),
+  hassUrl: (p) => p, callService() {}, callApi: async () => ({}), callWS: async () => ({}),
+};
+
+const width = Number(q.get("width") || 1100);
+document.body.style.width = width + "px";
+const el = document.createElement("zwilling-storage-panel");
+document.body.appendChild(el);
+el.hass = hass;
+if (q.get("dialog") === "1") el.openAddDialog();
+if (q.get("dialog") === "scan") {
+  // Wie nach einem Scan über den Kurzbefehl: Dialog mit vorbelegtem Zwilling-Code
+  el.openAddDialog("zwilling://zwillingapp/food-storage/in/?tc=42ML30&s=m&cc=6KP2");
+  el.shadowRoot.querySelector('[data-f="name"]').value = de ? "Linsensuppe" : "Lentil soup";
+  const sel = el.shadowRoot.querySelector(".dialog select");
+  sel.value = "pantry";
+}
+</script>
+</body>
+</html>

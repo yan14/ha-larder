@@ -18,8 +18,10 @@ The values survive restarts. "Empty container" is a regular button entity, so yo
 
 You also get:
 
-- a **dashboard** "Zwilling containers" in the sidebar that lists all containers and updates itself,
+- a **dashboard** "Zwilling containers" in the sidebar (see [below](#dashboard-zwilling-containers)) that lists all containers, lets you add containers and edit everything, and updates itself,
 - a **scan webhook** for the original Zwilling QR codes (iOS Shortcut, see below).
+
+<p align="center"><img src="docs/images/dashboard-en.png" width="720" alt="Dashboard Zwilling containers (demo data)"></p>
 
 ## Installation via HACS
 
@@ -47,6 +49,8 @@ The ID alone (`cc`, here `34OL`) is enough as well. You can optionally give the 
 
 Home Assistant has no camera in this dialog. On iOS you read the text with a Shortcut (next sections) and paste it.
 
+You can also add containers in the sidebar dashboard (button **+ Add container**), see [below](#adding-a-container-from-the-dashboard). That is the quickest way once the first container exists.
+
 ## Scanning the QR code directly
 
 Every container has the image entity **QR code**. It contains a link that makes the Home Assistant app jump straight to the container's device page (`homeassistant://navigate/config/devices/device/<device-id>`). You do not need a Shortcut for this.
@@ -58,7 +62,9 @@ The code points to the device ID in Home Assistant. If you delete the container 
 
 ## Dashboard "Zwilling containers"
 
-As soon as at least one container exists, a sidebar entry **Zwilling containers** (German UI: "Zwilling Dosen") appears. It needs no configuration:
+As soon as at least one container exists, a sidebar entry **Zwilling containers** (German UI: "Zwilling Dosen") appears. It needs no configuration and shows every container on a card (screenshot at the top):
+
+*The screenshots show demo data. The panel adapts to your Home Assistant theme and language (English and German).*
 
 - All containers of the integration, grouped by **area** (the area of the device) and sorted by name.
 - Per container: area, **contents**, **best before** (with a hint "expired" or "n days left" starting 3 days before), **filled on**, the **Empty container** button and the QR code as a small image.
@@ -68,6 +74,16 @@ As soon as at least one container exists, a sidebar entry **Zwilling containers*
 - New containers, changed values and changed areas show up immediately, no reload needed.
 
 The panel is visible to all users, but only **administrators** can add containers and change areas (the same restriction as in the settings). Other users see the area as text. It is not a classic Lovelace dashboard and cannot be edited with the card editor. In return it updates itself.
+
+### Adding a container from the dashboard
+
+**+ Add container** opens a dialog:
+
+<p align="center"><img src="docs/images/add-dialog-en.png" width="560" alt="Add container dialog"></p>
+
+- **Create new QR code** generates a new unique ID. Afterwards open the card (or the device) and print the QR code.
+- **Read Zwilling QR code** needs the content of the original code or just the ID. When you come from the iOS Shortcut, the field is already filled in.
+- Name and area are optional. You can change both later (the area right on the card).
 
 ## iOS Shortcut for the original Zwilling codes
 
@@ -141,3 +157,5 @@ pytest
 npm install
 npm test        # tests for the panel (jsdom)
 ```
+
+The screenshots come from the real panel code with demo data: serve the repository (`python -m http.server`), open `docs/demo/index.html?lang=en` (or `de`, plus `&dialog=scan` for the dialog) and take a screenshot.

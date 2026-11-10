@@ -188,11 +188,12 @@ const STYLE = `
   .card .name { font-size: 18px; font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .card a.open { font-size: 13px; color: var(--primary-color); cursor: pointer; text-decoration: none; white-space: nowrap; }
   .card .arealine { font-size: 13px; color: var(--secondary-text-color); margin-top: -6px; }
-  .row { display: flex; align-items: center; gap: 8px; }
-  .row label { width: 104px; flex: none; font-size: 14px; color: var(--secondary-text-color); }
-  .row input { flex: 1; min-width: 0; font: inherit; color: var(--primary-text-color); background: var(--card-background-color, #fff);
+  .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; row-gap: 2px; column-gap: 0; }
+  .row label { grid-column: 1 / -1; font-size: 13px; color: var(--secondary-text-color); }
+  .row input { min-width: 0; font: inherit; color: var(--primary-text-color); background: var(--card-background-color, #fff);
     border: 1px solid var(--divider-color); border-radius: 6px; padding: 6px 8px; box-sizing: border-box; color-scheme: light dark; }
   .row input:disabled { opacity: .5; }
+  .row .badge, .row button.now { margin-left: 8px; }
   .row button.now { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 6px; cursor: pointer;
     border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
   .badge { display: none; font-size: 12px; padding: 2px 8px; border-radius: 10px; color: #fff; white-space: nowrap; }
@@ -205,10 +206,10 @@ const STYLE = `
   button:disabled { opacity: .5; cursor: default; }
   .qr { width: 72px; height: 72px; border-radius: 6px; background: #fff; display: none; image-rendering: pixelated; }
   .qr.visible { display: block; }
-  .row select { flex: 1; min-width: 0; font: inherit; color: var(--primary-text-color); background: var(--card-background-color, #fff);
+  .row select { grid-column: 1 / -1; min-width: 0; font: inherit; color: var(--primary-text-color); background: var(--card-background-color, #fff);
     border: 1px solid var(--divider-color); border-radius: 6px; padding: 6px 8px; box-sizing: border-box; }
   .row.arearow { display: none; }
-  .row.arearow.visible { display: flex; }
+  .row.arearow.visible { display: grid; }
   .arealine.hidden { display: none; }
   header button.add { font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
     border: 1px solid currentColor; background: none; color: inherit; display: none; }
