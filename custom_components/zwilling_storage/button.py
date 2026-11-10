@@ -1,4 +1,4 @@
-"""Button 'Behälter leeren': setzt das Textfeld 'Inhalt' auf leer."""
+"""Button 'Behälter leeren': setzt Inhalt, MHD und Befüllt-am der Dose zurück."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ async def async_setup_entry(
 
 
 class ZwillingEmptyButton(ButtonEntity, ZwillingEntity):
-    """Leert die Dose: Inhalt-Textfeld wird auf einen leeren Text gesetzt."""
+    """Leert die Dose: Inhalt, MHD und 'Befüllt am' werden zurückgesetzt."""
 
     _key = "empty_container"
 
@@ -29,10 +29,11 @@ class ZwillingEmptyButton(ButtonEntity, ZwillingEntity):
         self._runtime: ZwillingRuntime = entry.runtime_data
 
     async def async_press(self) -> None:
-        content = self._runtime.content
-        if content is None:
+        entities = list(self._runtime.resettable.values())
+        if not entities:
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
-                translation_key="content_entity_missing",
+                translation_key="nothing_to_reset",
             )
-        await content.async_set_value("")
+        for entity in entities:
+            await entity.async_reset()

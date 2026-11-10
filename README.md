@@ -7,7 +7,7 @@ Home-Assistant-Integration für Zwilling-Frischhaltedosen mit QR-Code. Pro Dose 
 | **Befüllt am** | `datetime` | Wann wurde die Dose befüllt? |
 | **MHD** | `date` | Mindesthaltbarkeitsdatum |
 | **Inhalt** | `text` | Was ist in der Dose? |
-| **Behälter leeren** | `button` | Setzt den **Inhalt** auf leer (MHD und „Befüllt am“ bleiben unverändert) |
+| **Behälter leeren** | `button` | Setzt die Dose komplett zurück: **Inhalt** wird leer, **MHD** und **Befüllt am** werden gelöscht |
 | **QR-Code** | `image` | QR-Code der Dose als Bild: Scannen mit der Kamera-App öffnet direkt das Gerät in der Home-Assistant-App |
 
 Die Werte bleiben über Neustarts erhalten. „Behälter leeren“ ist eine normale Button-Entität, lässt sich also auf Dashboards und in Automationen über `button.press` verwenden.

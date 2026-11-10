@@ -202,7 +202,7 @@ async def test_restore_state(hass: HomeAssistant) -> None:
     assert hass.states.get(text_entity.entity_id).state == "Lasagne"
 
 
-async def test_empty_button_clears_content_only(hass: HomeAssistant) -> None:
+async def test_empty_button_resets_everything_of_the_container(hass: HomeAssistant) -> None:
     entry = MockConfigEntry(
         domain=DOMAIN,
         unique_id="34OL",
@@ -214,6 +214,7 @@ async def test_empty_button_clears_content_only(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
 
     dt_id = next(s.entity_id for s in hass.states.async_all("datetime"))
+    date_id = next(s.entity_id for s in hass.states.async_all("date"))
     text_id = next(s.entity_id for s in hass.states.async_all("text"))
     button_id = next(s.entity_id for s in hass.states.async_all("button"))
     assert button_id.startswith("button.dose_34ol_")
@@ -225,19 +226,26 @@ async def test_empty_button_clears_content_only(hass: HomeAssistant) -> None:
         blocking=True,
     )
     await hass.services.async_call(
+        "date", "set_value", {"entity_id": date_id, "date": "2026-12-24"}, blocking=True
+    )
+    await hass.services.async_call(
         "text", "set_value", {"entity_id": text_id, "value": "Gulasch"}, blocking=True
     )
     assert hass.states.get(text_id).state == "Gulasch"
+    assert hass.states.get(date_id).state == "2026-12-24"
+    assert hass.states.get(dt_id).state == "2026-11-09T10:00:00+00:00"
 
     await hass.services.async_call(
         "button", "press", {"entity_id": button_id}, blocking=True
     )
     assert hass.states.get(text_id).state == ""
-    # Befüll-Datum bleibt unverändert
-    assert hass.states.get(dt_id).state == "2026-11-09T10:00:00+00:00"
+    assert hass.states.get(date_id).state == "unknown"
+    assert hass.states.get(dt_id).state == "unknown"
 
 
-async def test_empty_button_without_content_entity_raises(hass: HomeAssistant) -> None:
+async def test_empty_button_resets_only_available_entities_and_raises_if_none(
+    hass: HomeAssistant,
+) -> None:
     from homeassistant.exceptions import HomeAssistantError
 
     entry = MockConfigEntry(
@@ -250,8 +258,24 @@ async def test_empty_button_without_content_entity_raises(hass: HomeAssistant) -
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 
+    text_id = next(s.entity_id for s in hass.states.async_all("text"))
+    date_id = next(s.entity_id for s in hass.states.async_all("date"))
     button_id = next(s.entity_id for s in hass.states.async_all("button"))
-    entry.runtime_data.content = None
+    await hass.services.async_call(
+        "text", "set_value", {"entity_id": text_id, "value": "Suppe"}, blocking=True
+    )
+    await hass.services.async_call(
+        "date", "set_value", {"entity_id": date_id, "date": "2026-12-24"}, blocking=True
+    )
+
+    # MHD-Entität fehlt: der Rest wird trotzdem zurückgesetzt
+    del entry.runtime_data.resettable["best_before"]
+    await hass.services.async_call("button", "press", {"entity_id": button_id}, blocking=True)
+    assert hass.states.get(text_id).state == ""
+    assert hass.states.get(date_id).state == "2026-12-24"
+
+    # gar nichts mehr zurückzusetzen: verständlicher Fehler
+    entry.runtime_data.resettable.clear()
     with pytest.raises(HomeAssistantError):
         await hass.services.async_call(
             "button", "press", {"entity_id": button_id}, blocking=True

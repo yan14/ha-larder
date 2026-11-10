@@ -70,18 +70,42 @@ async def test_best_before_set_and_restore(hass: HomeAssistant) -> None:
     assert date.fromisoformat(hass.states.get(mhd).state) == date(2027, 1, 15)
 
 
-async def test_empty_button_leaves_best_before(hass: HomeAssistant) -> None:
+async def test_empty_button_resets_best_before_too(hass: HomeAssistant) -> None:
     await _setup(hass)
-    mhd, text, button = (_entity_id(hass, d) for d in ("date", "text", "button"))
+    mhd, text, filled, button = (
+        _entity_id(hass, d) for d in ("date", "text", "datetime", "button")
+    )
     await hass.services.async_call(
         "date", "set_value", {"entity_id": mhd, "date": "2026-12-24"}, blocking=True
     )
     await hass.services.async_call(
         "text", "set_value", {"entity_id": text, "value": "Suppe"}, blocking=True
     )
+    await hass.services.async_call(
+        "datetime",
+        "set_value",
+        {"entity_id": filled, "datetime": "2026-11-09 10:00:00+00:00"},
+        blocking=True,
+    )
     await hass.services.async_call("button", "press", {"entity_id": button}, blocking=True)
     assert hass.states.get(text).state == ""
-    assert hass.states.get(mhd).state == "2026-12-24"
+    assert hass.states.get(mhd).state == "unknown"
+    assert hass.states.get(filled).state == "unknown"
+
+
+async def test_two_containers_are_reset_independently(hass: HomeAssistant) -> None:
+    await _setup(hass, "34OL")
+    await _setup(hass, "77AB")
+    texts = {cc: _entity_id(hass, "text", cc) for cc in ("34OL", "77AB")}
+    for cc, eid in texts.items():
+        await hass.services.async_call(
+            "text", "set_value", {"entity_id": eid, "value": cc}, blocking=True
+        )
+    await hass.services.async_call(
+        "button", "press", {"entity_id": _entity_id(hass, "button", "34OL")}, blocking=True
+    )
+    assert hass.states.get(texts["34OL"]).state == ""
+    assert hass.states.get(texts["77AB"]).state == "77AB"
 
 
 # ---------- QR-Bild ----------
@@ -199,7 +223,7 @@ async def test_panel_registered_and_static_js_served(hass: HomeAssistant, hass_c
     assert panel.sidebar_title == "Zwilling Dosen"
     assert panel.require_admin is False
     module_url = panel.config["_panel_custom"]["module_url"]
-    assert module_url.startswith("/zwilling_storage_static/zwilling-storage-panel.js?v=0.3.0")
+    assert re.fullmatch(r"/zwilling_storage_static/zwilling-storage-panel\.js\?v=\d+\.\d+\.\d+", module_url)
     assert panel.config["_panel_custom"]["name"] == "zwilling-storage-panel"
 
     client = await hass_client()

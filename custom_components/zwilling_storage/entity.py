@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
@@ -15,9 +15,9 @@ from .const import CONF_CC, CONF_SIZE, CONF_TC, DOMAIN, MANUFACTURER
 
 @dataclass
 class ZwillingRuntime:
-    """Laufzeitdaten einer Dose: Verweis auf die Inhalt-Entität (setzt die text-Plattform)."""
+    """Laufzeitdaten einer Dose: die Entitäten, die 'Behälter leeren' zurücksetzt."""
 
-    content: ZwillingEntity | None = None
+    resettable: dict[str, ZwillingResettable] = field(default_factory=dict)
 
 
 type ZwillingConfigEntry = ConfigEntry[ZwillingRuntime]
@@ -54,3 +54,10 @@ class ZwillingEntity(RestoreEntity):
         if last is None or last.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
             return None
         return last
+
+
+class ZwillingResettable(ZwillingEntity):
+    """Entität, deren Wert 'Behälter leeren' zurücksetzt (Inhalt, MHD, Befüllt am)."""
+
+    async def async_reset(self) -> None:
+        raise NotImplementedError

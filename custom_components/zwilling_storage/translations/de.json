@@ -60,8 +60,8 @@
     }
   },
   "exceptions": {
-    "content_entity_missing": {
-      "message": "Die Entität „Inhalt“ dieser Dose ist nicht verfügbar (deaktiviert?)."
+    "nothing_to_reset": {
+      "message": "Für diese Dose ist keine Entität zum Zurücksetzen verfügbar (Inhalt, MHD und „Befüllt am“ sind deaktiviert?)."
     }
   },
   "options": {
