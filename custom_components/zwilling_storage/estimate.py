@@ -32,7 +32,10 @@ from . import shelf_life
 from .const import (
     CONF_AI_ENABLED,
     CONF_AI_TASK_ENTITY,
+    CONF_CALENDAR_ENTITY,
     CONF_ESTIMATE_MODE,
+    CONF_OPENED_DAYS,
+    DEFAULT_OPENED_DAYS,
     DOMAIN,
     ESTIMATE_AI,
     ESTIMATE_MODES,
@@ -197,6 +200,8 @@ class Estimator:
         self.hass = hass
         self._store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
         self.mode = ESTIMATE_TABLE
+        self.opened_days = DEFAULT_OPENED_DAYS
+        self.calendar_entity: str | None = None
         self.ai_task_entity: str | None = None
         self._cache: dict[str, dict[str, Any]] = {}
 
@@ -208,7 +213,9 @@ class Estimator:
             # Einstellung aus Version 0.5: KI an → nur KI (bisheriges Verhalten), sonst Tabelle.
             mode = ESTIMATE_AI if settings.get(CONF_AI_ENABLED) else ESTIMATE_TABLE
         self.mode = mode
+        self.opened_days = min(max(int(settings.get(CONF_OPENED_DAYS, DEFAULT_OPENED_DAYS)), 1), 365)
         self.ai_task_entity = settings.get(CONF_AI_TASK_ENTITY) or None
+        self.calendar_entity = settings.get(CONF_CALENDAR_ENTITY) or None
         self._cache = data.get("cache", {})
 
     @property
@@ -223,6 +230,8 @@ class Estimator:
         return {
             "settings": {
                 CONF_ESTIMATE_MODE: self.mode,
+                CONF_OPENED_DAYS: self.opened_days,
+                CONF_CALENDAR_ENTITY: self.calendar_entity,
                 CONF_AI_TASK_ENTITY: self.ai_task_entity,
             },
             "cache": self._cache,
@@ -231,8 +240,17 @@ class Estimator:
     def _schedule_save(self) -> None:
         self._store.async_delay_save(self._data, 1)
 
-    async def async_update_settings(self, mode: str, entity: str | None) -> None:
+    async def async_update_settings(
+        self,
+        mode: str,
+        entity: str | None,
+        opened_days: int | None = None,
+        calendar_entity: str | None = None,
+    ) -> None:
+        self.calendar_entity = calendar_entity or None
         self.mode = mode if mode in ESTIMATE_MODES else ESTIMATE_TABLE
+        if opened_days is not None:
+            self.opened_days = min(max(int(opened_days), 1), 365)
         self.ai_task_entity = entity or None
         await self._store.async_save(self._data())
 

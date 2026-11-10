@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any
 
 import voluptuous as vol
@@ -23,6 +23,7 @@ from .const import (
     DOMAIN,
     SERVICE_CLEAR_BEST_BEFORE,
     SERVICE_ESTIMATE_BEST_BEFORE,
+    SERVICE_MARK_OPENED,
     SIGNAL_SETTINGS_CHANGED,
 )
 from .entity import ZwillingConfigEntry, ZwillingResettable
@@ -46,6 +47,12 @@ async def async_setup_entry(
     platform = async_get_current_platform()
     # Das Datum lässt sich über date.set_value nicht leeren, dafür gibt es diesen Service.
     platform.async_register_entity_service(SERVICE_CLEAR_BEST_BEFORE, None, "async_reset")
+    platform.async_register_entity_service(
+        SERVICE_MARK_OPENED,
+        {vol.Optional("days"): vol.All(vol.Coerce(int), vol.Range(min=1, max=365))},
+        "async_mark_opened",
+        supports_response=SupportsResponse.OPTIONAL,
+    )
     platform.async_register_entity_service(
         SERVICE_ESTIMATE_BEST_BEFORE,
         {
@@ -112,6 +119,19 @@ class ZwillingBestBefore(DateEntity, ZwillingResettable):
             except ValueError:
                 pass
         return dt_util.now().date()
+
+    async def async_mark_opened(self, days: int | None = None) -> dict[str, Any]:
+        """Dose wurde geöffnet: das MHD wird auf höchstens `days` Tage ab heute verkürzt."""
+        if days is None:
+            days = (await async_get_estimator(self.hass)).opened_days
+        limit = dt_util.now().date() + timedelta(days=days)
+        current = self._attr_native_value
+        new = limit if current is None else min(current, limit)
+        if new != current:
+            self._pending = None
+            self._attr_native_value = new
+            self.async_write_ha_state()
+        return {"best_before": new.isoformat(), "days": days, "shortened": new != current}
 
     async def async_estimate_best_before(
         self, apply: bool = True, overwrite: bool = False

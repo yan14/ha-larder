@@ -13,7 +13,7 @@ for (const key of ["window", "document", "HTMLElement", "customElements", "Event
   globalThis[key] = dom.window[key];
 }
 
-const { STRINGS, listAreas, collectDevices, daysUntil, toLocalInputValue, sourceLabel } = await import(
+const { STRINGS, listAreas, collectDevices, daysUntil, toLocalInputValue, sourceLabel, arrangeDevices, addDays } = await import(
   "../../custom_components/zwilling_storage/frontend/zwilling-storage-panel.js"
 );
 
@@ -90,6 +90,7 @@ const areaHeadings = (el) => $$(el, "h2.area").map((n) => n.textContent);
 
 test.beforeEach(() => {
   document.body.innerHTML = "";
+  dom.window.localStorage.clear();
 });
 
 test("collectDevices: nur Zwilling-Geräte, sortiert nach Bereich, dann Name; ohne Bereich zuletzt", () => {
@@ -802,4 +803,110 @@ test("Schätzungen: Fehler des Servers wird angezeigt", async () => {
   $$(el, "#estimates .est:not(.new)")[0].querySelector("button.save").click();
   await flush();
   assert.match($(el, "#notice").textContent, /existiert nicht/);
+});
+
+// ---------- Suche, Filter, Sortierung, Schnellaktionen ----------
+
+const FRIDGE_DOSES = [
+  { id: "d1", name: "Dose A", area: "kitchen", content: "Pizza", mhd: iso(-1) },
+  { id: "d2", name: "Dose B", area: "kitchen", content: "Suppe", mhd: iso(2) },
+  { id: "d3", name: "Dose C", area: "cellar", content: "Nudeln", mhd: iso(30) },
+  { id: "d4", name: "Dose D", area: "cellar" },
+  { id: "d5", name: "Dose E", area: "cellar", content: "Reis" },
+];
+const names = (list) => list.map((d) => d.name);
+
+test("addDays verschiebt ISO-Daten über Monats- und Jahresgrenzen", () => {
+  assert.equal(addDays("2026-11-10", 1), "2026-11-11");
+  assert.equal(addDays("2026-12-31", 1), "2027-01-01");
+  assert.equal(addDays("2026-02-28", 1), "2026-03-01");
+  assert.equal(addDays("", 1), null);
+});
+
+test("arrangeDevices: Filter, Suche und Sortierung", () => {
+  const hass = makeHass(FRIDGE_DOSES, { areas: AREAS });
+  const devices = collectDevices(hass);
+  const run = (opts) => names(arrangeDevices(hass, devices, opts));
+  assert.deepEqual(run({}), ["Dose C", "Dose D", "Dose E", "Dose A", "Dose B"]); // nach Bereich: Keller, Küche
+  assert.deepEqual(run({ filter: "soon" }), ["Dose B"]);
+  assert.deepEqual(run({ filter: "expired" }), ["Dose A"]);
+  assert.deepEqual(run({ filter: "filled" }), ["Dose C", "Dose E", "Dose A", "Dose B"]);
+  assert.deepEqual(run({ filter: "empty" }), ["Dose D"]);
+  assert.deepEqual(run({ query: "pizza" }), ["Dose A"]);
+  assert.deepEqual(run({ query: "KELLER" }), ["Dose C", "Dose D", "Dose E"]); // Suche im Bereichsnamen
+  assert.deepEqual(run({ query: "dose b" }), ["Dose B"]);
+  assert.deepEqual(run({ sort: "date" }), ["Dose A", "Dose B", "Dose C", "Dose D", "Dose E"]); // ohne MHD zuletzt
+  assert.deepEqual(run({ sort: "name" }), ["Dose A", "Dose B", "Dose C", "Dose D", "Dose E"]);
+  assert.deepEqual(run({ query: "xyz" }), []);
+});
+
+test("Toolbar: Suche und Filter blenden Karten aus, Sortierung nach MHD entfernt die Bereichsüberschriften", () => {
+  const el = mount(adminHass(FRIDGE_DOSES));
+  assert.equal($(el, ".toolbar").hidden, false);
+  assert.equal(cardNames(el).length, 5);
+  assert.deepEqual(areaHeadings(el), ["Keller", "Küche"]);
+
+  const query = $(el, '[data-f="query"]');
+  query.value = "suppe";
+  query.dispatchEvent(new dom.window.Event("input"));
+  assert.deepEqual(cardNames(el), ["Dose B"]);
+
+  query.value = "";
+  query.dispatchEvent(new dom.window.Event("input"));
+  const sort = $(el, '[data-f="sort"]');
+  sort.value = "date";
+  sort.dispatchEvent(new dom.window.Event("change"));
+  assert.deepEqual(areaHeadings(el), []);
+  assert.deepEqual(cardNames(el), ["Dose A", "Dose B", "Dose C", "Dose D", "Dose E"]);
+
+  const filter = $(el, '[data-f="filter"]');
+  filter.value = "expired";
+  filter.dispatchEvent(new dom.window.Event("change"));
+  assert.deepEqual(cardNames(el), ["Dose A"]);
+  query.value = "gibt es nicht";
+  query.dispatchEvent(new dom.window.Event("input"));
+  assert.match($(el, ".none").textContent, /Keine Dose passt/);
+});
+
+test("Toolbar-Einstellungen werden im Browser gemerkt", () => {
+  const el = mount(adminHass(FRIDGE_DOSES));
+  const filter = $(el, '[data-f="filter"]');
+  filter.value = "soon";
+  filter.dispatchEvent(new dom.window.Event("change"));
+  document.body.innerHTML = "";
+  const again = mount(adminHass(FRIDGE_DOSES));
+  assert.equal($(again, '[data-f="filter"]').value, "soon");
+  assert.deepEqual(cardNames(again), ["Dose B"]);
+});
+
+test("Toolbar ist ohne Dosen und im Reiter 'Schätzungen' ausgeblendet", async () => {
+  assert.equal($(mount(adminHass([])), ".toolbar").hidden, true);
+  document.body.innerHTML = "";
+  const el = mount(estimatesHass());
+  $(el, '[data-view="estimates"]').click();
+  await flush();
+  assert.equal($(el, ".toolbar").hidden, true);
+});
+
+test("Schnellaktionen: +1 Tag setzt das MHD, Geöffnet ruft den Service", () => {
+  const hass = adminHass([{ id: "d1", name: "A", content: "Käse", mhd: "2026-12-31" }]);
+  const el = mount(hass);
+  const dateId = "date.d1_mhd";
+  assert.equal($(el, ".quickrow").classList.contains("visible"), true);
+  $(el, "button.plus1").click();
+  $(el, "button.opened").click();
+  assert.deepEqual(hass.calls, [
+    { domain: "date", service: "set_value", data: { entity_id: dateId, date: "2027-01-01" } },
+    { domain: D, service: "mark_opened", data: { entity_id: dateId } },
+  ]);
+});
+
+test("Schnellaktionen: ohne Inhalt versteckt, ohne MHD ist +1 Tag gesperrt", () => {
+  const empty = mount(adminHass([{ id: "d1", name: "A" }]));
+  assert.equal($(empty, ".quickrow").classList.contains("visible"), false);
+  document.body.innerHTML = "";
+  const noDate = mount(adminHass([{ id: "d1", name: "A", content: "Käse" }]));
+  assert.equal($(noDate, ".quickrow").classList.contains("visible"), true);
+  assert.equal($(noDate, "button.plus1").disabled, true);
+  assert.equal($(noDate, "button.opened").disabled, false);
 });

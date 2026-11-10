@@ -50,7 +50,7 @@ def test_english_is_really_english() -> None:
 @pytest.mark.parametrize("lang", ["de", "en"])
 def test_every_entity_key_has_name_and_icon(lang: str) -> None:
     keys = set()
-    for module in ("button", "date", "datetime", "image", "switch", "text"):
+    for module in ("button", "date", "datetime", "image", "sensor", "switch", "text"):
         src = (BASE / f"{module}.py").read_text(encoding="utf-8")
         found = re.findall(r'_key = "(\w+)"', src)
         assert len(found) == 1, module

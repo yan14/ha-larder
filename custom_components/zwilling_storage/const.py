@@ -9,6 +9,7 @@ PLATFORMS: list[Platform] = [
     Platform.DATE,
     Platform.DATETIME,
     Platform.IMAGE,
+    Platform.SENSOR,
     Platform.SWITCH,
     Platform.TEXT,
 ]
@@ -34,9 +35,15 @@ ESTIMATE_TABLE_AI = "table_ai"
 ESTIMATE_AI = "ai"
 ESTIMATE_MODES = [ESTIMATE_OFF, ESTIMATE_TABLE, ESTIMATE_TABLE_AI, ESTIMATE_AI]
 CONF_AI_TASK_ENTITY = "ai_task_entity"
+CONF_OPENED_DAYS = "opened_days"
+CONF_CALENDAR_ENTITY = "calendar_entity"
+DEFAULT_OPENED_DAYS = 3  # so lange hält eine geöffnete Dose noch
 SERVICE_ESTIMATE_BEST_BEFORE = "estimate_best_before"
 SERVICE_CLEAR_BEST_BEFORE = "clear_best_before"
 SERVICE_CLEAR_FILLED_AT = "clear_filled_at"
+SERVICE_GET_EXPIRING = "get_expiring"
+SERVICE_MARK_OPENED = "mark_opened"
+SOON_DAYS = 3  # ab so vielen Resttagen gilt eine Dose als "läuft bald ab"
 SIGNAL_SETTINGS_CHANGED = f"{DOMAIN}_settings_changed"
 
 # Seitenleisten-Panel "Zwilling Dosen"

@@ -406,3 +406,120 @@ async def test_ws_requires_admin(hass: HomeAssistant, hass_ws_client, hass_admin
     await client.send_json({"id": 1, "type": f"{DOMAIN}/estimates"})
     res = await client.receive_json()
     assert not res["success"] and res["error"]["code"] == "unauthorized"
+
+
+# ---------- Ablauf-Übersicht, Sensor, Blueprint ----------
+
+from pathlib import Path  # noqa: E402
+
+from custom_components.zwilling_storage.expiry import build_summary, status_for  # noqa: E402
+
+
+def test_status_for() -> None:
+    assert [status_for(x) for x in (None, -1, 0, 3, 4)] == ["none", "expired", "soon", "soon", "ok"]
+
+
+def test_build_summary_in_both_languages() -> None:
+    items = [
+        {"content": "Pizza", "name": "Dose A", "area": "Kühlschrank", "days_left": -2, "status": "expired"},
+        {"content": "", "name": "Dose B", "area": None, "days_left": 0, "status": "soon"},
+        {"content": "Suppe", "name": "C", "area": "Keller", "days_left": 1, "status": "soon"},
+    ]
+    de = build_summary(items, "de")
+    assert de.splitlines()[0] == "1 abgelaufen, 2 laufen bald ab:"
+    assert "• Pizza (Kühlschrank): seit 2 Tagen abgelaufen" in de
+    assert "• Dose B: heute" in de and "• Suppe (Keller): morgen" in de
+    en = build_summary(items, "en-GB")
+    assert en.splitlines()[0] == "1 expired, 2 expiring soon:"
+    assert "expired 2 days ago" in en and "tomorrow" in en
+    assert build_summary([], "de") == "Nichts läuft bald ab."
+
+
+async def _fill(hass: HomeAssistant, cc: str, content: str, days: int | None, area: str | None = None) -> None:
+    def eid(domain):
+        return _eid(hass, domain, cc)
+
+    await hass.services.async_call("text", "set_value", {"entity_id": eid("text"), "value": content}, blocking=True)
+    if days is not None:
+        value = (dt_util.now().date() + timedelta(days=days)).isoformat()
+        await hass.services.async_call("date", "set_value", {"entity_id": eid("date"), "date": value}, blocking=True)
+    if area:
+        area_entry = ar.async_get(hass).async_get_or_create(area)
+        device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, cc)})
+        dr.async_get(hass).async_update_device(device.id, area_id=area_entry.id)
+
+
+async def test_days_left_sensor_follows_date(hass: HomeAssistant) -> None:
+    await _setup(hass)
+    sensor = _eid(hass, "sensor")
+    assert hass.states.get(sensor).state == "unknown"
+    await _fill(hass, "34OL", "Pizza", 2)
+    await hass.async_block_till_done()
+    state = hass.states.get(sensor)
+    assert state.state == "2" and state.attributes["status"] == "soon"
+    assert state.attributes["unit_of_measurement"] == "d"
+    await _fill(hass, "34OL", "Pizza", -1)
+    await hass.async_block_till_done()
+    assert hass.states.get(sensor).state == "-1"
+    assert hass.states.get(sensor).attributes["status"] == "expired"
+    await hass.services.async_call(DOMAIN, "clear_best_before", {"entity_id": _eid(hass, "date")}, blocking=True)
+    await hass.async_block_till_done()
+    assert hass.states.get(sensor).state == "unknown"
+    assert hass.states.get(sensor).attributes["status"] == "none"
+
+
+async def test_get_expiring_service(hass: HomeAssistant) -> None:
+    await _setup(hass, "34OL")
+    await _setup(hass, "56BR")
+    await _setup(hass, "56IN")
+    await _fill(hass, "34OL", "Pizza", 1, "Kühlschrank")
+    await _fill(hass, "56BR", "Schinken", 9, "0 Grad Fach")
+    await _fill(hass, "56IN", "Suppe", -2)
+    await hass.async_block_till_done()
+
+    out = await hass.services.async_call(DOMAIN, "get_expiring", {}, blocking=True, return_response=True)
+    assert out["count"] == 2 and out["expired"] == 1
+    assert [i["content"] for i in out["items"]] == ["Suppe", "Pizza"]  # früheste zuerst
+    assert out["items"][1]["area"] == "Kühlschrank" and out["items"][1]["days_left"] == 1
+    assert "Pizza" in out["summary"] and "Schinken" not in out["summary"]
+
+    out = await hass.services.async_call(
+        DOMAIN, "get_expiring", {"days": 10, "include_expired": False}, blocking=True, return_response=True
+    )
+    assert [i["content"] for i in out["items"]] == ["Pizza", "Schinken"]
+
+    out = await hass.services.async_call(DOMAIN, "get_expiring", {"days": 0, "include_expired": False}, blocking=True, return_response=True)
+    assert out["count"] == 0 and out["summary"] == "Nothing expires soon."  # Test-HA ist englisch
+
+
+def test_blueprint_is_valid() -> None:
+    from homeassistant.components.blueprint.models import Blueprint
+    from homeassistant.util.yaml import load_yaml
+
+    path = Path(__file__).parent.parent / "blueprints/automation/zwilling_storage/expiry_notification.yaml"
+    blueprint = Blueprint(load_yaml(path), schema=__import__("homeassistant.components.automation.config", fromlist=["x"]).AUTOMATION_BLUEPRINT_SCHEMA)
+    assert blueprint.domain == "automation"
+    assert set(blueprint.inputs) >= {"notify_action", "send_time", "days", "include_expired", "title"}
+
+
+async def test_mark_opened_shortens_or_sets(hass: HomeAssistant) -> None:
+    entry = await _setup(hass)
+    date_id = _eid(hass, "date")
+    today = dt_util.now().date()
+    # ohne MHD: wird gesetzt (Standard 3 Tage)
+    out = (await hass.services.async_call(DOMAIN, "mark_opened", {"entity_id": date_id}, blocking=True, return_response=True))[date_id]
+    assert out["best_before"] == (today + timedelta(days=3)).isoformat() and out["shortened"] is True
+    # längeres MHD wird gekürzt, kürzeres bleibt
+    await _fill(hass, "34OL", "Käse", 20)
+    out = (await hass.services.async_call(DOMAIN, "mark_opened", {"entity_id": date_id}, blocking=True, return_response=True))[date_id]
+    assert out["best_before"] == (today + timedelta(days=3)).isoformat()
+    await _fill(hass, "34OL", "Käse", 1)
+    out = (await hass.services.async_call(DOMAIN, "mark_opened", {"entity_id": date_id, "days": 5}, blocking=True, return_response=True))[date_id]
+    assert out["best_before"] == (today + timedelta(days=1)).isoformat() and out["shortened"] is False
+
+    # Einstellung "Tage nach dem Öffnen"
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    await hass.config_entries.options.async_configure(result["flow_id"], {"estimate_mode": "table", "opened_days": 7})
+    await _fill(hass, "34OL", "Käse", 30)
+    out = (await hass.services.async_call(DOMAIN, "mark_opened", {"entity_id": date_id}, blocking=True, return_response=True))[date_id]
+    assert out["best_before"] == (today + timedelta(days=7)).isoformat()

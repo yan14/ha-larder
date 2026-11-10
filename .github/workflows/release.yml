@@ -1,0 +1,35 @@
+name: Release
+
+# Legt automatisch einen GitHub-Release an, sobald die Version in manifest.json neu ist.
+# HACS zeigt Releases als Versionen an. Der Tag lautet v<version>.
+on:
+  push:
+    branches: [main]
+    paths:
+      - custom_components/zwilling_storage/manifest.json
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create release if the version is new
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(jq -r .version custom_components/zwilling_storage/manifest.json)
+          tag="v${version}"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists, nothing to do."
+            exit 0
+          fi
+          gh release create "$tag" \
+            --target "$GITHUB_SHA" \
+            --title "$tag" \
+            --generate-notes \
+            --latest
+          echo "Created release $tag"

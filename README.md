@@ -13,6 +13,7 @@ Home Assistant integration for Zwilling food storage containers with a QR code. 
 | **Contents** | `text` | What is in the container? |
 | **Empty container** | `button` | Resets the whole container: **Contents** become empty, **Best before** and **Filled on** are cleared. **Vacuum** is deliberately kept, it is a property of the container, not of its contents |
 | **Vacuum** | `switch` | Is the container vacuum-sealed? On by default. Switch it off for a normal box. Used for the estimate |
+| **Days until best before** | `sensor` | Days left until the best-before date (negative = expired). The attribute `status` is `ok`, `soon` (3 days or less), `expired` or `none` |
 | **QR code** | `image` | The container's QR code as an image: scanning it with the camera app opens the device directly in the Home Assistant app |
 
 The values survive restarts. "Empty container" is a regular button entity, so you can use it on dashboards and in automations via `button.press`.
@@ -76,6 +77,9 @@ As soon as at least one container exists, a sidebar entry **Zwilling containers*
 - The **Vacuum** checkbox switches the vacuum property of the container.
 - With the [estimate](#best-before-estimate-built-in-table-and-optional-ai) enabled, **Estimate best before** appears under the date as soon as contents are entered and no date is set.
 - **+ Add container** (top right) adds a container: either *Create new QR code* or *Read Zwilling QR code*, with optional name and area. It uses the same flow as Settings → Devices & services.
+- Under the date: **+1 day** moves the best-before date by a day, **Opened** shortens it to the number of days you set in the settings (default 3). Without a date, one is set.
+- **Search, filter and sort** above the cards: search in name, contents and area; filter by *expiring soon*, *expired*, *filled* or *empty*; sort by area, best-before date (earliest first) or name. Your choice is remembered in the browser.
+- Administrators also get the **Estimates** tab (see [below](#managing-remembered-estimates)).
 - New containers, changed values and changed areas show up immediately, no reload needed.
 
 The panel is visible to all users, but only **administrators** can add containers and change areas (the same restriction as in the settings). Other users see the area as text. It is not a classic Lovelace dashboard and cannot be edited with the card editor. In return it updates itself.
@@ -161,6 +165,31 @@ The built-in table itself is not edited here. Entries you add or change simply t
 
 **Upgrading from 0.5:** "Estimate with AI" switched on becomes **AI only** (as before); switched off becomes **Table only**.
 
+## Expiry notifications
+
+The service `zwilling_storage.get_expiring` lists all containers whose best-before date is near or has passed and returns a ready-made text in the language of Home Assistant:
+
+```yaml
+action: zwilling_storage.get_expiring
+data:
+  days: 3               # containers expiring within 3 days
+  include_expired: true
+response_variable: result
+# result.count, result.expired, result.summary (text), result.items (name, content, area, best_before, days_left, status)
+```
+
+The easiest way is the included blueprint, which sends a notification once a day and stays quiet when nothing expires:
+
+[![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-zwilling-storage%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fzwilling_storage%2Fexpiry_notification.yaml)
+
+Choose a notification action such as `notify.mobile_app_your_iphone` (Developer tools → Actions), the time and how many days ahead to look. For your own dashboards or automations there is also the sensor **Days until best before** on every container.
+
+## Best-before dates in your calendar
+
+Under Settings → Devices & services → **Zwilling Food Storage** → **Configure** you can pick an existing **calendar** (Google, CalDAV, *Local Calendar* …). Every container then gets an all-day event "Best before: Pizza" on its best-before date. The event is created when a date is set, moved when the date or the contents change, and deleted when the date is cleared, the container is emptied or removed, or you pick another calendar. Your own events are recognised by a tag in the description and never touched otherwise.
+
+The calendar must be able to create **and** delete events. Read-only calendars (for example an iCal link) cannot be used; the *Local Calendar* integration is a good choice if you have no other one.
+
 ## iOS Shortcut for the original Zwilling codes
 
 This way is meant for the **printed Zwilling QR codes**. For codes you created yourself you do not need it, just scan them with the camera app.
@@ -232,6 +261,8 @@ This integration tracks the **physical, reusable container** (one device per con
 - [Grocy](https://github.com/custom-components/grocy): the Home Assistant integration for the self-hosted Grocy server (stock, best-before dates, shopping lists, chores).
 
 ## Development
+
+Releases are created automatically: when `version` in `manifest.json` is new on `main`, a GitHub workflow creates the tag `v<version>` and a release with generated notes.
 
 ```
 pip install -r requirements_test.txt

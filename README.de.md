@@ -13,6 +13,7 @@ Home-Assistant-Integration für Zwilling-Frischhaltedosen mit QR-Code. Pro Dose 
 | **Inhalt** | `text` | Was ist in der Dose? |
 | **Behälter leeren** | `button` | Setzt die Dose komplett zurück: **Inhalt** wird leer, **MHD** und **Befüllt am** werden gelöscht. **Vakuum** bleibt bewusst erhalten, es ist eine Eigenschaft der Dose und nicht des Inhalts |
 | **Vakuum** | `switch` | Ist die Dose vakuumiert? Standardmäßig an. Für eine normale Box ausschalten. Wird für die Schätzung verwendet |
+| **Tage bis MHD** | `sensor` | Verbleibende Tage bis zum MHD (negativ = abgelaufen). Das Attribut `status` ist `ok`, `soon` (3 Tage oder weniger), `expired` oder `none` |
 | **QR-Code** | `image` | QR-Code der Dose als Bild: Scannen mit der Kamera-App öffnet direkt das Gerät in der Home-Assistant-App |
 
 Die Werte bleiben über Neustarts erhalten. „Behälter leeren“ ist eine normale Button-Entität, lässt sich also auf Dashboards und in Automationen über `button.press` verwenden.
@@ -161,6 +162,31 @@ Die eingebaute Tabelle selbst wird hier nicht bearbeitet. Eigene und geänderte 
 
 **Update von 0.5:** War „Per KI schätzen“ an, wird daraus **Nur KI** (wie bisher); war es aus, wird es **Nur Tabelle**.
 
+## Ablauf-Benachrichtigungen
+
+Der Service `zwilling_storage.get_expiring` listet alle Dosen, deren MHD bald abläuft oder abgelaufen ist, und liefert einen fertigen Text in der Sprache von Home Assistant:
+
+```yaml
+action: zwilling_storage.get_expiring
+data:
+  days: 3               # Dosen, die innerhalb von 3 Tagen ablaufen
+  include_expired: true
+response_variable: result
+# result.count, result.expired, result.summary (Text), result.items (name, content, area, best_before, days_left, status)
+```
+
+Am einfachsten geht es mit dem mitgelieferten Blueprint, der einmal täglich eine Benachrichtigung schickt und schweigt, wenn nichts abläuft:
+
+[![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-zwilling-storage%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fzwilling_storage%2Fexpiry_notification.yaml)
+
+Wähle eine Benachrichtigungs-Aktion wie `notify.mobile_app_dein_iphone` (Entwicklerwerkzeuge → Aktionen), die Uhrzeit und wie viele Tage im Voraus geschaut wird. Für eigene Dashboards oder Automationen gibt es außerdem den Sensor **Tage bis MHD** an jeder Dose.
+
+## MHD im Kalender
+
+Unter Einstellungen → Geräte & Dienste → **Zwilling Food Storage** → **Konfigurieren** kannst du einen vorhandenen **Kalender** wählen (Google, CalDAV, *Lokaler Kalender* …). Jede Dose bekommt dann einen Ganztags-Termin „MHD: Pizza“ am Tag des MHD. Der Termin wird angelegt, sobald ein Datum gesetzt ist, verschoben, wenn sich Datum oder Inhalt ändern, und gelöscht, wenn das Datum gelöscht, die Dose geleert oder entfernt oder ein anderer Kalender gewählt wird. Eigene Termine werden an einer Kennung in der Beschreibung erkannt, andere Termine werden nie angefasst.
+
+Der Kalender muss Termine anlegen **und** löschen können. Reine Lese-Kalender (z. B. ein iCal-Link) gehen nicht; die Integration *Lokaler Kalender* ist eine gute Wahl, wenn du keinen anderen hast.
+
 ## iOS-Kurzbefehl für die originalen Zwilling-Codes
 
 Dieser Weg ist für die **aufgedruckten Zwilling-QR-Codes** gedacht. Für selbst erstellte Codes brauchst du ihn nicht, dort scannst du einfach mit der Kamera-App.
@@ -232,6 +258,8 @@ Diese Integration verwaltet den **physischen, wiederverwendbaren Behälter** (ei
 - [Grocy](https://github.com/custom-components/grocy): die Home-Assistant-Integration für den selbst gehosteten Grocy-Server (Bestand, MHD, Einkaufslisten, Aufgaben).
 
 ## Entwicklung
+
+Releases entstehen automatisch: Ist `version` in `manifest.json` auf `main` neu, legt ein GitHub-Workflow den Tag `v<Version>` und einen Release mit generierten Notizen an.
 
 ```
 pip install -r requirements_test.txt

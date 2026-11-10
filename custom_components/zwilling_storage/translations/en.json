@@ -64,6 +64,22 @@
       "vacuum": {
         "name": "Vacuum"
       }
+    },
+    "sensor": {
+      "days_left": {
+        "name": "Days until best before",
+        "state_attributes": {
+          "status": {
+            "name": "Status",
+            "state": {
+              "ok": "OK",
+              "soon": "Expires soon",
+              "expired": "Expired",
+              "none": "No date"
+            }
+          }
+        }
+      }
     }
   },
   "exceptions": {
@@ -108,11 +124,15 @@
         "description": "**Best-before estimate**\nControls how the “Estimate best before” button on the dashboard and the service work. The built-in table works without an AI service and without internet. AI uses the service you set up under Settings → Devices & services → “AI Task”; only the contents, the area name with its hints (temperature sensor, label description), vacuum yes/no and the filling date are sent. Values you corrected yourself always win.\n\n**Scan webhook**\nEnter this URL **once** in the iOS shortcut. It is secret: anyone who knows it can look up containers.\n\n`{webhook_url}`\n\nPath only: `{webhook_path}`\n\nSee the project README for the shortcut instructions.",
         "data": {
           "estimate_mode": "Best-before estimate",
-          "ai_task_entity": "AI task (empty = Home Assistant default)"
+          "ai_task_entity": "AI task (empty = Home Assistant default)",
+          "opened_days": "Shelf life after opening (days)",
+          "calendar_entity": "Calendar for best-before dates (optional)"
         },
         "data_description": {
           "estimate_mode": "Shows the “Estimate best before” button on the dashboard unless set to Off.",
-          "ai_task_entity": "Only needed if you have set up more than one AI service and an AI option is chosen."
+          "ai_task_entity": "Only needed if you have set up more than one AI service and an AI option is chosen.",
+          "opened_days": "The “Opened” button on the dashboard shortens the best-before date to at most this many days from today.",
+          "calendar_entity": "Writes each container's best-before date to this calendar as an all-day event (create, move, delete). The calendar must support creating and deleting events, e.g. Google, CalDAV or “Local Calendar”. Leave empty = off."
         }
       }
     }
@@ -139,6 +159,30 @@
     "clear_filled_at": {
       "name": "Clear filled on",
       "description": "Removes the filling date of the container."
+    },
+    "get_expiring": {
+      "name": "Get expiring containers",
+      "description": "Returns all containers whose best-before date is near or has passed, with a ready-made text for notifications (response: count, expired, items, summary).",
+      "fields": {
+        "days": {
+          "name": "Days",
+          "description": "Containers expiring within this many days."
+        },
+        "include_expired": {
+          "name": "Include expired",
+          "description": "Also list containers that have already expired."
+        }
+      }
+    },
+    "mark_opened": {
+      "name": "Mark as opened",
+      "description": "Shortens the best-before date to at most the given number of days from today. Without a date, one is set. Defaults to the setting “Shelf life after opening”.",
+      "fields": {
+        "days": {
+          "name": "Days",
+          "description": "Days from today (empty = value from the settings)."
+        }
+      }
     }
   },
   "selector": {

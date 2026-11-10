@@ -47,6 +47,20 @@ export const STRINGS = {
     estimating: "Schätze …",
     estimated: (days) => `Geschätzt: ca. ${days} ${days === 1 ? "Tag" : "Tage"} haltbar`,
     estimateFailed: "Die Schätzung ist fehlgeschlagen.",
+    plusOneDay: "+1 Tag",
+    opened: "Geöffnet",
+    searchPlaceholder: "Suchen …",
+    filterLabel: "Filter",
+    filterAll: "Alle",
+    filterSoon: "Läuft bald ab (≤ 3 Tage)",
+    filterExpired: "Abgelaufen",
+    filterFilled: "Befüllt",
+    filterEmpty: "Leer",
+    sortLabel: "Sortierung",
+    sortArea: "Nach Bereich",
+    sortDate: "Nach MHD",
+    sortName: "Nach Name",
+    noMatch: "Keine Dose passt zu Suche und Filter.",
     sourceTable: "Tabelle",
     sourceAi: "KI",
     sourceLearned: "von dir korrigiert",
@@ -112,6 +126,20 @@ export const STRINGS = {
     estimating: "Estimating…",
     estimated: (days) => `Estimated: about ${days} ${days === 1 ? "day" : "days"} shelf life`,
     estimateFailed: "The estimate failed.",
+    plusOneDay: "+1 day",
+    opened: "Opened",
+    searchPlaceholder: "Search …",
+    filterLabel: "Filter",
+    filterAll: "All",
+    filterSoon: "Expiring soon (≤ 3 days)",
+    filterExpired: "Expired",
+    filterFilled: "Filled",
+    filterEmpty: "Empty",
+    sortLabel: "Sort",
+    sortArea: "By area",
+    sortDate: "By best before",
+    sortName: "By name",
+    noMatch: "No container matches the search and filter.",
     sourceTable: "table",
     sourceAi: "AI",
     sourceLearned: "corrected by you",
@@ -224,6 +252,62 @@ export function daysUntil(isoDate, now = new Date()) {
   return Math.round((target - today) / 86400000);
 }
 
+/** ISO-Datum um n Tage verschieben (lokale Kalendertage, ohne Zeitzonen-Fallen). */
+export function addDays(isoDate, n) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate || "");
+  if (!m) return null;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]) + n);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+export const SOON_DAYS = 3;
+
+/**
+ * Dosen nach Suche filtern und sortieren. `sort`: "area" (Reihenfolge von collectDevices),
+ * "date" (frühestes MHD zuerst, ohne MHD zuletzt) oder "name". `filter`: all, soon, expired, filled, empty.
+ */
+export function arrangeDevices(hass, devices, { query = "", filter = "all", sort = "area" } = {}, now = new Date()) {
+  const states = hass.states || {};
+  const info = (dev) => {
+    const text = states[dev.entities.text];
+    const date = states[dev.entities.date];
+    const content = isValidState(text) ? text.state.trim() : "";
+    const days = isValidState(date) ? daysUntil(date.state, now) : null;
+    return { content, days };
+  };
+  const q = query.trim().toLowerCase();
+  const lang = (hass.language || "en").toLowerCase();
+  const cmp = (a, b) => a.localeCompare(b, lang, { numeric: true, sensitivity: "base" });
+  const rows = devices
+    .map((dev) => ({ dev, ...info(dev) }))
+    .filter(({ dev, content, days }) => {
+      if (q && ![dev.name, content, dev.areaName || ""].some((v) => v.toLowerCase().includes(q))) return false;
+      switch (filter) {
+        case "soon":
+          return days !== null && days >= 0 && days <= SOON_DAYS;
+        case "expired":
+          return days !== null && days < 0;
+        case "filled":
+          return content !== "";
+        case "empty":
+          return content === "";
+        default:
+          return true;
+      }
+    });
+  if (sort === "date") {
+    rows.sort((a, b) => {
+      if (a.days === null && b.days !== null) return 1;
+      if (a.days !== null && b.days === null) return -1;
+      if (a.days !== b.days && a.days !== null) return a.days - b.days;
+      return cmp(a.dev.name, b.dev.name);
+    });
+  } else if (sort === "name") {
+    rows.sort((a, b) => cmp(a.dev.name, b.dev.name));
+  }
+  return rows.map((r) => r.dev);
+}
+
 function isAdmin(hass) {
   return !!(hass && hass.user && hass.user.is_admin);
 }
@@ -314,6 +398,17 @@ const STYLE = `
     cursor: pointer; border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
   .estimaterow .tip { font-size: 13px; color: var(--secondary-text-color); }
   .estimaterow .tip.error { color: var(--error-color, #db4437); }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+  .toolbar[hidden] { display: none; }
+  .toolbar input, .toolbar select { font: inherit; color: var(--primary-text-color); background: var(--card-background-color, #fff);
+    border: 1px solid var(--divider-color); border-radius: 8px; padding: 8px 10px; box-sizing: border-box; min-width: 0; }
+  .toolbar input { flex: 1 1 180px; }
+  .toolbar select { flex: 0 1 auto; }
+  .quickrow { display: none; gap: 8px; margin-top: -4px; }
+  .quickrow.visible { display: flex; }
+  .quickrow button { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
+  .quickrow button:disabled { opacity: .5; cursor: default; }
   header .tabs { display: none; gap: 4px; }
   header .tabs.visible { display: flex; }
   header .tabs button { font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
@@ -345,6 +440,31 @@ const STYLE = `
   .none a { color: var(--primary-color); cursor: pointer; }
 `;
 
+const VIEW_KEY = `${DOMAIN}.panel`;
+
+/** Suche, Filter und Sortierung sind eine reine Anzeigepräferenz dieses Browsers. */
+function loadViewOptions() {
+  const defaults = { query: "", filter: "all", sort: "area" };
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(VIEW_KEY) || "{}");
+    return {
+      query: typeof stored.query === "string" ? stored.query : defaults.query,
+      filter: ["all", "soon", "expired", "filled", "empty"].includes(stored.filter) ? stored.filter : defaults.filter,
+      sort: ["area", "date", "name"].includes(stored.sort) ? stored.sort : defaults.sort,
+    };
+  } catch (err) {
+    return defaults;
+  }
+}
+
+function saveViewOptions(opts) {
+  try {
+    window.localStorage.setItem(VIEW_KEY, JSON.stringify(opts));
+  } catch (err) {
+    /* Speicher nicht verfügbar: Einstellung gilt nur bis zum Neuladen */
+  }
+}
+
 class DoseCard {
   constructor(panel, deviceId) {
     this._panel = panel;
@@ -360,6 +480,7 @@ class DoseCard {
       <div class="row arearow"><label data-l="area"></label><select data-f="area"></select></div>
       <div class="row"><label data-l="content"></label><input data-f="content" type="text" maxlength="255"></div>
       <div class="row"><label data-l="bestBefore"></label><input data-f="bestBefore" type="date"><span class="badge"></span></div>
+      <div class="quickrow"><button class="plus1" type="button"></button><button class="opened" type="button"></button></div>
       <div class="row"><label data-l="filledAt"></label><input data-f="filledAt" type="datetime-local"><button class="now" type="button"></button></div>
       <div class="estimaterow"><button class="estimate" type="button"></button><span class="tip" role="status"></span></div>
       <div class="row vacrow"><label class="check"><input type="checkbox" data-f="vacuum"><span data-l="vacuum"></span></label></div>
@@ -404,6 +525,13 @@ class DoseCard {
       else if (!Number.isNaN(d.getTime())) {
         this._call("datetime", "set_value", { entity_id: this.ids.datetime, datetime: d.toISOString() });
       }
+    });
+    this.q("button.plus1").addEventListener("click", () => {
+      const next = addDays(this.inputs.bestBefore.value, 1);
+      if (next && this.ids.date) this._call("date", "set_value", { entity_id: this.ids.date, date: next });
+    });
+    this.q("button.opened").addEventListener("click", () => {
+      if (this.ids.date) this._call(DOMAIN, "mark_opened", { entity_id: this.ids.date });
     });
     this.q("button.now").addEventListener("click", () => {
       if (this.ids.datetime) this._call("datetime", "set_value", { entity_id: this.ids.datetime, datetime: new Date().toISOString() });
@@ -511,6 +639,8 @@ class DoseCard {
     this.q('[data-l="bestBefore"]').textContent = t.bestBefore;
     this.q('[data-l="filledAt"]').textContent = t.filledAt;
     this.q("button.now").textContent = t.now;
+    this.q("button.plus1").textContent = t.plusOneDay;
+    this.q("button.opened").textContent = t.opened;
     this.q("button.empty").textContent = t.emptyContainer;
     this.q('[data-l="vacuum"]').textContent = t.vacuum;
     if (!this._estimating) this.q("button.estimate").textContent = t.estimate;
@@ -529,6 +659,11 @@ class DoseCard {
     this.inputs.bestBefore.disabled = !ok(date);
     this.inputs.filledAt.disabled = !ok(dt);
     this.q("button.now").disabled = !ok(dt);
+
+    // Schnellaktionen unter dem MHD: +1 Tag (nur mit MHD) und Geöffnet (sobald etwas drin ist).
+    const hasContentNow = isValidState(text) && text.state.trim() !== "";
+    this.q(".quickrow").classList.toggle("visible", ok(date) && hasContentNow);
+    this.q("button.plus1").disabled = !isValidState(date);
 
     const vac = states[dev.entities.switch];
     const vacInput = this.q('[data-f="vacuum"]');
@@ -586,7 +721,7 @@ class ZwillingStoragePanel extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>${STYLE}</style>
       <header><button id="menu" type="button" aria-label="Menu">☰</button><h1></h1><span class="count"></span><div class="tabs"><button type="button" data-view="containers"></button><button type="button" data-view="estimates"></button></div><button class="add" type="button"></button></header>
-      <main><div id="notice" class="notice" hidden></div><div id="content"></div><div id="estimates" hidden></div></main>
+      <main><div id="notice" class="notice" hidden></div><div class="toolbar" hidden><input type="search" data-f="query" autocomplete="off"><select data-f="filter"></select><select data-f="sort"></select></div><div id="content"></div><div id="estimates" hidden></div></main>
       <div class="overlay" hidden>
         <form class="dialog" novalidate>
           <h2></h2>
@@ -621,6 +756,17 @@ class ZwillingStoragePanel extends HTMLElement {
     });
     this._view = "containers";
     this._est = null;
+    this._toolbar = this.shadowRoot.querySelector(".toolbar");
+    this._opts = loadViewOptions();
+    for (const field of ["query", "filter", "sort"]) {
+      const node = this._toolbar.querySelector(`[data-f="${field}"]`);
+      node.addEventListener(field === "query" ? "input" : "change", () => {
+        this._opts[field] = node.value;
+        saveViewOptions(this._opts);
+        if (this._hass) this._update();
+      });
+    }
+    this._layoutSig = "";
     this._estimatesEl = this.shadowRoot.querySelector("#estimates");
     this._tabs = this.shadowRoot.querySelector(".tabs");
     for (const btn of this._tabs.querySelectorAll("button")) {
@@ -780,6 +926,7 @@ class ZwillingStoragePanel extends HTMLElement {
     for (const btn of this._tabs.querySelectorAll("button")) {
       btn.classList.toggle("active", btn.dataset.view === view);
     }
+    this._updateToolbar(strings(this._hass));
     if (view === "estimates") this.loadEstimates();
   }
 
@@ -925,20 +1072,70 @@ class ZwillingStoragePanel extends HTMLElement {
     root.replaceChildren(frag);
   }
 
+  _updateToolbar(t) {
+    const bar = this._toolbar;
+    bar.hidden = this._view !== "containers" || this._devices.length === 0;
+    const query = bar.querySelector('[data-f="query"]');
+    query.placeholder = t.searchPlaceholder;
+    query.setAttribute("aria-label", t.searchPlaceholder);
+    if (this._shadowActive() !== query) query.value = this._opts.query;
+    const fill = (node, label, items, value) => {
+      node.setAttribute("aria-label", label);
+      const sig = JSON.stringify(items);
+      if (node.dataset.sig !== sig) {
+        node.dataset.sig = sig;
+        node.replaceChildren(
+          ...items.map(([v, text]) => {
+            const opt = document.createElement("option");
+            opt.value = v;
+            opt.textContent = text;
+            return opt;
+          }),
+        );
+      }
+      node.value = value;
+    };
+    fill(bar.querySelector('[data-f="filter"]'), t.filterLabel, [
+      ["all", t.filterAll],
+      ["soon", t.filterSoon],
+      ["expired", t.filterExpired],
+      ["filled", t.filterFilled],
+      ["empty", t.filterEmpty],
+    ], this._opts.filter);
+    fill(bar.querySelector('[data-f="sort"]'), t.sortLabel, [
+      ["area", t.sortArea],
+      ["date", t.sortDate],
+      ["name", t.sortName],
+    ], this._opts.sort);
+  }
+
+  _shadowActive() {
+    return this.shadowRoot.activeElement;
+  }
+
   _update() {
     const hass = this._hass;
     if (!hass) return;
 
     const regs = [hass.entities, hass.devices, hass.areas];
+    let registriesChanged = false;
     if (!this._registries || regs.some((r, i) => r !== this._registries[i])) {
       this._registries = regs;
       this._devices = collectDevices(hass);
+      registriesChanged = true;
+    }
+    // Reihenfolge und Sichtbarkeit hängen auch von den Zuständen ab (Filter, Sortierung nach MHD).
+    this._arranged = arrangeDevices(hass, this._devices, this._opts);
+    const sig = JSON.stringify([this._arranged.map((d) => d.deviceId), this._opts.sort, this._devices.length]);
+    if (registriesChanged || sig !== this._layoutSig) {
+      this._layoutSig = sig;
       this._rebuild(hass);
     }
 
     const t = strings(hass);
     this._title.textContent = t.title;
     this._count.textContent = t.count(this._devices.length);
+    this._updateToolbar(t);
     this._addBtn.textContent = `+ ${t.addContainer}`;
     this._addBtn.classList.toggle("visible", isAdmin(hass) && this._view === "containers");
     this._tabs.classList.toggle("visible", isAdmin(hass));
@@ -970,20 +1167,35 @@ class ZwillingStoragePanel extends HTMLElement {
     }
 
     const frag = document.createDocumentFragment();
+    const none = (title, text, linkText) => {
+      const box = document.createElement("div");
+      box.className = "none";
+      box.innerHTML = `<h2></h2><p></p><a></a>`;
+      box.querySelector("h2").textContent = title;
+      box.querySelector("p").textContent = text;
+      const link = box.querySelector("a");
+      if (linkText) {
+        link.textContent = linkText;
+        link.addEventListener("click", () => navigate(`/config/integrations/integration/${DOMAIN}`));
+      } else {
+        link.remove();
+      }
+      return box;
+    };
+    const shown = this._arranged || this._devices;
     if (!this._devices.length) {
-      const none = document.createElement("div");
-      none.className = "none";
-      none.innerHTML = `<h2></h2><p></p><a></a>`;
-      none.querySelector("h2").textContent = t.noneTitle;
-      none.querySelector("p").textContent = t.noneText;
-      const link = none.querySelector("a");
-      link.textContent = t.openSettings;
-      link.addEventListener("click", () => navigate(`/config/integrations/integration/${DOMAIN}`));
-      frag.appendChild(none);
+      frag.appendChild(none(t.noneTitle, t.noneText, t.openSettings));
+    } else if (!shown.length) {
+      frag.appendChild(none(t.title, t.noMatch, ""));
+    } else if (this._opts.sort !== "area") {
+      const grid = document.createElement("div");
+      grid.className = "grid";
+      for (const dev of shown) grid.appendChild(this._cards.get(dev.deviceId).el);
+      frag.appendChild(grid);
     } else {
       let currentArea;
       let grid = null;
-      for (const dev of this._devices) {
+      for (const dev of shown) {
         if (grid === null || dev.areaName !== currentArea) {
           currentArea = dev.areaName;
           const h = document.createElement("h2");

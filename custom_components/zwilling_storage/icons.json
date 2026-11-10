@@ -32,6 +32,11 @@
           "off": "mdi:package-variant-closed"
         }
       }
+    },
+    "sensor": {
+      "days_left": {
+        "default": "mdi:timer-sand"
+      }
     }
   },
   "services": {
@@ -43,6 +48,12 @@
     },
     "clear_filled_at": {
       "service": "mdi:calendar-remove"
+    },
+    "get_expiring": {
+      "service": "mdi:calendar-alert"
+    },
+    "mark_opened": {
+      "service": "mdi:package-variant"
     }
   }
 }

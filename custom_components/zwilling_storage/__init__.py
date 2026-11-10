@@ -5,9 +5,11 @@ from __future__ import annotations
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import area_registry as ar, device_registry as dr
 
+from .calendar_sync import async_get_calendar_sync
 from .const import CONF_AREA, CONF_CC, DOMAIN, PLATFORMS
 from .entity import ZwillingConfigEntry, ZwillingRuntime
 from .estimate import async_get_estimator
+from .expiry import async_setup_services
 from .panel import async_setup_panel, async_teardown_panel
 from .scan import async_setup_webhook, async_teardown_webhook
 from .websocket import async_setup_websocket
@@ -18,6 +20,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: ZwillingConfigEntry) -> 
     entry.runtime_data = ZwillingRuntime()
     await async_get_estimator(hass)
     async_setup_websocket(hass)
+    async_setup_services(hass)
+    (await async_get_calendar_sync(hass)).async_start()
     await async_setup_webhook(hass)
     await async_setup_panel(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
@@ -53,4 +57,11 @@ async def async_unload_entry(hass: HomeAssistant, entry: ZwillingConfigEntry) ->
     ):
         async_teardown_webhook(hass)
         async_teardown_panel(hass)
+        (await async_get_calendar_sync(hass)).async_stop()
     return unloaded
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: ZwillingConfigEntry) -> None:
+    """Dose wurde gelöscht: Kalendertermin entfernen."""
+    if cc := entry.data.get(CONF_CC):
+        await (await async_get_calendar_sync(hass)).async_remove_dose(cc)

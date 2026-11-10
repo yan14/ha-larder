@@ -64,6 +64,22 @@
       "vacuum": {
         "name": "Vakuum"
       }
+    },
+    "sensor": {
+      "days_left": {
+        "name": "Tage bis MHD",
+        "state_attributes": {
+          "status": {
+            "name": "Status",
+            "state": {
+              "ok": "OK",
+              "soon": "Läuft bald ab",
+              "expired": "Abgelaufen",
+              "none": "Kein MHD"
+            }
+          }
+        }
+      }
     }
   },
   "exceptions": {
@@ -108,11 +124,15 @@
         "description": "**MHD-Schätzung**\nLegt fest, wie der Button „MHD schätzen“ im Dashboard und der Service arbeiten. Die eingebaute Tabelle funktioniert ohne KI-Dienst und ohne Internet. Eine KI nutzt den Dienst, den du unter Einstellungen → Geräte & Dienste → „AI Task“ eingerichtet hast; dorthin gehen nur Inhalt, Bereichsname mit Hinweisen (Temperatursensor, Label-Beschreibung), Vakuum ja/nein und Befüll-Datum. Vom Nutzer korrigierte Werte gelten immer zuerst.\n\n**Scan-Webhook**\nTrage diese URL **einmalig** im iOS-Kurzbefehl ein. Sie ist geheim: Wer sie kennt, kann Dosen abfragen.\n\n`{webhook_url}`\n\nNur der Pfad: `{webhook_path}`\n\nDie Anleitung zum Kurzbefehl steht in der README des Projekts.",
         "data": {
           "estimate_mode": "MHD-Schätzung",
-          "ai_task_entity": "KI-Aufgabe (leer = Standard von Home Assistant)"
+          "ai_task_entity": "KI-Aufgabe (leer = Standard von Home Assistant)",
+          "opened_days": "Haltbarkeit nach dem Öffnen (Tage)",
+          "calendar_entity": "Kalender für das MHD (optional)"
         },
         "data_description": {
           "estimate_mode": "Zeigt im Dashboard den Button „MHD schätzen“, außer bei „Aus“.",
-          "ai_task_entity": "Nur nötig, wenn du mehrere KI-Dienste eingerichtet hast und eine KI-Stufe gewählt ist."
+          "ai_task_entity": "Nur nötig, wenn du mehrere KI-Dienste eingerichtet hast und eine KI-Stufe gewählt ist.",
+          "opened_days": "Der Button „Geöffnet“ im Dashboard kürzt das MHD auf höchstens so viele Tage ab heute.",
+          "calendar_entity": "Schreibt das MHD jeder Dose als Ganztags-Termin in diesen Kalender (anlegen, verschieben, löschen). Der Kalender muss Termine anlegen und löschen können, z. B. Google, CalDAV oder „Lokaler Kalender“. Leer lassen = aus."
         }
       }
     }
@@ -139,6 +159,30 @@
     "clear_filled_at": {
       "name": "„Befüllt am“ löschen",
       "description": "Entfernt das Befüll-Datum der Dose."
+    },
+    "get_expiring": {
+      "name": "Ablaufende Dosen abfragen",
+      "description": "Liefert alle Dosen, deren MHD bald abläuft oder abgelaufen ist, samt fertigem Text für Benachrichtigungen (Antwort: count, expired, items, summary).",
+      "fields": {
+        "days": {
+          "name": "Tage",
+          "description": "Dosen, die innerhalb dieser Anzahl Tage ablaufen."
+        },
+        "include_expired": {
+          "name": "Abgelaufene einschließen",
+          "description": "Auch bereits abgelaufene Dosen auflisten."
+        }
+      }
+    },
+    "mark_opened": {
+      "name": "Als geöffnet markieren",
+      "description": "Kürzt das MHD auf höchstens die angegebene Zahl Tage ab heute. Ohne MHD wird es gesetzt. Standard ist die Einstellung „Haltbarkeit nach dem Öffnen“.",
+      "fields": {
+        "days": {
+          "name": "Tage",
+          "description": "Tage ab heute (leer = Wert aus den Einstellungen)."
+        }
+      }
     }
   },
   "selector": {

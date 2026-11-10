@@ -19,6 +19,9 @@ from homeassistant.helpers.selector import (
     AreaSelector,
     EntitySelector,
     EntitySelectorConfig,
+    NumberSelector,
+    NumberSelectorConfig,
+    NumberSelectorMode,
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
@@ -26,7 +29,10 @@ from homeassistant.helpers.selector import (
 )
 
 from .const import (
+    CONF_CALENDAR_ENTITY,
     CONF_ESTIMATE_MODE,
+    CONF_OPENED_DAYS,
+    DEFAULT_OPENED_DAYS,
     ESTIMATE_MODES,
     ESTIMATE_TABLE,
     CONF_AI_TASK_ENTITY,
@@ -41,6 +47,7 @@ from .const import (
     SOURCE_GENERATED,
     SOURCE_ZWILLING,
 )
+from .calendar_sync import async_get_calendar_sync
 from .estimate import async_get_estimator
 from .qr import generate_code, parse_qr
 from .scan import async_get_webhook_id, webhook_urls
@@ -151,7 +158,11 @@ class ZwillingOptionsFlow(OptionsFlow):
             await estimator.async_update_settings(
                 user_input.get(CONF_ESTIMATE_MODE, ESTIMATE_TABLE),
                 user_input.get(CONF_AI_TASK_ENTITY) or None,
+                user_input.get(CONF_OPENED_DAYS, DEFAULT_OPENED_DAYS),
+                user_input.get(CONF_CALENDAR_ENTITY) or None,
             )
+            sync = await async_get_calendar_sync(self.hass)
+            await sync.async_sync_all()
             async_dispatcher_send(self.hass, SIGNAL_SETTINGS_CHANGED)
             return self.async_create_entry(data=self.config_entry.options)
 
@@ -166,14 +177,22 @@ class ZwillingOptionsFlow(OptionsFlow):
                         mode=SelectSelectorMode.LIST,
                     )
                 ),
+                vol.Optional(CONF_OPENED_DAYS, default=DEFAULT_OPENED_DAYS): NumberSelector(
+                    NumberSelectorConfig(min=1, max=30, step=1, mode=NumberSelectorMode.BOX)
+                ),
+                vol.Optional(CONF_CALENDAR_ENTITY): EntitySelector(
+                    EntitySelectorConfig(domain="calendar")
+                ),
                 vol.Optional(CONF_AI_TASK_ENTITY): EntitySelector(
                     EntitySelectorConfig(domain="ai_task")
                 ),
             }
         )
-        suggested = {CONF_ESTIMATE_MODE: estimator.mode}
+        suggested = {CONF_ESTIMATE_MODE: estimator.mode, CONF_OPENED_DAYS: estimator.opened_days}
         if estimator.ai_task_entity:
             suggested[CONF_AI_TASK_ENTITY] = estimator.ai_task_entity
+        if estimator.calendar_entity:
+            suggested[CONF_CALENDAR_ENTITY] = estimator.calendar_entity
         return self.async_show_form(
             step_id="init",
             data_schema=self.add_suggested_values_to_schema(schema, suggested),
