@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2bb3a3"/>
+      <stop offset="1" stop-color="#00695c"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="58" fill="url(#bg)"/>
+  <!-- Verschluss-Clips -->
+  <rect x="34" y="82" width="22" height="34" rx="8" fill="#b2dfdb"/>
+  <rect x="200" y="82" width="22" height="34" rx="8" fill="#b2dfdb"/>
+  <!-- Deckel -->
+  <rect x="38" y="56" width="180" height="42" rx="16" fill="#fff"/>
+  <!-- Behälter -->
+  <path d="M46 106H210V176a28 28 0 0 1-28 28H74a28 28 0 0 1-28-28Z" fill="#fff"/>
+  <!-- QR-Etikett -->
+  <g fill="#00695c"><rect x="93" y="121" width="8.5" height="8.5" rx="1.8"/><rect x="93" y="131" width="8.5" height="8.5" rx="1.8"/><rect x="93" y="141" width="8.5" height="8.5" rx="1.8"/><rect x="93" y="161" width="8.5" height="8.5" rx="1.8"/><rect x="93" y="171" width="8.5" height="8.5" rx="1.8"/><rect x="93" y="181" width="8.5" height="8.5" rx="1.8"/><rect x="103" y="121" width="8.5" height="8.5" rx="1.8"/><rect x="103" y="131" width="8.5" height="8.5" rx="1.8"/><rect x="103" y="141" width="8.5" height="8.5" rx="1.8"/><rect x="103" y="161" width="8.5" height="8.5" rx="1.8"/><rect x="103" y="171" width="8.5" height="8.5" rx="1.8"/><rect x="103" y="181" width="8.5" height="8.5" rx="1.8"/><rect x="113" y="121" width="8.5" height="8.5" rx="1.8"/><rect x="113" y="131" width="8.5" height="8.5" rx="1.8"/><rect x="113" y="141" width="8.5" height="8.5" rx="1.8"/><rect x="113" y="161" width="8.5" height="8.5" rx="1.8"/><rect x="113" y="171" width="8.5" height="8.5" rx="1.8"/><rect x="113" y="181" width="8.5" height="8.5" rx="1.8"/><rect x="123" y="151" width="8.5" height="8.5" rx="1.8"/><rect x="133" y="121" width="8.5" height="8.5" rx="1.8"/><rect x="133" y="131" width="8.5" height="8.5" rx="1.8"/><rect x="133" y="141" width="8.5" height="8.5" rx="1.8"/><rect x="133" y="161" width="8.5" height="8.5" rx="1.8"/><rect x="133" y="181" width="8.5" height="8.5" rx="1.8"/><rect x="143" y="121" width="8.5" height="8.5" rx="1.8"/><rect x="143" y="131" width="8.5" height="8.5" rx="1.8"/><rect x="143" y="141" width="8.5" height="8.5" rx="1.8"/><rect x="143" y="171" width="8.5" height="8.5" rx="1.8"/><rect x="153" y="121" width="8.5" height="8.5" rx="1.8"/><rect x="153" y="131" width="8.5" height="8.5" rx="1.8"/><rect x="153" y="141" width="8.5" height="8.5" rx="1.8"/><rect x="153" y="181" width="8.5" height="8.5" rx="1.8"/></g>
+</svg>

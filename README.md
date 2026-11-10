@@ -1,5 +1,7 @@
 # Zwilling Food Storage
 
+<img src="assets/icon.svg" width="96" align="right" alt="Icon">
+
 [🇩🇪 Deutsch](README.de.md) · 🇬🇧 English
 
 Home Assistant integration for Zwilling food storage containers with a QR code. Every container becomes a device (identified by the `cc` parameter of its QR code) with:

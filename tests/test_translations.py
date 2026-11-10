@@ -60,3 +60,14 @@ def test_every_entity_key_has_name_and_icon(lang: str) -> None:
     for module, key in keys:
         assert trans[module][key]["name"].strip(), (module, key)
         assert icons[module][key]["default"].startswith("mdi:"), (module, key)
+
+
+def test_brand_images_are_present_and_square() -> None:
+    """Das Symbol liegt lokal im brand/-Ordner (HA ab 2026.3)."""
+    import struct
+
+    for name, size in (("icon.png", 256), ("icon@2x.png", 512)):
+        data = (BASE / "brand" / name).read_bytes()
+        assert data[:8] == b"\x89PNG\r\n\x1a\n", name
+        width, height = struct.unpack(">II", data[16:24])
+        assert (width, height) == (size, size), name

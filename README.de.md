@@ -1,5 +1,7 @@
 # Zwilling Food Storage
 
+<img src="assets/icon.svg" width="96" align="right" alt="Icon">
+
 🇩🇪 Deutsch · [🇬🇧 English](README.md)
 
 Home-Assistant-Integration für Zwilling-Frischhaltedosen mit QR-Code. Pro Dose entsteht ein Gerät (eindeutig über den Parameter `cc` im QR-Code) mit:
