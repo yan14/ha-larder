@@ -11,7 +11,8 @@ Home-Assistant-Integration für Zwilling-Frischhaltedosen mit QR-Code. Pro Dose 
 | **Befüllt am** | `datetime` | Wann wurde die Dose befüllt? |
 | **MHD** | `date` | Mindesthaltbarkeitsdatum |
 | **Inhalt** | `text` | Was ist in der Dose? |
-| **Behälter leeren** | `button` | Setzt die Dose komplett zurück: **Inhalt** wird leer, **MHD** und **Befüllt am** werden gelöscht |
+| **Behälter leeren** | `button` | Setzt die Dose komplett zurück: **Inhalt** wird leer, **MHD** und **Befüllt am** werden gelöscht. **Vakuum** bleibt bewusst erhalten, es ist eine Eigenschaft der Dose und nicht des Inhalts |
+| **Vakuum** | `switch` | Ist die Dose vakuumiert? Standardmäßig an. Für eine normale Box ausschalten. Wird für die KI-Schätzung verwendet |
 | **QR-Code** | `image` | QR-Code der Dose als Bild: Scannen mit der Kamera-App öffnet direkt das Gerät in der Home-Assistant-App |
 
 Die Werte bleiben über Neustarts erhalten. „Behälter leeren“ ist eine normale Button-Entität, lässt sich also auf Dashboards und in Automationen über `button.press` verwenden.
@@ -70,6 +71,8 @@ Sobald mindestens eine Dose angelegt ist, erscheint in der Seitenleiste der Eint
 - Pro Dose: Bereich, **Inhalt**, **MHD** (mit Hinweis „abgelaufen“ oder „noch n Tage“ ab 3 Tagen davor), **Eingelagert am** (= „Befüllt am“), der Button **Behälter leeren** und der QR-Code als kleines Bild.
 - Inhalt, MHD und Datum lassen sich direkt im Panel ändern. „Jetzt“ setzt „Eingelagert am“ auf die aktuelle Zeit.
 - Den **Bereich** einer Dose änderst du über das Auswahlfeld auf ihrer Karte, ohne Umweg über die Geräteseite.
+- Das Häkchen **Vakuum** schaltet die Vakuum-Eigenschaft der Dose um.
+- Ist die [KI-Schätzung](#mhd-schätzen-mit-ki-optional) aktiviert, erscheint unter dem Datum der Button **MHD schätzen**, sobald ein Inhalt eingetragen und noch kein MHD gesetzt ist.
 - **+ Dose hinzufügen** (oben rechts) legt eine Dose an: entweder *Neuen QR-Code erstellen* oder *Zwilling-QR-Code einlesen*, mit optionalem Namen und Bereich. Es ist derselbe Ablauf wie unter Einstellungen → Geräte & Dienste.
 - Neue Dosen, geänderte Werte und geänderte Bereiche erscheinen sofort, ohne dass du etwas neu laden musst.
 
@@ -84,6 +87,45 @@ Das Panel ist für alle Nutzer sichtbar, aber nur **Administratoren** können Do
 - **Neuen QR-Code erstellen** erzeugt eine neue eindeutige ID. Danach die Karte (oder das Gerät) öffnen und den QR-Code ausdrucken.
 - **Zwilling-QR-Code einlesen** braucht den Inhalt des originalen Codes oder nur die ID. Kommst du vom iOS-Kurzbefehl, ist das Feld schon ausgefüllt.
 - Name und Bereich sind optional. Beides lässt sich später ändern (den Bereich direkt auf der Karte).
+
+## MHD schätzen mit KI (optional)
+
+Die Integration kann dir ein Mindesthaltbarkeitsdatum vorschlagen. Sie nutzt dafür die Funktion **AI Task** von Home Assistant und arbeitet deshalb mit dem KI-Dienst, den du dort eingerichtet hast (zum Beispiel Anthropic, OpenAI, Google oder ein lokales Ollama). Die Funktion ist **standardmäßig aus**.
+
+**Einrichten**
+
+1. Richte in Home Assistant einen KI-Dienst mit einer *AI Task* ein (Einstellungen → Geräte & Dienste). Dafür braucht es eine Home-Assistant-Version, die die Integration AI Task enthält.
+2. Einstellungen → Geräte & Dienste → **Zwilling Food Storage** → bei einer beliebigen Dose **Konfigurieren** → **MHD per KI schätzen** einschalten. Das Feld „KI-Aufgabe“ brauchst du nur, wenn du mehrere eingerichtet hast.
+3. Weise jede Dose einem **Bereich** zu, der den Lagerort beschreibt, z. B. „Kühlschrank“, „0-Grad-Fach“, „Gefrierschrank“ oder „Vorratskammer“, und stelle **Vakuum** pro Dose ein.
+
+**Der Lagerort ist der Bereich.** Die KI bekommt den Bereichsnamen und versteht deshalb „0-Grad-Fach“ oder „Gefrierschrank“ von selbst, ebenso Trockenlager wie Nudeln oder Kaffeebohnen in der Vorratskammer. Genauere Hinweise kannst du so mitgeben:
+
+- **Temperatursensor am Bereich:** In den Bereichseinstellungen lässt sich ein Temperatursensor zuweisen. Hat er einen gültigen Wert, wird er mitgegeben (z. B. die echte Temperatur im Gefrierschrank).
+- **Label mit Beschreibung:** Weise dem Bereich ein Label zu und schreibe in dessen Beschreibung einen Hinweis, z. B. „ca. -18 °C, Fleisch und Fisch“. Name und Beschreibung werden mitgegeben.
+
+**Benutzen**
+
+Im Dashboard erscheint der Button **MHD schätzen**, sobald ein Inhalt eingetragen und das MHD leer ist. Den Service kannst du auch in Automationen, Skripten oder den Entwicklerwerkzeugen aufrufen:
+
+```yaml
+action: zwilling_storage.estimate_best_before
+target:
+  entity_id: date.dose_34ol_best_before
+data:
+  apply: true       # false: nur den Vorschlag zurückgeben
+  overwrite: false  # true: auch schätzen, wenn schon ein Datum gesetzt ist
+response_variable: result
+```
+
+Das Ergebnis enthält `best_before`, `days`, `tip` (ein kurzer Lagertipp), `cached` und `applied`. Gezählt wird ab **Befüllt am** (oder ab heute, wenn das leer ist). **Ein bereits gesetztes MHD wird nie überschrieben**, außer du setzt `overwrite`.
+
+**Merken.** Jede Antwort wird für die Kombination *Inhalt + Bereich + Vakuum* gespeichert und nicht erneut abgefragt. Änderst du ein vorgeschlagenes Datum danach selbst, merkt sich die Integration deinen Wert für dieselbe Kombination. Die Daten liegen in `.storage/zwilling_storage.estimator` von Home Assistant.
+
+**Gut zu wissen**
+
+- Gesendet werden nur der Inhaltstext, der Bereichsname mit seinen Hinweisen, Vakuum Ja/Nein und das Befüll-Datum, und zwar an den KI-Dienst, den du gewählt hast. Je nach Anbieter kann das einen kleinen Betrag kosten.
+- Die Antwort ist eine vorsichtige **Schätzung, keine Garantie für Lebensmittelsicherheit**. Bei gekauften Produkten ist das aufgedruckte MHD verlässlicher. Gedacht ist die Schätzung vor allem für Selbstgekochtes und Umgefülltes. Schreibe „gekocht“, „geöffnet“ oder „geröstet am …“ in den Inhalt, wenn es darauf ankommt.
+- Ohne Bereich wird die Schätzung mit einem Hinweis abgelehnt, sonst würde die KI nur raten.
 
 ## iOS-Kurzbefehl für die originalen Zwilling-Codes
 

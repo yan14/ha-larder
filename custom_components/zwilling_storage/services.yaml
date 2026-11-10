@@ -1,0 +1,16 @@
+estimate_best_before:
+  target:
+    entity:
+      integration: zwilling_storage
+      domain: date
+  fields:
+    apply:
+      required: false
+      default: true
+      selector:
+        boolean:
+    overwrite:
+      required: false
+      default: false
+      selector:
+        boolean:

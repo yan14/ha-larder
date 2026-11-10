@@ -59,18 +59,62 @@
       "qr_code": {
         "name": "QR-Code"
       }
+    },
+    "switch": {
+      "vacuum": {
+        "name": "Vakuum"
+      }
     }
   },
   "exceptions": {
     "nothing_to_reset": {
       "message": "Für diese Dose ist keine Entität zum Zurücksetzen verfügbar (Inhalt, MHD und „Befüllt am“ sind deaktiviert?)."
+    },
+    "ai_disabled": {
+      "message": "Die KI-Schätzung ist ausgeschaltet. Aktiviere sie unter Einstellungen → Geräte & Dienste → Zwilling Food Storage → Konfigurieren."
+    },
+    "ai_unavailable": {
+      "message": "Die Home-Assistant-Integration „AI Task“ ist nicht eingerichtet."
+    },
+    "no_content": {
+      "message": "Trage zuerst den Inhalt der Dose ein."
+    },
+    "no_area": {
+      "message": "Weise der Dose zuerst einen Bereich zu (Lagerort), damit die Schätzung zum Ort passt."
+    },
+    "ai_failed": {
+      "message": "Die KI-Schätzung ist fehlgeschlagen: {error}"
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Scan-Webhook",
-        "description": "Diese URL trägst du **einmalig** im iOS-Kurzbefehl ein. Sie ist geheim: Wer sie kennt, kann damit Dosen abfragen.\n\n`{webhook_url}`\n\nNur der Pfad: `{webhook_path}`\n\nDie Anleitung steht in der README des Projekts."
+        "title": "Einstellungen",
+        "description": "**KI-Schätzung des MHD (optional)**\nNutzt den KI-Dienst, den du unter Einstellungen → Geräte & Dienste → „AI Task“ eingerichtet hast. Gesendet werden nur Inhalt, Bereichsname samt Hinweisen (Temperatursensor, Label-Beschreibung), Vakuum Ja/Nein und das Befüll-Datum.\n\n**Scan-Webhook**\nDiese URL trägst du **einmalig** im iOS-Kurzbefehl ein. Sie ist geheim: Wer sie kennt, kann damit Dosen abfragen.\n\n`{webhook_url}`\n\nNur der Pfad: `{webhook_path}`\n\nDie Anleitung steht in der README des Projekts.",
+        "data": {
+          "ai_enabled": "MHD per KI schätzen",
+          "ai_task_entity": "KI-Aufgabe (leer = Standard von Home Assistant)"
+        },
+        "data_description": {
+          "ai_enabled": "Zeigt im Dashboard den Button „MHD schätzen“ und aktiviert den Service.",
+          "ai_task_entity": "Nur nötig, wenn du mehrere KI-Dienste eingerichtet hast."
+        }
+      }
+    }
+  },
+  "services": {
+    "estimate_best_before": {
+      "name": "MHD schätzen",
+      "description": "Schätzt das Mindesthaltbarkeitsdatum per KI aus Inhalt, Lagerort (Bereich), Vakuum und Befüll-Datum. Ein bereits gesetztes MHD wird nie überschrieben, außer „Überschreiben“ ist aktiv.",
+      "fields": {
+        "apply": {
+          "name": "Übernehmen",
+          "description": "Das geschätzte MHD in die Dose eintragen. Aus: nur den Vorschlag zurückgeben."
+        },
+        "overwrite": {
+          "name": "Überschreiben",
+          "description": "Auch dann schätzen, wenn schon ein MHD gesetzt ist."
+        }
       }
     }
   }

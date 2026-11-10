@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import State
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 
@@ -31,6 +32,7 @@ class ZwillingEntity(RestoreEntity):
 
     def __init__(self, entry: ConfigEntry) -> None:
         cc: str = entry.data[CONF_CC]
+        self._cc = cc
         tc: str | None = entry.data.get(CONF_TC)
         size: str | None = entry.data.get(CONF_SIZE)
 
@@ -47,6 +49,13 @@ class ZwillingEntity(RestoreEntity):
             model=model,
             serial_number=cc,
         )
+
+    def _sibling_state(self, domain: str, key: str) -> State | None:
+        """Zustand einer anderen Entität derselben Dose (z. B. Inhalt, Vakuum)."""
+        entity_id = er.async_get(self.hass).async_get_entity_id(
+            domain, DOMAIN, f"{self._cc}_{key}"
+        )
+        return self.hass.states.get(entity_id) if entity_id else None
 
     async def _async_last_state(self) -> State | None:
         """Letzten gespeicherten Zustand liefern, sofern brauchbar."""

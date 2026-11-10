@@ -88,13 +88,14 @@ async def test_flow_creates_device_with_entities(hass: HomeAssistant) -> None:
     assert device.serial_number == "34OL"
 
     entities = er.async_entries_for_device(er.async_get(hass), device.id)
-    assert {e.domain for e in entities} == {"button", "date", "datetime", "image", "text"}
+    assert {e.domain for e in entities} == {"button", "date", "datetime", "image", "switch", "text"}
     assert {e.unique_id for e in entities} == {
         "34OL_filled_at",
         "34OL_content",
         "34OL_empty_container",
         "34OL_best_before",
         "34OL_qr_code",
+        "34OL_vacuum",
     }
 
 

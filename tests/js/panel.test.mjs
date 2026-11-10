@@ -32,12 +32,14 @@ function makeHass(doses, { areas = {}, language = "de", stateOverrides = {} } = 
       datetime: `datetime.${d.id}_befuellt`,
       button: `button.${d.id}_leeren`,
       image: `image.${d.id}_qr`,
+      switch: `switch.${d.id}_vacuum`,
     };
     for (const eid of Object.values(ids)) {
       entities[eid] = { entity_id: eid, device_id: d.id, platform: D, area_id: d.entityArea || null };
     }
     states[ids.text] = { entity_id: ids.text, state: d.content ?? "unknown", attributes: {} };
-    states[ids.date] = { entity_id: ids.date, state: d.mhd ?? "unknown", attributes: {} };
+    states[ids.date] = { entity_id: ids.date, state: d.mhd ?? "unknown", attributes: { ai_estimates: !!d.ai } };
+    states[ids.switch] = { entity_id: ids.switch, state: d.vacuum ?? "on", attributes: {} };
     states[ids.datetime] = { entity_id: ids.datetime, state: d.filled ?? "unknown", attributes: {} };
     states[ids.button] = { entity_id: ids.button, state: "unknown", attributes: {} };
     states[ids.image] = {
@@ -113,7 +115,7 @@ test("collectDevices: nur Zwilling-Geräte, sortiert nach Bereich, dann Name; oh
     ],
   );
   assert.ok(out.every((d) => d.deviceId !== "foreign"));
-  assert.deepEqual(Object.keys(out[0].entities).sort(), ["button", "date", "datetime", "image", "text"]);
+  assert.deepEqual(Object.keys(out[0].entities).sort(), ["button", "date", "datetime", "image", "switch", "text"]);
 });
 
 test("collectDevices: Anzeigename des Nutzers und Bereich der Entität als Rückfall", () => {
@@ -565,4 +567,108 @@ test("?add=<ID> für Nutzer ohne Admin-Rechte zeigt einen Hinweis statt des Dial
 test("listAreas sortiert Bereiche nach Name", () => {
   assert.deepEqual(listAreas({ language: "de", areas: AREAS }).map((a) => a.id), ["cellar", "kitchen"]);
   assert.deepEqual(listAreas({}), []);
+});
+
+// ---------- Vakuum und MHD-Schätzung ----------
+
+test("Vakuum-Schalter zeigt den Zustand und schaltet die Entität", () => {
+  const hass = adminHass([
+    { id: "d1", name: "Dose A", area: "kitchen", vacuum: "on" },
+    { id: "d2", name: "Dose B", area: "kitchen", vacuum: "off" },
+  ]);
+  const el = mount(hass);
+  const [a, b] = $$(el, '[data-f="vacuum"]');
+  assert.equal(a.checked, true);
+  assert.equal(b.checked, false);
+  assert.equal($$(el, '[data-l="vacuum"]')[0].textContent, "Vakuum");
+
+  b.checked = true;
+  b.dispatchEvent(new dom.window.Event("change"));
+  a.checked = false;
+  a.dispatchEvent(new dom.window.Event("change"));
+  assert.deepEqual(hass.calls, [
+    { domain: "switch", service: "turn_on", data: { entity_id: "switch.d2_vacuum" } },
+    { domain: "switch", service: "turn_off", data: { entity_id: "switch.d1_vacuum" } },
+  ]);
+});
+
+test("'MHD schätzen' erscheint nur bei aktivierter KI, vorhandenem Inhalt und leerem MHD", () => {
+  const visible = (hass) => {
+    document.body.innerHTML = "";
+    const el = mount(hass);
+    return $(el, ".estimate").style.display !== "none" && $(el, ".estimaterow").classList.contains("visible");
+  };
+  assert.equal(visible(adminHass([{ id: "d1", name: "A", content: "Suppe", ai: true }])), true);
+  assert.equal(visible(adminHass([{ id: "d1", name: "A", content: "Suppe", ai: false }])), false); // KI aus
+  assert.equal(visible(adminHass([{ id: "d1", name: "A", content: "Suppe", ai: true, mhd: "2030-01-01" }])), false); // MHD da
+  assert.equal(visible(adminHass([{ id: "d1", name: "A", ai: true }])), false); // kein Inhalt
+});
+
+test("MHD schätzen ruft den Service auf und zeigt Schätzung samt Tipp", async () => {
+  const hass = adminHass([{ id: "d1", name: "A", content: "Suppe", ai: true }]);
+  const dateId = "date.d1_mhd";
+  hass.callWS = async (msg) => {
+    hass.wsCalls.push(msg);
+    return {
+      response: { [dateId]: { status: "estimated", days: 4, tip: "Gut verschließen", best_before: "2026-11-14", applied: true } },
+    };
+  };
+  const el = mount(hass);
+  $(el, "button.estimate").click();
+  assert.equal($(el, "button.estimate").disabled, true); // währenddessen gesperrt
+  await flush();
+  assert.deepEqual(hass.wsCalls, [
+    {
+      type: "call_service",
+      domain: D,
+      service: "estimate_best_before",
+      service_data: {},
+      target: { entity_id: dateId },
+      return_response: true,
+    },
+  ]);
+  assert.equal($(el, ".tip").textContent, "Geschätzt: ca. 4 Tage haltbar. Gut verschließen");
+  assert.equal($(el, "button.estimate").disabled, false);
+  assert.equal($(el, ".estimaterow").classList.contains("visible"), true);
+
+  // Eingabe im Inhaltsfeld löscht den Hinweis wieder
+  $(el, '[data-f="content"]').dispatchEvent(new dom.window.Event("input"));
+  assert.equal($(el, ".tip").textContent, "");
+});
+
+test("MHD schätzen: Fehler des Dienstes wird als Meldung angezeigt", async () => {
+  const hass = adminHass([{ id: "d1", name: "A", content: "Suppe", ai: true }]);
+  hass.callWS = async () => {
+    throw { code: "home_assistant_error", message: "Weise der Dose zuerst einen Bereich zu." };
+  };
+  const el = mount(hass);
+  $(el, "button.estimate").click();
+  await flush();
+  assert.equal($(el, ".tip").textContent, "Weise der Dose zuerst einen Bereich zu.");
+  assert.ok($(el, ".tip").classList.contains("error"));
+  assert.equal($(el, "button.estimate").disabled, false);
+});
+
+test("MHD schätzen: englische Texte", async () => {
+  const hass = adminHass([{ id: "d1", name: "A", content: "Soup", ai: true }]);
+  hass.language = "en";
+  hass.callWS = async () => ({
+    response: { "date.d1_mhd": { status: "estimated", days: 1, tip: "", applied: true } },
+  });
+  const el = mount(hass);
+  assert.equal($(el, "button.estimate").textContent, "Estimate best before");
+  $(el, "button.estimate").click();
+  await flush();
+  assert.equal($(el, ".tip").textContent, "Estimated: about 1 day shelf life");
+});
+
+test("'Behälter leeren' löscht den Schätz-Hinweis, der Vakuum-Schalter bleibt unberührt", async () => {
+  const hass = adminHass([{ id: "d1", name: "A", content: "Suppe", ai: true }]);
+  hass.callWS = async () => ({ response: { "date.d1_mhd": { status: "estimated", days: 3, tip: "x", applied: true } } });
+  const el = mount(hass);
+  $(el, "button.estimate").click();
+  await flush();
+  $(el, "button.empty").click();
+  assert.equal($(el, ".tip").textContent, "");
+  assert.deepEqual(hass.calls, [{ domain: "button", service: "press", data: { entity_id: "button.d1_leeren" } }]);
 });

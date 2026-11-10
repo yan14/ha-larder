@@ -9,6 +9,7 @@ PLATFORMS: list[Platform] = [
     Platform.DATE,
     Platform.DATETIME,
     Platform.IMAGE,
+    Platform.SWITCH,
     Platform.TEXT,
 ]
 
@@ -23,6 +24,12 @@ SOURCE_ZWILLING = "zwilling"
 SOURCE_GENERATED = "generated"
 
 MANUFACTURER = "ZWILLING"
+
+# KI-Schätzung des MHD (optional, benötigt die Home-Assistant-Integration "AI Task")
+CONF_AI_ENABLED = "ai_enabled"
+CONF_AI_TASK_ENTITY = "ai_task_entity"
+SERVICE_ESTIMATE_BEST_BEFORE = "estimate_best_before"
+SIGNAL_SETTINGS_CHANGED = f"{DOMAIN}_settings_changed"
 
 # Seitenleisten-Panel "Zwilling Dosen"
 PANEL_URL_PATH = "zwilling-storage"

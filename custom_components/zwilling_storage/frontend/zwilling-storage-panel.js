@@ -42,6 +42,11 @@ export const STRINGS = {
     adminOnly: (code) =>
       `Nur Administratoren können Dosen hinzufügen. Gescannter Code: ${code}`,
     areaChangeFailed: "Der Bereich konnte nicht geändert werden.",
+    vacuum: "Vakuum",
+    estimate: "MHD schätzen",
+    estimating: "Schätze …",
+    estimated: (days) => `Geschätzt: ca. ${days} ${days === 1 ? "Tag" : "Tage"} haltbar`,
+    estimateFailed: "Die Schätzung ist fehlgeschlagen.",
   },
   en: {
     title: "Zwilling containers",
@@ -75,6 +80,11 @@ export const STRINGS = {
     addFailed: "The container could not be added.",
     adminOnly: (code) => `Only administrators can add containers. Scanned code: ${code}`,
     areaChangeFailed: "The area could not be changed.",
+    vacuum: "Vacuum",
+    estimate: "Estimate best before",
+    estimating: "Estimating…",
+    estimated: (days) => `Estimated: about ${days} ${days === 1 ? "day" : "days"} shelf life`,
+    estimateFailed: "The estimate failed.",
   },
 };
 
@@ -232,6 +242,14 @@ const STYLE = `
   .dialog .buttons button { font: inherit; padding: 8px 14px; border-radius: 8px; cursor: pointer; border: 0; }
   .dialog .buttons button.cancel { background: none; color: var(--primary-color); }
   .dialog .buttons button.submit { background: var(--primary-color); color: var(--text-primary-color, #fff); }
+  .row.vacrow label.check { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 14px;
+    color: var(--primary-text-color); cursor: pointer; }
+  .estimaterow { display: none; flex-direction: column; gap: 4px; margin-top: -4px; }
+  .estimaterow.visible { display: flex; }
+  .estimaterow button.estimate { align-self: flex-start; font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 6px;
+    cursor: pointer; border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
+  .estimaterow .tip { font-size: 13px; color: var(--secondary-text-color); }
+  .estimaterow .tip.error { color: var(--error-color, #db4437); }
   .none { text-align: center; padding: 48px 16px; color: var(--secondary-text-color); }
   .none h2 { color: var(--primary-text-color); font-weight: 400; }
   .none a { color: var(--primary-color); cursor: pointer; }
@@ -253,6 +271,8 @@ class DoseCard {
       <div class="row"><label data-l="content"></label><input data-f="content" type="text" maxlength="255"></div>
       <div class="row"><label data-l="bestBefore"></label><input data-f="bestBefore" type="date"><span class="badge"></span></div>
       <div class="row"><label data-l="filledAt"></label><input data-f="filledAt" type="datetime-local"><button class="now" type="button"></button></div>
+      <div class="estimaterow"><button class="estimate" type="button"></button><span class="tip" role="status"></span></div>
+      <div class="row vacrow"><label class="check"><input type="checkbox" data-f="vacuum"><span data-l="vacuum"></span></label></div>
       <div class="actions"><button class="empty" type="button"></button><span class="spacer"></span><img class="qr" alt=""></div>`;
     this.el = el;
     this.q = (sel) => el.querySelector(sel);
@@ -295,8 +315,53 @@ class DoseCard {
       if (this.ids.datetime) this._call("datetime", "set_value", { entity_id: this.ids.datetime, datetime: new Date().toISOString() });
     });
     this.q("button.empty").addEventListener("click", () => {
+      this._setTip("");
       if (this.ids.button) this._call("button", "press", { entity_id: this.ids.button });
     });
+    this.inputs.content.addEventListener("input", () => this._setTip(""));
+    this.q('[data-f="vacuum"]').addEventListener("change", (ev) => {
+      if (this.ids.switch) this._call("switch", ev.target.checked ? "turn_on" : "turn_off", { entity_id: this.ids.switch });
+    });
+    this.q("button.estimate").addEventListener("click", () => this._estimate());
+  }
+
+  _setTip(text, isError = false) {
+    this._tip = text;
+    this._tipError = isError;
+    const el = this.q(".tip");
+    el.textContent = text;
+    el.classList.toggle("error", isError);
+  }
+
+  /** MHD per KI schätzen (Service der Integration); zeigt Hinweis oder Fehlermeldung an. */
+  async _estimate() {
+    const hass = this._panel.hass;
+    if (!hass || !this.ids.date || this._estimating || !hass.callWS) return;
+    const t = strings(hass);
+    this._estimating = true;
+    this.q("button.estimate").disabled = true;
+    this.q("button.estimate").textContent = t.estimating;
+    this._setTip("");
+    try {
+      const res = await hass.callWS({
+        type: "call_service",
+        domain: DOMAIN,
+        service: "estimate_best_before",
+        service_data: {},
+        target: { entity_id: this.ids.date },
+        return_response: true,
+      });
+      const out = res && res.response && res.response[this.ids.date];
+      if (out && out.status === "estimated") {
+        this._setTip([t.estimated(out.days), out.tip].filter(Boolean).join(". "));
+      }
+    } catch (err) {
+      this._setTip((err && err.message) || t.estimateFailed, true);
+    } finally {
+      this._estimating = false;
+      this.q("button.estimate").textContent = t.estimate;
+      this.q("button.estimate").disabled = false;
+    }
   }
 
   _call(domain, service, data) {
@@ -351,6 +416,8 @@ class DoseCard {
     this.q('[data-l="filledAt"]').textContent = t.filledAt;
     this.q("button.now").textContent = t.now;
     this.q("button.empty").textContent = t.emptyContainer;
+    this.q('[data-l="vacuum"]').textContent = t.vacuum;
+    if (!this._estimating) this.q("button.estimate").textContent = t.estimate;
 
     const text = states[dev.entities.text];
     const date = states[dev.entities.date];
@@ -366,6 +433,19 @@ class DoseCard {
     this.inputs.bestBefore.disabled = !ok(date);
     this.inputs.filledAt.disabled = !ok(dt);
     this.q("button.now").disabled = !ok(dt);
+
+    const vac = states[dev.entities.switch];
+    const vacInput = this.q('[data-f="vacuum"]');
+    this.q(".vacrow").style.display = vac ? "" : "none";
+    vacInput.disabled = !ok(vac);
+    vacInput.checked = !!vac && vac.state === "on";
+
+    // "MHD schätzen": nur sichtbar, wenn die KI-Schätzung aktiviert ist, Inhalt da und MHD noch leer.
+    const aiOn = !!(date && date.attributes && date.attributes.ai_estimates);
+    const hasContent = isValidState(text) && text.state.trim() !== "";
+    const showEstimate = aiOn && ok(date) && hasContent && !isValidState(date);
+    this.q(".estimaterow").classList.toggle("visible", showEstimate || !!this._tip);
+    this.q("button.estimate").style.display = showEstimate || this._estimating ? "" : "none";
     this.q("button.empty").disabled = !ok(btn);
 
     const badge = this.q(".badge");

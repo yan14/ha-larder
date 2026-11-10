@@ -24,6 +24,19 @@
       "qr_code": {
         "default": "mdi:qrcode"
       }
+    },
+    "switch": {
+      "vacuum": {
+        "default": "mdi:air-filter",
+        "state": {
+          "off": "mdi:package-variant-closed"
+        }
+      }
+    }
+  },
+  "services": {
+    "estimate_best_before": {
+      "service": "mdi:creation"
     }
   }
 }

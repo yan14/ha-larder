@@ -1,0 +1,273 @@
+"""Optionale KI-Schätzung des Mindesthaltbarkeitsdatums.
+
+Die Schätzung läuft über die Home-Assistant-Integration "AI Task"
+(`ai_task.generate_data`), also über den KI-Dienst, den du dort eingerichtet hast.
+Gesendet werden nur: Inhalt, Name und Hinweise des Lagerorts (Bereich), ob die Dose
+vakuumiert ist, und das Befüll-Datum. Ergebnisse werden pro Kombination aus Inhalt,
+Bereich und Vakuum gespeichert und nicht erneut angefragt.
+"""
+
+from __future__ import annotations
+
+import asyncio
+from dataclasses import dataclass
+from datetime import date, timedelta
+import logging
+import re
+from typing import Any
+
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import (
+    area_registry as ar,
+    device_registry as dr,
+    entity_registry as er,
+    label_registry as lr,
+)
+from homeassistant.helpers.storage import Store
+
+from .const import CONF_AI_ENABLED, CONF_AI_TASK_ENTITY, DOMAIN
+
+_LOGGER = logging.getLogger(__name__)
+
+STORAGE_VERSION = 1
+STORAGE_KEY = f"{DOMAIN}.estimator"
+DATA_ESTIMATOR = "estimator"
+DATA_ESTIMATOR_LOCK = "estimator_lock"
+
+MIN_DAYS = 1
+MAX_DAYS = 3650
+
+
+class EstimateError(HomeAssistantError):
+    """Schätzung nicht möglich; der Text kommt aus den Übersetzungen."""
+
+    def __init__(self, key: str, **placeholders: str) -> None:
+        super().__init__(
+            translation_domain=DOMAIN,
+            translation_key=key,
+            translation_placeholders=placeholders or None,
+        )
+
+
+@dataclass(frozen=True)
+class StorageContext:
+    """Was über den Lagerort (Bereich der Dose) bekannt ist."""
+
+    area_name: str | None
+    hints: list[str]
+
+
+@dataclass(frozen=True)
+class Estimate:
+    days: int
+    tip: str
+    cached: bool
+    key: str
+
+
+def cache_key(content: str, area_name: str | None, vacuum: bool) -> str:
+    """Schlüssel für gemerkte Schätzungen: Inhalt + Bereich + Vakuum."""
+
+    def norm(text: str) -> str:
+        return re.sub(r"\s+", " ", text).strip().casefold()
+
+    return f"{norm(content)}|{norm(area_name or '')}|{'vacuum' if vacuum else 'normal'}"
+
+
+def storage_context(hass: HomeAssistant, cc: str) -> StorageContext:
+    """Bereich der Dose samt Temperatursensor und Label-Beschreibungen ermitteln."""
+    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, cc)})
+    area_id = device.area_id if device else None
+    if device and not area_id:
+        for entity in er.async_entries_for_device(er.async_get(hass), device.id):
+            if entity.area_id:
+                area_id = entity.area_id
+                break
+    area = ar.async_get(hass).async_get_area(area_id) if area_id else None
+    if area is None:
+        return StorageContext(None, [])
+
+    hints: list[str] = []
+    if area.temperature_entity_id:
+        state = hass.states.get(area.temperature_entity_id)
+        if state is not None:
+            try:
+                float(state.state)
+            except ValueError:
+                pass
+            else:
+                unit = state.attributes.get("unit_of_measurement", "")
+                hints.append(f"measured temperature in this place: {state.state} {unit}".strip())
+    label_registry = lr.async_get(hass)
+    for label_id in sorted(area.labels):
+        if label := label_registry.async_get_label(label_id):
+            hints.append(
+                f"{label.name}: {label.description}" if label.description else label.name
+            )
+    return StorageContext(area.name, hints)
+
+
+def build_instructions(
+    *,
+    content: str,
+    context: StorageContext,
+    vacuum: bool,
+    filled: date,
+    language: str,
+) -> str:
+    place = context.area_name or "unknown"
+    lines = [
+        "You estimate how long a food item stays good in a household.",
+        "Be conservative and food-safety minded. Assume the item is stored right away.",
+        f"Item (may be a dish or an ingredient): {content}",
+        f"Storage location (name chosen by the user, may be German): {place}",
+    ]
+    if context.hints:
+        lines.append("Additional information about the storage location:")
+        lines.extend(f"- {hint}" for hint in context.hints)
+    lines += [
+        "Container: "
+        + (
+            "airtight vacuum-sealed box (air removed)"
+            if vacuum
+            else "normal box with a lid, not vacuum-sealed"
+        ),
+        f"Stored on: {filled.isoformat()}",
+        "Answer with shelf_life_days (whole days counted from the storage date until the "
+        "item should be used up) and storage_tip (one short sentence).",
+        f"Write storage_tip in the language with code '{language}'.",
+    ]
+    return "\n".join(lines)
+
+
+STRUCTURE: dict[str, Any] = {
+    "shelf_life_days": {
+        "description": "Whole days the item stays good, counted from the storage date",
+        "required": True,
+        "selector": {"number": {"min": MIN_DAYS, "max": MAX_DAYS, "mode": "box"}},
+    },
+    "storage_tip": {
+        "description": "One short storage tip",
+        "required": False,
+        "selector": {"text": {}},
+    },
+}
+
+
+class Estimator:
+    """Globale Einstellungen und gemerkte Schätzungen (gilt für alle Dosen)."""
+
+    def __init__(self, hass: HomeAssistant) -> None:
+        self.hass = hass
+        self._store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
+        self.ai_enabled = False
+        self.ai_task_entity: str | None = None
+        self._cache: dict[str, dict[str, Any]] = {}
+
+    async def async_load(self) -> None:
+        data = await self._store.async_load() or {}
+        settings = data.get("settings", {})
+        self.ai_enabled = bool(settings.get(CONF_AI_ENABLED, False))
+        self.ai_task_entity = settings.get(CONF_AI_TASK_ENTITY) or None
+        self._cache = data.get("cache", {})
+
+    def _data(self) -> dict[str, Any]:
+        return {
+            "settings": {
+                CONF_AI_ENABLED: self.ai_enabled,
+                CONF_AI_TASK_ENTITY: self.ai_task_entity,
+            },
+            "cache": self._cache,
+        }
+
+    def _schedule_save(self) -> None:
+        self._store.async_delay_save(self._data, 1)
+
+    async def async_update_settings(self, enabled: bool, entity: str | None) -> None:
+        self.ai_enabled = enabled
+        self.ai_task_entity = entity or None
+        await self._store.async_save(self._data())
+
+    def learn(self, key: str, days: int, tip: str | None = None) -> None:
+        """Wert merken (z. B. wenn der Nutzer das geschätzte MHD korrigiert hat)."""
+        if not MIN_DAYS <= days <= MAX_DAYS:
+            return
+        previous = self._cache.get(key, {})
+        self._cache[key] = {"days": days, "tip": tip if tip is not None else previous.get("tip", "")}
+        self._schedule_save()
+
+    async def async_estimate(
+        self, *, content: str, context: StorageContext, vacuum: bool, filled: date
+    ) -> Estimate:
+        if not self.ai_enabled:
+            raise EstimateError("ai_disabled")
+        if not content.strip():
+            raise EstimateError("no_content")
+        if context.area_name is None:
+            raise EstimateError("no_area")
+
+        key = cache_key(content, context.area_name, vacuum)
+        if (hit := self._cache.get(key)) is not None:
+            return Estimate(int(hit["days"]), str(hit.get("tip", "")), True, key)
+
+        if not self.hass.services.has_service("ai_task", "generate_data"):
+            raise EstimateError("ai_unavailable")
+
+        data: dict[str, Any] = {
+            "task_name": "Zwilling Food Storage: best-before estimate",
+            "instructions": build_instructions(
+                content=content.strip(),
+                context=context,
+                vacuum=vacuum,
+                filled=filled,
+                language=self.hass.config.language,
+            ),
+            "structure": STRUCTURE,
+        }
+        if self.ai_task_entity:
+            data["entity_id"] = self.ai_task_entity
+        try:
+            async with asyncio.timeout(90):
+                response = await self.hass.services.async_call(
+                    "ai_task",
+                    "generate_data",
+                    data,
+                    blocking=True,
+                    return_response=True,
+                )
+        except HomeAssistantError as err:
+            raise EstimateError("ai_failed", error=str(err)) from err
+        except TimeoutError as err:
+            raise EstimateError("ai_failed", error="timeout") from err
+        except Exception as err:  # noqa: BLE001 - Schema- und Anbieterfehler sauber melden
+            _LOGGER.debug("AI task failed", exc_info=True)
+            raise EstimateError("ai_failed", error=str(err)) from err
+
+        result = (response or {}).get("data")
+        try:
+            days = round(float(result["shelf_life_days"]))
+        except (TypeError, KeyError, ValueError) as err:
+            raise EstimateError("ai_failed", error="unexpected answer") from err
+        days = min(max(days, MIN_DAYS), MAX_DAYS)
+        tip = str(result.get("storage_tip") or "").strip()
+
+        self._cache[key] = {"days": days, "tip": tip}
+        self._schedule_save()
+        return Estimate(days, tip, False, key)
+
+
+async def async_get_estimator(hass: HomeAssistant) -> Estimator:
+    """Einmalig geladene gemeinsame Instanz (idempotent, egal wie viele Dosen es gibt)."""
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    lock: asyncio.Lock = domain_data.setdefault(DATA_ESTIMATOR_LOCK, asyncio.Lock())
+    async with lock:
+        if (estimator := domain_data.get(DATA_ESTIMATOR)) is None:
+            estimator = Estimator(hass)
+            await estimator.async_load()
+            domain_data[DATA_ESTIMATOR] = estimator
+        return estimator
+
+
+def estimate_best_before(filled: date, days: int) -> date:
+    return filled + timedelta(days=days)

@@ -11,7 +11,8 @@ Home Assistant integration for Zwilling food storage containers with a QR code. 
 | **Filled on** | `datetime` | When was the container filled? |
 | **Best before** | `date` | Best-before date (MHD) |
 | **Contents** | `text` | What is in the container? |
-| **Empty container** | `button` | Resets the whole container: **Contents** become empty, **Best before** and **Filled on** are cleared |
+| **Empty container** | `button` | Resets the whole container: **Contents** become empty, **Best before** and **Filled on** are cleared. **Vacuum** is deliberately kept, it is a property of the container, not of its contents |
+| **Vacuum** | `switch` | Is the container vacuum-sealed? On by default. Switch it off for a normal box. Used for the AI estimate |
 | **QR code** | `image` | The container's QR code as an image: scanning it with the camera app opens the device directly in the Home Assistant app |
 
 The values survive restarts. "Empty container" is a regular button entity, so you can use it on dashboards and in automations via `button.press`.
@@ -70,6 +71,8 @@ As soon as at least one container exists, a sidebar entry **Zwilling containers*
 - Per container: area, **contents**, **best before** (with a hint "expired" or "n days left" starting 3 days before), **filled on**, the **Empty container** button and the QR code as a small image.
 - Contents, best-before date and filled-on date can be edited right in the panel. "Now" sets "Filled on" to the current time.
 - The **area** of a container can be changed with the dropdown on its card, no detour through the device page needed.
+- The **Vacuum** checkbox switches the vacuum property of the container.
+- With the [AI estimate](#best-before-estimate-with-ai-optional) enabled, **Estimate best before** appears under the date as soon as contents are entered and no date is set.
 - **+ Add container** (top right) adds a container: either *Create new QR code* or *Read Zwilling QR code*, with optional name and area. It uses the same flow as Settings → Devices & services.
 - New containers, changed values and changed areas show up immediately, no reload needed.
 
@@ -84,6 +87,45 @@ The panel is visible to all users, but only **administrators** can add container
 - **Create new QR code** generates a new unique ID. Afterwards open the card (or the device) and print the QR code.
 - **Read Zwilling QR code** needs the content of the original code or just the ID. When you come from the iOS Shortcut, the field is already filled in.
 - Name and area are optional. You can change both later (the area right on the card).
+
+## Best-before estimate with AI (optional)
+
+The integration can suggest a best-before date for you. It uses the **AI Task** feature of Home Assistant, so it works with whichever AI service you have set up there (for example Anthropic, OpenAI, Google or a local Ollama). The function is **off by default**.
+
+**Set up**
+
+1. Set up an AI service with an *AI Task* in Home Assistant (Settings → Devices & services). This needs a Home Assistant version that includes the AI Task integration.
+2. Settings → Devices & services → **Zwilling Food Storage** → **Configure** on any container → switch on **Estimate best-before date with AI**. The field "AI task" is only needed if you have more than one.
+3. Assign each container to an **area** that describes where it is stored, e.g. "Fridge", "0 °C compartment", "Freezer" or "Pantry", and set **Vacuum** per container.
+
+**The storage place is the area.** The AI receives the area name, so it understands "0 °C compartment" or "Freezer" on its own, and also dry storage such as pasta or coffee beans in a pantry. You can give it more precise hints:
+
+- **Temperature sensor of the area:** in the area settings you can assign a temperature sensor. If it has a valid value, it is passed on (for example a real freezer temperature).
+- **Label with description:** assign a label to the area and write a hint in the label's description, for example "about -18 °C, meat and fish". Name and description are passed on.
+
+**Using it**
+
+On the dashboard the button **Estimate best before** appears once contents are entered and the best-before date is empty. You can also call the service (in automations, scripts or Developer tools):
+
+```yaml
+action: zwilling_storage.estimate_best_before
+target:
+  entity_id: date.dose_34ol_best_before
+data:
+  apply: true       # false: only return the suggestion
+  overwrite: false  # true: also estimate when a date is already set
+response_variable: result
+```
+
+The result contains `best_before`, `days`, `tip` (a short storage tip), `cached` and `applied`. The date is counted from **Filled on** (or from today if that is empty). **An existing best-before date is never overwritten** unless you set `overwrite`.
+
+**Remembering.** Each answer is stored for the combination of *contents + area + vacuum* and is not asked again. If you change a suggested date afterwards, your value is remembered for the same combination. The data lives in Home Assistant's `.storage/zwilling_storage.estimator`.
+
+**Good to know**
+
+- Only the contents text, the area name with its hints, vacuum yes/no and the filling date are sent, to the AI service you chose. Depending on the provider this may cost a small amount.
+- The answer is a cautious **estimate, not a food-safety guarantee**. For bought products the printed best-before date is more reliable. The estimate is mainly meant for home-cooked food and things you decant. Write "cooked", "opened" or "roasted on …" into the contents if it matters.
+- Without an area the estimate is refused with a hint, otherwise the AI would only be guessing.
 
 ## iOS Shortcut for the original Zwilling codes
 

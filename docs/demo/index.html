@@ -35,7 +35,7 @@ const areas = de
 const doses = de ? [
   ["Dose HA-K7M2PQ4X", "kitchen", "Tomatensuppe", 2, 20],
   ["Dose 34OL", "kitchen", "Hähnchen-Curry", 1, 52],
-  ["Dose HA-9TQ3W6ZD", "kitchen", "", null, null],
+  ["Dose HA-9TQ3W6ZD", "kitchen", "Linsensuppe", null, 1],
   ["Nudeln", "pantry", "Penne", 180, 400],
   ["Reis", "pantry", "Basmati", 300, 700],
   ["Gemüsebrühe", "cellar", "Gemüsebrühe selbst gekocht", -2, 30],
@@ -43,7 +43,7 @@ const doses = de ? [
 ] : [
   ["Dose HA-K7M2PQ4X", "kitchen", "Tomato soup", 2, 20],
   ["Dose 34OL", "kitchen", "Chicken curry", 1, 52],
-  ["Dose HA-9TQ3W6ZD", "kitchen", "", null, null],
+  ["Dose HA-9TQ3W6ZD", "kitchen", "Lentil soup", null, 1],
   ["Pasta", "pantry", "Penne", 180, 400],
   ["Rice", "pantry", "Basmati", 300, 700],
   ["Vegetable stock", "cellar", "Homemade vegetable stock", -2, 30],
@@ -54,11 +54,12 @@ doses.forEach((d, i) => {
   const id = `demo${String(i).padStart(2, "0")}`;
   const [name, area, content, mhd, hoursAgo] = d;
   devices[id] = { id, name, name_by_user: null, area_id: area };
-  const ids = { text: `text.${id}_c`, date: `date.${id}_b`, datetime: `datetime.${id}_f`, button: `button.${id}_e`, image: `image.${id}_q` };
+  const ids = { text: `text.${id}_c`, date: `date.${id}_b`, datetime: `datetime.${id}_f`, button: `button.${id}_e`, image: `image.${id}_q`, switch: `switch.${id}_v` };
   for (const e of Object.values(ids)) entities[e] = { entity_id: e, device_id: id, platform: "zwilling_storage" };
   const has = content !== "";
   states[ids.text] = { entity_id: ids.text, state: has ? content : "", attributes: {} };
-  states[ids.date] = { entity_id: ids.date, state: has && mhd !== null ? day(mhd) : "unknown", attributes: {} };
+  states[ids.date] = { entity_id: ids.date, state: has && mhd !== null ? day(mhd) : "unknown", attributes: { ai_estimates: true } };
+  states[ids.switch] = { entity_id: ids.switch, state: name === "Rice" || name === "Reis" ? "off" : "on", attributes: {} };
   states[ids.datetime] = { entity_id: ids.datetime, state: has && hoursAgo !== null ? ago(hoursAgo) : "unknown", attributes: {} };
   states[ids.button] = { entity_id: ids.button, state: "unknown", attributes: {} };
   states[ids.image] = { entity_id: ids.image, state: "x", attributes: { entity_picture: QR[i] } };

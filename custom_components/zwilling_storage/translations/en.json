@@ -59,18 +59,62 @@
       "qr_code": {
         "name": "QR code"
       }
+    },
+    "switch": {
+      "vacuum": {
+        "name": "Vacuum"
+      }
     }
   },
   "exceptions": {
     "nothing_to_reset": {
       "message": "No entity to reset is available for this container (contents, best before and filled on are disabled?)."
+    },
+    "ai_disabled": {
+      "message": "AI estimates are switched off. Enable them under Settings → Devices & services → Zwilling Food Storage → Configure."
+    },
+    "ai_unavailable": {
+      "message": "The Home Assistant “AI Task” integration is not set up."
+    },
+    "no_content": {
+      "message": "Enter the contents of the container first."
+    },
+    "no_area": {
+      "message": "Assign an area (storage place) to the container first so the estimate fits the place."
+    },
+    "ai_failed": {
+      "message": "The AI estimate failed: {error}"
     }
   },
   "options": {
     "step": {
       "init": {
-        "title": "Scan webhook",
-        "description": "Enter this URL **once** in the iOS shortcut. It is secret: anyone who knows it can look up containers.\n\n`{webhook_url}`\n\nPath only: `{webhook_path}`\n\nSee the project README for the shortcut instructions."
+        "title": "Settings",
+        "description": "**AI best-before estimate (optional)**\nUses the AI service you set up under Settings → Devices & services → “AI Task”. Only the contents, the area name with its hints (temperature sensor, label description), vacuum yes/no and the filling date are sent.\n\n**Scan webhook**\nEnter this URL **once** in the iOS shortcut. It is secret: anyone who knows it can look up containers.\n\n`{webhook_url}`\n\nPath only: `{webhook_path}`\n\nSee the project README for the shortcut instructions.",
+        "data": {
+          "ai_enabled": "Estimate best-before date with AI",
+          "ai_task_entity": "AI task (empty = Home Assistant default)"
+        },
+        "data_description": {
+          "ai_enabled": "Shows the “Estimate best before” button on the dashboard and enables the service.",
+          "ai_task_entity": "Only needed if you have set up more than one AI service."
+        }
+      }
+    }
+  },
+  "services": {
+    "estimate_best_before": {
+      "name": "Estimate best before",
+      "description": "Estimates the best-before date with AI from the contents, storage place (area), vacuum and filling date. An existing best-before date is never overwritten unless “Overwrite” is on.",
+      "fields": {
+        "apply": {
+          "name": "Apply",
+          "description": "Write the estimated date to the container. Off: only return the suggestion."
+        },
+        "overwrite": {
+          "name": "Overwrite",
+          "description": "Estimate even if a best-before date is already set."
+        }
       }
     }
   }
