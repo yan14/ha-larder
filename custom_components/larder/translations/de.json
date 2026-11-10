@@ -5,7 +5,6 @@
         "title": "Dose hinzufügen",
         "description": "Wie soll die Dose angelegt werden?",
         "menu_options": {
-          "migrate": "Von Zwilling Food Storage übernehmen",
           "scan": "Zwilling QR Code einlesen",
           "create": "Neuen QR Code erstellen"
         }
@@ -26,19 +25,13 @@
           "name": "Name (optional)",
           "area_id": "Bereich (optional)"
         }
-      },
-      "migrate": {
-        "title": "Von Zwilling Food Storage übernehmen",
-        "description": "{count} Dose(n) der früheren Integration „Zwilling Food Storage“ werden übernommen. Die Entitäten behalten ihre IDs, den Verlauf und die Bereiche. Danach werden die alten Einträge entfernt. Automationen mit den alten Service-Namen laufen vorerst weiter."
       }
     },
     "error": {
       "invalid_code": "Im QR-Code wurde keine gültige ID (cc) gefunden."
     },
     "abort": {
-      "already_configured": "Diese Dose ist bereits angelegt.",
-      "migrated": "{count} Dose(n) von Zwilling Food Storage übernommen.",
-      "unload_failed": "Die alte Integration ließ sich nicht entladen. Starte Home Assistant neu und versuche es noch einmal."
+      "already_configured": "Diese Dose ist bereits angelegt."
     }
   },
   "entity": {

@@ -22,7 +22,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.storage import Store
 from homeassistant.util import slugify
 
-from .const import CONF_CC, DOMAIN, EVENT_DOSE_SCANNED, EVENT_DOSE_SCANNED_LEGACY, panel_path
+from .const import CONF_CC, DOMAIN, EVENT_DOSE_SCANNED, panel_path
 from .estimate import async_get_estimator
 
 _LOGGER = logging.getLogger(__name__)
@@ -152,10 +152,10 @@ class NfcTags:
         if entry is None or device is None:
             return
         scanner = event.data.get("device_id")
-        scan = {"cc": cc, "device_id": device.id, "name": entry.title, "scanned_by": scanner}
-        self.hass.bus.async_fire(EVENT_DOSE_SCANNED, scan)
-        if self.hass.data.get(DOMAIN, {}).get("legacy_compat"):
-            self.hass.bus.async_fire(EVENT_DOSE_SCANNED_LEGACY, scan)  # für alte Automationen
+        self.hass.bus.async_fire(
+            EVENT_DOSE_SCANNED,
+            {"cc": cc, "device_id": device.id, "name": entry.title, "scanned_by": scanner},
+        )
         estimator = await async_get_estimator(self.hass)
         service = self._notify_service(scanner) if estimator.nfc_notify else None
         if service is None:

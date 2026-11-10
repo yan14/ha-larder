@@ -5,7 +5,6 @@
         "title": "Add container",
         "description": "How should the container be added?",
         "menu_options": {
-          "migrate": "Take over from Zwilling Food Storage",
           "scan": "Read Zwilling QR code",
           "create": "Create new QR code"
         }
@@ -26,19 +25,13 @@
           "name": "Name (optional)",
           "area_id": "Area (optional)"
         }
-      },
-      "migrate": {
-        "title": "Take over from Zwilling Food Storage",
-        "description": "{count} container(s) of the former integration \"Zwilling Food Storage\" are taken over. Entities keep their IDs, history and areas. The old entries are removed afterwards. Automations that use the old service names keep working for now."
       }
     },
     "error": {
       "invalid_code": "No valid ID (cc) found in the QR code."
     },
     "abort": {
-      "already_configured": "This container has already been added.",
-      "migrated": "{count} container(s) taken over from Zwilling Food Storage.",
-      "unload_failed": "The old integration could not be unloaded. Restart Home Assistant and try again."
+      "already_configured": "This container has already been added."
     }
   },
   "entity": {

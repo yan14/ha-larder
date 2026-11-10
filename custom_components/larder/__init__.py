@@ -11,7 +11,6 @@ from .nfc import async_get_nfc
 from .entity import LarderConfigEntry, LarderRuntime
 from .estimate import async_get_estimator
 from .expiry import async_setup_services
-from .migrate import async_adopt_legacy_registry, async_setup_legacy_compat
 from .panel import async_setup_panel, async_teardown_panel
 from .scan import async_setup_webhook, async_teardown_webhook
 from .websocket import async_setup_websocket
@@ -20,8 +19,6 @@ from .websocket import async_setup_websocket
 async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bool:
     """Dose einrichten (der Scan-Webhook wird einmalig für alle Dosen registriert)."""
     entry.runtime_data = LarderRuntime()
-    async_adopt_legacy_registry(hass, entry)  # Gerät/Entitäten aus "Zwilling Food Storage" übernehmen
-    await async_setup_legacy_compat(hass)
     await async_get_estimator(hass)
     async_setup_websocket(hass)
     async_setup_services(hass)
