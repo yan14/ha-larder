@@ -10,12 +10,14 @@ from .entity import ZwillingConfigEntry, ZwillingRuntime
 from .estimate import async_get_estimator
 from .panel import async_setup_panel, async_teardown_panel
 from .scan import async_setup_webhook, async_teardown_webhook
+from .websocket import async_setup_websocket
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ZwillingConfigEntry) -> bool:
     """Dose einrichten (der Scan-Webhook wird einmalig für alle Dosen registriert)."""
     entry.runtime_data = ZwillingRuntime()
     await async_get_estimator(hass)
+    async_setup_websocket(hass)
     await async_setup_webhook(hass)
     await async_setup_panel(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

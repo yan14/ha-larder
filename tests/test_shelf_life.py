@@ -304,3 +304,105 @@ async def test_legacy_ai_enabled_setting_migrates(hass: HomeAssistant) -> None:
         estimator._store.async_load = load
         await estimator.async_load()
         assert estimator.mode == expected
+
+
+# ---------- Herkunft korrigierter Werte und Verwaltung der gemerkten Einträge ----------
+
+
+async def _set_date(hass: HomeAssistant, days: int) -> None:
+    value = (dt_util.now().date() + timedelta(days=days)).isoformat()
+    await hass.services.async_call(
+        "date", "set_value", {"entity_id": _eid(hass, "date"), "date": value}, blocking=True
+    )
+
+
+@pytest.mark.parametrize(("mode", "origin"), [(None, "table"), ("ai", "ai")])
+async def test_corrected_value_remembers_its_origin(hass: HomeAssistant, mode, origin) -> None:
+    await _prepare(hass, "Tomatensuppe", "Kühlschrank", mode)
+    await _estimate(hass)
+    await _set_date(hass, 9)
+    await hass.services.async_call(
+        DOMAIN, "clear_best_before", {"entity_id": _eid(hass, "date")}, blocking=True
+    )
+    out = (await _estimate(hass))[_eid(hass, "date")]
+    assert (out["source"], out["origin"], out["days"]) == ("learned", origin, 9)
+
+    # nochmal korrigieren: Ursprung bleibt erhalten
+    await _set_date(hass, 10)
+    await hass.services.async_call(
+        DOMAIN, "clear_best_before", {"entity_id": _eid(hass, "date")}, blocking=True
+    )
+    out = (await _estimate(hass))[_eid(hass, "date")]
+    assert (out["source"], out["origin"], out["days"]) == ("learned", origin, 10)
+
+
+async def _ws(hass: HomeAssistant, hass_ws_client, payload: dict):
+    client = await hass_ws_client(hass)
+    await client.send_json({"id": 1, **payload})
+    return await client.receive_json()
+
+
+async def test_ws_list_edit_delete_and_add(hass: HomeAssistant, hass_ws_client) -> None:
+    await _prepare(hass, "Tomatensuppe", "Kühlschrank", None)
+    await _estimate(hass)
+
+    res = await _ws(hass, hass_ws_client, {"type": f"{DOMAIN}/estimates"})
+    assert res["success"] and res["result"]["mode"] == "table"
+    (entry,) = res["result"]["entries"]
+    assert entry["content"] == "Tomatensuppe" and entry["area"] == "Kühlschrank"
+    assert (entry["vacuum"], entry["days"], entry["source"], entry["origin"]) == (True, 3, "table", None)
+    key = entry["key"]
+
+    # Ändern → "von dir", Ursprung Tabelle bleibt sichtbar
+    res = await _ws(
+        hass, hass_ws_client, {"type": f"{DOMAIN}/estimate_set", "key": key, "days": 5, "tip": "Mein Tipp"}
+    )
+    (entry,) = res["result"]["entries"]
+    assert (entry["days"], entry["tip"], entry["source"], entry["origin"]) == (5, "Mein Tipp", "learned", "table")
+    assert entry["content"] == "Tomatensuppe"  # Schreibweise bleibt erhalten
+    await hass.services.async_call(
+        DOMAIN, "clear_best_before", {"entity_id": _eid(hass, "date")}, blocking=True
+    )
+    assert (await _estimate(hass))[_eid(hass, "date")]["days"] == 5
+
+    # Hinzufügen
+    res = await _ws(
+        hass,
+        hass_ws_client,
+        {"type": f"{DOMAIN}/estimate_add", "content": " Lasagne ", "area": "Keller", "vacuum": False, "days": 2},
+    )
+    entries = res["result"]["entries"]
+    assert [e["content"] for e in entries] == ["Lasagne", "Tomatensuppe"]
+    assert entries[0]["source"] == "learned" and entries[0]["origin"] is None
+
+    # Löschen → beim nächsten Schätzen wieder Tabelle
+    res = await _ws(hass, hass_ws_client, {"type": f"{DOMAIN}/estimate_delete", "key": key})
+    assert [e["content"] for e in res["result"]["entries"]] == ["Lasagne"]
+    await hass.services.async_call(
+        DOMAIN, "clear_best_before", {"entity_id": _eid(hass, "date")}, blocking=True
+    )
+    out = (await _estimate(hass))[_eid(hass, "date")]
+    assert (out["source"], out["days"]) == ("table", 3)
+
+
+async def test_ws_errors(hass: HomeAssistant, hass_ws_client) -> None:
+    await _setup(hass)
+    res = await _ws(hass, hass_ws_client, {"type": f"{DOMAIN}/estimate_delete", "key": "gibt|es|nicht"})
+    assert not res["success"] and res["error"]["code"] == "estimate_error"
+    res = await _ws(hass, hass_ws_client, {"type": f"{DOMAIN}/estimate_set", "key": "x|y|normal", "days": 3})
+    assert not res["success"]
+    res = await _ws(hass, hass_ws_client, {"type": f"{DOMAIN}/estimate_set", "key": "x|y|normal", "days": 0})
+    assert not res["success"]  # Schema: mindestens 1
+    res = await _ws(
+        hass, hass_ws_client, {"type": f"{DOMAIN}/estimate_add", "content": "  ", "area": "Keller", "days": 3}
+    )
+    assert not res["success"] and res["error"]["code"] == "estimate_error"
+
+
+async def test_ws_requires_admin(hass: HomeAssistant, hass_ws_client, hass_admin_user) -> None:
+    await _setup(hass)
+    hass_admin_user.groups = []
+    client = await hass_ws_client(hass)
+    await client.send_json({"id": 1, "type": f"{DOMAIN}/estimates"})
+    res = await client.receive_json()
+    assert not res["success"] and res["error"]["code"] == "unauthorized"

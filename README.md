@@ -133,7 +133,7 @@ Only the contents text, the area name with its hints, vacuum yes/no and the fill
 
 Set **Vacuum** per container and assign each container to an **area** that describes where it is stored, e.g. "Fridge", "0 °C compartment", "Freezer" or "Pantry". Without an area the estimate is refused with a hint.
 
-On the dashboard the button **Estimate best before** appears once contents are entered and the best-before date is empty. It shows where the value came from (table, AI or corrected by you). You can also call the service (in automations, scripts or Developer tools):
+On the dashboard the button **Estimate best before** appears once contents are entered and the best-before date is empty. It shows where the value came from: *table*, *AI*, or *table, corrected by you* / *AI, corrected by you* if you changed the date afterwards. You can also call the service (in automations, scripts or Developer tools):
 
 ```yaml
 action: zwilling_storage.estimate_best_before
@@ -148,6 +148,16 @@ response_variable: result
 The result contains `best_before`, `days`, `tip` (a short storage tip), `source` (`table`, `ai` or `learned`), `basis` (for the table: matched food and place), `cached` and `applied`. The date is counted from **Filled on** (or from today if that is empty). **An existing best-before date is never overwritten** unless you set `overwrite`.
 
 **Remembering.** Each result is stored for the combination of *contents + area + vacuum* and is not calculated or asked again. If you change a suggested date afterwards, your value is remembered for the same combination and wins over table and AI. The data lives in Home Assistant's `.storage/zwilling_storage.estimator`.
+
+### Managing remembered estimates
+
+Administrators get a second tab, **Estimates**, in the dashboard. It lists everything that is remembered for a combination of contents, area and vacuum, with its source (table, AI, or corrected by you with the original source). There you can
+
+- **change** the days and the tip of an entry (it then counts as corrected by you),
+- **delete** an entry; the next estimate for that combination is calculated anew (table or AI),
+- **add** your own entry for a combination of contents, area and vacuum.
+
+The built-in table itself is not edited here. Entries you add or change simply take precedence over it for that exact combination.
 
 **Upgrading from 0.5:** "Estimate with AI" switched on becomes **AI only** (as before); switched off becomes **Table only**.
 

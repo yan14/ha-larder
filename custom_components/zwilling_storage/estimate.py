@@ -81,6 +81,7 @@ class Estimate:
     key: str
     source: str = "ai"  # "table", "ai" oder "learned"
     basis: str = ""
+    origin: str | None = None  # bei "learned": woher der Wert vor der Korrektur stammte
 
 
 def cache_key(content: str, area_name: str | None, vacuum: bool) -> str:
@@ -90,6 +91,19 @@ def cache_key(content: str, area_name: str | None, vacuum: bool) -> str:
         return re.sub(r"\s+", " ", text).strip().casefold()
 
     return f"{norm(content)}|{norm(area_name or '')}|{'vacuum' if vacuum else 'normal'}"
+
+
+def parse_key(key: str) -> tuple[str, str, bool]:
+    """(Inhalt, Bereich, Vakuum) aus einem Cache-Schlüssel zurücklesen."""
+    content, area, vacuum = key.rsplit("|", 2)
+    return content, area, vacuum == "vacuum"
+
+
+def _origin_after_change(previous: dict[str, Any]) -> str | None:
+    """Ursprung eines Eintrags, der vom Nutzer geändert wird (Tabelle/KI bleibt erkennbar)."""
+    if previous.get("source") in ("table", "ai"):
+        return previous["source"]
+    return previous.get("origin")
 
 
 def storage_context(hass: HomeAssistant, cc: str) -> StorageContext:
@@ -227,12 +241,77 @@ class Estimator:
         if not MIN_DAYS <= days <= MAX_DAYS:
             return
         previous = self._cache.get(key, {})
+        entry = {
+            k: previous[k] for k in ("content", "area", "basis") if k in previous
+        }
+        entry.update(
+            days=days,
+            tip=tip if tip is not None else previous.get("tip", ""),
+            source="learned",
+        )
+        if origin := _origin_after_change(previous):
+            entry["origin"] = origin
+        self._cache[key] = entry
+        self._schedule_save()
+
+    # ----- Verwaltung der gemerkten Einträge (Dashboard-Liste) -----
+
+    def list_entries(self) -> list[dict[str, Any]]:
+        """Alle gemerkten Einträge, sortiert nach Inhalt und Bereich."""
+        entries = []
+        for key, value in self._cache.items():
+            content, area, vacuum = parse_key(key)
+            entries.append(
+                {
+                    "key": key,
+                    "content": value.get("content") or content,
+                    "area": value.get("area") or area,
+                    "vacuum": vacuum,
+                    "days": int(value["days"]),
+                    "tip": str(value.get("tip", "")),
+                    "source": value.get("source", "learned"),
+                    "origin": value.get("origin"),
+                }
+            )
+        entries.sort(key=lambda e: (e["content"].casefold(), e["area"].casefold(), not e["vacuum"]))
+        return entries
+
+    async def async_set_entry(self, key: str, days: int, tip: str | None = None) -> None:
+        """Tage (und optional den Tipp) eines vorhandenen Eintrags ändern."""
+        if key not in self._cache:
+            raise EstimateError("entry_not_found")
+        if not MIN_DAYS <= days <= MAX_DAYS:
+            raise EstimateError("days_out_of_range", min=str(MIN_DAYS), max=str(MAX_DAYS))
+        self.learn(key, days, tip)
+        await self._store.async_save(self._data())
+
+    async def async_add_entry(
+        self, content: str, area: str, vacuum: bool, days: int, tip: str = ""
+    ) -> str:
+        """Eigenen Eintrag anlegen (gilt für genau diese Kombination aus Inhalt, Bereich, Vakuum)."""
+        content, area = content.strip(), area.strip()
+        if not content:
+            raise EstimateError("no_content")
+        if not area:
+            raise EstimateError("no_area")
+        if not MIN_DAYS <= days <= MAX_DAYS:
+            raise EstimateError("days_out_of_range", min=str(MIN_DAYS), max=str(MAX_DAYS))
+        key = cache_key(content, area, vacuum)
         self._cache[key] = {
             "days": days,
-            "tip": tip if tip is not None else previous.get("tip", ""),
+            "tip": tip.strip(),
             "source": "learned",
+            "content": content,
+            "area": area,
         }
-        self._schedule_save()
+        await self._store.async_save(self._data())
+        return key
+
+    async def async_delete_entry(self, key: str) -> None:
+        """Eintrag vergessen: beim nächsten Schätzen wird neu berechnet."""
+        if self._cache.pop(key, None) is None:
+            raise EstimateError("entry_not_found")
+        await self._store.async_save(self._data())
 
     async def async_estimate(
         self, *, content: str, context: StorageContext, vacuum: bool, filled: date
@@ -247,7 +326,13 @@ class Estimator:
         key = cache_key(content, context.area_name, vacuum)
         if (hit := self._cache.get(key)) is not None:
             return Estimate(
-                int(hit["days"]), str(hit.get("tip", "")), True, key, hit.get("source", "learned")
+                int(hit["days"]),
+                str(hit.get("tip", "")),
+                True,
+                key,
+                hit.get("source", "learned"),
+                str(hit.get("basis", "")),
+                hit.get("origin"),
             )
 
         language = self.hass.config.language
@@ -276,6 +361,8 @@ class Estimator:
                     "tip": result.tip,
                     "source": "table",
                     "basis": result.basis,
+                    "content": content.strip(),
+                    "area": context.area_name,
                 }
                 self._schedule_save()
                 return Estimate(result.days, result.tip, False, key, "table", result.basis)
@@ -332,7 +419,13 @@ class Estimator:
         days = min(max(days, MIN_DAYS), MAX_DAYS)
         tip = str(result.get("storage_tip") or "").strip()
 
-        self._cache[key] = {"days": days, "tip": tip, "source": "ai"}
+        self._cache[key] = {
+            "days": days,
+            "tip": tip,
+            "source": "ai",
+            "content": content.strip(),
+            "area": context.area_name,
+        }
         self._schedule_save()
         return Estimate(days, tip, False, key, "ai")
 

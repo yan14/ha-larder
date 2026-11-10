@@ -93,6 +93,12 @@
     },
     "table_unsuitable": {
       "message": "{food} should not be stored in “{place}”, so no date is estimated."
+    },
+    "entry_not_found": {
+      "message": "This remembered entry no longer exists."
+    },
+    "days_out_of_range": {
+      "message": "Days must be between {min} and {max}."
     }
   },
   "options": {

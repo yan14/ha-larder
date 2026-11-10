@@ -50,6 +50,30 @@ export const STRINGS = {
     sourceTable: "Tabelle",
     sourceAi: "KI",
     sourceLearned: "von dir korrigiert",
+    sourceLearnedTable: "Tabelle, von dir korrigiert",
+    sourceLearnedAi: "KI, von dir korrigiert",
+    tabContainers: "Dosen",
+    tabEstimates: "Schätzungen",
+    estTitle: "Gemerkte Schätzungen",
+    estIntro:
+      "Hier stehen alle Werte, die für Inhalt, Bereich und Vakuum gemerkt wurden (aus der Tabelle, von der KI oder von dir). Du kannst Tage und Tipp ändern, Einträge löschen (dann wird neu geschätzt) oder eigene hinzufügen.",
+    estContent: "Inhalt",
+    estArea: "Bereich",
+    estVacuum: "Vakuum",
+    estNoVacuum: "ohne Vakuum",
+    estDays: "Tage",
+    estTip: "Tipp",
+    estSource: "Quelle",
+    estSave: "Speichern",
+    estDelete: "Löschen",
+    estAdd: "Hinzufügen",
+    estAddTitle: "Eigenen Eintrag hinzufügen",
+    estEmpty: "Noch nichts gemerkt. Einträge entstehen, sobald du ein MHD schätzen lässt oder korrigierst.",
+    estConfirmDelete: (name) => `„${name}“ löschen? Beim nächsten Schätzen wird neu berechnet.`,
+    estFailed: "Die Änderung konnte nicht gespeichert werden.",
+    estLoadFailed: "Die Liste konnte nicht geladen werden.",
+    estNeedFields: "Inhalt, Bereich und Tage ausfüllen.",
+    estOff: "Die MHD-Schätzung ist ausgeschaltet. Die Einträge bleiben erhalten.",
   },
   en: {
     title: "Zwilling containers",
@@ -91,8 +115,42 @@ export const STRINGS = {
     sourceTable: "table",
     sourceAi: "AI",
     sourceLearned: "corrected by you",
+    sourceLearnedTable: "table, corrected by you",
+    sourceLearnedAi: "AI, corrected by you",
+    tabContainers: "Containers",
+    tabEstimates: "Estimates",
+    estTitle: "Remembered estimates",
+    estIntro:
+      "All values remembered for a combination of contents, area and vacuum (from the table, the AI or from you). You can change days and tip, delete entries (the next estimate is calculated anew) or add your own.",
+    estContent: "Contents",
+    estArea: "Area",
+    estVacuum: "Vacuum",
+    estNoVacuum: "no vacuum",
+    estDays: "Days",
+    estTip: "Tip",
+    estSource: "Source",
+    estSave: "Save",
+    estDelete: "Delete",
+    estAdd: "Add",
+    estAddTitle: "Add your own entry",
+    estEmpty: "Nothing remembered yet. Entries appear when you estimate or correct a best-before date.",
+    estConfirmDelete: (name) => `Delete “${name}”? The next estimate is calculated anew.`,
+    estFailed: "The change could not be saved.",
+    estLoadFailed: "The list could not be loaded.",
+    estNeedFields: "Fill in contents, area and days.",
+    estOff: "Best-before estimates are switched off. The entries are kept.",
   },
 };
+
+/** Beschriftung der Quelle eines Schätzwerts (Tabelle, KI oder vom Nutzer korrigiert, mit Ursprung). */
+export function sourceLabel(t, source, origin) {
+  if (source === "learned") {
+    if (origin === "table") return t.sourceLearnedTable;
+    if (origin === "ai") return t.sourceLearnedAi;
+    return t.sourceLearned;
+  }
+  return { table: t.sourceTable, ai: t.sourceAi }[source] || "";
+}
 
 function strings(hass) {
   const lang = ((hass && (hass.language || (hass.locale && hass.locale.language))) || "en")
@@ -256,6 +314,32 @@ const STYLE = `
     cursor: pointer; border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
   .estimaterow .tip { font-size: 13px; color: var(--secondary-text-color); }
   .estimaterow .tip.error { color: var(--error-color, #db4437); }
+  header .tabs { display: none; gap: 4px; }
+  header .tabs.visible { display: flex; }
+  header .tabs button { font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+    border: 1px solid transparent; background: none; color: inherit; opacity: .8; }
+  header .tabs button.active { border-color: currentColor; opacity: 1; }
+  #estimates { display: flex; flex-direction: column; gap: 12px; }
+  #estimates[hidden], #content[hidden] { display: none; }
+  #estimates h2 { margin: 0; font-size: 20px; font-weight: 400; }
+  #estimates .intro { margin: 0; font-size: 14px; color: var(--secondary-text-color); }
+  .est { background: var(--card-background-color, #fff); border-radius: var(--ha-card-border-radius, 12px);
+    box-shadow: var(--ha-card-box-shadow, 0 1px 3px rgba(0,0,0,.2)); padding: 12px 16px; display: grid; gap: 8px 12px;
+    grid-template-columns: minmax(0, 1fr) 90px; align-items: end; }
+  .est .what { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
+  .est .what .name { font-size: 16px; font-weight: 500; }
+  .est .what .meta { font-size: 13px; color: var(--secondary-text-color); }
+  .est .f { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--secondary-text-color); min-width: 0; }
+  .est input[type="text"], .est input[type="number"], .est select { font: inherit; color: var(--primary-text-color);
+    background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 6px;
+    padding: 6px 8px; box-sizing: border-box; min-width: 0; width: 100%; }
+  .est .btns { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: flex-end; }
+  .est .btns button { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 8px; cursor: pointer; border: 0; }
+  .est .btns button.save { background: var(--primary-color); color: var(--text-primary-color, #fff); }
+  .est .btns button.del { background: none; color: var(--error-color, #db4437); border: 1px solid var(--divider-color); }
+  .est.new { border: 1px dashed var(--divider-color); box-shadow: none; }
+  .est.new h3 { grid-column: 1 / -1; margin: 0; font-size: 15px; font-weight: 500; }
+  .est .check { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--primary-text-color); }
   .none { text-align: center; padding: 48px 16px; color: var(--secondary-text-color); }
   .none h2 { color: var(--primary-text-color); font-weight: 400; }
   .none a { color: var(--primary-color); cursor: pointer; }
@@ -363,7 +447,7 @@ class DoseCard {
       });
       const out = res && res.response && res.response[this.ids.date];
       if (out && out.status === "estimated") {
-        const source = { table: t.sourceTable, ai: t.sourceAi, learned: t.sourceLearned }[out.source];
+        const source = sourceLabel(t, out.source, out.origin);
         const head = t.estimated(out.days) + (source ? ` (${source})` : "");
         this._setTip([head, out.tip].filter(Boolean).join(". "));
       }
@@ -501,8 +585,8 @@ class ZwillingStoragePanel extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this.shadowRoot.innerHTML = `
       <style>${STYLE}</style>
-      <header><button id="menu" type="button" aria-label="Menu">☰</button><h1></h1><span class="count"></span><button class="add" type="button"></button></header>
-      <main><div id="notice" class="notice" hidden></div><div id="content"></div></main>
+      <header><button id="menu" type="button" aria-label="Menu">☰</button><h1></h1><span class="count"></span><div class="tabs"><button type="button" data-view="containers"></button><button type="button" data-view="estimates"></button></div><button class="add" type="button"></button></header>
+      <main><div id="notice" class="notice" hidden></div><div id="content"></div><div id="estimates" hidden></div></main>
       <div class="overlay" hidden>
         <form class="dialog" novalidate>
           <h2></h2>
@@ -535,6 +619,13 @@ class ZwillingStoragePanel extends HTMLElement {
       ev.preventDefault();
       this.submitAdd();
     });
+    this._view = "containers";
+    this._est = null;
+    this._estimatesEl = this.shadowRoot.querySelector("#estimates");
+    this._tabs = this.shadowRoot.querySelector(".tabs");
+    for (const btn of this._tabs.querySelectorAll("button")) {
+      btn.addEventListener("click", () => this.setView(btn.dataset.view));
+    }
     this._title = this.shadowRoot.querySelector("h1");
     this._count = this.shadowRoot.querySelector(".count");
     this.shadowRoot.querySelector("#menu").addEventListener("click", () => {
@@ -679,6 +770,161 @@ class ZwillingStoragePanel extends HTMLElement {
     }
   }
 
+  /** Zwischen Dosen-Übersicht und Liste der gemerkten Schätzungen wechseln (nur Administratoren). */
+  setView(view) {
+    if (view === "estimates" && !isAdmin(this._hass)) return;
+    this._view = view;
+    this._main.hidden = view !== "containers";
+    this._estimatesEl.hidden = view !== "estimates";
+    this._addBtn.classList.toggle("visible", isAdmin(this._hass) && view === "containers");
+    for (const btn of this._tabs.querySelectorAll("button")) {
+      btn.classList.toggle("active", btn.dataset.view === view);
+    }
+    if (view === "estimates") this.loadEstimates();
+  }
+
+  async _estCall(msg) {
+    const hass = this._hass;
+    const t = strings(hass);
+    this.showError("");
+    try {
+      const res = await hass.callWS(msg);
+      if (res && res.entries) this._est = { ...(this._est || {}), entries: res.entries };
+      this._renderEstimates();
+      return true;
+    } catch (err) {
+      this.showError((err && err.message) || t.estFailed);
+      return false;
+    }
+  }
+
+  async loadEstimates() {
+    const hass = this._hass;
+    if (!hass || !hass.callWS) return;
+    try {
+      this._est = await hass.callWS({ type: `${DOMAIN}/estimates` });
+      this.showError("");
+    } catch (err) {
+      this._est = this._est || { entries: [], mode: "table" };
+      this.showError(strings(hass).estLoadFailed);
+    }
+    this._renderEstimates();
+  }
+
+  /** Liste der gemerkten Schätzungen zeichnen: eigene Zeile zum Hinzufügen, darunter alle Einträge. */
+  _renderEstimates() {
+    const hass = this._hass;
+    if (!hass || !this._est) return;
+    const t = strings(hass);
+    this._estLang = t;
+    const root = this._estimatesEl;
+    const el = (tag, cls, text) => {
+      const node = document.createElement(tag);
+      if (cls) node.className = cls;
+      if (text !== undefined) node.textContent = text;
+      return node;
+    };
+    const field = (label, input) => {
+      const wrap = el("label", "f");
+      wrap.append(el("span", "", label), input);
+      return wrap;
+    };
+    const input = (type, value, extra = {}) => {
+      const node = el("input");
+      node.type = type;
+      node.value = value;
+      Object.assign(node, extra);
+      return node;
+    };
+
+    const frag = document.createDocumentFragment();
+    frag.append(el("h2", "", t.estTitle), el("p", "intro", t.estIntro));
+    if (this._est.mode === "off") frag.append(el("p", "intro", t.estOff));
+
+    // --- eigenen Eintrag hinzufügen ---
+    const add = el("section", "est new");
+    add.append(el("h3", "", t.estAddTitle));
+    const content = input("text", "", { maxLength: 255 });
+    content.dataset.f = "content";
+    const area = el("select");
+    area.dataset.f = "area";
+    for (const a of listAreas(hass)) {
+      const opt = el("option", "", a.name);
+      opt.value = a.name;
+      area.append(opt);
+    }
+    const days = input("number", "", { min: 1, max: 3650, step: 1 });
+    days.dataset.f = "days";
+    const vacuum = input("checkbox", "");
+    vacuum.checked = true;
+    vacuum.dataset.f = "vacuum";
+    const vacLabel = el("label", "check");
+    vacLabel.append(vacuum, el("span", "", t.estVacuum));
+    const addBtns = el("div", "btns");
+    const addBtn = el("button", "save", t.estAdd);
+    addBtn.type = "button";
+    addBtn.addEventListener("click", async () => {
+      if (!content.value.trim() || !area.value || !Number(days.value)) {
+        this.showError(t.estNeedFields);
+        return;
+      }
+      await this._estCall({
+        type: `${DOMAIN}/estimate_add`,
+        content: content.value.trim(),
+        area: area.value,
+        vacuum: vacuum.checked,
+        days: Number(days.value),
+      });
+    });
+    addBtns.append(addBtn);
+    add.append(field(t.estContent, content), field(t.estDays, days), field(t.estArea, area), vacLabel, addBtns);
+    frag.append(add);
+
+    // --- vorhandene Einträge ---
+    if (!this._est.entries.length) {
+      frag.append(el("p", "intro", t.estEmpty));
+    }
+    for (const entry of this._est.entries) {
+      const row = el("section", "est");
+      row.dataset.key = entry.key;
+      const what = el("div", "what");
+      what.append(
+        el("span", "name", entry.content),
+        el("span", "meta", `${entry.area} · ${entry.vacuum ? t.estVacuum : t.estNoVacuum}`),
+        el("span", "meta", `${t.estSource}: ${sourceLabel(t, entry.source, entry.origin)}`),
+      );
+      const tip = input("text", entry.tip, { maxLength: 500 });
+      tip.dataset.f = "tip";
+      const d = input("number", String(entry.days), { min: 1, max: 3650, step: 1 });
+      d.dataset.f = "days";
+      const btns = el("div", "btns");
+      const del = el("button", "del", t.estDelete);
+      del.type = "button";
+      del.addEventListener("click", async () => {
+        if (!window.confirm(t.estConfirmDelete(entry.content))) return;
+        await this._estCall({ type: `${DOMAIN}/estimate_delete`, key: entry.key });
+      });
+      const save = el("button", "save", t.estSave);
+      save.type = "button";
+      save.addEventListener("click", async () => {
+        if (!Number(d.value)) {
+          this.showError(t.estNeedFields);
+          return;
+        }
+        await this._estCall({
+          type: `${DOMAIN}/estimate_set`,
+          key: entry.key,
+          days: Number(d.value),
+          tip: tip.value,
+        });
+      });
+      btns.append(del, save);
+      row.append(what, field(t.estTip, tip), field(t.estDays, d), btns);
+      frag.append(row);
+    }
+    root.replaceChildren(frag);
+  }
+
   _update() {
     const hass = this._hass;
     if (!hass) return;
@@ -694,7 +940,13 @@ class ZwillingStoragePanel extends HTMLElement {
     this._title.textContent = t.title;
     this._count.textContent = t.count(this._devices.length);
     this._addBtn.textContent = `+ ${t.addContainer}`;
-    this._addBtn.classList.toggle("visible", isAdmin(hass));
+    this._addBtn.classList.toggle("visible", isAdmin(hass) && this._view === "containers");
+    this._tabs.classList.toggle("visible", isAdmin(hass));
+    for (const btn of this._tabs.querySelectorAll("button")) {
+      btn.textContent = btn.dataset.view === "estimates" ? t.tabEstimates : t.tabContainers;
+      btn.classList.toggle("active", btn.dataset.view === this._view);
+    }
+    if (this._est && this._view === "estimates" && this._estLang !== t) this._renderEstimates();
     this._form.querySelector("h2").textContent = t.addContainer;
     for (const el of this._form.querySelectorAll("[data-l]")) el.textContent = t[el.dataset.l];
     this._form.querySelector("button.cancel").textContent = t.cancel;

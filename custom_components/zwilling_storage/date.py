@@ -150,6 +150,7 @@ class ZwillingBestBefore(DateEntity, ZwillingResettable):
                 "tip": estimate.tip,
                 "cached": estimate.cached,
                 "source": estimate.source,
+                "origin": estimate.origin,
                 "basis": estimate.basis,
                 "applied": apply,
             }

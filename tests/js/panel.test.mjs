@@ -13,7 +13,7 @@ for (const key of ["window", "document", "HTMLElement", "customElements", "Event
   globalThis[key] = dom.window[key];
 }
 
-const { STRINGS, listAreas, collectDevices, daysUntil, toLocalInputValue } = await import(
+const { STRINGS, listAreas, collectDevices, daysUntil, toLocalInputValue, sourceLabel } = await import(
   "../../custom_components/zwilling_storage/frontend/zwilling-storage-panel.js"
 );
 
@@ -686,4 +686,120 @@ test("Leeren von MHD und 'Eingelagert am' im Panel ruft die Löschen-Services au
     { domain: D, service: "clear_best_before", data: { entity_id: "date.d1_mhd" } },
     { domain: D, service: "clear_filled_at", data: { entity_id: "datetime.d1_befuellt" } },
   ]);
+});
+
+// ---------- Quelle des Schätzwerts, Liste der gemerkten Schätzungen ----------
+
+test("sourceLabel nennt Tabelle, KI und bei Korrekturen den Ursprung", () => {
+  const t = STRINGS.de;
+  assert.equal(sourceLabel(t, "table"), "Tabelle");
+  assert.equal(sourceLabel(t, "ai"), "KI");
+  assert.equal(sourceLabel(t, "learned", "table"), "Tabelle, von dir korrigiert");
+  assert.equal(sourceLabel(t, "learned", "ai"), "KI, von dir korrigiert");
+  assert.equal(sourceLabel(t, "learned", null), "von dir korrigiert");
+  assert.equal(sourceLabel(STRINGS.en, "learned", "ai"), "AI, corrected by you");
+});
+
+const ENTRIES = [
+  { key: "pizza|kühlschrank|vacuum", content: "Pizza", area: "Kühlschrank", vacuum: true, days: 3, tip: "Gut erhitzen", source: "learned", origin: "ai" },
+  { key: "suppe|keller|normal", content: "Suppe", area: "Keller", vacuum: false, days: 4, tip: "", source: "table", origin: null },
+];
+
+function estimatesHass(entries = ENTRIES) {
+  const hass = adminHass([{ id: "d1", name: "A", area: "kitchen" }]);
+  hass.callWS = async (msg) => {
+    hass.wsCalls.push(msg);
+    if (msg.type === `${D}/estimates`) return { mode: "table", entries };
+    return { entries: msg.type.endsWith("delete") ? entries.slice(1) : entries };
+  };
+  return hass;
+}
+
+test("Reiter 'Schätzungen' nur für Administratoren", () => {
+  const user = adminHass();
+  user.user = { is_admin: false };
+  assert.equal($(mount(user), ".tabs").classList.contains("visible"), false);
+  document.body.innerHTML = "";
+  assert.equal($(mount(adminHass()), ".tabs").classList.contains("visible"), true);
+});
+
+test("Reiter 'Schätzungen' lädt und zeigt Einträge samt Quelle", async () => {
+  const hass = estimatesHass();
+  const el = mount(hass);
+  $(el, '[data-view="estimates"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls, [{ type: `${D}/estimates` }]);
+  assert.equal($(el, "#estimates").hidden, false);
+  assert.equal($(el, "#content").hidden, true);
+  const rows = $$(el, "#estimates .est:not(.new)");
+  assert.equal(rows.length, 2);
+  assert.match(rows[0].textContent, /Pizza/);
+  assert.match(rows[0].textContent, /KI, von dir korrigiert/);
+  assert.match(rows[1].textContent, /ohne Vakuum/);
+  assert.match(rows[1].textContent, /Quelle: Tabelle/);
+  assert.equal(rows[0].querySelector('[data-f="days"]').value, "3");
+
+  $(el, '[data-view="containers"]').click();
+  assert.equal($(el, "#content").hidden, false);
+});
+
+test("Schätzungen: Speichern, Löschen (mit Rückfrage) und Hinzufügen rufen die Befehle auf", async () => {
+  const hass = estimatesHass();
+  const el = mount(hass);
+  $(el, '[data-view="estimates"]').click();
+  await flush();
+  hass.wsCalls.length = 0;
+
+  const row = () => $$(el, "#estimates .est:not(.new)")[0];
+  row().querySelector('[data-f="days"]').value = "5";
+  row().querySelector('[data-f="tip"]').value = "Neu";
+  row().querySelector("button.save").click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.pop(), {
+    type: `${D}/estimate_set`,
+    key: "pizza|kühlschrank|vacuum",
+    days: 5,
+    tip: "Neu",
+  });
+
+  dom.window.confirm = () => false;
+  row().querySelector("button.del").click();
+  await flush();
+  assert.equal(hass.wsCalls.length, 0); // abgebrochen
+  dom.window.confirm = () => true;
+  row().querySelector("button.del").click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.pop(), { type: `${D}/estimate_delete`, key: "pizza|kühlschrank|vacuum" });
+
+  const add = $(el, "#estimates .est.new");
+  add.querySelector("button.save").click(); // leer: nichts senden
+  await flush();
+  assert.equal(hass.wsCalls.length, 0);
+  assert.equal($(el, "#notice").hidden, false);
+  add.querySelector('[data-f="content"]').value = "Lasagne";
+  add.querySelector('[data-f="area"]').value = "Küche";
+  add.querySelector('[data-f="days"]').value = "3";
+  add.querySelector('[data-f="vacuum"]').checked = false;
+  add.querySelector("button.save").click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.pop(), {
+    type: `${D}/estimate_add`,
+    content: "Lasagne",
+    area: "Küche",
+    vacuum: false,
+    days: 3,
+  });
+});
+
+test("Schätzungen: Fehler des Servers wird angezeigt", async () => {
+  const hass = estimatesHass();
+  const el = mount(hass);
+  $(el, '[data-view="estimates"]').click();
+  await flush();
+  hass.callWS = async () => {
+    throw { message: "Dieser gemerkte Eintrag existiert nicht (mehr)." };
+  };
+  $$(el, "#estimates .est:not(.new)")[0].querySelector("button.save").click();
+  await flush();
+  assert.match($(el, "#notice").textContent, /existiert nicht/);
 });

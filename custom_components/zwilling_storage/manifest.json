@@ -8,7 +8,8 @@
   "dependencies": [
     "http",
     "panel_custom",
-    "webhook"
+    "webhook",
+    "websocket_api"
   ],
   "documentation": "https://github.com/yan14/ha-zwilling-storage",
   "integration_type": "device",
@@ -17,5 +18,5 @@
   "requirements": [
     "segno==1.6.6"
   ],
-  "version": "0.6.0"
+  "version": "0.7.0"
 }

@@ -153,6 +153,7 @@ async def test_estimate_applies_best_before_from_filled_date(hass: HomeAssistant
         "tip": "Gut verschlossen lagern.",
         "cached": False,
         "source": "ai",
+        "origin": None,
         "basis": "",
         "applied": True,
     }

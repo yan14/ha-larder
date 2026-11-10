@@ -93,6 +93,12 @@
     },
     "table_unsuitable": {
       "message": "{food} sollte nicht im Lagerort „{place}“ aufbewahrt werden. Ein Datum wird deshalb nicht geschätzt."
+    },
+    "entry_not_found": {
+      "message": "Dieser gemerkte Eintrag existiert nicht (mehr)."
+    },
+    "days_out_of_range": {
+      "message": "Die Tage müssen zwischen {min} und {max} liegen."
     }
   },
   "options": {
