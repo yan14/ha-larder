@@ -1,10 +1,12 @@
-"""Optionale KI-Schätzung des Mindesthaltbarkeitsdatums.
+"""Schätzung des Mindesthaltbarkeitsdatums: eingebaute Tabelle und/oder KI.
 
-Die Schätzung läuft über die Home-Assistant-Integration "AI Task"
-(`ai_task.generate_data`), also über den KI-Dienst, den du dort eingerichtet hast.
-Gesendet werden nur: Inhalt, Name und Hinweise des Lagerorts (Bereich), ob die Dose
-vakuumiert ist, und das Befüll-Datum. Ergebnisse werden pro Kombination aus Inhalt,
-Bereich und Vakuum gespeichert und nicht erneut angefragt.
+Modus (Einstellung): aus / Tabelle / Tabelle, sonst KI / nur KI.
+Die Tabelle (`shelf_life.py`) arbeitet offline und ohne Dienst. Die KI-Schätzung läuft über
+die Home-Assistant-Integration "AI Task" (`ai_task.generate_data`), also über den
+KI-Dienst, den du dort eingerichtet hast. An die KI gehen nur: Inhalt, Name und Hinweise
+des Lagerorts (Bereich), ob die Dose vakuumiert ist, und das Befüll-Datum. Ergebnisse
+werden pro Kombination aus Inhalt, Bereich und Vakuum gespeichert; vom Nutzer korrigierte
+Werte haben dabei Vorrang vor Tabelle und KI.
 """
 
 from __future__ import annotations
@@ -26,7 +28,18 @@ from homeassistant.helpers import (
 )
 from homeassistant.helpers.storage import Store
 
-from .const import CONF_AI_ENABLED, CONF_AI_TASK_ENTITY, DOMAIN
+from . import shelf_life
+from .const import (
+    CONF_AI_ENABLED,
+    CONF_AI_TASK_ENTITY,
+    CONF_ESTIMATE_MODE,
+    DOMAIN,
+    ESTIMATE_AI,
+    ESTIMATE_MODES,
+    ESTIMATE_OFF,
+    ESTIMATE_TABLE,
+    ESTIMATE_TABLE_AI,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -56,6 +69,8 @@ class StorageContext:
 
     area_name: str | None
     hints: list[str]
+    temperature_c: float | None = None
+    label_texts: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -64,6 +79,8 @@ class Estimate:
     tip: str
     cached: bool
     key: str
+    source: str = "ai"  # "table", "ai" oder "learned"
+    basis: str = ""
 
 
 def cache_key(content: str, area_name: str | None, vacuum: bool) -> str:
@@ -89,23 +106,27 @@ def storage_context(hass: HomeAssistant, cc: str) -> StorageContext:
         return StorageContext(None, [])
 
     hints: list[str] = []
+    temperature_c: float | None = None
     if area.temperature_entity_id:
         state = hass.states.get(area.temperature_entity_id)
         if state is not None:
             try:
-                float(state.state)
+                value = float(state.state)
             except ValueError:
                 pass
             else:
                 unit = state.attributes.get("unit_of_measurement", "")
+                if unit in ("°C", "°F"):
+                    temperature_c = (value - 32) * 5 / 9 if unit == "°F" else value
                 hints.append(f"measured temperature in this place: {state.state} {unit}".strip())
     label_registry = lr.async_get(hass)
+    label_texts: list[str] = []
     for label_id in sorted(area.labels):
         if label := label_registry.async_get_label(label_id):
-            hints.append(
-                f"{label.name}: {label.description}" if label.description else label.name
-            )
-    return StorageContext(area.name, hints)
+            text = f"{label.name}: {label.description}" if label.description else label.name
+            hints.append(text)
+            label_texts.append(text)
+    return StorageContext(area.name, hints, temperature_c, tuple(label_texts))
 
 
 def build_instructions(
@@ -161,21 +182,33 @@ class Estimator:
     def __init__(self, hass: HomeAssistant) -> None:
         self.hass = hass
         self._store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
-        self.ai_enabled = False
+        self.mode = ESTIMATE_TABLE
         self.ai_task_entity: str | None = None
         self._cache: dict[str, dict[str, Any]] = {}
 
     async def async_load(self) -> None:
         data = await self._store.async_load() or {}
         settings = data.get("settings", {})
-        self.ai_enabled = bool(settings.get(CONF_AI_ENABLED, False))
+        mode = settings.get(CONF_ESTIMATE_MODE)
+        if mode not in ESTIMATE_MODES:
+            # Einstellung aus Version 0.5: KI an → nur KI (bisheriges Verhalten), sonst Tabelle.
+            mode = ESTIMATE_AI if settings.get(CONF_AI_ENABLED) else ESTIMATE_TABLE
+        self.mode = mode
         self.ai_task_entity = settings.get(CONF_AI_TASK_ENTITY) or None
         self._cache = data.get("cache", {})
+
+    @property
+    def enabled(self) -> bool:
+        return self.mode != ESTIMATE_OFF
+
+    @property
+    def ai_enabled(self) -> bool:
+        return self.mode in (ESTIMATE_TABLE_AI, ESTIMATE_AI)
 
     def _data(self) -> dict[str, Any]:
         return {
             "settings": {
-                CONF_AI_ENABLED: self.ai_enabled,
+                CONF_ESTIMATE_MODE: self.mode,
                 CONF_AI_TASK_ENTITY: self.ai_task_entity,
             },
             "cache": self._cache,
@@ -184,8 +217,8 @@ class Estimator:
     def _schedule_save(self) -> None:
         self._store.async_delay_save(self._data, 1)
 
-    async def async_update_settings(self, enabled: bool, entity: str | None) -> None:
-        self.ai_enabled = enabled
+    async def async_update_settings(self, mode: str, entity: str | None) -> None:
+        self.mode = mode if mode in ESTIMATE_MODES else ESTIMATE_TABLE
         self.ai_task_entity = entity or None
         await self._store.async_save(self._data())
 
@@ -194,14 +227,18 @@ class Estimator:
         if not MIN_DAYS <= days <= MAX_DAYS:
             return
         previous = self._cache.get(key, {})
-        self._cache[key] = {"days": days, "tip": tip if tip is not None else previous.get("tip", "")}
+        self._cache[key] = {
+            "days": days,
+            "tip": tip if tip is not None else previous.get("tip", ""),
+            "source": "learned",
+        }
         self._schedule_save()
 
     async def async_estimate(
         self, *, content: str, context: StorageContext, vacuum: bool, filled: date
     ) -> Estimate:
-        if not self.ai_enabled:
-            raise EstimateError("ai_disabled")
+        if not self.enabled:
+            raise EstimateError("estimates_disabled")
         if not content.strip():
             raise EstimateError("no_content")
         if context.area_name is None:
@@ -209,8 +246,51 @@ class Estimator:
 
         key = cache_key(content, context.area_name, vacuum)
         if (hit := self._cache.get(key)) is not None:
-            return Estimate(int(hit["days"]), str(hit.get("tip", "")), True, key)
+            return Estimate(
+                int(hit["days"]), str(hit.get("tip", "")), True, key, hit.get("source", "learned")
+            )
 
+        language = self.hass.config.language
+        if self.mode in (ESTIMATE_TABLE, ESTIMATE_TABLE_AI):
+            try:
+                result = shelf_life.lookup(
+                    content,
+                    area_name=context.area_name,
+                    temperature_c=context.temperature_c,
+                    label_texts=context.label_texts,
+                    vacuum=vacuum,
+                    language=language,
+                )
+            except shelf_life.TableUnsuitable as err:
+                # Nie an die KI weiterreichen: Die Tabelle sagt bewusst "hier nicht lagern".
+                raise EstimateError("table_unsuitable", food=err.food, place=err.place) from err
+            except shelf_life.TableNoMatch as err:
+                if self.mode == ESTIMATE_TABLE:
+                    raise EstimateError("table_no_match") from err
+            except shelf_life.TableUnknownStorage as err:
+                if self.mode == ESTIMATE_TABLE:
+                    raise EstimateError("table_unknown_storage", area=context.area_name) from err
+            else:
+                self._cache[key] = {
+                    "days": result.days,
+                    "tip": result.tip,
+                    "source": "table",
+                    "basis": result.basis,
+                }
+                self._schedule_save()
+                return Estimate(result.days, result.tip, False, key, "table", result.basis)
+
+        return await self._async_estimate_ai(key, content, context, vacuum, filled, language)
+
+    async def _async_estimate_ai(
+        self,
+        key: str,
+        content: str,
+        context: StorageContext,
+        vacuum: bool,
+        filled: date,
+        language: str,
+    ) -> Estimate:
         if not self.hass.services.has_service("ai_task", "generate_data"):
             raise EstimateError("ai_unavailable")
 
@@ -221,7 +301,7 @@ class Estimator:
                 context=context,
                 vacuum=vacuum,
                 filled=filled,
-                language=self.hass.config.language,
+                language=language,
             ),
             "structure": STRUCTURE,
         }
@@ -252,9 +332,9 @@ class Estimator:
         days = min(max(days, MIN_DAYS), MAX_DAYS)
         tip = str(result.get("storage_tip") or "").strip()
 
-        self._cache[key] = {"days": days, "tip": tip}
+        self._cache[key] = {"days": days, "tip": tip, "source": "ai"}
         self._schedule_save()
-        return Estimate(days, tip, False, key)
+        return Estimate(days, tip, False, key, "ai")
 
 
 async def async_get_estimator(hass: HomeAssistant) -> Estimator:

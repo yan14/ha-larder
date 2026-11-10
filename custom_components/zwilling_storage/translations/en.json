@@ -70,9 +70,6 @@
     "nothing_to_reset": {
       "message": "No entity to reset is available for this container (contents, best before and filled on are disabled?)."
     },
-    "ai_disabled": {
-      "message": "AI estimates are switched off. Enable them under Settings → Devices & services → Zwilling Food Storage → Configure."
-    },
     "ai_unavailable": {
       "message": "The Home Assistant “AI Task” integration is not set up."
     },
@@ -84,20 +81,32 @@
     },
     "ai_failed": {
       "message": "The AI estimate failed: {error}"
+    },
+    "estimates_disabled": {
+      "message": "Best-before estimates are switched off. Enable them under Settings → Devices & services → Zwilling Food Storage → Configure."
+    },
+    "table_no_match": {
+      "message": "There is no entry for these contents in the shelf-life table. Enter the best-before date yourself or choose “Table, otherwise AI” in the settings."
+    },
+    "table_unknown_storage": {
+      "message": "The area “{area}” cannot be matched to a storage place. Name it e.g. fridge, 0 °C compartment, freezer or pantry, or add a temperature sensor to the area."
+    },
+    "table_unsuitable": {
+      "message": "{food} should not be stored in “{place}”, so no date is estimated."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Settings",
-        "description": "**AI best-before estimate (optional)**\nUses the AI service you set up under Settings → Devices & services → “AI Task”. Only the contents, the area name with its hints (temperature sensor, label description), vacuum yes/no and the filling date are sent.\n\n**Scan webhook**\nEnter this URL **once** in the iOS shortcut. It is secret: anyone who knows it can look up containers.\n\n`{webhook_url}`\n\nPath only: `{webhook_path}`\n\nSee the project README for the shortcut instructions.",
+        "description": "**Best-before estimate**\nControls how the “Estimate best before” button on the dashboard and the service work. The built-in table works without an AI service and without internet. AI uses the service you set up under Settings → Devices & services → “AI Task”; only the contents, the area name with its hints (temperature sensor, label description), vacuum yes/no and the filling date are sent. Values you corrected yourself always win.\n\n**Scan webhook**\nEnter this URL **once** in the iOS shortcut. It is secret: anyone who knows it can look up containers.\n\n`{webhook_url}`\n\nPath only: `{webhook_path}`\n\nSee the project README for the shortcut instructions.",
         "data": {
-          "ai_enabled": "Estimate best-before date with AI",
+          "estimate_mode": "Best-before estimate",
           "ai_task_entity": "AI task (empty = Home Assistant default)"
         },
         "data_description": {
-          "ai_enabled": "Shows the “Estimate best before” button on the dashboard and enables the service.",
-          "ai_task_entity": "Only needed if you have set up more than one AI service."
+          "estimate_mode": "Shows the “Estimate best before” button on the dashboard unless set to Off.",
+          "ai_task_entity": "Only needed if you have set up more than one AI service and an AI option is chosen."
         }
       }
     }
@@ -105,7 +114,7 @@
   "services": {
     "estimate_best_before": {
       "name": "Estimate best before",
-      "description": "Estimates the best-before date with AI from the contents, storage place (area), vacuum and filling date. An existing best-before date is never overwritten unless “Overwrite” is on.",
+      "description": "Estimates the best-before date from the contents, storage place (area), vacuum and filling date – using the built-in table and/or AI depending on the settings. An existing best-before date is never overwritten unless “Overwrite” is on.",
       "fields": {
         "apply": {
           "name": "Apply",
@@ -124,6 +133,16 @@
     "clear_filled_at": {
       "name": "Clear filled on",
       "description": "Removes the filling date of the container."
+    }
+  },
+  "selector": {
+    "estimate_mode": {
+      "options": {
+        "off": "Off",
+        "table": "Table only (no AI)",
+        "table_ai": "Table, otherwise AI",
+        "ai": "AI only"
+      }
     }
   }
 }

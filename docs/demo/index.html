@@ -58,7 +58,7 @@ doses.forEach((d, i) => {
   for (const e of Object.values(ids)) entities[e] = { entity_id: e, device_id: id, platform: "zwilling_storage" };
   const has = content !== "";
   states[ids.text] = { entity_id: ids.text, state: has ? content : "", attributes: {} };
-  states[ids.date] = { entity_id: ids.date, state: has && mhd !== null ? day(mhd) : "unknown", attributes: { ai_estimates: true } };
+  states[ids.date] = { entity_id: ids.date, state: has && mhd !== null ? day(mhd) : "unknown", attributes: { estimates: true } };
   states[ids.switch] = { entity_id: ids.switch, state: name === "Rice" || name === "Reis" ? "off" : "on", attributes: {} };
   states[ids.datetime] = { entity_id: ids.datetime, state: has && hoursAgo !== null ? ago(hoursAgo) : "unknown", attributes: {} };
   states[ids.button] = { entity_id: ids.button, state: "unknown", attributes: {} };

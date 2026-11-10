@@ -26,7 +26,13 @@ SOURCE_GENERATED = "generated"
 MANUFACTURER = "ZWILLING"
 
 # KI-Schätzung des MHD (optional, benötigt die Home-Assistant-Integration "AI Task")
-CONF_AI_ENABLED = "ai_enabled"
+CONF_AI_ENABLED = "ai_enabled"  # alt (bis 0.5), wird zu CONF_ESTIMATE_MODE migriert
+CONF_ESTIMATE_MODE = "estimate_mode"
+ESTIMATE_OFF = "off"
+ESTIMATE_TABLE = "table"
+ESTIMATE_TABLE_AI = "table_ai"
+ESTIMATE_AI = "ai"
+ESTIMATE_MODES = [ESTIMATE_OFF, ESTIMATE_TABLE, ESTIMATE_TABLE_AI, ESTIMATE_AI]
 CONF_AI_TASK_ENTITY = "ai_task_entity"
 SERVICE_ESTIMATE_BEST_BEFORE = "estimate_best_before"
 SERVICE_CLEAR_BEST_BEFORE = "clear_best_before"

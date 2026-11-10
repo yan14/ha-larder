@@ -38,7 +38,7 @@ function makeHass(doses, { areas = {}, language = "de", stateOverrides = {} } = 
       entities[eid] = { entity_id: eid, device_id: d.id, platform: D, area_id: d.entityArea || null };
     }
     states[ids.text] = { entity_id: ids.text, state: d.content ?? "unknown", attributes: {} };
-    states[ids.date] = { entity_id: ids.date, state: d.mhd ?? "unknown", attributes: { ai_estimates: !!d.ai } };
+    states[ids.date] = { entity_id: ids.date, state: d.mhd ?? "unknown", attributes: { estimates: !!d.ai } };
     states[ids.switch] = { entity_id: ids.switch, state: d.vacuum ?? "on", attributes: {} };
     states[ids.datetime] = { entity_id: ids.datetime, state: d.filled ?? "unknown", attributes: {} };
     states[ids.button] = { entity_id: ids.button, state: "unknown", attributes: {} };
@@ -610,7 +610,7 @@ test("MHD schätzen ruft den Service auf und zeigt Schätzung samt Tipp", async 
   hass.callWS = async (msg) => {
     hass.wsCalls.push(msg);
     return {
-      response: { [dateId]: { status: "estimated", days: 4, tip: "Gut verschließen", best_before: "2026-11-14", applied: true } },
+      response: { [dateId]: { status: "estimated", days: 4, tip: "Gut verschließen", source: "table", basis: "Suppe · Kühlschrank", best_before: "2026-11-14", applied: true } },
     };
   };
   const el = mount(hass);
@@ -627,7 +627,7 @@ test("MHD schätzen ruft den Service auf und zeigt Schätzung samt Tipp", async 
       return_response: true,
     },
   ]);
-  assert.equal($(el, ".tip").textContent, "Geschätzt: ca. 4 Tage haltbar. Gut verschließen");
+  assert.equal($(el, ".tip").textContent, "Geschätzt: ca. 4 Tage haltbar (Tabelle). Gut verschließen");
   assert.equal($(el, "button.estimate").disabled, false);
   assert.equal($(el, ".estimaterow").classList.contains("visible"), true);
 

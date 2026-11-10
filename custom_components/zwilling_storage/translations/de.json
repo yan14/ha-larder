@@ -70,9 +70,6 @@
     "nothing_to_reset": {
       "message": "Für diese Dose ist keine Entität zum Zurücksetzen verfügbar (Inhalt, MHD und „Befüllt am“ sind deaktiviert?)."
     },
-    "ai_disabled": {
-      "message": "Die KI-Schätzung ist ausgeschaltet. Aktiviere sie unter Einstellungen → Geräte & Dienste → Zwilling Food Storage → Konfigurieren."
-    },
     "ai_unavailable": {
       "message": "Die Home-Assistant-Integration „AI Task“ ist nicht eingerichtet."
     },
@@ -84,20 +81,32 @@
     },
     "ai_failed": {
       "message": "Die KI-Schätzung ist fehlgeschlagen: {error}"
+    },
+    "estimates_disabled": {
+      "message": "Die MHD-Schätzung ist ausgeschaltet. Aktiviere sie unter Einstellungen → Geräte & Dienste → Zwilling Food Storage → Konfigurieren."
+    },
+    "table_no_match": {
+      "message": "Zu diesem Inhalt gibt es keinen Eintrag in der Haltbarkeits-Tabelle. Trage das MHD selbst ein oder wähle in den Einstellungen „Tabelle, sonst KI“."
+    },
+    "table_unknown_storage": {
+      "message": "Der Bereich „{area}“ lässt sich keinem Lagerort zuordnen. Nenne ihn z. B. Kühlschrank, 0-Grad-Fach, Gefrierschrank oder Vorrat, oder hinterlege einen Temperatursensor am Bereich."
+    },
+    "table_unsuitable": {
+      "message": "{food} sollte nicht im Lagerort „{place}“ aufbewahrt werden. Ein Datum wird deshalb nicht geschätzt."
     }
   },
   "options": {
     "step": {
       "init": {
         "title": "Einstellungen",
-        "description": "**KI-Schätzung des MHD (optional)**\nNutzt den KI-Dienst, den du unter Einstellungen → Geräte & Dienste → „AI Task“ eingerichtet hast. Gesendet werden nur Inhalt, Bereichsname samt Hinweisen (Temperatursensor, Label-Beschreibung), Vakuum Ja/Nein und das Befüll-Datum.\n\n**Scan-Webhook**\nDiese URL trägst du **einmalig** im iOS-Kurzbefehl ein. Sie ist geheim: Wer sie kennt, kann damit Dosen abfragen.\n\n`{webhook_url}`\n\nNur der Pfad: `{webhook_path}`\n\nDie Anleitung steht in der README des Projekts.",
+        "description": "**MHD-Schätzung**\nLegt fest, wie der Button „MHD schätzen“ im Dashboard und der Service arbeiten. Die eingebaute Tabelle funktioniert ohne KI-Dienst und ohne Internet. Eine KI nutzt den Dienst, den du unter Einstellungen → Geräte & Dienste → „AI Task“ eingerichtet hast; dorthin gehen nur Inhalt, Bereichsname mit Hinweisen (Temperatursensor, Label-Beschreibung), Vakuum ja/nein und Befüll-Datum. Vom Nutzer korrigierte Werte gelten immer zuerst.\n\n**Scan-Webhook**\nTrage diese URL **einmalig** im iOS-Kurzbefehl ein. Sie ist geheim: Wer sie kennt, kann Dosen abfragen.\n\n`{webhook_url}`\n\nNur der Pfad: `{webhook_path}`\n\nDie Anleitung zum Kurzbefehl steht in der README des Projekts.",
         "data": {
-          "ai_enabled": "MHD per KI schätzen",
+          "estimate_mode": "MHD-Schätzung",
           "ai_task_entity": "KI-Aufgabe (leer = Standard von Home Assistant)"
         },
         "data_description": {
-          "ai_enabled": "Zeigt im Dashboard den Button „MHD schätzen“ und aktiviert den Service.",
-          "ai_task_entity": "Nur nötig, wenn du mehrere KI-Dienste eingerichtet hast."
+          "estimate_mode": "Zeigt im Dashboard den Button „MHD schätzen“, außer bei „Aus“.",
+          "ai_task_entity": "Nur nötig, wenn du mehrere KI-Dienste eingerichtet hast und eine KI-Stufe gewählt ist."
         }
       }
     }
@@ -105,7 +114,7 @@
   "services": {
     "estimate_best_before": {
       "name": "MHD schätzen",
-      "description": "Schätzt das Mindesthaltbarkeitsdatum per KI aus Inhalt, Lagerort (Bereich), Vakuum und Befüll-Datum. Ein bereits gesetztes MHD wird nie überschrieben, außer „Überschreiben“ ist aktiv.",
+      "description": "Schätzt das MHD aus Inhalt, Lagerort (Bereich), Vakuum und Befüll-Datum – je nach Einstellung mit der eingebauten Tabelle und/oder KI. Ein vorhandenes MHD wird nie überschrieben, außer „Überschreiben“ ist an.",
       "fields": {
         "apply": {
           "name": "Übernehmen",
@@ -124,6 +133,16 @@
     "clear_filled_at": {
       "name": "„Befüllt am“ löschen",
       "description": "Entfernt das Befüll-Datum der Dose."
+    }
+  },
+  "selector": {
+    "estimate_mode": {
+      "options": {
+        "off": "Aus",
+        "table": "Nur Tabelle (ohne KI)",
+        "table_ai": "Tabelle, sonst KI",
+        "ai": "Nur KI"
+      }
     }
   }
 }

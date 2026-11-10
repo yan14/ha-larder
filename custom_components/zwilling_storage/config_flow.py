@@ -17,14 +17,18 @@ from homeassistant.core import callback
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.selector import (
     AreaSelector,
-    BooleanSelector,
     EntitySelector,
     EntitySelectorConfig,
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
     TextSelector,
 )
 
 from .const import (
-    CONF_AI_ENABLED,
+    CONF_ESTIMATE_MODE,
+    ESTIMATE_MODES,
+    ESTIMATE_TABLE,
     CONF_AI_TASK_ENTITY,
     CONF_AREA,
     CONF_CC,
@@ -136,7 +140,7 @@ class ZwillingStorageConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class ZwillingOptionsFlow(OptionsFlow):
-    """Globale Einstellungen: Webhook-URL (nur Anzeige) und KI-Schätzung des MHD."""
+    """Globale Einstellungen: Webhook-URL (nur Anzeige) und Schätzung des MHD (Tabelle/KI)."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -145,7 +149,7 @@ class ZwillingOptionsFlow(OptionsFlow):
 
         if user_input is not None:
             await estimator.async_update_settings(
-                bool(user_input.get(CONF_AI_ENABLED, False)),
+                user_input.get(CONF_ESTIMATE_MODE, ESTIMATE_TABLE),
                 user_input.get(CONF_AI_TASK_ENTITY) or None,
             )
             async_dispatcher_send(self.hass, SIGNAL_SETTINGS_CHANGED)
@@ -155,13 +159,19 @@ class ZwillingOptionsFlow(OptionsFlow):
         url, path = webhook_urls(self.hass, webhook_id)
         schema = vol.Schema(
             {
-                vol.Optional(CONF_AI_ENABLED, default=False): BooleanSelector(),
+                vol.Optional(CONF_ESTIMATE_MODE, default=ESTIMATE_TABLE): SelectSelector(
+                    SelectSelectorConfig(
+                        options=ESTIMATE_MODES,
+                        translation_key=CONF_ESTIMATE_MODE,
+                        mode=SelectSelectorMode.LIST,
+                    )
+                ),
                 vol.Optional(CONF_AI_TASK_ENTITY): EntitySelector(
                     EntitySelectorConfig(domain="ai_task")
                 ),
             }
         )
-        suggested = {CONF_AI_ENABLED: estimator.ai_enabled}
+        suggested = {CONF_ESTIMATE_MODE: estimator.mode}
         if estimator.ai_task_entity:
             suggested[CONF_AI_TASK_ENTITY] = estimator.ai_task_entity
         return self.async_show_form(

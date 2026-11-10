@@ -66,9 +66,18 @@ def _fake_ai(hass: HomeAssistant, data=None, error: Exception | None = None) -> 
     return calls
 
 
+async def _set_mode(hass: HomeAssistant, entry, mode: str, entity: str | None = None) -> None:
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    user_input = {"estimate_mode": mode}
+    if entity:
+        user_input["ai_task_entity"] = entity
+    result = await hass.config_entries.options.async_configure(result["flow_id"], user_input)
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+
+
 async def _enable_ai(hass: HomeAssistant, entry, entity: str | None = None) -> None:
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    user_input = {"ai_enabled": True}
+    user_input = {"estimate_mode": "ai"}
     if entity:
         user_input["ai_task_entity"] = entity
     result = await hass.config_entries.options.async_configure(result["flow_id"], user_input)
@@ -143,6 +152,8 @@ async def test_estimate_applies_best_before_from_filled_date(hass: HomeAssistant
         "days": 4,
         "tip": "Gut verschlossen lagern.",
         "cached": False,
+        "source": "ai",
+        "basis": "",
         "applied": True,
     }
     assert hass.states.get(_eid(hass, "date")).state == expected
@@ -244,11 +255,13 @@ async def test_estimate_requires_content_and_area(hass: HomeAssistant, setup, me
     assert calls == []
 
 
-async def test_estimate_disabled_by_default(hass: HomeAssistant) -> None:
-    await _setup(hass)
+async def test_estimate_off_refuses(hass: HomeAssistant) -> None:
+    entry = await _setup(hass)
     calls = _fake_ai(hass)
-    assert hass.states.get(_eid(hass, "date")).attributes["ai_estimates"] is False
-    with pytest.raises(HomeAssistantError):
+    await _set_mode(hass, entry, "off")
+    await hass.async_block_till_done()
+    assert hass.states.get(_eid(hass, "date")).attributes["estimates"] is False
+    with pytest.raises(HomeAssistantError, match="switched off|ausgeschaltet"):
         await _estimate(hass)
     assert calls == []
 
@@ -324,10 +337,13 @@ async def test_selected_ai_task_entity_is_passed(hass: HomeAssistant) -> None:
 
 async def test_settings_change_updates_attribute(hass: HomeAssistant) -> None:
     entry = await _setup(hass)
-    assert hass.states.get(_eid(hass, "date")).attributes["ai_estimates"] is False
+    assert hass.states.get(_eid(hass, "date")).attributes["estimates"] is True  # Standard: Tabelle
+    await _set_mode(hass, entry, "off")
+    await hass.async_block_till_done()
+    assert hass.states.get(_eid(hass, "date")).attributes["estimates"] is False
     await _enable_ai(hass, entry)
     await hass.async_block_till_done()
-    assert hass.states.get(_eid(hass, "date")).attributes["ai_estimates"] is True
+    assert hass.states.get(_eid(hass, "date")).attributes["estimates"] is True
 
 
 # ---------- Kontext des Lagerorts ----------

@@ -87,7 +87,7 @@ class ZwillingBestBefore(DateEntity, ZwillingResettable):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         estimator = self.hass.data.get(DOMAIN, {}).get(DATA_ESTIMATOR)
-        return {"ai_estimates": bool(estimator and estimator.ai_enabled)}
+        return {"estimates": bool(estimator and estimator.enabled)}
 
     async def async_set_value(self, value: date) -> None:
         if self._pending is not None:
@@ -116,7 +116,7 @@ class ZwillingBestBefore(DateEntity, ZwillingResettable):
     async def async_estimate_best_before(
         self, apply: bool = True, overwrite: bool = False
     ) -> dict[str, Any]:
-        """MHD per KI schätzen (Service `zwilling_storage.estimate_best_before`)."""
+        """MHD per Tabelle/KI schätzen (Service `zwilling_storage.estimate_best_before`)."""
         async with self._lock:
             if self._attr_native_value is not None and not overwrite:
                 return {
@@ -149,5 +149,7 @@ class ZwillingBestBefore(DateEntity, ZwillingResettable):
                 "days": estimate.days,
                 "tip": estimate.tip,
                 "cached": estimate.cached,
+                "source": estimate.source,
+                "basis": estimate.basis,
                 "applied": apply,
             }

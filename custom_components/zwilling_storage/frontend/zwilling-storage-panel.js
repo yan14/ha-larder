@@ -47,6 +47,9 @@ export const STRINGS = {
     estimating: "Schätze …",
     estimated: (days) => `Geschätzt: ca. ${days} ${days === 1 ? "Tag" : "Tage"} haltbar`,
     estimateFailed: "Die Schätzung ist fehlgeschlagen.",
+    sourceTable: "Tabelle",
+    sourceAi: "KI",
+    sourceLearned: "von dir korrigiert",
   },
   en: {
     title: "Zwilling containers",
@@ -85,6 +88,9 @@ export const STRINGS = {
     estimating: "Estimating…",
     estimated: (days) => `Estimated: about ${days} ${days === 1 ? "day" : "days"} shelf life`,
     estimateFailed: "The estimate failed.",
+    sourceTable: "table",
+    sourceAi: "AI",
+    sourceLearned: "corrected by you",
   },
 };
 
@@ -337,7 +343,7 @@ class DoseCard {
     el.classList.toggle("error", isError);
   }
 
-  /** MHD per KI schätzen (Service der Integration); zeigt Hinweis oder Fehlermeldung an. */
+  /** MHD per Tabelle/KI schätzen (Service der Integration); zeigt Hinweis oder Fehlermeldung an. */
   async _estimate() {
     const hass = this._panel.hass;
     if (!hass || !this.ids.date || this._estimating || !hass.callWS) return;
@@ -357,7 +363,9 @@ class DoseCard {
       });
       const out = res && res.response && res.response[this.ids.date];
       if (out && out.status === "estimated") {
-        this._setTip([t.estimated(out.days), out.tip].filter(Boolean).join(". "));
+        const source = { table: t.sourceTable, ai: t.sourceAi, learned: t.sourceLearned }[out.source];
+        const head = t.estimated(out.days) + (source ? ` (${source})` : "");
+        this._setTip([head, out.tip].filter(Boolean).join(". "));
       }
     } catch (err) {
       this._setTip((err && err.message) || t.estimateFailed, true);
@@ -444,8 +452,8 @@ class DoseCard {
     vacInput.disabled = !ok(vac);
     vacInput.checked = !!vac && vac.state === "on";
 
-    // "MHD schätzen": nur sichtbar, wenn die KI-Schätzung aktiviert ist, Inhalt da und MHD noch leer.
-    const aiOn = !!(date && date.attributes && date.attributes.ai_estimates);
+    // "MHD schätzen": nur sichtbar, wenn die Schätzung nicht ausgeschaltet ist, Inhalt da und MHD noch leer.
+    const aiOn = !!(date && date.attributes && date.attributes.estimates);
     const hasContent = isValidState(text) && text.state.trim() !== "";
     const showEstimate = aiOn && ok(date) && hasContent && !isValidState(date);
     this.q(".estimaterow").classList.toggle("visible", showEstimate || !!this._tip);
