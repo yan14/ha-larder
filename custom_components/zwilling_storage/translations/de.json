@@ -116,6 +116,14 @@
           "description": "Auch dann schätzen, wenn schon ein MHD gesetzt ist."
         }
       }
+    },
+    "clear_best_before": {
+      "name": "MHD löschen",
+      "description": "Entfernt das Mindesthaltbarkeitsdatum der Dose."
+    },
+    "clear_filled_at": {
+      "name": "„Befüllt am“ löschen",
+      "description": "Entfernt das Befüll-Datum der Dose."
     }
   }
 }

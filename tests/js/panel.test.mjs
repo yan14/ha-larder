@@ -303,13 +303,13 @@ test("Eingaben und Buttons rufen die richtigen Dienste auf", () => {
   assert.equal(hass.calls.length, 5);
 });
 
-test("Leere MHD-Eingabe löst keinen Dienst aus", () => {
+test("Leere MHD-Eingabe leert das MHD über den Service (date.set_value kann das nicht)", () => {
   const hass = makeHass([{ id: "d1", name: "Dose 1", mhd: "2026-12-24" }], { areas: AREAS });
   const el = mount(hass);
   const mhd = $(el, '[data-f="bestBefore"]');
   mhd.value = "";
   mhd.dispatchEvent(new dom.window.Event("change"));
-  assert.equal(hass.calls.length, 0);
+  assert.deepEqual(hass.calls, [{ domain: D, service: "clear_best_before", data: { entity_id: "date.d1_mhd" } }]);
 });
 
 test("Nicht verfügbare Entitäten deaktivieren die Bedienelemente", () => {
@@ -671,4 +671,19 @@ test("'Behälter leeren' löscht den Schätz-Hinweis, der Vakuum-Schalter bleibt
   $(el, "button.empty").click();
   assert.equal($(el, ".tip").textContent, "");
   assert.deepEqual(hass.calls, [{ domain: "button", service: "press", data: { entity_id: "button.d1_leeren" } }]);
+});
+
+test("Leeren von MHD und 'Eingelagert am' im Panel ruft die Löschen-Services auf", () => {
+  const hass = adminHass([{ id: "d1", name: "A", content: "Suppe", mhd: "2030-01-01", filled: "2026-11-09T10:00:00+00:00" }]);
+  const el = mount(hass);
+  const mhd = $(el, '[data-f="bestBefore"]');
+  mhd.value = "";
+  mhd.dispatchEvent(new dom.window.Event("change"));
+  const filled = $(el, '[data-f="filledAt"]');
+  filled.value = "";
+  filled.dispatchEvent(new dom.window.Event("change"));
+  assert.deepEqual(hass.calls, [
+    { domain: D, service: "clear_best_before", data: { entity_id: "date.d1_mhd" } },
+    { domain: D, service: "clear_filled_at", data: { entity_id: "datetime.d1_befuellt" } },
+  ]);
 });

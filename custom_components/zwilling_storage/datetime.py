@@ -6,9 +6,13 @@ from datetime import datetime
 
 from homeassistant.components.datetime import DateTimeEntity
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import (
+    AddEntitiesCallback,
+    async_get_current_platform,
+)
 from homeassistant.util import dt as dt_util
 
+from .const import SERVICE_CLEAR_FILLED_AT
 from .entity import ZwillingConfigEntry, ZwillingResettable
 
 
@@ -20,6 +24,9 @@ async def async_setup_entry(
     filled_at = ZwillingFilledAt(entry)
     entry.runtime_data.resettable[filled_at._key] = filled_at
     async_add_entities([filled_at])
+    async_get_current_platform().async_register_entity_service(
+        SERVICE_CLEAR_FILLED_AT, None, "async_reset"
+    )
 
 
 class ZwillingFilledAt(DateTimeEntity, ZwillingResettable):

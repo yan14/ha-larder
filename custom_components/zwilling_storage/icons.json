@@ -37,6 +37,12 @@
   "services": {
     "estimate_best_before": {
       "service": "mdi:creation"
+    },
+    "clear_best_before": {
+      "service": "mdi:calendar-remove"
+    },
+    "clear_filled_at": {
+      "service": "mdi:calendar-remove"
     }
   }
 }

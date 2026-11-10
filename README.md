@@ -17,6 +17,8 @@ Home Assistant integration for Zwilling food storage containers with a QR code. 
 
 The values survive restarts. "Empty container" is a regular button entity, so you can use it on dashboards and in automations via `button.press`.
 
+**Clearing a single field:** the date entities of Home Assistant itself cannot be cleared from the entity dialog (the picker's "Clear" button has no effect there). Use one of these instead: empty the field in the dashboard, press **Empty container** to reset everything, or call the services `zwilling_storage.clear_best_before` / `zwilling_storage.clear_filled_at` (for example in Developer tools or an automation).
+
 You also get:
 
 - a **dashboard** "Zwilling containers" in the sidebar (see [below](#dashboard-zwilling-containers)) that lists all containers, lets you add containers and edit everything, and updates itself,

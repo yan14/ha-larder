@@ -19,7 +19,12 @@ from homeassistant.helpers.entity_platform import (
 )
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, SERVICE_ESTIMATE_BEST_BEFORE, SIGNAL_SETTINGS_CHANGED
+from .const import (
+    DOMAIN,
+    SERVICE_CLEAR_BEST_BEFORE,
+    SERVICE_ESTIMATE_BEST_BEFORE,
+    SIGNAL_SETTINGS_CHANGED,
+)
 from .entity import ZwillingConfigEntry, ZwillingResettable
 from .estimate import (
     DATA_ESTIMATOR,
@@ -38,7 +43,10 @@ async def async_setup_entry(
     entry.runtime_data.resettable[best_before._key] = best_before
     async_add_entities([best_before])
 
-    async_get_current_platform().async_register_entity_service(
+    platform = async_get_current_platform()
+    # Das Datum lässt sich über date.set_value nicht leeren, dafür gibt es diesen Service.
+    platform.async_register_entity_service(SERVICE_CLEAR_BEST_BEFORE, None, "async_reset")
+    platform.async_register_entity_service(
         SERVICE_ESTIMATE_BEST_BEFORE,
         {
             vol.Optional("apply", default=True): cv.boolean,

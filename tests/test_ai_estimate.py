@@ -385,3 +385,28 @@ def test_build_instructions_without_hints() -> None:
     assert "Kaffeebohnen" in text and "Vorratskammer" in text and "2026-11-10" in text
     assert "Additional information" not in text
     assert "code 'de'" in text
+
+
+# ---------- MHD und "Befüllt am" leeren ----------
+
+
+async def test_clear_services_empty_single_fields(hass: HomeAssistant) -> None:
+    await _setup(hass)
+    await hass.services.async_call(
+        "date", "set_value", {"entity_id": _eid(hass, "date"), "date": "2030-01-01"}, blocking=True
+    )
+    await hass.services.async_call(
+        "datetime", "set_value",
+        {"entity_id": _eid(hass, "datetime"), "datetime": "2026-11-09T10:00:00+00:00"}, blocking=True,
+    )
+    await hass.services.async_call(
+        "text", "set_value", {"entity_id": _eid(hass, "text"), "value": "Suppe"}, blocking=True
+    )
+
+    await hass.services.async_call(DOMAIN, "clear_best_before", {"entity_id": _eid(hass, "date")}, blocking=True)
+    assert hass.states.get(_eid(hass, "date")).state == "unknown"
+    assert hass.states.get(_eid(hass, "datetime")).state != "unknown"  # nur das MHD
+
+    await hass.services.async_call(DOMAIN, "clear_filled_at", {"entity_id": _eid(hass, "datetime")}, blocking=True)
+    assert hass.states.get(_eid(hass, "datetime")).state == "unknown"
+    assert hass.states.get(_eid(hass, "text")).state == "Suppe"  # Inhalt bleibt

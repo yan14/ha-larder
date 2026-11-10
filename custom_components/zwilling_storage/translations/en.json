@@ -116,6 +116,14 @@
           "description": "Estimate even if a best-before date is already set."
         }
       }
+    },
+    "clear_best_before": {
+      "name": "Clear best before",
+      "description": "Removes the best-before date of the container."
+    },
+    "clear_filled_at": {
+      "name": "Clear filled on",
+      "description": "Removes the filling date of the container."
     }
   }
 }

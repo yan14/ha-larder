@@ -302,12 +302,16 @@ class DoseCard {
     });
     this.inputs.bestBefore.addEventListener("change", () => {
       const v = this.inputs.bestBefore.value;
-      if (this.ids.date && v) this._call("date", "set_value", { entity_id: this.ids.date, date: v });
+      if (!this.ids.date) return;
+      if (v) this._call("date", "set_value", { entity_id: this.ids.date, date: v });
+      else this._call(DOMAIN, "clear_best_before", { entity_id: this.ids.date }); // Leeren geht nur über unseren Service
     });
     this.inputs.filledAt.addEventListener("change", () => {
       const v = this.inputs.filledAt.value;
+      if (!this.ids.datetime) return;
       const d = new Date(v);
-      if (this.ids.datetime && v && !Number.isNaN(d.getTime())) {
+      if (!v) this._call(DOMAIN, "clear_filled_at", { entity_id: this.ids.datetime });
+      else if (!Number.isNaN(d.getTime())) {
         this._call("datetime", "set_value", { entity_id: this.ids.datetime, datetime: d.toISOString() });
       }
     });

@@ -29,6 +29,8 @@ MANUFACTURER = "ZWILLING"
 CONF_AI_ENABLED = "ai_enabled"
 CONF_AI_TASK_ENTITY = "ai_task_entity"
 SERVICE_ESTIMATE_BEST_BEFORE = "estimate_best_before"
+SERVICE_CLEAR_BEST_BEFORE = "clear_best_before"
+SERVICE_CLEAR_FILLED_AT = "clear_filled_at"
 SIGNAL_SETTINGS_CHANGED = f"{DOMAIN}_settings_changed"
 
 # Seitenleisten-Panel "Zwilling Dosen"

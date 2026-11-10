@@ -14,3 +14,13 @@ estimate_best_before:
       default: false
       selector:
         boolean:
+clear_best_before:
+  target:
+    entity:
+      integration: zwilling_storage
+      domain: date
+clear_filled_at:
+  target:
+    entity:
+      integration: zwilling_storage
+      domain: datetime
