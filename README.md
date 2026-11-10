@@ -148,6 +148,13 @@ Response (`200`, JSON):
 
 For an unknown container `known` is `false`, and `path` and `app_url` point to the dashboard with the add dialog (`/zwilling-storage?add=<ID>`). If the request contains no valid ID, the webhook answers with `400` and `{"error": "invalid_code"}`. The webhook only reads and never changes any values.
 
+## Alternatives
+
+This integration tracks the **physical, reusable container** (one device per container with its own QR code). If you would rather manage **products and stock**, these projects may fit better:
+
+- [Fridge Assistant](https://github.com/MaxGramser/fridge_assistant): inventory for fridge, freezer and pantry with barcode scanning, AI shelf-life estimates and printed labels.
+- [Grocy](https://github.com/custom-components/grocy): the Home Assistant integration for the self-hosted Grocy server (stock, best-before dates, shopping lists, chores).
+
 ## Development
 
 ```
