@@ -1,4 +1,4 @@
-"""Tests für die Zwilling-Food-Storage-Integration."""
+"""Tests für die Larder-Integration (Dosen anlegen, Entitäten, Zustand)."""
 
 from datetime import datetime, timezone
 
@@ -13,8 +13,8 @@ from homeassistant.core import HomeAssistant, State
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 
-from custom_components.zwilling_storage.const import DOMAIN
-from custom_components.zwilling_storage.qr import generate_code, parse_qr
+from custom_components.larder.const import DOMAIN
+from custom_components.larder.qr import generate_code, parse_qr
 
 QR = "zwilling://zwillingapp/food-storage/in/?tc=42ML30&s=m&cc=34OL"
 

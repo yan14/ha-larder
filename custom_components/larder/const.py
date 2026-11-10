@@ -1,8 +1,9 @@
-"""Konstanten für die Zwilling-Food-Storage-Integration."""
+"""Konstanten für die Larder-Integration."""
 
 from homeassistant.const import Platform
 
-DOMAIN = "zwilling_storage"
+DOMAIN = "larder"
+LEGACY_DOMAIN = "zwilling_storage"  # frühere Domain (bis 0.10), siehe migrate.py
 
 PLATFORMS: list[Platform] = [
     Platform.BUTTON,
@@ -39,6 +40,7 @@ CONF_OPENED_DAYS = "opened_days"
 CONF_CALENDAR_ENTITY = "calendar_entity"
 CONF_NFC_NOTIFY = "nfc_notify"
 EVENT_DOSE_SCANNED = f"{DOMAIN}_dose_scanned"  # verknüpfter NFC-Tag wurde gescannt
+EVENT_DOSE_SCANNED_LEGACY = f"{LEGACY_DOMAIN}_dose_scanned"  # alter Name, nur nach einer Übernahme
 DEFAULT_OPENED_DAYS = 3  # so lange hält eine geöffnete Dose noch
 SERVICE_ESTIMATE_BEST_BEFORE = "estimate_best_before"
 SERVICE_CLEAR_BEST_BEFORE = "clear_best_before"
@@ -48,8 +50,8 @@ SERVICE_MARK_OPENED = "mark_opened"
 SOON_DAYS = 3  # ab so vielen Resttagen gilt eine Dose als "läuft bald ab"
 SIGNAL_SETTINGS_CHANGED = f"{DOMAIN}_settings_changed"
 
-# Seitenleisten-Panel "Zwilling Dosen"
-PANEL_URL_PATH = "zwilling-storage"
+# Seitenleisten-Panel "Larder"
+PANEL_URL_PATH = "larder"
 
 # Deep Link, den die Home-Assistant-App (iOS/Android) öffnen kann, z. B. per Kamera-App.
 APP_URL_PREFIX = "homeassistant://navigate"

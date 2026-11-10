@@ -1,11 +1,11 @@
 blueprint:
-  name: Zwilling Food Storage – expiry notification
+  name: Larder – expiry notification
   description: >
     Sends a notification once a day listing the containers whose best-before date is near or
     has passed (text in the language of Home Assistant). Nothing is sent when nothing expires.
     Tägliche Benachrichtigung mit den Dosen, deren MHD bald abläuft oder abgelaufen ist.
   domain: automation
-  source_url: https://github.com/yan14/ha-zwilling-storage/blob/main/blueprints/automation/zwilling_storage/expiry_notification.yaml
+  source_url: https://github.com/yan14/ha-larder/blob/main/blueprints/automation/larder/expiry_notification.yaml
   input:
     notify_action:
       name: Notification action
@@ -37,7 +37,7 @@ blueprint:
         boolean:
     title:
       name: Title
-      default: "Zwilling Food Storage"
+      default: "Larder"
       selector:
         text:
 
@@ -51,7 +51,7 @@ triggers:
     at: !input send_time
 
 actions:
-  - action: zwilling_storage.get_expiring
+  - action: larder.get_expiring
     data:
       days: !input days
       include_expired: !input include_expired

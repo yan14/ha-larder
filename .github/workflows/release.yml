@@ -6,7 +6,7 @@ on:
   push:
     branches: [main]
     paths:
-      - custom_components/zwilling_storage/manifest.json
+      - custom_components/larder/manifest.json
   workflow_dispatch:
 
 permissions:
@@ -21,7 +21,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          version=$(jq -r .version custom_components/zwilling_storage/manifest.json)
+          version=$(jq -r .version custom_components/larder/manifest.json)
           tag="v${version}"
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "Release $tag already exists, nothing to do."

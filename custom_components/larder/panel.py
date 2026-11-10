@@ -1,4 +1,4 @@
-"""Seitenleisten-Panel 'Zwilling Dosen': Übersicht aller Dosen, live aktualisiert.
+"""Seitenleisten-Panel 'Larder': Übersicht aller Dosen, live aktualisiert.
 
 Das Panel ist eine kleine Web-Komponente, die direkt die Registries und Zustände aus dem
 Home-Assistant-Frontend liest. Neue Dosen erscheinen dadurch sofort, ohne dass irgendeine
@@ -17,7 +17,7 @@ from homeassistant.loader import async_get_integration
 
 from .const import DOMAIN, PANEL_URL_PATH
 
-PANEL_ELEMENT = "zwilling-storage-panel"
+PANEL_ELEMENT = "larder-panel"
 STATIC_URL = f"/{DOMAIN}_static"
 FRONTEND_DIR = Path(__file__).parent / "frontend"
 
@@ -45,7 +45,7 @@ async def async_setup_panel(hass: HomeAssistant) -> None:
             hass,
             frontend_url_path=PANEL_URL_PATH,
             webcomponent_name=PANEL_ELEMENT,
-            sidebar_title="Zwilling Dosen",
+            sidebar_title="Larder",
             sidebar_icon="mdi:food-variant",
             module_url=f"{STATIC_URL}/{PANEL_ELEMENT}.js?v={integration.version}",
             require_admin=False,

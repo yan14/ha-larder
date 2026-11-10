@@ -21,7 +21,7 @@
 <body>
 <script type="module">
 import { QR } from "./qr-data.js";
-import "/custom_components/zwilling_storage/frontend/zwilling-storage-panel.js";
+import "/custom_components/larder/frontend/larder-panel.js";
 
 const q = new URLSearchParams(location.search);
 const lang = q.get("lang") || "en";
@@ -58,7 +58,7 @@ doses.forEach((d, i) => {
   const [name, area, content, mhd, hoursAgo] = d;
   devices[id] = { id, name, name_by_user: null, area_id: area };
   const ids = { text: `text.${id}_c`, date: `date.${id}_b`, datetime: `datetime.${id}_f`, button: `button.${id}_e`, image: `image.${id}_q`, switch: `switch.${id}_v` };
-  for (const e of Object.values(ids)) entities[e] = { entity_id: e, device_id: id, platform: "zwilling_storage" };
+  for (const e of Object.values(ids)) entities[e] = { entity_id: e, device_id: id, platform: "larder" };
   const has = content !== "";
   states[ids.text] = { entity_id: ids.text, state: has ? content : "", attributes: {} };
   states[ids.date] = { entity_id: ids.date, state: has && mhd !== null ? day(mhd) : "unknown", attributes: { estimates: true } };
@@ -72,11 +72,11 @@ const hass = {
   areas: Object.fromEntries(Object.entries(areas).map(([k, v]) => [k, { area_id: k, name: v }])),
   hassUrl: (p) => p, callService() {}, callApi: async () => ({}),
   callWS: async (msg) => {
-    if (msg.type === "zwilling_storage/nfc_tags") return { links: {}, by_device: { demo00: "tag-a", demo01: "tag-b", demo03: "tag-c" } };
-    if (msg.type === "zwilling_storage/contents") return { contents: de
+    if (msg.type === "larder/nfc_tags") return { links: {}, by_device: { demo00: "tag-a", demo01: "tag-b", demo03: "tag-c" } };
+    if (msg.type === "larder/contents") return { contents: de
       ? ["Pizza", "Pizzateig", "Gulasch", "Linsensuppe", "Tomatensuppe", "Hähnchen-Curry"]
       : ["Pizza", "Pizza dough", "Goulash", "Lentil soup", "Tomato soup", "Chicken curry"] };
-    if (msg.type === "zwilling_storage/estimates") return { mode: "table_ai", entries: ENTRIES };
+    if (msg.type === "larder/estimates") return { mode: "table_ai", entries: ENTRIES };
     return {};
   },
 };
@@ -96,7 +96,7 @@ const ENTRIES = de ? [
 
 const width = Number(q.get("width") || 1100);
 document.body.style.width = width + "px";
-const el = document.createElement("zwilling-storage-panel");
+const el = document.createElement("larder-panel");
 document.body.appendChild(el);
 el.hass = hass;
 if (q.get("dialog") === "1") el.openAddDialog();

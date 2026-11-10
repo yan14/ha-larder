@@ -433,7 +433,7 @@ class Estimator:
             raise EstimateError("ai_unavailable")
 
         data: dict[str, Any] = {
-            "task_name": "Zwilling Food Storage: best-before estimate",
+            "task_name": "Larder: best-before estimate",
             "instructions": build_instructions(
                 content=content.strip(),
                 context=context,

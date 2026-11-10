@@ -39,7 +39,7 @@ def days_left(best_before: date, today: date | None = None) -> int:
 
 _TEXT = {
     "de": {
-        "title": "Zwilling Dosen",
+        "title": "Larder",
         "none": "Nichts läuft bald ab.",
         "head": lambda soon, expired: ", ".join(
             part
@@ -56,7 +56,7 @@ _TEXT = {
         "unnamed": "Dose",
     },
     "en": {
-        "title": "Zwilling containers",
+        "title": "Larder",
         "none": "Nothing expires soon.",
         "head": lambda soon, expired: ", ".join(
             part

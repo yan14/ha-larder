@@ -15,16 +15,16 @@ from .const import CONF_CC, CONF_SIZE, CONF_TC, DOMAIN, MANUFACTURER
 
 
 @dataclass
-class ZwillingRuntime:
+class LarderRuntime:
     """Laufzeitdaten einer Dose: die Entitäten, die 'Behälter leeren' zurücksetzt."""
 
-    resettable: dict[str, ZwillingResettable] = field(default_factory=dict)
+    resettable: dict[str, LarderResettable] = field(default_factory=dict)
 
 
-type ZwillingConfigEntry = ConfigEntry[ZwillingRuntime]
+type LarderConfigEntry = ConfigEntry[LarderRuntime]
 
 
-class ZwillingEntity(RestoreEntity):
+class LarderEntity(RestoreEntity):
     """Basis für alle Entitäten einer Dose (alle teilen sich ein Gerät)."""
 
     _attr_has_entity_name = True
@@ -65,7 +65,7 @@ class ZwillingEntity(RestoreEntity):
         return last
 
 
-class ZwillingResettable(ZwillingEntity):
+class LarderResettable(LarderEntity):
     """Entität, deren Wert 'Behälter leeren' zurücksetzt (Inhalt, MHD, Befüllt am)."""
 
     async def async_reset(self) -> None:

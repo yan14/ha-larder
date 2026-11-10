@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import device_registry as dr
 
-from custom_components.zwilling_storage.const import DOMAIN
+from custom_components.larder.const import DOMAIN
 
 QR = "zwilling://zwillingapp/food-storage/in/?tc=42ML30&s=m&cc=34OL"
 
@@ -52,8 +52,8 @@ async def test_webhook_known_device_post_json(hass, hass_client_no_auth) -> None
         "cc": "34OL",
         "name": "Dose 34OL",
         "device_id": device_id,
-        "path": f"/zwilling-storage?open={device_id}",
-        "app_url": f"homeassistant://navigate/zwilling-storage?open={device_id}",
+        "path": f"/larder?open={device_id}",
+        "app_url": f"homeassistant://navigate/larder?open={device_id}",
         "device_path": f"/config/devices/device/{device_id}",
         "device_app_url": f"homeassistant://navigate/config/devices/device/{device_id}",
     }
@@ -93,8 +93,8 @@ async def test_webhook_unknown_code_points_to_panel_add_dialog(
     assert await resp.json() == {
         "known": False,
         "cc": "NEU123",
-        "path": "/zwilling-storage?add=NEU123",
-        "app_url": "homeassistant://navigate/zwilling-storage?add=NEU123",
+        "path": "/larder?add=NEU123",
+        "app_url": "homeassistant://navigate/larder?add=NEU123",
     }
 
 

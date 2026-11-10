@@ -13,7 +13,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
 from .const import device_app_url
-from .entity import ZwillingConfigEntry, ZwillingEntity
+from .entity import LarderConfigEntry, LarderEntity
 
 
 def render_qr_png(content: str) -> bytes:
@@ -25,21 +25,21 @@ def render_qr_png(content: str) -> bytes:
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ZwillingConfigEntry,
+    entry: LarderConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     async_add_entities([ZwillingQrCode(hass, entry)])
 
 
-class ZwillingQrCode(ImageEntity, ZwillingEntity):
+class ZwillingQrCode(ImageEntity, LarderEntity):
     """QR-Code, der die Home-Assistant-App direkt auf dieses Gerät springen lässt."""
 
     _key = "qr_code"
     _attr_content_type = "image/png"
 
-    def __init__(self, hass: HomeAssistant, entry: ZwillingConfigEntry) -> None:
+    def __init__(self, hass: HomeAssistant, entry: LarderConfigEntry) -> None:
         ImageEntity.__init__(self, hass)
-        ZwillingEntity.__init__(self, entry)
+        LarderEntity.__init__(self, entry)
         self._rendered: tuple[str, bytes] | None = None
 
     @property

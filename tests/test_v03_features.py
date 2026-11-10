@@ -12,8 +12,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 
-from custom_components.zwilling_storage.const import DOMAIN
-from custom_components.zwilling_storage.qr import generate_code, parse_qr
+from custom_components.larder.const import DOMAIN
+from custom_components.larder.qr import generate_code, parse_qr
 
 
 @pytest.fixture(autouse=True)
@@ -142,7 +142,7 @@ def test_qr_png_decodes_to_deep_link() -> None:
     cv2 = pytest.importorskip("cv2")
     import numpy as np
 
-    from custom_components.zwilling_storage.image import render_qr_png
+    from custom_components.larder.image import render_qr_png
 
     content = "homeassistant://navigate/config/devices/device/0123456789abcdef0123456789abcdef"
     png = render_qr_png(content)
@@ -218,35 +218,35 @@ def test_generate_code_never_collides() -> None:
 async def test_panel_registered_and_static_js_served(hass: HomeAssistant, hass_client) -> None:
     entry = await _setup(hass)
     panels = hass.data[frontend.DATA_PANELS]
-    assert "zwilling-storage" in panels
-    panel = panels["zwilling-storage"]
-    assert panel.sidebar_title == "Zwilling Dosen"
+    assert "larder" in panels
+    panel = panels["larder"]
+    assert panel.sidebar_title == "Larder"
     assert panel.require_admin is False
     module_url = panel.config["_panel_custom"]["module_url"]
-    assert re.fullmatch(r"/zwilling_storage_static/zwilling-storage-panel\.js\?v=\d+\.\d+\.\d+", module_url)
-    assert panel.config["_panel_custom"]["name"] == "zwilling-storage-panel"
+    assert re.fullmatch(r"/larder_static/larder-panel\.js\?v=\d+\.\d+\.\d+", module_url)
+    assert panel.config["_panel_custom"]["name"] == "larder-panel"
 
     client = await hass_client()
-    resp = await client.get("/zwilling_storage_static/zwilling-storage-panel.js")
+    resp = await client.get("/larder_static/larder-panel.js")
     assert resp.status == 200
     assert "customElements.define" in await resp.text()
 
     # Zweite Dose: Panel bleibt, nur eine Registrierung
     second = await _setup(hass, "77AB")
-    assert "zwilling-storage" in hass.data[frontend.DATA_PANELS]
+    assert "larder" in hass.data[frontend.DATA_PANELS]
 
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
-    assert "zwilling-storage" in hass.data[frontend.DATA_PANELS]
+    assert "larder" in hass.data[frontend.DATA_PANELS]
 
     assert await hass.config_entries.async_unload(second.entry_id)
     await hass.async_block_till_done()
-    assert "zwilling-storage" not in hass.data[frontend.DATA_PANELS]
+    assert "larder" not in hass.data[frontend.DATA_PANELS]
 
     # Neu laden: Panel wird wieder registriert (statischer Pfad nur einmal)
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
-    assert "zwilling-storage" in hass.data[frontend.DATA_PANELS]
+    assert "larder" in hass.data[frontend.DATA_PANELS]
 
 
 async def _create_via_flow(hass: HomeAssistant, step: str, user_input: dict):

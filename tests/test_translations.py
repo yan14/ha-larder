@@ -6,7 +6,7 @@ import re
 
 import pytest
 
-BASE = Path(__file__).parent.parent / "custom_components" / "zwilling_storage"
+BASE = Path(__file__).parent.parent / "custom_components" / "larder"
 TRANSLATIONS = BASE / "translations"
 
 

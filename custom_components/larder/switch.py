@@ -6,18 +6,18 @@ from homeassistant.components.switch import SwitchEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .entity import ZwillingConfigEntry, ZwillingEntity
+from .entity import LarderConfigEntry, LarderEntity
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ZwillingConfigEntry,
+    entry: LarderConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    async_add_entities([ZwillingVacuumSwitch(entry)])
+    async_add_entities([LarderVacuumSwitch(entry)])
 
 
-class ZwillingVacuumSwitch(SwitchEntity, ZwillingEntity):
+class LarderVacuumSwitch(SwitchEntity, LarderEntity):
     """Eigenschaft der Dose (nicht des Inhalts): vakuumiert oder normale Box.
 
     Der Schalter ist standardmäßig an (die Zwilling-Dosen sind Vakuumdosen) und bleibt

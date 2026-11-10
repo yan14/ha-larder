@@ -59,7 +59,7 @@ async def async_setup_webhook(hass: HomeAssistant) -> None:
         webhook.async_register(
             hass,
             DOMAIN,
-            "Zwilling Food Storage",
+            "Larder",
             webhook_id,
             _async_handle_webhook,
             local_only=False,
@@ -107,7 +107,7 @@ async def _async_handle_webhook(
 
     device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, parsed.cc)})
     if device is None:
-        # Dose noch nicht angelegt: ins Panel "Zwilling Dosen" führen, dort öffnet sich
+        # Dose noch nicht angelegt: ins Panel "Larder" führen, dort öffnet sich
         # der Dialog "Dose hinzufügen" mit bereits eingetragenem Code.
         return web.json_response(
             {

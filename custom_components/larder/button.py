@@ -8,25 +8,25 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
-from .entity import ZwillingConfigEntry, ZwillingEntity, ZwillingRuntime
+from .entity import LarderConfigEntry, LarderEntity, LarderRuntime
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ZwillingConfigEntry,
+    entry: LarderConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    async_add_entities([ZwillingEmptyButton(entry)])
+    async_add_entities([LarderEmptyButton(entry)])
 
 
-class ZwillingEmptyButton(ButtonEntity, ZwillingEntity):
+class LarderEmptyButton(ButtonEntity, LarderEntity):
     """Leert die Dose: Inhalt, MHD und 'Befüllt am' werden zurückgesetzt."""
 
     _key = "empty_container"
 
-    def __init__(self, entry: ZwillingConfigEntry) -> None:
+    def __init__(self, entry: LarderConfigEntry) -> None:
         super().__init__(entry)
-        self._runtime: ZwillingRuntime = entry.runtime_data
+        self._runtime: LarderRuntime = entry.runtime_data
 
     async def async_press(self) -> None:
         entities = list(self._runtime.resettable.values())

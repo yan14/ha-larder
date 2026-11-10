@@ -1,6 +1,6 @@
 {
-  "domain": "zwilling_storage",
-  "name": "Zwilling Food Storage",
+  "domain": "larder",
+  "name": "Larder",
   "after_dependencies": [
     "calendar",
     "tag"
@@ -15,12 +15,12 @@
     "webhook",
     "websocket_api"
   ],
-  "documentation": "https://github.com/yan14/ha-zwilling-storage",
+  "documentation": "https://github.com/yan14/ha-larder",
   "integration_type": "device",
   "iot_class": "calculated",
-  "issue_tracker": "https://github.com/yan14/ha-zwilling-storage/issues",
+  "issue_tracker": "https://github.com/yan14/ha-larder/issues",
   "requirements": [
     "segno==1.6.6"
   ],
-  "version": "0.10.1"
+  "version": "1.0.0"
 }

@@ -1,5 +1,5 @@
 {
-  "name": "ha-zwilling-storage-frontend-tests",
+  "name": "ha-larder-frontend-tests",
   "private": true,
   "type": "module",
   "scripts": {

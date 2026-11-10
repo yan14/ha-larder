@@ -14,10 +14,10 @@ for (const key of ["window", "document", "HTMLElement", "customElements", "Event
 }
 
 const { STRINGS, listAreas, collectDevices, daysUntil, toLocalInputValue, sourceLabel, arrangeDevices, addDays } = await import(
-  "../../custom_components/zwilling_storage/frontend/zwilling-storage-panel.js"
+  "../../custom_components/larder/frontend/larder-panel.js"
 );
 
-const D = "zwilling_storage";
+const D = "larder";
 
 /** Baut ein hass-Objekt mit den angegebenen Dosen. */
 function makeHass(doses, { areas = {}, language = "de", stateOverrides = {} } = {}) {
@@ -77,7 +77,7 @@ function iso(daysFromToday) {
 }
 
 function mount(hass) {
-  const el = document.createElement("zwilling-storage-panel");
+  const el = document.createElement("larder-panel");
   document.body.appendChild(el);
   el.hass = hass;
   return el;
@@ -352,7 +352,7 @@ test("Ohne Dosen: Hinweis mit Link zur Integration", () => {
   const events = [];
   window.addEventListener("location-changed", () => events.push(window.location.pathname));
   $(el, ".none a").click();
-  assert.deepEqual(events, ["/config/integrations/integration/zwilling_storage"]);
+  assert.deepEqual(events, ["/config/integrations/integration/larder"]);
 });
 
 test("Englische Oberfläche", () => {
@@ -545,7 +545,7 @@ test("Netzwerkfehler beim Hinzufügen zeigt allgemeine Meldung", async () => {
 });
 
 test("?add=<ID> aus dem Scan-Webhook öffnet den Dialog mit vorbelegtem Code", () => {
-  dom.window.history.pushState(null, "", "/zwilling-storage?add=NEU123");
+  dom.window.history.pushState(null, "", "/larder?add=NEU123");
   const el = mount(adminHass());
   assert.equal($(el, ".overlay").hidden, false);
   assert.equal($(el, 'input[name="mode"]:checked').value, "scan");
@@ -558,7 +558,7 @@ test("?add=<ID> aus dem Scan-Webhook öffnet den Dialog mit vorbelegtem Code", (
 });
 
 test("?add=<ID> für Nutzer ohne Admin-Rechte zeigt einen Hinweis statt des Dialogs", () => {
-  dom.window.history.pushState(null, "", "/zwilling-storage?add=NEU123");
+  dom.window.history.pushState(null, "", "/larder?add=NEU123");
   const hass = adminHass();
   hass.user = { is_admin: false };
   const el = mount(hass);
@@ -1066,7 +1066,7 @@ test("Gescannte Dose wird hervorgehoben, auch wenn ein Filter sie ausblendet", a
   query.dispatchEvent(new dom.window.Event("input"));
   assert.deepEqual(cardNames(el), ["A"]);
 
-  hass.emit("zwilling_storage_dose_scanned", { device_id: "d2" });
+  hass.emit("larder_dose_scanned", { device_id: "d2" });
   await flush();
   assert.deepEqual(cardNames(el), ["A", "B"]); // Filter zurückgesetzt
   const flashed = $$(el, ".card.flash");
@@ -1075,7 +1075,7 @@ test("Gescannte Dose wird hervorgehoben, auch wenn ein Filter sie ausblendet", a
 });
 
 test("?open=<Geräte-ID> hebt die Dose hervor (auch für Nicht-Administratoren)", async () => {
-  dom.window.history.pushState(null, "", "/zwilling-storage?open=d2");
+  dom.window.history.pushState(null, "", "/larder?open=d2");
   const hass = makeHass([{ id: "d1", name: "A" }, { id: "d2", name: "B" }], { areas: AREAS });
   hass.user = { is_admin: false };
   const el = mount(hass);
@@ -1177,13 +1177,13 @@ test("?open=<ID> öffnet bei leerer Dose den Befüll-Dialog, bei gefüllter nur 
     { id: "d2", name: "Voll", content: "Suppe" },
   ]);
   hass.user = { is_admin: false };
-  dom.window.history.replaceState(null, "", "/zwilling-storage?open=d2");
+  dom.window.history.replaceState(null, "", "/larder?open=d2");
   let el = mount(hass);
   assert.equal($(el, ".overlay.fill").hidden, true);
   assert.ok($$(el, ".card")[1].classList.contains("flash"));
 
   document.body.innerHTML = "";
-  dom.window.history.replaceState(null, "", "/zwilling-storage?open=d1");
+  dom.window.history.replaceState(null, "", "/larder?open=d1");
   el = mount(hass);
   assert.equal($(el, ".overlay.fill").hidden, false);
   assert.match($(el, "form.fillform h2").textContent, /Leer/);

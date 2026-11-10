@@ -17,8 +17,8 @@ from homeassistant.helpers import (
 )
 from homeassistant.util import dt as dt_util
 
-from custom_components.zwilling_storage.const import DOMAIN
-from custom_components.zwilling_storage.estimate import (
+from custom_components.larder.const import DOMAIN
+from custom_components.larder.estimate import (
     StorageContext,
     build_instructions,
     cache_key,

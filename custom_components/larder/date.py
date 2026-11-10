@@ -26,7 +26,7 @@ from .const import (
     SERVICE_MARK_OPENED,
     SIGNAL_SETTINGS_CHANGED,
 )
-from .entity import ZwillingConfigEntry, ZwillingResettable
+from .entity import LarderConfigEntry, LarderResettable
 from .estimate import (
     DATA_ESTIMATOR,
     async_get_estimator,
@@ -37,10 +37,10 @@ from .estimate import (
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ZwillingConfigEntry,
+    entry: LarderConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    best_before = ZwillingBestBefore(entry)
+    best_before = LarderBestBefore(entry)
     entry.runtime_data.resettable[best_before._key] = best_before
     async_add_entities([best_before])
 
@@ -64,13 +64,13 @@ async def async_setup_entry(
     )
 
 
-class ZwillingBestBefore(DateEntity, ZwillingResettable):
+class LarderBestBefore(DateEntity, LarderResettable):
     """Mindesthaltbarkeitsdatum des Inhalts."""
 
     _key = "best_before"
     _attr_native_value: date | None = None
 
-    def __init__(self, entry: ZwillingConfigEntry) -> None:
+    def __init__(self, entry: LarderConfigEntry) -> None:
         super().__init__(entry)
         self._lock = asyncio.Lock()
         # (Schlüssel, Befüll-Datum, übernommenes MHD) der letzten Schätzung; wird die
@@ -136,7 +136,7 @@ class ZwillingBestBefore(DateEntity, ZwillingResettable):
     async def async_estimate_best_before(
         self, apply: bool = True, overwrite: bool = False
     ) -> dict[str, Any]:
-        """MHD per Tabelle/KI schätzen (Service `zwilling_storage.estimate_best_before`)."""
+        """MHD per Tabelle/KI schätzen (Service `larder.estimate_best_before`)."""
         async with self._lock:
             if self._attr_native_value is not None and not overwrite:
                 return {

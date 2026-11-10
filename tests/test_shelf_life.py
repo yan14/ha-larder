@@ -9,8 +9,8 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import area_registry as ar, device_registry as dr, label_registry as lr
 from homeassistant.util import dt as dt_util
 
-from custom_components.zwilling_storage import shelf_life as sl
-from custom_components.zwilling_storage.const import DOMAIN
+from custom_components.larder import shelf_life as sl
+from custom_components.larder.const import DOMAIN
 
 from .test_ai_estimate import (  # noqa: F401 - Fixture und Helfer wiederverwenden
     _eid,
@@ -293,7 +293,7 @@ async def test_corrected_value_beats_table_and_is_remembered(hass: HomeAssistant
 
 
 async def test_legacy_ai_enabled_setting_migrates(hass: HomeAssistant) -> None:
-    from custom_components.zwilling_storage.estimate import Estimator
+    from custom_components.larder.estimate import Estimator
 
     for legacy, expected in (({"ai_enabled": True}, "ai"), ({"ai_enabled": False}, "table"), ({}, "table")):
         estimator = Estimator(hass)
@@ -412,7 +412,7 @@ async def test_ws_requires_admin(hass: HomeAssistant, hass_ws_client, hass_admin
 
 from pathlib import Path  # noqa: E402
 
-from custom_components.zwilling_storage.expiry import build_summary, status_for  # noqa: E402
+from custom_components.larder.expiry import build_summary, status_for  # noqa: E402
 
 
 def test_status_for() -> None:
@@ -496,7 +496,7 @@ def test_blueprint_is_valid() -> None:
     from homeassistant.components.blueprint.models import Blueprint
     from homeassistant.util.yaml import load_yaml
 
-    path = Path(__file__).parent.parent / "blueprints/automation/zwilling_storage/expiry_notification.yaml"
+    path = Path(__file__).parent.parent / "blueprints/automation/larder/expiry_notification.yaml"
     blueprint = Blueprint(load_yaml(path), schema=__import__("homeassistant.components.automation.config", fromlist=["x"]).AUTOMATION_BLUEPRINT_SCHEMA)
     assert blueprint.domain == "automation"
     assert set(blueprint.inputs) >= {"notify_action", "send_time", "days", "include_expired", "title"}

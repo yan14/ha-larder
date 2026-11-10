@@ -1,7 +1,7 @@
 estimate_best_before:
   target:
     entity:
-      integration: zwilling_storage
+      integration: larder
       domain: date
   fields:
     apply:
@@ -17,12 +17,12 @@ estimate_best_before:
 clear_best_before:
   target:
     entity:
-      integration: zwilling_storage
+      integration: larder
       domain: date
 clear_filled_at:
   target:
     entity:
-      integration: zwilling_storage
+      integration: larder
       domain: datetime
 get_expiring:
   fields:
@@ -42,7 +42,7 @@ get_expiring:
 mark_opened:
   target:
     entity:
-      integration: zwilling_storage
+      integration: larder
       domain: date
   fields:
     days:

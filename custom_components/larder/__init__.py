@@ -1,4 +1,4 @@
-"""Zwilling Food Storage: pro Dose ein Gerät mit Befüll-Datum, Inhalt und Leeren-Button."""
+"""Larder: pro Dose ein Gerät mit Befüll-Datum, Inhalt und Leeren-Button."""
 
 from __future__ import annotations
 
@@ -8,17 +8,20 @@ from homeassistant.helpers import area_registry as ar, device_registry as dr
 from .calendar_sync import async_get_calendar_sync
 from .const import CONF_AREA, CONF_CC, DOMAIN, PLATFORMS
 from .nfc import async_get_nfc
-from .entity import ZwillingConfigEntry, ZwillingRuntime
+from .entity import LarderConfigEntry, LarderRuntime
 from .estimate import async_get_estimator
 from .expiry import async_setup_services
+from .migrate import async_adopt_legacy_registry, async_setup_legacy_compat
 from .panel import async_setup_panel, async_teardown_panel
 from .scan import async_setup_webhook, async_teardown_webhook
 from .websocket import async_setup_websocket
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ZwillingConfigEntry) -> bool:
+async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bool:
     """Dose einrichten (der Scan-Webhook wird einmalig für alle Dosen registriert)."""
-    entry.runtime_data = ZwillingRuntime()
+    entry.runtime_data = LarderRuntime()
+    async_adopt_legacy_registry(hass, entry)  # Gerät/Entitäten aus "Zwilling Food Storage" übernehmen
+    await async_setup_legacy_compat(hass)
     await async_get_estimator(hass)
     async_setup_websocket(hass)
     async_setup_services(hass)
@@ -31,7 +34,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ZwillingConfigEntry) -> 
     return True
 
 
-def _async_apply_initial_area(hass: HomeAssistant, entry: ZwillingConfigEntry) -> None:
+def _async_apply_initial_area(hass: HomeAssistant, entry: LarderConfigEntry) -> None:
     """Beim Anlegen gewählten Bereich einmalig auf das Gerät übertragen.
 
     Danach wird der Wert aus dem Eintrag entfernt, damit ein später im Gerät geänderter
@@ -50,7 +53,7 @@ def _async_apply_initial_area(hass: HomeAssistant, entry: ZwillingConfigEntry) -
     hass.config_entries.async_update_entry(entry, data=data)
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ZwillingConfigEntry) -> bool:
+async def async_unload_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bool:
     """Dose entladen; beim Entladen der letzten Dose werden Webhook und Panel abgemeldet."""
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded and not any(
@@ -64,7 +67,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: ZwillingConfigEntry) ->
     return unloaded
 
 
-async def async_remove_entry(hass: HomeAssistant, entry: ZwillingConfigEntry) -> None:
+async def async_remove_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> None:
     """Dose wurde gelöscht: Kalendertermin entfernen."""
     if cc := entry.data.get(CONF_CC):
         await (await async_get_calendar_sync(hass)).async_remove_dose(cc)

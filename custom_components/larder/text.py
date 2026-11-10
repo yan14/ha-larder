@@ -6,21 +6,21 @@ from homeassistant.components.text import TextEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .entity import ZwillingConfigEntry, ZwillingResettable
+from .entity import LarderConfigEntry, LarderResettable
 from .estimate import async_get_estimator
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ZwillingConfigEntry,
+    entry: LarderConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    content = ZwillingContent(entry)
+    content = LarderContent(entry)
     entry.runtime_data.resettable[content._key] = content
     async_add_entities([content])
 
 
-class ZwillingContent(TextEntity, ZwillingResettable):
+class LarderContent(TextEntity, LarderResettable):
     """Freitext: was ist in der Dose?"""
 
     _key = "content"

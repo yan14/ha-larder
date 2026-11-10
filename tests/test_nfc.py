@@ -8,7 +8,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import device_registry as dr
 from homeassistant.util import dt as dt_util
 
-from custom_components.zwilling_storage.const import DOMAIN
+from custom_components.larder.const import DOMAIN
 
 from .test_ai_estimate import _eid, _setup, auto_enable_custom_integrations  # noqa: F401
 
@@ -87,7 +87,7 @@ async def test_scan_fires_event_and_notifies_the_scanning_phone(hass: HomeAssist
     day = (dt_util.now().date() + timedelta(days=2)).isoformat()
     await hass.services.async_call("date", "set_value", {"entity_id": _eid(hass, "date"), "date": day}, blocking=True)
     await _ws(hass, hass_ws_client, {"type": f"{DOMAIN}/nfc_link", "tag_id": "abc", "cc": "34OL"})
-    events = async_capture_events(hass, "zwilling_storage_dose_scanned")
+    events = async_capture_events(hass, "larder_dose_scanned")
 
     await _scan(hass, "abc", phone)
     device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "34OL")})
@@ -96,7 +96,7 @@ async def test_scan_fires_event_and_notifies_the_scanning_phone(hass: HomeAssist
     (call,) = calls
     assert call["title"] == "Dose 34OL"
     assert "Pizza" in call["message"] and day in call["message"]
-    assert call["data"]["url"] == f"/zwilling-storage?open={device.id}" == call["data"]["clickAction"]
+    assert call["data"]["url"] == f"/larder?open={device.id}" == call["data"]["clickAction"]
     assert other == []  # nur das scannende Gerät
 
 
@@ -105,7 +105,7 @@ async def test_unknown_tags_and_missing_scanner_are_handled(hass: HomeAssistant,
     phone = _phone(hass)
     calls = _notify(hass)
     await _ws(hass, hass_ws_client, {"type": f"{DOMAIN}/nfc_link", "tag_id": "abc", "cc": "34OL"})
-    events = async_capture_events(hass, "zwilling_storage_dose_scanned")
+    events = async_capture_events(hass, "larder_dose_scanned")
 
     await _scan(hass, "fremder-tag", phone)  # nicht unser Tag
     assert events == [] and calls == []
@@ -123,7 +123,7 @@ async def test_notification_can_be_switched_off(hass: HomeAssistant, hass_ws_cli
     await _ws(hass, hass_ws_client, {"type": f"{DOMAIN}/nfc_link", "tag_id": "abc", "cc": "34OL"})
     result = await hass.config_entries.options.async_init(entry.entry_id)
     await hass.config_entries.options.async_configure(result["flow_id"], {"estimate_mode": "table", "nfc_notify": False})
-    events = async_capture_events(hass, "zwilling_storage_dose_scanned")
+    events = async_capture_events(hass, "larder_dose_scanned")
     await _scan(hass, "abc", phone)
     assert len(events) == 1 and calls == []
 

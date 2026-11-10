@@ -17,26 +17,26 @@ from homeassistant.helpers.event import (
 )
 
 from .const import DOMAIN
-from .entity import ZwillingConfigEntry, ZwillingEntity
+from .entity import LarderConfigEntry, LarderEntity
 from .expiry import days_left, status_for
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ZwillingConfigEntry,
+    entry: LarderConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    async_add_entities([ZwillingDaysLeftSensor(entry)])
+    async_add_entities([LarderDaysLeftSensor(entry)])
 
 
-class ZwillingDaysLeftSensor(SensorEntity, ZwillingEntity):
+class LarderDaysLeftSensor(SensorEntity, LarderEntity):
     """Verbleibende Tage bis zum MHD; das Attribut `status` ist ok, soon, expired oder none."""
 
     _key = "days_left"
     _attr_native_unit_of_measurement = UnitOfTime.DAYS
     _attr_suggested_display_precision = 0
 
-    def __init__(self, entry: ZwillingConfigEntry) -> None:
+    def __init__(self, entry: LarderConfigEntry) -> None:
         super().__init__(entry)
         self._best_before: date | None = None
 

@@ -1,16 +1,16 @@
 /*
- * Zwilling Dosen: Übersicht aller Dosen der Integration "zwilling_storage".
+ * Larder: Übersicht aller Dosen der Integration "larder".
  *
  * Liest Geräte, Bereiche, Entitäten und Zustände direkt aus dem hass-Objekt des Frontends.
  * Es gibt keine feste Konfiguration: Neue Dosen erscheinen, sobald sie in Home Assistant
  * angelegt sind, geänderte Werte und Bereiche werden live übernommen.
  */
 
-const DOMAIN = "zwilling_storage";
+const DOMAIN = "larder";
 
 export const STRINGS = {
   de: {
-    title: "Zwilling Dosen",
+    title: "Larder",
     area: "Bereich",
     noArea: "Kein Bereich",
     content: "Inhalt",
@@ -106,7 +106,7 @@ export const STRINGS = {
     estOff: "Die MHD-Schätzung ist ausgeschaltet. Die Einträge bleiben erhalten.",
   },
   en: {
-    title: "Zwilling containers",
+    title: "Larder",
     area: "Area",
     noArea: "No area",
     content: "Contents",
@@ -769,7 +769,7 @@ class DoseCard {
   }
 }
 
-class ZwillingStoragePanel extends HTMLElement {
+class LarderPanel extends HTMLElement {
   constructor() {
     super();
     this._hass = null;
@@ -1597,6 +1597,6 @@ class ZwillingStoragePanel extends HTMLElement {
   }
 }
 
-if (!customElements.get("zwilling-storage-panel")) {
-  customElements.define("zwilling-storage-panel", ZwillingStoragePanel);
+if (!customElements.get("larder-panel")) {
+  customElements.define("larder-panel", LarderPanel);
 }

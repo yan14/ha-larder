@@ -51,6 +51,7 @@ from .const import (
 )
 from .calendar_sync import async_get_calendar_sync
 from .estimate import async_get_estimator
+from .migrate import MigrationError, async_migrate_legacy, legacy_entries
 from .qr import generate_code, parse_qr
 from .scan import async_get_webhook_id, webhook_urls
 
@@ -61,7 +62,7 @@ def _area_data(user_input: dict[str, Any]) -> dict[str, str]:
     return {CONF_AREA: area_id} if area_id else {}
 
 
-class ZwillingStorageConfigFlow(ConfigFlow, domain=DOMAIN):
+class LarderConfigFlow(ConfigFlow, domain=DOMAIN):
     """Eine Config Entry entspricht einer Dose (eindeutig über 'cc')."""
 
     VERSION = 1
@@ -69,13 +70,44 @@ class ZwillingStorageConfigFlow(ConfigFlow, domain=DOMAIN):
     @staticmethod
     @callback
     def async_get_options_flow(config_entry: ConfigEntry) -> OptionsFlow:
-        return ZwillingOptionsFlow()
+        return LarderOptionsFlow()
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Auswahl: vorhandenen Zwilling-QR-Code einlesen oder neuen erstellen."""
-        return self.async_show_menu(step_id="user", menu_options=["scan", "create"])
+        options = ["scan", "create"]
+        if legacy_entries(self.hass):
+            options.insert(0, "migrate")  # Dosen der früheren Integration "Zwilling Food Storage"
+        return self.async_show_menu(step_id="user", menu_options=options)
+
+    async def async_step_migrate(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Alle Dosen der früheren Integration übernehmen (siehe migrate.py)."""
+        count = len(legacy_entries(self.hass))
+        if user_input is None:
+            return self.async_show_form(
+                step_id="migrate",
+                data_schema=vol.Schema({}),
+                description_placeholders={"count": str(count)},
+            )
+        try:
+            migrated = await async_migrate_legacy(self.hass)
+        except MigrationError as err:
+            return self.async_abort(reason=err.reason)
+        return self.async_abort(
+            reason="migrated", description_placeholders={"count": str(migrated)}
+        )
+
+    async def async_step_import(self, import_data: dict[str, Any]) -> ConfigFlowResult:
+        """Dose aus der früheren Integration anlegen (nur intern von der Übernahme genutzt)."""
+        data = dict(import_data["data"])
+        await self.async_set_unique_id(data[CONF_CC])
+        self._abort_if_unique_id_configured()
+        return self.async_create_entry(
+            title=import_data["title"], data=data, options=import_data.get("options") or {}
+        )
 
     async def async_step_scan(
         self, user_input: dict[str, Any] | None = None
@@ -148,7 +180,7 @@ class ZwillingStorageConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
 
-class ZwillingOptionsFlow(OptionsFlow):
+class LarderOptionsFlow(OptionsFlow):
     """Globale Einstellungen: Webhook-URL (nur Anzeige) und Schätzung des MHD (Tabelle/KI)."""
 
     async def async_step_init(

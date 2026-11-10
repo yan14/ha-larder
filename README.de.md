@@ -1,10 +1,12 @@
-# Zwilling Food Storage
+# Home Assistant Larder
+
+**Food storage tracker** · früher *Zwilling Food Storage*
 
 <img src="assets/icon.svg" width="96" align="right" alt="Icon">
 
 🇩🇪 Deutsch · [🇬🇧 English](README.md)
 
-Home-Assistant-Integration für Zwilling-Frischhaltedosen mit QR-Code. Pro Dose entsteht ein Gerät (eindeutig über den Parameter `cc` im QR-Code) mit:
+Home-Assistant-Integration für wiederverwendbare Vorratsdosen mit QR-Code oder NFC-Tag. Sie funktioniert mit den originalen Zwilling-Dosen (deren QR-Codes lassen sich einlesen), aber jede Dose ist möglich. Pro Dose entsteht ein Gerät (eindeutig über die ID, den Parameter `cc` eines Zwilling-QR-Codes) mit:
 
 | Entität | Typ | Zweck |
 | --- | --- | --- |
@@ -18,24 +20,45 @@ Home-Assistant-Integration für Zwilling-Frischhaltedosen mit QR-Code. Pro Dose 
 
 Die Werte bleiben über Neustarts erhalten. „Behälter leeren“ ist eine normale Button-Entität, lässt sich also auf Dashboards und in Automationen über `button.press` verwenden.
 
-**Einzelnes Feld leeren:** Die Datums-Entitäten von Home Assistant lassen sich im Entitäts-Dialog selbst nicht leeren (der Button „Löschen“ im Datumsfeld bewirkt dort nichts). Nutze stattdessen eines davon: das Feld im Dashboard leeren, **Behälter leeren** für alles zusammen, oder die Services `zwilling_storage.clear_best_before` bzw. `zwilling_storage.clear_filled_at` (z. B. in den Entwicklerwerkzeugen oder in einer Automation).
+**Einzelnes Feld leeren:** Die Datums-Entitäten von Home Assistant lassen sich im Entitäts-Dialog selbst nicht leeren (der Button „Löschen“ im Datumsfeld bewirkt dort nichts). Nutze stattdessen eines davon: das Feld im Dashboard leeren, **Behälter leeren** für alles zusammen, oder die Services `larder.clear_best_before` bzw. `larder.clear_filled_at` (z. B. in den Entwicklerwerkzeugen oder in einer Automation).
 
 Zusätzlich gibt es:
 
-- ein **Dashboard** „Zwilling Dosen“ in der Seitenleiste (siehe [unten](#dashboard-zwilling-dosen)), das alle Dosen zeigt, mit dem du Dosen hinzufügen und alles bearbeiten kannst und das sich selbst aktualisiert,
+- ein **Dashboard** „Larder“ in der Seitenleiste (siehe [unten](#dashboard-larder)), das alle Dosen zeigt, mit dem du Dosen hinzufügen und alles bearbeiten kannst und das sich selbst aktualisiert,
 - einen **Scan-Webhook** für die originalen Zwilling-QR-Codes (iOS-Kurzbefehl, siehe unten).
 
-<p align="center"><img src="docs/images/dashboard-de.png" width="720" alt="Dashboard Zwilling Dosen (Demo-Daten)"></p>
+<p align="center"><img src="docs/images/dashboard-de.png" width="720" alt="Dashboard Larder (Demo-Daten)"></p>
 
 ## Installation über HACS
 
 1. HACS → Drei-Punkte-Menü → **Benutzerdefinierte Repositories**
-2. URL: `https://github.com/yan14/ha-zwilling-storage`, Kategorie **Integration**
-3. „Zwilling Food Storage“ installieren, Home Assistant neu starten.
+2. URL: `https://github.com/yan14/ha-larder`, Kategorie **Integration**
+3. „Larder“ installieren, Home Assistant neu starten.
+
+> **Du kommst von „Zwilling Food Storage“?** Deine Dosen lassen sich ohne Verlust übernehmen, siehe [Umstieg von Zwilling Food Storage](#umstieg-von-zwilling-food-storage).
+
+## Umstieg von Zwilling Food Storage
+
+Bis Version 0.10 hieß die Integration *Zwilling Food Storage* (Domain `zwilling_storage`). Ab 1.0 heißt sie **Larder** (Domain `larder`). Home Assistant kann eine Domain nicht an Ort und Stelle umbenennen, deshalb übernimmt Larder die Dosen. **Erhalten bleiben:** Entity-IDs (und damit Verlauf, Dashboards und Automationen, die die Entitäten nutzen), Bereiche, Labels, letzte Werte, gemerkte Schätzungen, NFC-Tags, die Kalender-Verknüpfung und der Scan-Webhook (der iOS-Kurzbefehl läuft also weiter). Wie immer vorher ein Home-Assistant-Backup machen.
+
+1. **In HACS aktualisieren.** Das Repository heißt jetzt `yan14/ha-larder`. HACS folgt der Umbenennung meist von selbst. Bietet es Larder nicht an, entferne den alten Eintrag unter „Benutzerdefinierte Repositories“, füge `https://github.com/yan14/ha-larder` (Kategorie *Integration*) neu hinzu und lade **Larder** herunter.
+2. **Home Assistant neu starten.** Die alte Integration läuft weiter, bis du sie übernimmst.
+3. Einstellungen → Geräte & Dienste → **Integration hinzufügen** → **Larder** → **Von Zwilling Food Storage übernehmen** → **Absenden**.
+
+Die alten Einträge werden entfernt und der alte Ordner `custom_components/zwilling_storage` wird gelöscht. Der Schritt erscheint nur, solange alte Einträge vorhanden sind.
+
+**Was umbenannt wurde**
+
+| Vorher | Jetzt |
+| --- | --- |
+| Services `zwilling_storage.*` | `larder.*` (die alten Namen laufen vorerst weiter und schreiben eine Warnung ins Log) |
+| Ereignis `zwilling_storage_dose_scanned` | `larder_dose_scanned` (vorerst werden beide ausgelöst) |
+| Seitenleisten-Panel „Zwilling Dosen“ unter `/zwilling-storage` | „Larder“ unter `/larder` (Lesezeichen anpassen) |
+| Blueprint `zwilling_storage/expiry_notification.yaml` | `larder/expiry_notification.yaml` (neu importieren; Automationen aus der alten Kopie laufen über den alten Service-Namen weiter) |
 
 ## Dose anlegen
 
-Einstellungen → Geräte & Dienste → **Integration hinzufügen** → „Zwilling Food Storage“. Dann gibt es zwei Wege:
+Einstellungen → Geräte & Dienste → **Integration hinzufügen** → „Larder“. Dann gibt es zwei Wege:
 
 **Neuen QR Code erstellen**
 
@@ -59,14 +82,14 @@ Dosen lassen sich auch im Dashboard in der Seitenleiste hinzufügen (Button **+ 
 
 Jede Dose hat die Bild-Entität **QR-Code**. Sie enthält einen Link, der die Home-Assistant-App direkt auf die Geräteseite der Dose springen lässt (`homeassistant://navigate/config/devices/device/<Geräte-ID>`). Dafür brauchst du keinen Kurzbefehl.
 
-1. Öffne das Gerät der Dose in Home Assistant (oder das Panel „Zwilling Dosen“, dort ist der QR-Code klein zu sehen) und öffne die Entität **QR-Code**. Bild speichern oder ausdrucken und auf die Dose kleben. Der Inhalt des Codes steht auch im Attribut `qr_content` der Entität.
+1. Öffne das Gerät der Dose in Home Assistant (oder das Panel „Larder“, dort ist der QR-Code klein zu sehen) und öffne die Entität **QR-Code**. Bild speichern oder ausdrucken und auf die Dose kleben. Der Inhalt des Codes steht auch im Attribut `qr_content` der Entität.
 2. Scanne den Aufkleber mit der Kamera-App. iOS bietet an, den Link in der Home-Assistant-App zu öffnen, und die App zeigt die Dose.
 
 Der Code verweist auf die Geräte-ID in Home Assistant. Wird die Dose gelöscht und neu angelegt, bekommt sie eine neue Geräte-ID, und der Aufkleber muss neu gedruckt werden. Hast du mehrere Home-Assistant-Server in der App, fragt sie beim Öffnen, welcher gemeint ist.
 
-## Dashboard „Zwilling Dosen“
+## Dashboard „Larder“
 
-Sobald mindestens eine Dose angelegt ist, erscheint in der Seitenleiste der Eintrag **Zwilling Dosen**. Er braucht keine Konfiguration und zeigt jede Dose auf einer Karte (Screenshot ganz oben):
+Sobald mindestens eine Dose angelegt ist, erscheint in der Seitenleiste der Eintrag **Larder**. Er braucht keine Konfiguration und zeigt jede Dose auf einer Karte (Screenshot ganz oben):
 
 *Die Screenshots zeigen Demo-Daten. Das Panel passt sich an Theme und Sprache von Home Assistant an (Deutsch und Englisch).*
 
@@ -100,7 +123,7 @@ Das Panel ist für alle Nutzer sichtbar, aber nur **Administratoren** können Do
 
 ## MHD schätzen (eingebaute Tabelle und optional KI)
 
-Die Integration kann dir ein Mindesthaltbarkeitsdatum vorschlagen. Es gibt zwei Quellen, und du entscheidest, welche genutzt wird (Einstellungen → Geräte & Dienste → **Zwilling Food Storage** → **Konfigurieren**):
+Die Integration kann dir ein Mindesthaltbarkeitsdatum vorschlagen. Es gibt zwei Quellen, und du entscheidest, welche genutzt wird (Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren**):
 
 | Modus | Was passiert |
 |---|---|
@@ -121,7 +144,7 @@ So wird eine Dose zugeordnet:
 - **Lagerort:** aus dem Bereich. Zuerst ein Temperatursensor am Bereich, dann eine Temperatur im Label oder im Bereichsnamen (z. B. „ca. -18 °C“), dann Wörter wie *Kühlschrank*, *0-Grad-Fach*, *Gefrierschrank*, *Gefrierfach* (etwas weniger kalt, daher kürzer), *Vorrat*, *Keller*. Kann sie den Bereich nicht einordnen, sagt sie es, statt zu raten.
 - **Vakuum** verlängert die Zeit (rund +30 % gekühlt, +50 % im Gefrierschrank und im Vorrat). Leicht verderbliche Speisen im Kühlschrank (Hack, Fisch, Wurst, Reste, Weichkäse, …) bekommen **keinen** Bonus, denn Vakuum macht sie nicht sicherer.
 
-Die Werte sind bewusst vorsichtig gewählt und orientieren sich an gängigen Empfehlungen (etwa der USDA/FSIS-Kühllagertabelle und den Verbraucherzentralen). Es sind Faustwerte für zu Hause, **keine Garantie für Lebensmittelsicherheit**. Bei gekauften Produkten ist das aufgedruckte MHD verlässlicher. Schreibe „gekocht“ oder „geöffnet“ in den Inhalt, wenn es darauf ankommt. Ein Wert passt nicht oder ein Lebensmittel fehlt? Die Einträge stehen in `custom_components/zwilling_storage/shelf_life.py`; Issues und Pull Requests sind willkommen.
+Die Werte sind bewusst vorsichtig gewählt und orientieren sich an gängigen Empfehlungen (etwa der USDA/FSIS-Kühllagertabelle und den Verbraucherzentralen). Es sind Faustwerte für zu Hause, **keine Garantie für Lebensmittelsicherheit**. Bei gekauften Produkten ist das aufgedruckte MHD verlässlicher. Schreibe „gekocht“ oder „geöffnet“ in den Inhalt, wenn es darauf ankommt. Ein Wert passt nicht oder ein Lebensmittel fehlt? Die Einträge stehen in `custom_components/larder/shelf_life.py`; Issues und Pull Requests sind willkommen.
 
 ### KI (optional)
 
@@ -144,7 +167,7 @@ Stelle **Vakuum** pro Dose ein und weise jede Dose einem **Bereich** zu, der den
 Im Dashboard erscheint der Button **MHD schätzen**, sobald ein Inhalt eingetragen und das MHD leer ist. Er zeigt an, woher der Wert stammt: *Tabelle*, *KI* oder *Tabelle, von dir korrigiert* bzw. *KI, von dir korrigiert*, wenn du das Datum danach geändert hast. Den Service kannst du auch in Automationen, Skripten oder den Entwicklerwerkzeugen aufrufen:
 
 ```yaml
-action: zwilling_storage.estimate_best_before
+action: larder.estimate_best_before
 target:
   entity_id: date.dose_34ol_best_before
 data:
@@ -155,7 +178,7 @@ response_variable: result
 
 Das Ergebnis enthält `best_before`, `days`, `tip` (ein kurzer Lagertipp), `source` (`table`, `ai` oder `learned`), `basis` (bei der Tabelle: erkanntes Lebensmittel und Ort), `cached` und `applied`. Gezählt wird ab **Befüllt am** (oder ab heute, wenn das leer ist). **Ein bereits gesetztes MHD wird nie überschrieben**, außer du setzt `overwrite`.
 
-**Merken.** Jedes Ergebnis wird für die Kombination *Inhalt + Bereich + Vakuum* gespeichert und nicht erneut berechnet oder abgefragt. Änderst du ein vorgeschlagenes Datum danach selbst, merkt sich die Integration deinen Wert für dieselbe Kombination, und er gewinnt gegen Tabelle und KI. Die Daten liegen in `.storage/zwilling_storage.estimator` von Home Assistant.
+**Merken.** Jedes Ergebnis wird für die Kombination *Inhalt + Bereich + Vakuum* gespeichert und nicht erneut berechnet oder abgefragt. Änderst du ein vorgeschlagenes Datum danach selbst, merkt sich die Integration deinen Wert für dieselbe Kombination, und er gewinnt gegen Tabelle und KI. Die Daten liegen in `.storage/larder.estimator` von Home Assistant.
 
 ### Dose schnell befüllen
 
@@ -181,10 +204,10 @@ Die eingebaute Tabelle selbst wird hier nicht bearbeitet. Eigene und geänderte 
 
 ## Ablauf-Benachrichtigungen
 
-Der Service `zwilling_storage.get_expiring` listet alle Dosen, deren MHD bald abläuft oder abgelaufen ist, und liefert einen fertigen Text in der Sprache von Home Assistant:
+Der Service `larder.get_expiring` listet alle Dosen, deren MHD bald abläuft oder abgelaufen ist, und liefert einen fertigen Text in der Sprache von Home Assistant:
 
 ```yaml
-action: zwilling_storage.get_expiring
+action: larder.get_expiring
 data:
   days: 3               # Dosen, die innerhalb von 3 Tagen ablaufen
   include_expired: true
@@ -194,13 +217,13 @@ response_variable: result
 
 Am einfachsten geht es mit dem mitgelieferten Blueprint, der einmal täglich eine Benachrichtigung schickt und schweigt, wenn nichts abläuft:
 
-[![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-zwilling-storage%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fzwilling_storage%2Fexpiry_notification.yaml)
+[![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fexpiry_notification.yaml)
 
 Wähle eine Benachrichtigungs-Aktion wie `notify.mobile_app_dein_iphone` (Entwicklerwerkzeuge → Aktionen), die Uhrzeit und wie viele Tage im Voraus geschaut wird. Für eigene Dashboards oder Automationen gibt es außerdem den Sensor **Tage bis MHD** an jeder Dose.
 
 ## MHD im Kalender
 
-Unter Einstellungen → Geräte & Dienste → **Zwilling Food Storage** → **Konfigurieren** kannst du einen vorhandenen **Kalender** wählen (Google, CalDAV, *Lokaler Kalender* …). Jede Dose bekommt dann einen Ganztags-Termin „MHD: Pizza“ am Tag des MHD. Der Termin wird angelegt, sobald ein Datum gesetzt ist, verschoben, wenn sich Datum oder Inhalt ändern, und gelöscht, wenn das Datum gelöscht, die Dose geleert oder entfernt oder ein anderer Kalender gewählt wird. Eigene Termine werden an einer Kennung in der Beschreibung erkannt, andere Termine werden nie angefasst.
+Unter Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** kannst du einen vorhandenen **Kalender** wählen (Google, CalDAV, *Lokaler Kalender* …). Jede Dose bekommt dann einen Ganztags-Termin „MHD: Pizza“ am Tag des MHD. Der Termin wird angelegt, sobald ein Datum gesetzt ist, verschoben, wenn sich Datum oder Inhalt ändern, und gelöscht, wenn das Datum gelöscht, die Dose geleert oder entfernt oder ein anderer Kalender gewählt wird. Eigene Termine werden an einer Kennung in der Beschreibung erkannt, andere Termine werden nie angefasst.
 
 Der Kalender muss Termine anlegen **und** löschen können. Reine Lese-Kalender (z. B. ein iCal-Link) gehen nicht; die Integration *Lokaler Kalender* ist eine gute Wahl, wenn du keinen anderen hast.
 
@@ -214,7 +237,7 @@ Statt einen QR-Code zu drucken, kannst du einen NFC-Tag auf die Dose kleben. Daf
 2. **Mit einer Dose verknüpfen** im Dashboard (Administratoren): Auf der Karte **NFC-Tag verknüpfen** drücken und das Handy an den Tag halten. Oder **+ Dose hinzufügen → NFC-Tag scannen**: Das legt eine neue Dose an und verknüpft den Tag gleich mit.
 3. **Später scannen.** Ist das Dashboard offen, springt es zur Dose und hebt sie hervor. Sonst bekommt das scannende Handy (Companion-App) eine Benachrichtigung, deren Antippen das Dashboard bei dieser Dose öffnet. Das iPhone zeigt nach dem Lesen eines Tags ein eigenes Banner, das zuerst angetippt wird.
 
-Für eigene Automationen löst ein verknüpfter Scan das Ereignis `zwilling_storage_dose_scanned` aus (`cc`, `device_id`, `name`, `scanned_by`). Die Benachrichtigung lässt sich in den Einstellungen abschalten („NFC: Handy benachrichtigen“). Eine Dose hat höchstens einen Tag, und ein Tag gehört zu genau einer Dose.
+Für eigene Automationen löst ein verknüpfter Scan das Ereignis `larder_dose_scanned` aus (`cc`, `device_id`, `name`, `scanned_by`). Die Benachrichtigung lässt sich in den Einstellungen abschalten („NFC: Handy benachrichtigen“). Eine Dose hat höchstens einen Tag, und ein Tag gehört zu genau einer Dose.
 
 ## iOS-Kurzbefehl für die originalen Zwilling-Codes
 
@@ -224,7 +247,7 @@ Der QR-Code enthält einen Link mit dem Schema `zwilling://`, der zur eingestell
 
 ### 1. Webhook-URL herausfinden
 
-Einstellungen → Geräte & Dienste → **Zwilling Food Storage** → bei einer Dose **Konfigurieren**. Der Dialog zeigt die Webhook-URL, die nach dem Muster `https://<deine-HA-URL>/api/webhook/<lange-geheime-ID>` aufgebaut ist. Die URL gilt für alle Dosen, du brauchst sie nur einmal. Das Konfigurieren-Fenster kannst du danach mit „Senden“ schließen, es ändert nichts.
+Einstellungen → Geräte & Dienste → **Larder** → bei einer Dose **Konfigurieren**. Der Dialog zeigt die Webhook-URL, die nach dem Muster `https://<deine-HA-URL>/api/webhook/<lange-geheime-ID>` aufgebaut ist. Die URL gilt für alle Dosen, du brauchst sie nur einmal. Das Konfigurieren-Fenster kannst du danach mit „Senden“ schließen, es ändert nichts.
 
 Die lange ID ist der Zugriffsschutz, behandle die URL also wie ein Passwort. Welche Adresse vorne steht (intern oder extern), richtet sich nach deiner Home-Assistant-Konfiguration. Unterwegs funktioniert der Kurzbefehl nur mit einer von außen erreichbaren Adresse.
 
@@ -247,7 +270,7 @@ Namen vergeben, z. B. „Dose scannen“. Über das Teilen-Symbol lässt er sich
 Kurzbefehl starten, QR-Code auf der Dose scannen. Die Home-Assistant-App öffnet sich dann:
 
 - **Dose bekannt:** direkt auf der **Geräteseite** dieser Dose (mit Befüllt am, Inhalt und Behälter leeren).
-- **Dose neu:** im Dashboard „Zwilling Dosen“. Dort öffnet sich der Dialog **Dose hinzufügen** mit bereits eingetragenem Code. Optional Name und Bereich eingeben und **Hinzufügen** tippen. Das geht nur mit einem Administrator-Konto, andere Nutzer sehen einen Hinweis mit dem gescannten Code.
+- **Dose neu:** im Dashboard „Larder“. Dort öffnet sich der Dialog **Dose hinzufügen** mit bereits eingetragenem Code. Optional Name und Bereich eingeben und **Hinzufügen** tippen. Das geht nur mit einem Administrator-Konto, andere Nutzer sehen einen Hinweis mit dem gescannten Code.
 
 Hast du mehrere Home-Assistant-Server in der App, fragt sie beim Öffnen, welcher gemeint ist.
 
@@ -272,14 +295,14 @@ Antwort (`200`, JSON):
   "cc": "34OL",
   "name": "Dose 34OL",
   "device_id": "0a1b2c…",
-  "path": "/zwilling-storage?open=0a1b2c…",
-  "app_url": "homeassistant://navigate/zwilling-storage?open=0a1b2c…",
+  "path": "/larder?open=0a1b2c…",
+  "app_url": "homeassistant://navigate/larder?open=0a1b2c…",
   "device_path": "/config/devices/device/0a1b2c…",
   "device_app_url": "homeassistant://navigate/config/devices/device/0a1b2c…"
 }
 ```
 
-Bei bekannter Dose öffnen `path` und `app_url` das Dashboard bei dieser Dose (eine leere Dose bekommt gleich den Befüll-Dialog, siehe „Dose schnell befüllen“); `device_path` und `device_app_url` zeigen stattdessen auf die Geräteseite. Bei unbekannter Dose ist `known` gleich `false`, `path` und `app_url` zeigen auf das Dashboard mit dem Hinzufügen-Dialog (`/zwilling-storage?add=<ID>`). Enthält die Anfrage keine gültige ID, antwortet der Webhook mit `400` und `{"error": "invalid_code"}`. Der Webhook liest nur und ändert keine Werte.
+Bei bekannter Dose öffnen `path` und `app_url` das Dashboard bei dieser Dose (eine leere Dose bekommt gleich den Befüll-Dialog, siehe „Dose schnell befüllen“); `device_path` und `device_app_url` zeigen stattdessen auf die Geräteseite. Bei unbekannter Dose ist `known` gleich `false`, `path` und `app_url` zeigen auf das Dashboard mit dem Hinzufügen-Dialog (`/larder?add=<ID>`). Enthält die Anfrage keine gültige ID, antwortet der Webhook mit `400` und `{"error": "invalid_code"}`. Der Webhook liest nur und ändert keine Werte.
 
 ## Alternativen
 

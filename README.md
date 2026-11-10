@@ -1,10 +1,12 @@
-# Zwilling Food Storage
+# Home Assistant Larder
+
+**Food storage tracker** · formerly *Zwilling Food Storage*
 
 <img src="assets/icon.svg" width="96" align="right" alt="Icon">
 
 [🇩🇪 Deutsch](README.de.md) · 🇬🇧 English
 
-Home Assistant integration for Zwilling food storage containers with a QR code. Every container becomes a device (identified by the `cc` parameter of its QR code) with:
+Home Assistant integration for reusable food storage containers with a QR code or NFC tag. It works with the original Zwilling containers (their QR codes can be read), but any container will do. Every container becomes a device (identified by its ID, the `cc` parameter of a Zwilling QR code) with:
 
 | Entity | Type | Purpose |
 | --- | --- | --- |
@@ -18,24 +20,45 @@ Home Assistant integration for Zwilling food storage containers with a QR code. 
 
 The values survive restarts. "Empty container" is a regular button entity, so you can use it on dashboards and in automations via `button.press`.
 
-**Clearing a single field:** the date entities of Home Assistant itself cannot be cleared from the entity dialog (the picker's "Clear" button has no effect there). Use one of these instead: empty the field in the dashboard, press **Empty container** to reset everything, or call the services `zwilling_storage.clear_best_before` / `zwilling_storage.clear_filled_at` (for example in Developer tools or an automation).
+**Clearing a single field:** the date entities of Home Assistant itself cannot be cleared from the entity dialog (the picker's "Clear" button has no effect there). Use one of these instead: empty the field in the dashboard, press **Empty container** to reset everything, or call the services `larder.clear_best_before` / `larder.clear_filled_at` (for example in Developer tools or an automation).
 
 You also get:
 
-- a **dashboard** "Zwilling containers" in the sidebar (see [below](#dashboard-zwilling-containers)) that lists all containers, lets you add containers and edit everything, and updates itself,
+- a **dashboard** "Larder" in the sidebar (see [below](#dashboard-larder)) that lists all containers, lets you add containers and edit everything, and updates itself,
 - a **scan webhook** for the original Zwilling QR codes (iOS Shortcut, see below).
 
-<p align="center"><img src="docs/images/dashboard-en.png" width="720" alt="Dashboard Zwilling containers (demo data)"></p>
+<p align="center"><img src="docs/images/dashboard-en.png" width="720" alt="Dashboard Larder (demo data)"></p>
 
 ## Installation via HACS
 
 1. HACS → three-dot menu → **Custom repositories**
-2. URL: `https://github.com/yan14/ha-zwilling-storage`, category **Integration**
-3. Install "Zwilling Food Storage" and restart Home Assistant.
+2. URL: `https://github.com/yan14/ha-larder`, category **Integration**
+3. Install "Larder" and restart Home Assistant.
+
+> **Coming from "Zwilling Food Storage"?** Your containers can be taken over without losing anything, see [Upgrading from Zwilling Food Storage](#upgrading-from-zwilling-food-storage).
+
+## Upgrading from Zwilling Food Storage
+
+Up to version 0.10 the integration was called *Zwilling Food Storage* (domain `zwilling_storage`). Since 1.0 it is **Larder** (domain `larder`). Home Assistant cannot rename a domain in place, so Larder takes the containers over. **Kept:** entity IDs (and with them history, dashboards and automations that use the entities), areas, labels, last values, remembered estimates, NFC tags, the calendar link and the scan webhook (so the iOS Shortcut keeps working). Make a Home Assistant backup first, as always.
+
+1. **Update in HACS.** The repository is now `yan14/ha-larder`. HACS usually follows the rename. If it does not offer Larder, remove the old custom repository entry, add `https://github.com/yan14/ha-larder` (category *Integration*) and download **Larder**.
+2. **Restart Home Assistant.** The old integration keeps running until you take it over.
+3. Settings → Devices & services → **Add integration** → **Larder** → **Take over from Zwilling Food Storage** → **Submit**.
+
+The old entries are removed and the old folder `custom_components/zwilling_storage` is deleted. The step only appears while old entries exist.
+
+**What is renamed**
+
+| Before | Now |
+| --- | --- |
+| Services `zwilling_storage.*` | `larder.*` (the old names keep working for now and log a warning) |
+| Event `zwilling_storage_dose_scanned` | `larder_dose_scanned` (both are fired for now) |
+| Sidebar panel "Zwilling Dosen" at `/zwilling-storage` | "Larder" at `/larder` (update bookmarks) |
+| Blueprint `zwilling_storage/expiry_notification.yaml` | `larder/expiry_notification.yaml` (import it again; automations made from the old copy keep working through the old service name) |
 
 ## Adding a container
 
-Settings → Devices & services → **Add integration** → "Zwilling Food Storage". There are two ways:
+Settings → Devices & services → **Add integration** → "Larder". There are two ways:
 
 **Create new QR code**
 
@@ -59,14 +82,14 @@ You can also add containers in the sidebar dashboard (button **+ Add container**
 
 Every container has the image entity **QR code**. It contains a link that makes the Home Assistant app jump straight to the container's device page (`homeassistant://navigate/config/devices/device/<device-id>`). You do not need a Shortcut for this.
 
-1. Open the container's device in Home Assistant (or the "Zwilling containers" panel, where the QR code is shown small) and open the **QR code** entity. Save or print the image and stick it on the container. The content of the code is also available in the `qr_content` attribute of the entity.
+1. Open the container's device in Home Assistant (or the "Larder" panel, where the QR code is shown small) and open the **QR code** entity. Save or print the image and stick it on the container. The content of the code is also available in the `qr_content` attribute of the entity.
 2. Scan the sticker with the camera app. iOS offers to open the link in the Home Assistant app, and the app shows the container.
 
 The code points to the device ID in Home Assistant. If you delete the container and add it again, it gets a new device ID and the sticker has to be printed again. If you have several Home Assistant servers in the app, it asks which one you mean when opening.
 
-## Dashboard "Zwilling containers"
+## Dashboard "Larder"
 
-As soon as at least one container exists, a sidebar entry **Zwilling containers** (German UI: "Zwilling Dosen") appears. It needs no configuration and shows every container on a card (screenshot at the top):
+As soon as at least one container exists, a sidebar entry **Larder** appears. It needs no configuration and shows every container on a card (screenshot at the top):
 
 *The screenshots show demo data. The panel adapts to your Home Assistant theme and language (English and German).*
 
@@ -100,7 +123,7 @@ The panel is visible to all users, but only **administrators** can add container
 
 ## Best-before estimate (built-in table and optional AI)
 
-The integration can suggest a best-before date. There are two sources, and you decide which one is used (Settings → Devices & services → **Zwilling Food Storage** → **Configure**):
+The integration can suggest a best-before date. There are two sources, and you decide which one is used (Settings → Devices & services → **Larder** → **Configure**):
 
 | Mode | What happens |
 |---|---|
@@ -121,7 +144,7 @@ How a container is matched:
 - **Storage place** comes from the area: a temperature sensor on the area first, then a temperature in a label or the area name (for example "about -18 °C"), then words such as *fridge*, *0 °C compartment*, *freezer*, *freezer compartment* (a bit less cold, so shorter), *pantry*, *cellar*. If it cannot place the area, it tells you instead of guessing.
 - **Vacuum** extends the time (about +30 % cold, +50 % in the freezer and pantry). Perishable food in the fridge (minced meat, fish, cold cuts, leftovers, soft cheese, …) gets **no** bonus, because vacuum does not make it safer.
 
-The values are deliberately cautious and based on common guidance (for example the USDA/FSIS cold storage chart and German consumer-advice centres). They are rules of thumb for the home, **not a food-safety guarantee**. For bought products the printed best-before date is more reliable. Write "cooked" or "opened" into the contents if it matters. Spotted a value that is off or a food that is missing? Entries are listed in `custom_components/zwilling_storage/shelf_life.py`; issues and pull requests are welcome.
+The values are deliberately cautious and based on common guidance (for example the USDA/FSIS cold storage chart and German consumer-advice centres). They are rules of thumb for the home, **not a food-safety guarantee**. For bought products the printed best-before date is more reliable. Write "cooked" or "opened" into the contents if it matters. Spotted a value that is off or a food that is missing? Entries are listed in `custom_components/larder/shelf_life.py`; issues and pull requests are welcome.
 
 ### AI (optional)
 
@@ -144,7 +167,7 @@ Set **Vacuum** per container and assign each container to an **area** that descr
 On the dashboard the button **Estimate best before** appears once contents are entered and the best-before date is empty. It shows where the value came from: *table*, *AI*, or *table, corrected by you* / *AI, corrected by you* if you changed the date afterwards. You can also call the service (in automations, scripts or Developer tools):
 
 ```yaml
-action: zwilling_storage.estimate_best_before
+action: larder.estimate_best_before
 target:
   entity_id: date.dose_34ol_best_before
 data:
@@ -155,7 +178,7 @@ response_variable: result
 
 The result contains `best_before`, `days`, `tip` (a short storage tip), `source` (`table`, `ai` or `learned`), `basis` (for the table: matched food and place), `cached` and `applied`. The date is counted from **Filled on** (or from today if that is empty). **An existing best-before date is never overwritten** unless you set `overwrite`.
 
-**Remembering.** Each result is stored for the combination of *contents + area + vacuum* and is not calculated or asked again. If you change a suggested date afterwards, your value is remembered for the same combination and wins over table and AI. The data lives in Home Assistant's `.storage/zwilling_storage.estimator`.
+**Remembering.** Each result is stored for the combination of *contents + area + vacuum* and is not calculated or asked again. If you change a suggested date afterwards, your value is remembered for the same combination and wins over table and AI. The data lives in Home Assistant's `.storage/larder.estimator`.
 
 ### Filling a container quickly
 
@@ -181,10 +204,10 @@ The built-in table itself is not edited here. Entries you add or change simply t
 
 ## Expiry notifications
 
-The service `zwilling_storage.get_expiring` lists all containers whose best-before date is near or has passed and returns a ready-made text in the language of Home Assistant:
+The service `larder.get_expiring` lists all containers whose best-before date is near or has passed and returns a ready-made text in the language of Home Assistant:
 
 ```yaml
-action: zwilling_storage.get_expiring
+action: larder.get_expiring
 data:
   days: 3               # containers expiring within 3 days
   include_expired: true
@@ -194,13 +217,13 @@ response_variable: result
 
 The easiest way is the included blueprint, which sends a notification once a day and stays quiet when nothing expires:
 
-[![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-zwilling-storage%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fzwilling_storage%2Fexpiry_notification.yaml)
+[![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fexpiry_notification.yaml)
 
 Choose a notification action such as `notify.mobile_app_your_iphone` (Developer tools → Actions), the time and how many days ahead to look. For your own dashboards or automations there is also the sensor **Days until best before** on every container.
 
 ## Best-before dates in your calendar
 
-Under Settings → Devices & services → **Zwilling Food Storage** → **Configure** you can pick an existing **calendar** (Google, CalDAV, *Local Calendar* …). Every container then gets an all-day event "Best before: Pizza" on its best-before date. The event is created when a date is set, moved when the date or the contents change, and deleted when the date is cleared, the container is emptied or removed, or you pick another calendar. Your own events are recognised by a tag in the description and never touched otherwise.
+Under Settings → Devices & services → **Larder** → **Configure** you can pick an existing **calendar** (Google, CalDAV, *Local Calendar* …). Every container then gets an all-day event "Best before: Pizza" on its best-before date. The event is created when a date is set, moved when the date or the contents change, and deleted when the date is cleared, the container is emptied or removed, or you pick another calendar. Your own events are recognised by a tag in the description and never touched otherwise.
 
 The calendar must be able to create **and** delete events. Read-only calendars (for example an iCal link) cannot be used; the *Local Calendar* integration is a good choice if you have no other one.
 
@@ -214,7 +237,7 @@ Instead of printing a QR code you can stick an NFC tag on the container. This us
 2. **Link it to a container** in the dashboard (administrators): on the card press **Link NFC tag** and hold the phone to the tag. Or use **+ Add container → Scan NFC tag**, which creates a new container and links the tag in one go.
 3. **Scan it later.** If the dashboard is open, it jumps to the container and highlights it. Otherwise the scanning phone (Companion app) gets a notification, and tapping it opens the dashboard on that container. iPhones show their own banner after reading a tag, tap it first.
 
-For your own automations a linked scan fires the event `zwilling_storage_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`). The notification can be switched off in the settings ("NFC: notify the phone"). One container has at most one tag, and a tag belongs to one container.
+For your own automations a linked scan fires the event `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`). The notification can be switched off in the settings ("NFC: notify the phone"). One container has at most one tag, and a tag belongs to one container.
 
 ## iOS Shortcut for the original Zwilling codes
 
@@ -224,7 +247,7 @@ The QR code contains a link with the scheme `zwilling://`, which belongs to the 
 
 ### 1. Find the webhook URL
 
-Settings → Devices & services → **Zwilling Food Storage** → **Configure** on one of the containers. The dialog shows the webhook URL, built like `https://<your-HA-URL>/api/webhook/<long-secret-ID>`. The URL is the same for all containers, so you only need it once. You can close the Configure window with "Submit" afterwards, it changes nothing.
+Settings → Devices & services → **Larder** → **Configure** on one of the containers. The dialog shows the webhook URL, built like `https://<your-HA-URL>/api/webhook/<long-secret-ID>`. The URL is the same for all containers, so you only need it once. You can close the Configure window with "Submit" afterwards, it changes nothing.
 
 The long ID is the access protection, so treat the URL like a password. Which address is shown at the front (internal or external) depends on your Home Assistant configuration. When you are away from home the Shortcut only works with an address that is reachable from outside.
 
@@ -247,7 +270,7 @@ Give it a name, e.g. "Scan container". Using the share icon you can add it to th
 Run the Shortcut and scan the QR code on the container. The Home Assistant app then opens:
 
 - **Container known:** directly on the **device page** of this container (with Filled on, Contents and Empty container).
-- **Container new:** on the dashboard "Zwilling containers", where the **Add container** dialog opens with the scanned code already filled in. Optionally enter a name and area and tap **Add**. This needs an administrator account; other users get a note with the scanned code.
+- **Container new:** on the dashboard "Larder", where the **Add container** dialog opens with the scanned code already filled in. Optionally enter a name and area and tap **Add**. This needs an administrator account; other users get a note with the scanned code.
 
 If you have several Home Assistant servers in the app, it asks which one you mean when opening.
 
@@ -272,14 +295,14 @@ Response (`200`, JSON):
   "cc": "34OL",
   "name": "Dose 34OL",
   "device_id": "0a1b2c…",
-  "path": "/zwilling-storage?open=0a1b2c…",
-  "app_url": "homeassistant://navigate/zwilling-storage?open=0a1b2c…",
+  "path": "/larder?open=0a1b2c…",
+  "app_url": "homeassistant://navigate/larder?open=0a1b2c…",
   "device_path": "/config/devices/device/0a1b2c…",
   "device_app_url": "homeassistant://navigate/config/devices/device/0a1b2c…"
 }
 ```
 
-For a known container `path` and `app_url` open the dashboard on that container (an empty one gets the fill dialog straight away, see "Filling a container quickly"); `device_path` and `device_app_url` point to the device page instead. For an unknown container `known` is `false`, and `path` and `app_url` point to the dashboard with the add dialog (`/zwilling-storage?add=<ID>`). If the request contains no valid ID, the webhook answers with `400` and `{"error": "invalid_code"}`. The webhook only reads and never changes any values.
+For a known container `path` and `app_url` open the dashboard on that container (an empty one gets the fill dialog straight away, see "Filling a container quickly"); `device_path` and `device_app_url` point to the device page instead. For an unknown container `known` is `false`, and `path` and `app_url` point to the dashboard with the add dialog (`/larder?add=<ID>`). If the request contains no valid ID, the webhook answers with `400` and `{"error": "invalid_code"}`. The webhook only reads and never changes any values.
 
 ## Alternatives
 
