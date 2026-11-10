@@ -451,7 +451,8 @@ const STYLE = `
   .dialog .check { flex-direction: row; align-items: center; gap: 8px; color: var(--primary-text-color); }
   .dialog .check[hidden] { display: none; }
   .actions button.fill { display: none; }
-  .actions button.fill.visible { display: inline-block; background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: transparent; }
+  .actions button.fill.visible { display: inline-block; font: inherit; padding: 7px 14px; border-radius: 8px; cursor: pointer;
+    background: none; color: var(--primary-color); border: 1px solid var(--primary-color); }
   .dialog .nfcstatus { font-size: 14px; color: var(--secondary-text-color); }
   .dialog .nfcstatus[hidden] { display: none; }
   header .tabs { display: none; gap: 4px; }

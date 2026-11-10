@@ -80,7 +80,11 @@ As soon as at least one container exists, a sidebar entry **Zwilling containers*
 - Under the date: **+1 day** moves the best-before date by a day, **Opened** shortens it to the number of days you set in the settings (default 3). Without a date, one is set.
 - **Search, filter and sort** above the cards: search in name, contents and area; filter by *expiring soon*, *expired*, *filled* or *empty*; sort by area, best-before date (earliest first) or name. Your choice is remembered in the browser.
 - Administrators also get the **Estimates** tab (see [below](#managing-remembered-estimates)).
+- An empty container shows **Fill**, a quick dialog for contents, vacuum and best-before date (see [below](#filling-a-container-quickly)).
 - New containers, changed values and changed areas show up immediately, no reload needed.
+
+<p align="center"><img src="docs/images/dashboard-soon-en.png" width="720" alt="Filter: expiring soon"></p>
+
 
 The panel is visible to all users, but only **administrators** can add containers and change areas (the same restriction as in the settings). Other users see the area as text. It is not a classic Lovelace dashboard and cannot be edited with the card editor. In return it updates itself.
 
@@ -155,11 +159,15 @@ The result contains `best_before`, `days`, `tip` (a short storage tip), `source`
 
 ### Filling a container quickly
 
+<p align="center"><img src="docs/images/fill-dialog-en.png" width="560" alt="Fill container dialog"></p>
+
 An empty container shows a **Fill** button. It opens a small dialog: **contents** (with suggestions from what you entered before, newest first, then your remembered estimates), **vacuum**, **filled on** (preset to now), optionally a **best-before date**, and **Estimate best before automatically** (only if estimating is on and the date is empty). **Save** sets everything and estimates the date.
 
 The dialog also opens by itself after a scan: when the Shortcut opens `app_url` or you tap the NFC notification and the container is empty. For a container that already has contents the dashboard only highlights it. This works for all users, not only administrators.
 
 ### Managing remembered estimates
+
+<p align="center"><img src="docs/images/estimates-en.png" width="720" alt="Estimates tab"></p>
 
 Administrators get a second tab, **Estimates**, in the dashboard. It lists everything that is remembered for a combination of contents, area and vacuum, with its source (table, AI, or corrected by you with the original source). There you can
 
@@ -197,6 +205,8 @@ Under Settings → Devices & services → **Zwilling Food Storage** → **Config
 The calendar must be able to create **and** delete events. Read-only calendars (for example an iCal link) cannot be used; the *Local Calendar* integration is a good choice if you have no other one.
 
 ## NFC tags
+
+<p align="center"><img src="docs/images/add-dialog-nfc-en.png" width="560" alt="Add container: scan NFC tag"></p>
 
 Instead of printing a QR code you can stick an NFC tag on the container. This uses Home Assistant's own **tags**: every scan fires a `tag_scanned` event, and the integration remembers which tag belongs to which container. Other tags in your home are ignored.
 

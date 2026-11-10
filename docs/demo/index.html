@@ -2,7 +2,8 @@
 <!--
   Demo-Seite für die README-Screenshots: lädt das echte Panel mit erfundenen Daten.
   Aufruf: python -m http.server im Repo-Hauptverzeichnis, dann
-  /docs/demo/index.html?lang=en|de&dialog=0|1&width=...
+  /docs/demo/index.html?lang=en|de&width=...
+  &dialog=1|scan|nfc|fill  &view=estimates  &filter=soon  &tip=1
 -->
 <html>
 <head>
@@ -40,6 +41,7 @@ const doses = de ? [
   ["Reis", "pantry", "Basmati", 300, 700],
   ["Gemüsebrühe", "cellar", "Gemüsebrühe selbst gekocht", -2, 30],
   ["Bolognese", "cellar", "Bolognese-Sauce", 40, 96],
+  ["Dose HA-5ZC8N1RB", "kitchen", "", null, null],
 ] : [
   ["Dose HA-K7M2PQ4X", "kitchen", "Tomato soup", 2, 20],
   ["Dose 34OL", "kitchen", "Chicken curry", 1, 52],
@@ -48,6 +50,7 @@ const doses = de ? [
   ["Rice", "pantry", "Basmati", 300, 700],
   ["Vegetable stock", "cellar", "Homemade vegetable stock", -2, 30],
   ["Bolognese", "cellar", "Bolognese sauce", 40, 96],
+  ["Dose HA-5ZC8N1RB", "kitchen", "", null, null],
 ];
 const entities = {}, devices = {}, states = {};
 doses.forEach((d, i) => {
@@ -67,8 +70,29 @@ doses.forEach((d, i) => {
 const hass = {
   entities, devices, states, language: lang, user: { is_admin: true },
   areas: Object.fromEntries(Object.entries(areas).map(([k, v]) => [k, { area_id: k, name: v }])),
-  hassUrl: (p) => p, callService() {}, callApi: async () => ({}), callWS: async () => ({}),
+  hassUrl: (p) => p, callService() {}, callApi: async () => ({}),
+  callWS: async (msg) => {
+    if (msg.type === "zwilling_storage/nfc_tags") return { links: {}, by_device: { demo00: "tag-a", demo01: "tag-b", demo03: "tag-c" } };
+    if (msg.type === "zwilling_storage/contents") return { contents: de
+      ? ["Pizza", "Pizzateig", "Gulasch", "Linsensuppe", "Tomatensuppe", "Hähnchen-Curry"]
+      : ["Pizza", "Pizza dough", "Goulash", "Lentil soup", "Tomato soup", "Chicken curry"] };
+    if (msg.type === "zwilling_storage/estimates") return { mode: "table_ai", entries: ENTRIES };
+    return {};
+  },
 };
+const ENTRIES = de ? [
+  { key: "a", content: "Tomatensuppe", area: "Kühlschrank", vacuum: true, days: 3, tip: "Gut durcherhitzen", source: "table", origin: null },
+  { key: "b", content: "Hähnchen-Curry", area: "Kühlschrank", vacuum: true, days: 4, tip: "Innerhalb von 2 Stunden abkühlen", source: "table", origin: "table" },
+  { key: "c", content: "Gulasch", area: "Gefrierschrank", vacuum: true, days: 180, tip: "Portionsweise einfrieren", source: "learned", origin: "ai" },
+  { key: "d", content: "Selbstgebackenes Brot", area: "Vorratskammer", vacuum: false, days: 4, tip: "In Leinen aufbewahren", source: "ai", origin: null },
+  { key: "e", content: "Basmati", area: "Vorratskammer", vacuum: true, days: 730, tip: "", source: "table", origin: null },
+] : [
+  { key: "a", content: "Tomato soup", area: "Fridge", vacuum: true, days: 3, tip: "Heat through thoroughly", source: "table", origin: null },
+  { key: "b", content: "Chicken curry", area: "Fridge", vacuum: true, days: 4, tip: "Cool within 2 hours", source: "table", origin: "table" },
+  { key: "c", content: "Goulash", area: "Freezer", vacuum: true, days: 180, tip: "Freeze in portions", source: "learned", origin: "ai" },
+  { key: "d", content: "Homemade bread", area: "Pantry", vacuum: false, days: 4, tip: "Store in linen", source: "ai", origin: null },
+  { key: "e", content: "Basmati", area: "Pantry", vacuum: true, days: 730, tip: "", source: "table", origin: null },
+];
 
 const width = Number(q.get("width") || 1100);
 document.body.style.width = width + "px";
@@ -76,6 +100,24 @@ const el = document.createElement("zwilling-storage-panel");
 document.body.appendChild(el);
 el.hass = hass;
 if (q.get("dialog") === "1") el.openAddDialog();
+if (q.get("dialog") === "nfc") {
+  el.openAddDialog();
+  const r = el.shadowRoot.querySelector('input[name="mode"][value="nfc"]');
+  r.checked = true;
+  r.dispatchEvent(new Event("change"));
+  el.shadowRoot.querySelector('[data-f="name"]').value = de ? "Gulasch" : "Goulash";
+}
+if (q.get("dialog") === "fill") {
+  el.openFillDialog("demo07");
+  const f = (n) => el.shadowRoot.querySelector(`form.fillform [data-f="${n}"]`);
+  f("content").value = de ? "Pizza" : "Pizza";
+}
+if (q.get("view") === "estimates") el.setView("estimates");
+if (q.get("filter")) { el._opts.filter = q.get("filter"); el._update(); }
+if (q.get("tip") === "1") {
+  const card = el._cards.get("demo02");
+  card._setTip(de ? "Geschätzt: ca. 3 Tage haltbar (Tabelle). Gut durcherhitzen" : "Estimated: about 3 days shelf life (table). Heat through thoroughly");
+}
 if (q.get("dialog") === "scan") {
   // Wie nach einem Scan über den Kurzbefehl: Dialog mit vorbelegtem Zwilling-Code
   el.openAddDialog("zwilling://zwillingapp/food-storage/in/?tc=42ML30&s=m&cc=6KP2");
