@@ -320,6 +320,9 @@ async def test_flow_works_via_rest_api_for_the_panel(hass: HomeAssistant, hass_c
     """Das Panel nutzt die REST-API des Config Flows: Menü → create → Eintrag."""
     from homeassistant.setup import async_setup_component
 
+    # Erst Integration und Config-API einrichten, dann den HTTP-Client holen
+    # (danach ist der Router eingefroren und es lassen sich keine Routen mehr anmelden).
+    await _setup(hass)
     assert await async_setup_component(hass, "config", {})
     client = await hass_client()
     resp = await client.post(
