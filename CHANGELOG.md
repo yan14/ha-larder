@@ -3,6 +3,10 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 1.10.2
+
+- **Serial scan:** a switch **📷 QR code | 📶 NFC** at the top of the containers page changes the scan method; tap or swipe it. NFC closes the app's QR scanner, QR code opens it again. Inside the QR scanner, **Switch to NFC** does the same.
+
 ## 1.10.1
 
 - **Serial scan with NFC tags:** closing the QR scanner no longer ends the serial scan, so NFC tags can be scanned afterwards (while the camera is in use the iPhone does not read NFC tags). **📷 Open QR scanner** opens it again, **⏹ Stop scanning** ends the scan. The page explains how NFC works on the iPhone (tap the "Open in Home Assistant" banner).

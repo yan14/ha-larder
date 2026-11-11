@@ -102,8 +102,12 @@ export const TEXTS = {
     scanStart: "Scannen",
     scanStop: "Scan beenden",
     scanHint: "Serien-Scan läuft: Jede gescannte Dose wird ausgewählt.",
-    scanNfcHint: "NFC: Handy an den Tag halten und das Banner „In Home Assistant öffnen“ oben antippen. Das geht nur, solange der QR-Scanner geschlossen ist.",
-    scanQr: "QR-Scanner öffnen",
+    scanNfcHint: "Handy an den Tag halten und das Banner „In Home Assistant öffnen“ oben antippen.",
+    scanQr: "QR-Code",
+    scanNfc: "NFC",
+    scanModeLabel: "Scannen mit",
+    scanQrHint: "Der QR-Scanner der App ist offen. Über „NFC“ im Scanner oder hier wechselst du zu NFC.",
+    scanToNfc: "Zu NFC wechseln",
     scanTitle: "Dosen scannen",
     scanDescription: "Scanne die QR-Codes der Dosen nacheinander. Schließen, wenn du fertig bist.",
     scanAdded: (name, n) => `✓ ${name} (${n} ausgewählt)`,
@@ -208,8 +212,12 @@ export const TEXTS = {
     scanStart: "Scan",
     scanStop: "Stop scanning",
     scanHint: "Serial scan running: every scanned container gets selected.",
-    scanNfcHint: "NFC: hold the phone to the tag and tap the “Open in Home Assistant” banner at the top. This only works while the QR scanner is closed.",
-    scanQr: "Open QR scanner",
+    scanNfcHint: "Hold the phone to the tag and tap the “Open in Home Assistant” banner at the top.",
+    scanQr: "QR code",
+    scanNfc: "NFC",
+    scanModeLabel: "Scan with",
+    scanQrHint: "The app's QR scanner is open. Switch to NFC with “NFC” in the scanner or here.",
+    scanToNfc: "Switch to NFC",
     scanTitle: "Scan containers",
     scanDescription: "Scan the QR codes of the containers one after another. Close when you are done.",
     scanAdded: (name, n) => `✓ ${name} (${n} selected)`,
@@ -434,6 +442,12 @@ const STYLE = `
   .row .sub { font-size: 12px; color: var(--secondary-text-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .row.empty { opacity: .65; }
   .note { color: var(--secondary-text-color); font-size: 14px; margin: 8px 0; }
+  .scanpanel { margin: 0 0 12px; }
+  .scanpanel .note { margin: 6px 0 0; }
+  .segment { display: flex; border: 1px solid var(--divider-color); border-radius: 20px; padding: 3px; background: var(--card-background-color, #fff); touch-action: pan-y; }
+  .segment button { flex: 1; font: inherit; font-size: 14px; border: 0; border-radius: 16px; padding: 8px 10px; cursor: pointer;
+    background: transparent; color: var(--primary-text-color); transition: background .15s; }
+  .segment button.on { background: var(--primary-color); color: var(--text-primary-color, #fff); }
   div.note p { margin: 0 0 6px; }
   div.note button { font: inherit; font-size: 14px; border-radius: 18px; padding: 7px 12px; cursor: pointer; margin-top: 2px;
     background: var(--card-background-color, #fff); color: var(--primary-text-color); border: 1px solid var(--divider-color); }
@@ -677,6 +691,7 @@ class LarderExperimental extends HTMLElement {
       [...this._selected],
       !!this._scan,
       !!(this._scan && this._scan.external),
+      this._scan && this._scan.mode,
       this._chosenFor,
     ]);
     if (sig === this._sig) return;
@@ -792,7 +807,7 @@ class LarderExperimental extends HTMLElement {
   async startScan() {
     const hass = this._hass;
     if (!hass || this._scan || !isAdmin(hass)) return;
-    const scan = { unsub: null, external: null };
+    const scan = { unsub: null, external: null, mode: this._hasQrScanner() ? "qr" : "nfc" };
     this._scan = scan;
     this._update();
     const add = (id) => {
@@ -811,7 +826,26 @@ class LarderExperimental extends HTMLElement {
     } catch {
       /* ohne Abo bleibt der QR-Scanner der App */
     }
-    if (this._scan === scan) this.openQrScanner();
+    if (this._scan === scan && scan.mode === "qr") this.openQrScanner();
+  }
+
+  /** Zwischen QR-Code und NFC wechseln: QR öffnet den Scanner der App, NFC schließt ihn (sonst liest das iPhone keine Tags). */
+  setScanMode(mode) {
+    const scan = this._scan;
+    if (!scan || (mode !== "qr" && mode !== "nfc") || scan.mode === mode) return;
+    if (mode === "qr" && !this._hasQrScanner()) return;
+    scan.mode = mode;
+    if (mode === "qr") this.openQrScanner();
+    else this._closeQrScanner(scan);
+    this._update();
+  }
+
+  _closeQrScanner(scan) {
+    if (!scan || !scan.external) return;
+    const { external, original } = scan.external;
+    scan.external = null;
+    external.addCommandHandler(original);
+    external.fireMessage({ type: "bar_code/close" });
   }
 
   /** Kann die App einen QR-Scanner öffnen (Home-Assistant-App mit Kamera)? */
@@ -842,8 +876,9 @@ class LarderExperimental extends HTMLElement {
       if (this._scan === scan && msg && msg.command === "bar_code/scan_result") {
         this._handleScannedCode(String((msg.payload && msg.payload.rawValue) || ""), notify, t);
       } else if (this._scan === scan && msg && msg.command === "bar_code/aborted") {
-        // QR-Scanner geschlossen: der Serien-Scan läuft weiter (z. B. für NFC), bis "Scan beenden"
+        // QR-Scanner geschlossen oder "NFC" im Scanner gewählt: weiter mit NFC, bis "Scan beenden"
         scan.external = null;
+        scan.mode = "nfc";
         external.addCommandHandler(original);
         this._update();
       }
@@ -853,7 +888,7 @@ class LarderExperimental extends HTMLElement {
     scan.external = { external, original };
     external.fireMessage({
       type: "bar_code/scan",
-      payload: { title: t.scanTitle, description: t.scanDescription, alternative_option_label: t.scanStop },
+      payload: { title: t.scanTitle, description: t.scanDescription, alternative_option_label: t.scanToNfc },
     });
   }
 
@@ -882,12 +917,44 @@ class LarderExperimental extends HTMLElement {
         /* Verbindung schon weg */
       }
     }
-    if (scan.external) {
-      const { external, original } = scan.external;
-      external.addCommandHandler(original);
-      external.fireMessage({ type: "bar_code/close" });
-    }
+    this._closeQrScanner(scan);
     this._update();
+  }
+
+  /** Umschalter QR-Code / NFC (antippen oder wischen) mit kurzer Anleitung. */
+  _scanPanel(t) {
+    const scan = this._scan;
+    const box = el("div", "scanpanel");
+    if (this._hasQrScanner()) {
+      const seg = el("div", "segment");
+      seg.setAttribute("role", "tablist");
+      seg.setAttribute("aria-label", t.scanModeLabel);
+      for (const [mode, label] of [["qr", `📷 ${t.scanQr}`], ["nfc", `📶 ${t.scanNfc}`]]) {
+        const b = el("button", scan.mode === mode ? "on" : "", label);
+        b.type = "button";
+        b.dataset.role = `scan-mode-${mode}`;
+        b.setAttribute("role", "tab");
+        b.setAttribute("aria-selected", scan.mode === mode ? "true" : "false");
+        b.addEventListener("click", () => {
+          if (scan.mode === mode && mode === "qr" && !scan.external) this.openQrScanner();
+          else this.setScanMode(mode);
+        });
+        seg.append(b);
+      }
+      let startX = null;
+      seg.addEventListener("touchstart", (ev) => (startX = ev.touches && ev.touches[0] ? ev.touches[0].clientX : null), { passive: true });
+      seg.addEventListener("touchend", (ev) => {
+        const touch = ev.changedTouches && ev.changedTouches[0];
+        if (startX === null || !touch) return;
+        const dx = touch.clientX - startX;
+        startX = null;
+        if (Math.abs(dx) > 30) this.setScanMode(dx > 0 ? "nfc" : "qr");
+      });
+      box.append(seg);
+    }
+    box.append(el("p", "note", t.scanHint));
+    box.append(el("p", "note", scan.mode === "qr" ? t.scanQrHint : t.scanNfcHint));
+    return box;
   }
 
   _selectBar(t, rows) {
@@ -1030,19 +1097,7 @@ class LarderExperimental extends HTMLElement {
 
     const frag = document.createDocumentFragment();
     frag.append(bar);
-    if (this._scan) {
-      const info = el("div", "note");
-      info.append(el("p", "", t.scanHint));
-      if (!this._scan.external) info.append(el("p", "", t.scanNfcHint));
-      if (!this._scan.external && this._hasQrScanner()) {
-        const qr = el("button", "", `📷 ${t.scanQr}`);
-        qr.type = "button";
-        qr.dataset.role = "scan-qr";
-        qr.addEventListener("click", () => this.openQrScanner());
-        info.append(qr);
-      }
-      frag.append(info);
-    }
+    if (this._scan) frag.append(this._scanPanel(t));
     const chips = this._chips(t, allRows);
     if (chips) frag.append(chips);
 

@@ -743,24 +743,47 @@ test("Serien-Scan: NFC-Ereignisse und QR-Scanner der App wählen Dosen aus", asy
   assert.equal(external._commandHandler, original);
   assert.equal(sent[sent.length - 1].type, "bar_code/close");
 
-  // Schließen des QR-Scanners lässt den Serien-Scan (NFC) weiterlaufen
+  // Umschalter: NFC schließt den QR-Scanner, der Serien-Scan läuft weiter
   unsubscribed = false;
   $(el, '[data-role="scan"]').click();
   await flush();
   await flush();
-  external._commandHandler({ command: "bar_code/aborted", payload: { reason: "canceled" } });
+  assert.equal($(el, '[data-role="scan-mode-qr"]').classList.contains("on"), true);
+  $(el, '[data-role="scan-mode-nfc"]').click();
   await flush();
+  assert.equal(sent[sent.length - 1].type, "bar_code/close");
   assert.equal(external._commandHandler, original);
   assert.equal(unsubscribed, false);
-  assert.match($(el, "main .note").textContent, /In Home Assistant öffnen/);
+  assert.equal($(el, '[data-role="scan-mode-nfc"]').classList.contains("on"), true);
+  assert.match($(el, ".scanpanel").textContent, /In Home Assistant öffnen/);
   eventCb({ device_id: "d3" });
   await flush();
   assert.ok($(el, 'main .tile[data-id="d3"]').classList.contains("selected"));
-  // QR-Scanner wieder öffnen
-  $(el, '[data-role="scan-qr"]').click();
+
+  // zurück zu QR öffnet den Scanner wieder; "Zu NFC wechseln" im Scanner schaltet auf NFC
+  $(el, '[data-role="scan-mode-qr"]').click();
   await flush();
   assert.equal(sent[sent.length - 1].type, "bar_code/scan");
+  assert.equal(sent[sent.length - 1].payload.alternative_option_label, "Zu NFC wechseln");
+  external._commandHandler({ command: "bar_code/aborted", payload: { reason: "alternative_options" } });
+  await flush();
+  assert.equal($(el, '[data-role="scan-mode-nfc"]').classList.contains("on"), true);
+  assert.equal(external._commandHandler, original);
+
+  // Wischen auf dem Umschalter
+  const seg = $(el, ".segment");
+  const touch = (type, x) => {
+    const ev = new Event(type);
+    ev.touches = [{ clientX: x }];
+    ev.changedTouches = [{ clientX: x }];
+    seg.dispatchEvent(ev);
+  };
+  touch("touchstart", 200);
+  touch("touchend", 100); // nach links: QR
+  await flush();
+  assert.equal($(el, '[data-role="scan-mode-qr"]').classList.contains("on"), true);
   assert.notEqual(external._commandHandler, original);
+
   $(el, '[data-role="scan"]').click(); // Scan beenden
   await flush();
   assert.equal(unsubscribed, true);
