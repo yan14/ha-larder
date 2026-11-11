@@ -15,13 +15,16 @@ from homeassistant.components.http import StaticPathConfig
 from homeassistant.core import HomeAssistant
 from homeassistant.loader import async_get_integration
 
-from .const import DOMAIN, PANEL_URL_PATH
+from .const import DOMAIN, PANEL_EXPERIMENTAL_PATH, PANEL_URL_PATH
+from .estimate import async_get_estimator
 
 PANEL_ELEMENT = "larder-panel"
+PANEL_EXPERIMENTAL_ELEMENT = "larder-experimental"
 STATIC_URL = f"/{DOMAIN}_static"
 FRONTEND_DIR = Path(__file__).parent / "frontend"
 
 DATA_PANEL = "panel_registered"
+DATA_PANEL_EXPERIMENTAL = "panel_experimental_registered"
 DATA_STATIC = "static_registered"
 DATA_PANEL_LOCK = "panel_lock"
 
@@ -53,8 +56,39 @@ async def async_setup_panel(hass: HomeAssistant) -> None:
         domain_data[DATA_PANEL] = True
 
 
+async def async_sync_experimental_panel(hass: HomeAssistant) -> None:
+    """Zweites Panel "Larder experimental" ein- oder ausschalten, je nach Einstellung."""
+    domain_data = hass.data.setdefault(DOMAIN, {})
+    lock: asyncio.Lock = domain_data.setdefault(DATA_PANEL_LOCK, asyncio.Lock())
+    wanted = (await async_get_estimator(hass)).experimental
+    async with lock:
+        registered = bool(domain_data.get(DATA_PANEL_EXPERIMENTAL))
+        if wanted and not registered:
+            if not domain_data.get(DATA_STATIC):
+                await hass.http.async_register_static_paths(
+                    [StaticPathConfig(STATIC_URL, str(FRONTEND_DIR), cache_headers=False)]
+                )
+                domain_data[DATA_STATIC] = True
+            integration = await async_get_integration(hass, DOMAIN)
+            await panel_custom.async_register_panel(
+                hass,
+                frontend_url_path=PANEL_EXPERIMENTAL_PATH,
+                webcomponent_name=PANEL_EXPERIMENTAL_ELEMENT,
+                sidebar_title="Larder experimental",
+                sidebar_icon="mdi:flask-outline",
+                module_url=f"{STATIC_URL}/{PANEL_EXPERIMENTAL_ELEMENT}.js?v={integration.version}",
+                require_admin=False,
+            )
+            domain_data[DATA_PANEL_EXPERIMENTAL] = True
+        elif registered and not wanted:
+            frontend.async_remove_panel(hass, PANEL_EXPERIMENTAL_PATH)
+            domain_data.pop(DATA_PANEL_EXPERIMENTAL, None)
+
+
 def async_teardown_panel(hass: HomeAssistant) -> None:
-    """Panel entfernen, wenn die letzte Dose entladen wurde."""
+    """Panels entfernen, wenn die letzte Dose entladen wurde."""
     domain_data = hass.data.get(DOMAIN, {})
+    if domain_data.pop(DATA_PANEL_EXPERIMENTAL, None):
+        frontend.async_remove_panel(hass, PANEL_EXPERIMENTAL_PATH)
     if domain_data.pop(DATA_PANEL, None):
         frontend.async_remove_panel(hass, PANEL_URL_PATH)

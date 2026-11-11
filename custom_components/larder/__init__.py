@@ -11,7 +11,8 @@ from .nfc import async_get_nfc
 from .entity import LarderConfigEntry, LarderRuntime
 from .estimate import async_get_estimator
 from .expiry import async_setup_services
-from .panel import async_setup_panel, async_teardown_panel
+from .panel import async_setup_panel, async_sync_experimental_panel, async_teardown_panel
+from .recipe_book import async_setup_recipe_book_websocket
 from .recipes import async_setup_recipe_service
 from .scan import async_setup_webhook, async_teardown_webhook
 from .websocket import async_setup_websocket
@@ -24,10 +25,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_websocket(hass)
     async_setup_services(hass)
     async_setup_recipe_service(hass)
+    async_setup_recipe_book_websocket(hass)
     (await async_get_calendar_sync(hass)).async_start()
     (await async_get_nfc(hass)).async_start()
     await async_setup_webhook(hass)
     await async_setup_panel(hass)
+    await async_sync_experimental_panel(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     _async_apply_initial_area(hass, entry)
     return True

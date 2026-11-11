@@ -527,6 +527,15 @@ const STYLE = `
   .dialog .nfcstatus { font-size: 14px; color: var(--secondary-text-color); }
   .dialog .nfcstatus[hidden] { display: none; }
   header .count { white-space: nowrap; }
+  /* Eingebetteter Modus (für "Larder experimental"): nur die Dialoge, oder mit Attribut "only" die Karte einer Dose. */
+  #back { display: none; background: none; border: 0; color: inherit; font-size: 24px; cursor: pointer; padding: 4px 8px; }
+  :host([embedded]) { min-height: 0; background: none; }
+  :host([embedded]) header, :host([embedded]) .toolbar { display: none; }
+  :host([embedded]:not([only])) main { display: none; }
+  :host([embedded][only]) header { display: flex; }
+  :host([embedded][only]) #back { display: inline-block; }
+  :host([embedded][only]) #menu, :host([embedded][only]) .count, :host([embedded][only]) .tabs,
+  :host([embedded][only]) header button.ideas, :host([embedded][only]) header button.add { display: none !important; }
   /* Schmale Fenster (Handy, Tablet hochkant): zweizeilige Kopfleiste statt überstehender Schaltflächen.
      Zeile 1: Menü, Titel, Anzahl, "Dose hinzufügen"; Zeile 2: Reiter und "Rezeptideen". */
   @media (max-width: 960px) {
@@ -929,7 +938,7 @@ class LarderPanel extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this.shadowRoot.innerHTML = `
       <style>${STYLE}</style>
-      <header><button id="menu" type="button" aria-label="Menu">☰</button><h1></h1><span class="count"></span><div class="tabs"><button type="button" data-view="containers"></button><button type="button" data-view="estimates"></button></div><button class="ideas" type="button"></button><button class="add" type="button"></button></header>
+      <header><button id="menu" type="button" aria-label="Menu">☰</button><button id="back" type="button" aria-label="Back">←</button><h1></h1><span class="count"></span><div class="tabs"><button type="button" data-view="containers"></button><button type="button" data-view="estimates"></button></div><button class="ideas" type="button"></button><button class="add" type="button"></button></header>
       <main><div id="notice" class="notice" hidden></div><div class="toolbar" hidden><input type="search" data-f="query" autocomplete="off"><select data-f="filter"></select><select data-f="sort"></select></div><div id="content"></div><div id="estimates" hidden></div></main>
       <div class="overlay" hidden>
         <form class="dialog" novalidate>
@@ -1042,9 +1051,23 @@ class LarderPanel extends HTMLElement {
     }
     this._title = this.shadowRoot.querySelector("h1");
     this._count = this.shadowRoot.querySelector(".count");
+    this.shadowRoot.querySelector("#back").addEventListener("click", () => {
+      this.removeAttribute("only");
+      this.dispatchEvent(new Event("larder-detail-closed", { bubbles: true, composed: true }));
+    });
     this.shadowRoot.querySelector("#menu").addEventListener("click", () => {
       this.dispatchEvent(new Event("hass-toggle-menu", { bubbles: true, composed: true }));
     });
+  }
+
+  static get observedAttributes() {
+    return ["only"];
+  }
+
+  attributeChangedCallback() {
+    if (!this._opts) return;
+    this._layoutSig = "";
+    if (this._hass) this._update();
   }
 
   get hass() {
@@ -1898,7 +1921,10 @@ class LarderPanel extends HTMLElement {
       registriesChanged = true;
     }
     // Reihenfolge und Sichtbarkeit hängen auch von den Zuständen ab (Filter, Sortierung nach MHD).
-    this._arranged = arrangeDevices(hass, this._devices, this._opts);
+    const only = this.getAttribute("only");
+    this._arranged = only
+      ? this._devices.filter((d) => d.deviceId === only)
+      : arrangeDevices(hass, this._devices, this._opts);
     const sig = JSON.stringify([this._arranged.map((d) => d.deviceId), this._opts.sort, this._devices.length]);
     if (registriesChanged || sig !== this._layoutSig) {
       this._layoutSig = sig;
@@ -1908,7 +1934,7 @@ class LarderPanel extends HTMLElement {
     this._checkPendingFill();
 
     const t = strings(hass);
-    this._title.textContent = t.title;
+    this._title.textContent = only ? (this._arranged[0] || {}).name || t.title : t.title;
     this._count.textContent = t.count(this._devices.length);
     this._updateToolbar(t);
     this._addBtn.textContent = `+ ${t.addContainer}`;

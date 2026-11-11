@@ -46,6 +46,7 @@ CONF_OPENED_DAYS = "opened_days"
 CONF_THAWED_DAYS = "thawed_days"
 CONF_CALENDAR_ENTITY = "calendar_entity"
 CONF_NFC_NOTIFY = "nfc_notify"
+CONF_EXPERIMENTAL = "experimental_panel"  # zweites Panel "Larder experimental" in der Seitenleiste
 CONF_TODO_ENTITY = "todo_entity"  # To-do-Liste für "Beim Leeren auf die Einkaufsliste"
 CONF_VACUUM_DEFAULT = "vacuum_default"  # Vorbelegung des Schalters "Vakuum" bei neuen Dosen
 EVENT_DOSE_SCANNED = f"{DOMAIN}_dose_scanned"  # verknüpfter NFC-Tag wurde gescannt
@@ -63,6 +64,7 @@ SIGNAL_SETTINGS_CHANGED = f"{DOMAIN}_settings_changed"
 
 # Seitenleisten-Panel "Larder"
 PANEL_URL_PATH = "larder"
+PANEL_EXPERIMENTAL_PATH = "larder-experimental"
 
 # Deep Link, den die Home-Assistant-App (iOS/Android) öffnen kann, z. B. per Kamera-App.
 APP_URL_PREFIX = "homeassistant://navigate"

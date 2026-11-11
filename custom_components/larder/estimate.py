@@ -38,6 +38,7 @@ from .const import (
     CONF_VACUUM_DEFAULT,
     CONF_OPENED_DAYS,
     CONF_THAWED_DAYS,
+    CONF_EXPERIMENTAL,
     CONF_TODO_ENTITY,
     DEFAULT_OPENED_DAYS,
     DEFAULT_THAWED_DAYS,
@@ -210,6 +211,7 @@ class Estimator:
         self.thawed_days = DEFAULT_THAWED_DAYS
         self.calendar_entity: str | None = None
         self.todo_entity: str | None = None
+        self.experimental = False
         self.nfc_notify = True
         self.vacuum_default = True
         self.ai_task_entity: str | None = None
@@ -229,6 +231,7 @@ class Estimator:
         self.ai_task_entity = settings.get(CONF_AI_TASK_ENTITY) or None
         self.calendar_entity = settings.get(CONF_CALENDAR_ENTITY) or None
         self.todo_entity = settings.get(CONF_TODO_ENTITY) or None
+        self.experimental = bool(settings.get(CONF_EXPERIMENTAL, False))
         self.nfc_notify = bool(settings.get(CONF_NFC_NOTIFY, True))
         self.vacuum_default = bool(settings.get(CONF_VACUUM_DEFAULT, True))
         self._cache = data.get("cache", {})
@@ -250,6 +253,7 @@ class Estimator:
                 CONF_THAWED_DAYS: self.thawed_days,
                 CONF_CALENDAR_ENTITY: self.calendar_entity,
                 CONF_TODO_ENTITY: self.todo_entity,
+                CONF_EXPERIMENTAL: self.experimental,
                 CONF_NFC_NOTIFY: self.nfc_notify,
                 CONF_VACUUM_DEFAULT: self.vacuum_default,
                 CONF_AI_TASK_ENTITY: self.ai_task_entity,
@@ -271,7 +275,10 @@ class Estimator:
         vacuum_default: bool | None = None,
         thawed_days: int | None = None,
         todo_entity: str | None = None,
+        experimental: bool | None = None,
     ) -> None:
+        if experimental is not None:
+            self.experimental = experimental
         self.calendar_entity = calendar_entity or None
         self.todo_entity = todo_entity or None
         if nfc_notify is not None:

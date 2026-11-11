@@ -36,6 +36,7 @@ from .const import (
     CONF_VACUUM_DEFAULT,
     CONF_OPENED_DAYS,
     CONF_THAWED_DAYS,
+    CONF_EXPERIMENTAL,
     CONF_TODO_ENTITY,
     DEFAULT_OPENED_DAYS,
     DEFAULT_THAWED_DAYS,
@@ -54,6 +55,7 @@ from .const import (
     SOURCE_ZWILLING,
 )
 from .calendar_sync import async_get_calendar_sync
+from .panel import async_sync_experimental_panel
 from .estimate import async_get_estimator
 from .qr import generate_code, parse_qr
 from .scan import async_get_webhook_id, webhook_urls
@@ -170,7 +172,9 @@ class LarderOptionsFlow(OptionsFlow):
                 user_input.get(CONF_VACUUM_DEFAULT, True),
                 user_input.get(CONF_THAWED_DAYS, DEFAULT_THAWED_DAYS),
                 user_input.get(CONF_TODO_ENTITY) or None,
+                user_input.get(CONF_EXPERIMENTAL, False),
             )
+            await async_sync_experimental_panel(self.hass)
             sync = await async_get_calendar_sync(self.hass)
             await sync.async_sync_all()
             async_dispatcher_send(self.hass, SIGNAL_SETTINGS_CHANGED)
@@ -201,6 +205,7 @@ class LarderOptionsFlow(OptionsFlow):
                 vol.Optional(CONF_TODO_ENTITY): EntitySelector(
                     EntitySelectorConfig(domain="todo")
                 ),
+                vol.Optional(CONF_EXPERIMENTAL, default=False): BooleanSelector(),
                 vol.Optional(CONF_AI_TASK_ENTITY): EntitySelector(
                     EntitySelectorConfig(domain="ai_task")
                 ),
@@ -211,6 +216,7 @@ class LarderOptionsFlow(OptionsFlow):
             CONF_OPENED_DAYS: estimator.opened_days,
             CONF_THAWED_DAYS: estimator.thawed_days,
             CONF_NFC_NOTIFY: estimator.nfc_notify,
+            CONF_EXPERIMENTAL: estimator.experimental,
             CONF_VACUUM_DEFAULT: estimator.vacuum_default,
         }
         if estimator.ai_task_entity:

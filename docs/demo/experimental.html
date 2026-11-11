@@ -1,0 +1,115 @@
+<!doctype html>
+<!--
+  Demo-Seite für "Larder experimental" mit erfundenen Daten (für Screenshots und zum Ausprobieren).
+  Aufruf: python -m http.server im Repo-Hauptverzeichnis, dann
+  /docs/demo/experimental.html?lang=en|de&width=390&view=start|containers|areas|categories|recipes
+  &mode=list  &sort=date|area|name|category  &suggest=1  &detail=1
+-->
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    --primary-color: #03a9f4; --primary-background-color: #fafafa; --card-background-color: #fff;
+    --primary-text-color: #212121; --secondary-text-color: #727272; --divider-color: #e0e0e0;
+    --app-header-background-color: #03a9f4; --app-header-text-color: #fff; --text-primary-color: #fff;
+    --error-color: #db4437; --warning-color: #ffa600;
+  }
+  html, body { margin: 0; height: 100%; font-family: Roboto, "Helvetica Neue", Arial, sans-serif; }
+  larder-experimental { min-height: 100vh; }
+</style>
+</head>
+<body>
+<script type="module">
+import "/custom_components/larder/frontend/larder-experimental.js";
+
+const q = new URLSearchParams(location.search);
+const lang = q.get("lang") || "en";
+const de = lang === "de";
+const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
+
+const areas = de ? { kitchen: "Küche", cellar: "Keller", pantry: "Vorratskammer", freezer: "Gefrierschrank" }
+                 : { kitchen: "Kitchen", cellar: "Basement", pantry: "Pantry", freezer: "Freezer" };
+// [Name, Bereich, Inhalt, Tage, Kategorie]
+const doses = de ? [
+  ["Dose 1", "kitchen", "Lachs", 1, "fish"],
+  ["Dose 2", "kitchen", "Hähnchen-Curry", 2, "dish"],
+  ["Dose 3", "kitchen", "Gouda", 12, "dairy"],
+  ["Dose 4", "freezer", "Gulasch", 120, "dish"],
+  ["Dose 5", "freezer", "Hackfleisch", 60, "raw_meat"],
+  ["Dose 6", "pantry", "Penne", 180, "dry"],
+  ["Dose 7", "pantry", "Basmati", 300, "dry"],
+  ["Dose 8", "cellar", "Bolognese-Sauce", -1, "dish"],
+  ["Dose 9", "kitchen", "Gekochte Eier", 4, "egg"],
+  ["Dose 10", "kitchen", "", null, null],
+] : [
+  ["Box 1", "kitchen", "Salmon", 1, "fish"],
+  ["Box 2", "kitchen", "Chicken curry", 2, "dish"],
+  ["Box 3", "kitchen", "Gouda", 12, "dairy"],
+  ["Box 4", "freezer", "Goulash", 120, "dish"],
+  ["Box 5", "freezer", "Minced meat", 60, "raw_meat"],
+  ["Box 6", "pantry", "Penne", 180, "dry"],
+  ["Box 7", "pantry", "Basmati", 300, "dry"],
+  ["Box 8", "cellar", "Bolognese sauce", -1, "dish"],
+  ["Box 9", "kitchen", "Boiled eggs", 4, "egg"],
+  ["Box 10", "kitchen", "", null, null],
+];
+const entities = {}, devices = {}, states = {};
+doses.forEach(([name, area, content, days, category], i) => {
+  const id = `demo${String(i).padStart(2, "0")}`;
+  devices[id] = { id, name, name_by_user: null, area_id: area };
+  const ids = { text: `text.${id}_c`, date: `date.${id}_b`, datetime: `datetime.${id}_f`, button: `button.${id}_e`, image: `image.${id}_q`, switch: `switch.${id}_v`, number: `number.${id}_p`, select: `select.${id}_u` };
+  for (const e of Object.values(ids)) entities[e] = { entity_id: e, device_id: id, platform: "larder" };
+  states[ids.text] = { entity_id: ids.text, state: content, attributes: { category } };
+  states[ids.date] = { entity_id: ids.date, state: days === null ? "unknown" : day(days), attributes: { estimates: true } };
+  states[ids.datetime] = { entity_id: ids.datetime, state: "unknown", attributes: {} };
+  states[ids.switch] = { entity_id: ids.switch, state: "on", attributes: {} };
+  states[ids.number] = { entity_id: ids.number, state: "0", attributes: {} };
+  states[ids.select] = { entity_id: ids.select, state: "portions", attributes: { options: ["portions"] } };
+  states[ids.button] = { entity_id: ids.button, state: "unknown", attributes: {} };
+  states[ids.image] = { entity_id: ids.image, state: "x", attributes: {} };
+});
+const recipes = de ? [
+  { id: "r1", title: "Mac'n Cheese", minutes: 30, ingredients: ["250 g Makkaroni", "200 g Käse", "Milch"], steps: ["Nudeln kochen.", "Käsesauce rühren und alles überbacken."], source: "manual", created: "2" },
+  { id: "r2", title: "Lasagne", minutes: 60, ingredients: ["Lasagneplatten", "Bolognese-Sauce", "Béchamel"], steps: ["Schichten und 40 Minuten backen."], source: "ai", created: "1" },
+] : [
+  { id: "r1", title: "Mac'n Cheese", minutes: 30, ingredients: ["250 g macaroni", "200 g cheese", "Milk"], steps: ["Cook the pasta.", "Stir the cheese sauce and bake everything."], source: "manual", created: "2" },
+  { id: "r2", title: "Lasagne", minutes: 60, ingredients: ["Lasagne sheets", "Bolognese sauce", "Béchamel"], steps: ["Layer and bake for 40 minutes."], source: "ai", created: "1" },
+];
+const suggestions = de ? [
+  { title: "Lachs-Pasta", minutes: 20, uses: ["Lachs", "Penne"], extra_ingredients: ["Sahne", "Zitrone"], steps: ["Penne kochen.", "Lachs in Sahne garen und untermischen."] },
+] : [
+  { title: "Salmon pasta", minutes: 20, uses: ["Salmon", "Penne"], extra_ingredients: ["Cream", "Lemon"], steps: ["Cook the penne.", "Cook the salmon in cream and fold it in."] },
+];
+const hass = {
+  entities, devices, states, language: lang, user: { is_admin: true, name: "Yan" },
+  areas: Object.fromEntries(Object.entries(areas).map(([k, v]) => [k, { area_id: k, name: v }])),
+  services: { ai_task: { generate_data: {} }, larder: { suggest_recipes: {} } },
+  auth: { external: { config: { canWriteTag: false }, fireMessage() {} } },
+  hassUrl: (p) => p, callService() {}, callApi: async () => ({}),
+  callWS: async (msg) => {
+    if (msg.type === "larder/recipes") return { recipes };
+    if (msg.type === "call_service") return { response: { recipes: suggestions } };
+    if (msg.type === "larder/nfc_tags") return { links: {}, by_device: {} };
+    return {};
+  },
+};
+const width = Number(q.get("width") || 390);
+document.body.style.width = width + "px";
+const opts = {};
+if (q.get("mode")) opts.mode = q.get("mode");
+if (q.get("sort")) opts.sort = q.get("sort");
+if (Object.keys(opts).length) localStorage.setItem("larder.experimental", JSON.stringify(opts));
+const el = document.createElement("larder-experimental");
+document.body.appendChild(el);
+el.narrow = true;
+el.hass = hass;
+await new Promise((r) => setTimeout(r, 100));
+if (q.get("view")) el.setView(q.get("view"));
+if (q.get("suggest") === "1") await el.generateRecipes();
+if (q.get("detail") === "1") el.openDetail("demo00");
+</script>
+</body>
+</html>

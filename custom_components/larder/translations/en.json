@@ -162,7 +162,8 @@
           "calendar_entity": "Calendar for best-before dates (optional)",
           "vacuum_default": "Vacuum preset for new containers",
           "nfc_notify": "NFC: notify the phone",
-          "todo_entity": "Shopping list for emptied containers (optional)"
+          "todo_entity": "Shopping list for emptied containers (optional)",
+          "experimental_panel": "Show “Larder experimental” in the sidebar"
         },
         "data_description": {
           "vacuum_default": "New containers start with the “Vacuum” switch on or off. Existing containers keep their value. Switch it off if most of your boxes are not vacuum-sealed.",
@@ -172,7 +173,8 @@
           "thawed_days": "The “Thawed” button on the dashboard shortens the best-before date to at most this many days from today. Do not refreeze thawed food.",
           "calendar_entity": "Writes each container's best-before date to this calendar as an all-day event (create, move, delete). The calendar must support creating and deleting events, e.g. Google, CalDAV or “Local Calendar”. Leave empty = off.",
           "nfc_notify": "When someone scans a linked tag, their phone (Companion app) gets a notification. Tapping it opens the container in the dashboard.",
-          "todo_entity": "A to-do list of Home Assistant (e.g. “Shopping list”, Todoist, Bring!). When a container is emptied and its “Shopping list” switch is on, its contents are added to this list (not twice). Leave empty = off."
+          "todo_entity": "A to-do list of Home Assistant (e.g. “Shopping list”, Todoist, Bring!). When a container is emptied and its “Shopping list” switch is on, its contents are added to this list (not twice). Leave empty = off.",
+          "experimental_panel": "Adds a second, experimental dashboard with a start page, tiles, areas, categories and recipes. The normal Larder dashboard stays as it is. Things may still change."
         }
       }
     }

@@ -3,6 +3,13 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 1.7.0
+
+- **Larder experimental:** a second, optional dashboard (turn it on under *Configure*, it then appears as a second sidebar entry; the normal dashboard is unchanged). Tile-based, made for the phone, with a bottom bar: **Start** (greeting, what to use up soon, shortcuts), **Containers** (tiles or list, sort by best-before date, area, alphabet or category), **Areas**, **Categories** and **Recipes**.
+- **Recipe book:** save your own recipes (administrators add, edit and delete, everyone can read) and keep the ones you like from the AI suggestions "from leftovers".
+- The **Contents** entity has a new attribute `category` (fish, meat, dairy, dishes, …) taken from the built-in shelf-life table.
+- The normal dashboard can show the card of a single container (used by the experimental dashboard for details); nothing changes for you there.
+
 ## 1.6.2
 
 - Dashboard header: the two-row layout on narrow screens now follows the screen width (a plain media query) instead of a container query, which is safer on iOS.

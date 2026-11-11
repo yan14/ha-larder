@@ -19,6 +19,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 - ✏️ **[Quick fill dialog](#filling-a-container-quickly)**: contents, quantity, best-before date and vacuum in a few taps, with suggestions from earlier contents
 - 🧮 **[Best-before estimate](#best-before-estimate-built-in-table-and-optional-ai)**: built-in shelf-life table, optionally with AI
 - 🔔 **[Expiry notifications](#expiry-notifications)**: daily summary via blueprint, quiet when nothing expires
+- 🧪 **[Larder experimental](#larder-experimental)**: a second, tile-based dashboard with a start page, areas, categories and a recipe book (optional)
 - 🛒 **[Shopping list](#shopping-list)**: on request, the contents of an emptied container go onto a to-do list, never leftovers
 - 📅 **[Calendar entries](#best-before-dates-in-your-calendar)**: best-before dates appear in your calendar
 - 🌍 Available in English and German
@@ -265,6 +266,25 @@ response_variable: ideas
 **In the daily notification:** the [blueprint](#expiry-notifications) has the switch **Add recipe ideas**. The recipes are appended to the message; if the AI fails, the normal message is still sent. Re-import the blueprint to get the new switch.
 
 Only the contents, quantity with unit, remaining days and storage place (area name) are sent to the AI service you chose, never container names, IDs or anything else. Depending on the provider each request may cost a small amount, nothing is sent without you pressing the button or running the automation. The suggestions are ideas from a language model, not tested recipes: check that food is safe to eat, especially thawed or older food.
+
+## Larder experimental
+
+A second, optional dashboard that you can try next to the normal one. Turn it on under Settings → Devices & services → **Larder** → **Configure** → **Show "Larder experimental" in the sidebar**. It then appears as a second entry in the sidebar; the normal **Larder** dashboard stays unchanged. Both use the same containers, so you can switch back and forth at any time. It is called experimental because it is new and may still change.
+
+<p>
+<img src="docs/images/experimental-start-en.png" width="260" alt="Start page of Larder experimental">
+<img src="docs/images/experimental-containers-en.png" width="260" alt="Containers as tiles">
+</p>
+
+A bar at the bottom switches between five views:
+
+- **Start**: a greeting with your Home Assistant name, tiles for everything that should be used up soon (expired first), and shortcuts to **Recipe suggestions** (administrators with the *AI Task* integration) and to the containers that expire soon.
+- **Containers**: tiles or a list (switch with the button on the right), with a symbol for the kind of food, the contents, the container name and the days left. Sort by best-before date, area, alphabet or category. Tap a filled container to open its details (the same card as in the normal dashboard), tap an empty one to fill it right away. **＋** adds a container.
+- **Areas**: one tile per area with the number of containers and how many expire soon. Tapping an area shows its containers.
+- **Categories**: the same for kinds of food (fish, meat, dairy, dishes and leftovers, dry goods, …). The category comes from the built-in shelf-life table and is shown as an attribute `category` of the **Contents** entity. Containers without a match are listed under "Other", empty ones under "Empty".
+- **Recipes**: your own recipe book (stored in Home Assistant, `.storage/larder.recipes`). Everyone can read it; administrators add, edit and delete recipes. **From leftovers** asks the AI for ideas for what expires soon (as in [Recipe ideas](#recipe-ideas)) and lets you **save** the ones you like.
+
+Planned: adding recipes from a photo or a file, and a button to be reminded again tomorrow. There is no menu icon of its own: the ☰ at the top is the Home Assistant sidebar.
 
 ## Shopping list
 

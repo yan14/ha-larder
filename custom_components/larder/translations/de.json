@@ -162,7 +162,8 @@
           "calendar_entity": "Kalender für das MHD (optional)",
           "vacuum_default": "Vakuum-Vorbelegung für neue Dosen",
           "nfc_notify": "NFC: Handy benachrichtigen",
-          "todo_entity": "Einkaufsliste für geleerte Dosen (optional)"
+          "todo_entity": "Einkaufsliste für geleerte Dosen (optional)",
+          "experimental_panel": "„Larder experimental“ in der Seitenleiste anzeigen"
         },
         "data_description": {
           "vacuum_default": "Neue Dosen starten mit eingeschaltetem oder ausgeschaltetem Schalter „Vakuum“. Bestehende Dosen behalten ihren Wert. Schalte es aus, wenn die meisten deiner Boxen nicht vakuumiert sind.",
@@ -172,7 +173,8 @@
           "thawed_days": "Der Button „Aufgetaut“ im Dashboard kürzt das MHD auf höchstens so viele Tage ab heute. Aufgetautes nicht wieder einfrieren.",
           "calendar_entity": "Schreibt das MHD jeder Dose als Ganztags-Termin in diesen Kalender (anlegen, verschieben, löschen). Der Kalender muss Termine anlegen und löschen können, z. B. Google, CalDAV oder „Lokaler Kalender“. Leer lassen = aus.",
           "nfc_notify": "Scannt jemand einen verknüpften Tag, bekommt sein Handy (Companion-App) eine Benachrichtigung. Antippen öffnet die Dose im Dashboard.",
-          "todo_entity": "Eine To-do-Liste von Home Assistant (z. B. „Einkaufsliste“, Todoist, Bring!). Wird eine Dose geleert und ihr Schalter „Einkaufsliste“ ist an, kommt der Inhalt auf diese Liste (nicht doppelt). Leer = aus."
+          "todo_entity": "Eine To-do-Liste von Home Assistant (z. B. „Einkaufsliste“, Todoist, Bring!). Wird eine Dose geleert und ihr Schalter „Einkaufsliste“ ist an, kommt der Inhalt auf diese Liste (nicht doppelt). Leer = aus.",
+          "experimental_panel": "Fügt ein zweites, experimentelles Dashboard mit Startseite, Kacheln, Bereichen, Kategorien und Rezepten hinzu. Das normale Larder-Dashboard bleibt unverändert. Es kann sich noch ändern."
         }
       }
     }

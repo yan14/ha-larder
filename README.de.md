@@ -19,6 +19,7 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 - ✏️ **[Schnelles Befüllen](#dose-schnell-befüllen)**: Inhalt, Menge, MHD und Vakuum in wenigen Taps, mit Vorschlägen aus früheren Inhalten
 - 🧮 **[MHD-Schätzung](#mhd-schätzen-eingebaute-tabelle-und-optional-ki)**: eingebaute Haltbarkeitstabelle, optional mit KI
 - 🔔 **[Ablauf-Benachrichtigungen](#ablauf-benachrichtigungen)**: tägliche Zusammenfassung per Blueprint, still, wenn nichts abläuft
+- 🧪 **[Larder experimental](#larder-experimental)**: ein zweites, kachelbasiertes Dashboard mit Startseite, Bereichen, Kategorien und Rezeptbuch (optional)
 - 🛒 **[Einkaufsliste](#einkaufsliste)**: auf Wunsch landet der Inhalt einer geleerten Dose auf einer To-do-Liste, Reste nie
 - 📅 **[Kalendereinträge](#mhd-im-kalender)**: MHDs erscheinen in deinem Kalender
 - 🌍 In Deutsch und Englisch verfügbar
@@ -265,6 +266,25 @@ response_variable: ideas
 **In der täglichen Benachrichtigung:** Das [Blueprint](#ablauf-benachrichtigungen) hat den Schalter **Add recipe ideas** („Rezeptideen anhängen“). Die Rezepte werden an die Nachricht angehängt; fällt die KI aus, kommt die normale Nachricht trotzdem. Importiere das Blueprint neu, um den Schalter zu bekommen.
 
 An den gewählten KI-Dienst gehen nur Inhalt, Menge mit Einheit, Resttage und Lagerort (Bereichsname), nie Dosennamen, IDs oder anderes. Je nach Anbieter kann jede Anfrage etwas kosten; ohne Knopfdruck oder Automation wird nichts gesendet. Die Vorschläge sind Ideen eines Sprachmodells, keine getesteten Rezepte: Prüfe, ob das Essen noch bedenkenlos genießbar ist, besonders bei Aufgetautem oder Älterem.
+
+## Larder experimental
+
+Ein zweites, optionales Dashboard, das du neben dem normalen ausprobieren kannst. Einschalten unter Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** → **„Larder experimental“ in der Seitenleiste anzeigen**. Es erscheint dann als zweiter Eintrag in der Seitenleiste; das normale **Larder**-Dashboard bleibt unverändert. Beide nutzen dieselben Dosen, du kannst also jederzeit hin- und herwechseln. Es heißt experimentell, weil es neu ist und sich noch ändern kann.
+
+<p>
+<img src="docs/images/experimental-start-de.png" width="260" alt="Startseite von Larder experimental">
+<img src="docs/images/experimental-containers-de.png" width="260" alt="Behälter als Kacheln">
+</p>
+
+Eine Leiste unten wechselt zwischen fünf Ansichten:
+
+- **Start**: eine Begrüßung mit deinem Home-Assistant-Namen, Kacheln für alles, was bald verbraucht werden sollte (Abgelaufenes zuerst), und Abkürzungen zu den **Rezeptvorschlägen** (Administratoren mit der Integration *AI Task*) und zu den Behältern, die bald ablaufen.
+- **Behälter**: Kacheln oder Liste (Umschalter rechts) mit einem Symbol für die Art des Essens, dem Inhalt, dem Namen der Dose und den Resttagen. Sortierung nach MHD, Bereich, Alphabet oder Kategorie. Eine gefüllte Dose öffnet beim Antippen ihre Details (dieselbe Karte wie im normalen Dashboard), eine leere lässt sich gleich befüllen. Mit **＋** legst du eine Dose an.
+- **Bereiche**: eine Kachel pro Bereich mit der Anzahl der Dosen und wie viele bald ablaufen. Antippen zeigt die Dosen des Bereichs.
+- **Kategorien**: dasselbe für Arten von Lebensmitteln (Fisch, Fleisch, Milchprodukte, Gerichte und Reste, Trockenware, …). Die Kategorie stammt aus der eingebauten Haltbarkeitstabelle und steht als Attribut `category` an der Entität **Inhalt**. Dosen ohne Treffer stehen unter „Sonstiges“, leere unter „Leer“.
+- **Rezepte**: dein eigenes Rezeptbuch (liegt in Home Assistant unter `.storage/larder.recipes`). Alle dürfen es lesen, Administratoren legen Rezepte an, ändern und löschen sie. **Aus Resten** fragt die KI nach Ideen für das, was bald abläuft (wie bei den [Rezeptideen](#rezeptideen)), und du kannst gelungene Vorschläge **speichern**.
+
+Geplant: Rezepte per Foto oder aus einer Datei hinzufügen und eine Erinnerung „morgen noch einmal“. Ein eigenes Menü-Symbol gibt es nicht: das ☰ oben ist die Seitenleiste von Home Assistant.
 
 ## Einkaufsliste
 

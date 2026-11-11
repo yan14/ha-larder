@@ -8,6 +8,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .entity import LarderConfigEntry, LarderResettable
 from .estimate import async_get_estimator
+from .shelf_life import find_entry
 
 
 async def async_setup_entry(
@@ -31,6 +32,12 @@ class LarderContent(TextEntity, LarderResettable):
         await super().async_added_to_hass()
         if (last := await self._async_last_state()) is not None:
             self._attr_native_value = last.state
+
+    @property
+    def extra_state_attributes(self) -> dict[str, str | None]:
+        """Kategorie des Inhalts laut Haltbarkeits-Tabelle (für Kategorien und Symbole im Dashboard)."""
+        entry = find_entry(self._attr_native_value or "") if self._attr_native_value else None
+        return {"category": entry.cat if entry else None}
 
     async def async_set_value(self, value: str) -> None:
         self._attr_native_value = value
