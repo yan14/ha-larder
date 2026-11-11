@@ -23,12 +23,18 @@ STATUS_SOON = "soon"
 STATUS_EXPIRED = "expired"
 
 
-def status_for(days_left: int | None) -> str:
+def soon_days(hass: HomeAssistant) -> int:
+    """Einstellung "läuft bald ab" (Tage); Vorgabe, solange die Einstellungen nicht geladen sind."""
+    estimator = hass.data.get(DOMAIN, {}).get("estimator")
+    return getattr(estimator, "soon_days", SOON_DAYS)
+
+
+def status_for(days_left: int | None, soon: int = SOON_DAYS) -> str:
     if days_left is None:
         return STATUS_NONE
     if days_left < 0:
         return STATUS_EXPIRED
-    if days_left <= SOON_DAYS:
+    if days_left <= soon:
         return STATUS_SOON
     return STATUS_OK
 
@@ -123,10 +129,18 @@ def build_summary(items: list[dict[str, Any]], language: str) -> str:
 
 
 def collect_expiring(
-    hass: HomeAssistant, days: int = SOON_DAYS, include_expired: bool = True
+    hass: HomeAssistant,
+    days: int | None = SOON_DAYS,
+    include_expired: bool = True,
+    include_undated: bool = False,
 ) -> list[dict[str, Any]]:
-    """Alle Dosen mit MHD innerhalb der nächsten `days` Tage (und ggf. abgelaufene), früheste zuerst."""
+    """Alle Dosen mit MHD innerhalb der nächsten `days` Tage (und ggf. abgelaufene), früheste zuerst.
+
+    `days=None` heißt ohne Zeitgrenze; mit `include_undated` kommen auch Dosen ohne MHD dazu
+    (dann mit `best_before` und `days_left` = None, ganz hinten einsortiert).
+    """
     registry = er.async_get(hass)
+    soon = soon_days(hass)
     items: list[dict[str, Any]] = []
     for entry in hass.config_entries.async_entries(DOMAIN):
         cc = entry.data.get("cc")
@@ -134,15 +148,20 @@ def collect_expiring(
             continue
         date_id = registry.async_get_entity_id("date", DOMAIN, f"{cc}_best_before")
         state = hass.states.get(date_id) if date_id else None
-        if state is None or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
-            continue
-        try:
-            best = date.fromisoformat(state.state)
-        except ValueError:
-            continue
-        left = days_left(best)
-        if left > days or (left < 0 and not include_expired):
-            continue
+        best: date | None = None
+        if state is not None and state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+            try:
+                best = date.fromisoformat(state.state)
+            except ValueError:
+                best = None
+        if best is None:
+            if not include_undated or state is None or state.state == STATE_UNAVAILABLE:
+                continue
+            left = None
+        else:
+            left = days_left(best)
+            if (days is not None and left > days) or (left < 0 and not include_expired):
+                continue
         content_id = registry.async_get_entity_id("text", DOMAIN, f"{cc}_content")
         content_state = hass.states.get(content_id) if content_id else None
         content = (
@@ -167,13 +186,15 @@ def collect_expiring(
                 "quantity": quantity or None,
                 "unit": unit if quantity else None,
                 "area": storage_context(hass, cc).area_name,
-                "best_before": best.isoformat(),
+                "best_before": best.isoformat() if best else None,
                 "days_left": left,
-                "status": status_for(left),
+                "status": status_for(left, soon),
                 "entity_id": date_id,
             }
         )
-    items.sort(key=lambda i: (i["days_left"], i["name"].casefold()))
+    items.sort(
+        key=lambda i: (i["days_left"] is None, i["days_left"] or 0, i["name"].casefold())
+    )
     return items
 
 
@@ -184,7 +205,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
         return
 
     async def handle(call: ServiceCall) -> dict[str, Any]:
-        items = collect_expiring(hass, call.data["days"], call.data["include_expired"])
+        items = collect_expiring(hass, call.data.get("days", soon_days(hass)), call.data["include_expired"])
         return {
             "count": len(items),
             "expired": sum(1 for i in items if i["status"] == STATUS_EXPIRED),
@@ -198,7 +219,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
         handle,
         schema=vol.Schema(
             {
-                vol.Optional("days", default=SOON_DAYS): vol.All(
+                vol.Optional("days"): vol.All(
                     vol.Coerce(int), vol.Range(min=0, max=365)
                 ),
                 vol.Optional("include_expired", default=True): cv.boolean,

@@ -6,7 +6,7 @@
  * Eingeschaltet wird sie in den Einstellungen der Integration.
  */
 // Mit derselben Versionsangabe laden wie dieses Modul, damit nie eine ältere Kopie aus dem Cache benutzt wird.
-const { collectDevices, daysUntil, SOON_DAYS } = await import(`./larder-panel.js${new URL(import.meta.url).search}`);
+const { collectDevices, daysUntil, soonDaysOf, SOON_DAYS } = await import(`./larder-panel.js${new URL(import.meta.url).search}`);
 
 const DOMAIN = "larder";
 const STORAGE_KEY = `${DOMAIN}.experimental`;
@@ -17,7 +17,7 @@ export const TEXTS = {
     views: { start: "Start", containers: "Behälter", recipes: "Rezepte", areas: "Bereiche", categories: "Kategorien" },
     hello: (name) => (name ? `Hallo ${name}` : "Hallo"),
     soonTitle: "Dieser Vorrat sollte bald verbraucht werden:",
-    soonNone: (n) => `In den nächsten ${n} Tagen läuft nichts ab.`,
+    soonNone: (n) => (n === 0 ? "Heute läuft nichts ab." : `In den nächsten ${n} Tagen läuft nichts ab.`),
     help: "Wie kann ich helfen?",
     helpRecipes: "Rezeptvorschläge",
     helpContainers: "Behälter anzeigen",
@@ -63,7 +63,12 @@ export const TEXTS = {
     recipesEmpty: "Noch keine Rezepte gespeichert.",
     recipesGenerate: "Aus Resten",
     recipesBusy: "Die KI überlegt …",
-    recipesNone: (n) => `In den nächsten ${n} Tagen läuft nichts ab.`,
+    recipesNone: (n) => (n === 0 ? "Heute läuft nichts ab." : `In den nächsten ${n} Tagen läuft nichts ab.`),
+    recipesNoneAll: "Keine befüllte Dose gefunden.",
+    period: "Zeitraum für Rezeptideen",
+    periodDefault: (n) => `Standard (${n === 0 ? "nur heute" : n === 1 ? "1 Tag" : `${n} Tage`})`,
+    periodDays: (n) => (n === 1 ? "Läuft morgen ab" : `Läuft in ${n} Tagen ab`),
+    periodAll: "Alle Dosen (kein Zeitraum)",
     recipesFailed: "Die Rezeptideen konnten nicht erstellt werden.",
     suggestions: "Vorschläge aus deinen Resten",
     save: "Speichern",
@@ -91,7 +96,7 @@ export const TEXTS = {
     views: { start: "Start", containers: "Containers", recipes: "Recipes", areas: "Areas", categories: "Categories" },
     hello: (name) => (name ? `Hello ${name}` : "Hello"),
     soonTitle: "This food should be used up soon:",
-    soonNone: (n) => `Nothing expires in the next ${n} days.`,
+    soonNone: (n) => (n === 0 ? "Nothing expires today." : `Nothing expires in the next ${n} days.`),
     help: "How can I help?",
     helpRecipes: "Recipe suggestions",
     helpContainers: "Show containers",
@@ -137,7 +142,12 @@ export const TEXTS = {
     recipesEmpty: "No recipes saved yet.",
     recipesGenerate: "From leftovers",
     recipesBusy: "The AI is thinking …",
-    recipesNone: (n) => `Nothing expires in the next ${n} days.`,
+    recipesNone: (n) => (n === 0 ? "Nothing expires today." : `Nothing expires in the next ${n} days.`),
+    recipesNoneAll: "No filled container found.",
+    period: "Period for recipe ideas",
+    periodDefault: (n) => `Default (${n === 0 ? "today only" : n === 1 ? "1 day" : `${n} days`})`,
+    periodDays: (n) => (n === 1 ? "Expires by tomorrow" : `Expires within ${n} days`),
+    periodAll: "All containers (no period)",
     recipesFailed: "The recipe ideas could not be created.",
     suggestions: "Suggestions from your leftovers",
     save: "Save",
@@ -203,12 +213,12 @@ export function describeDevices(hass, devices, now = new Date()) {
     const content = isValid(text) ? text.state.trim() : "";
     const days = isValid(date) ? daysUntil(date.state, now) : null;
     const category = content ? (text.attributes && text.attributes.category) || "other" : "empty";
-    return { dev, id: dev.deviceId, name: dev.name, content, days, category, areaId: dev.areaId, areaName: dev.areaName };
+    return { dev, id: dev.deviceId, name: dev.name, content, days, soon: soonDaysOf(date), category, areaId: dev.areaId, areaName: dev.areaName };
   });
 }
 
 export function isSoon(row) {
-  return row.content !== "" && row.days !== null && row.days <= SOON_DAYS;
+  return row.content !== "" && row.days !== null && row.days <= (row.soon ?? SOON_DAYS);
 }
 
 function sortRows(rows, sort, lang) {
@@ -248,13 +258,23 @@ function daysLabel(t, days) {
 function dayClass(row) {
   if (row.content === "" || row.days === null) return "";
   if (row.days < 0) return "expired";
-  if (row.days <= SOON_DAYS) return "soon";
+  if (row.days <= (row.soon ?? SOON_DAYS)) return "soon";
   return "";
 }
 
 function navigate(path) {
   window.history.pushState(null, "", path);
   window.dispatchEvent(new Event("location-changed"));
+}
+
+/** Zeitraum für Rezeptideen: Einstellung der Integration, feste Tage oder "all" (ohne Zeitraum). */
+export const RECIPE_PERIODS = ["default", "1", "3", "7", "14", "30", "all"];
+
+/** Daten für den Service `suggest_recipes` je nach gewähltem Zeitraum. */
+export function recipeServiceData(period) {
+  if (period === "all") return { all_containers: true };
+  if (period === "default" || !RECIPE_PERIODS.includes(period)) return {};
+  return { days: Number(period) };
 }
 
 function loadOptions() {
@@ -265,9 +285,10 @@ function loadOptions() {
       sort: ["date", "area", "name", "category"].includes(raw.sort) ? raw.sort : "date",
       areaSort: ["name", "count", "soon"].includes(raw.areaSort) ? raw.areaSort : "name",
       recipeSort: ["newest", "name"].includes(raw.recipeSort) ? raw.recipeSort : "newest",
+      recipePeriod: RECIPE_PERIODS.includes(raw.recipePeriod) ? raw.recipePeriod : "default",
     };
   } catch {
-    return { mode: "grid", sort: "date", areaSort: "name", recipeSort: "newest" };
+    return { mode: "grid", sort: "date", areaSort: "name", recipeSort: "newest", recipePeriod: "default" };
   }
 }
 
@@ -293,6 +314,7 @@ const STYLE = `
   main { flex: 1; padding: 12px 16px 16px; box-sizing: border-box; }
   .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
   .bar .grow { flex: 1; }
+  .bar.ai select { flex: 1; min-width: 0; }
   .bar select, .bar button { font: inherit; font-size: 14px; color: var(--primary-text-color);
     background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 18px; padding: 7px 12px; cursor: pointer; }
   .bar button.icon { padding: 6px 12px; font-size: 16px; line-height: 1.2; }
@@ -372,6 +394,7 @@ class LarderExperimental extends HTMLElement {
     this._detail = null;
     this._filter = { area: null, category: null, soon: false };
     this._opts = loadOptions();
+    this._recipeDays = SOON_DAYS; // bis die Einstellung geladen ist
     this._sig = "";
     this._recipes = null;
     this._recipesLoading = false;
@@ -417,7 +440,10 @@ class LarderExperimental extends HTMLElement {
     this._hass = hass;
     this._classic.hass = hass;
     this._update();
-    if (first) this.loadRecipes();
+    if (first) {
+      this.loadRecipes();
+      this.loadSettings();
+    }
   }
 
   set narrow(value) {
@@ -830,7 +856,7 @@ class LarderExperimental extends HTMLElement {
       for (const row of soon) box.append(this._tile(row, t, { showArea: true }));
       frag.append(box);
     } else {
-      frag.append(el("p", "lead", t.soonNone(SOON_DAYS)));
+      frag.append(el("p", "lead", t.soonNone(rows.length ? rows[0].soon : SOON_DAYS)));
     }
     frag.append(el("p", "lead", t.help));
     const help = el("div", "help");
@@ -870,9 +896,27 @@ class LarderExperimental extends HTMLElement {
     }
   }
 
+  /** Einstellungen der Integration lesen (Standard-Zeitraum für Rezeptideen). */
+  async loadSettings() {
+    const hass = this._hass;
+    if (!hass || !hass.callWS) return;
+    try {
+      const res = await hass.callWS({ type: `${DOMAIN}/settings` });
+      const days = Number(res && res.recipe_days);
+      if (Number.isInteger(days) && days >= 0 && days !== this._recipeDays) {
+        this._recipeDays = days;
+        this._sig = "";
+        this._update();
+      }
+    } catch {
+      /* ältere Version der Integration: Standard bleibt */
+    }
+  }
+
   async generateRecipes() {
     const hass = this._hass;
     if (!hass || !hass.callWS || this._suggestions === "busy") return;
+    const period = this._opts.recipePeriod;
     this._suggestions = "busy";
     this._savedSuggestions = new Set();
     this._update();
@@ -881,12 +925,15 @@ class LarderExperimental extends HTMLElement {
         type: "call_service",
         domain: DOMAIN,
         service: "suggest_recipes",
-        service_data: { days: SOON_DAYS },
+        service_data: recipeServiceData(period),
         return_response: true,
       });
       const out = (res && res.response) || {};
       this._suggestions = Array.isArray(out.recipes) ? out.recipes : [];
-      if (!this._suggestions.length) this._suggestions = { none: true };
+      if (!this._suggestions.length) {
+        const used = period === "all" ? null : Number.isInteger(out.days) ? out.days : period === "default" ? this._recipeDays : Number(period);
+        this._suggestions = { none: true, days: used };
+      }
     } catch (err) {
       this._suggestions = { error: (err && err.message) || true };
     }
@@ -1016,14 +1063,6 @@ class LarderExperimental extends HTMLElement {
       ),
       el("span", "grow"),
     );
-    if (this._canGenerate()) {
-      const gen = el("button", "", `✨ ${t.recipesGenerate}`);
-      gen.type = "button";
-      gen.dataset.role = "generate";
-      gen.disabled = this._suggestions === "busy";
-      gen.addEventListener("click", () => this.generateRecipes());
-      bar.append(gen);
-    }
     if (isAdmin(this._hass)) {
       const add = el("button", "icon", "＋");
       add.type = "button";
@@ -1033,6 +1072,30 @@ class LarderExperimental extends HTMLElement {
       bar.append(add);
     }
     frag.append(bar);
+    const ai = el("div", "bar ai");
+    if (this._canGenerate()) {
+      const period = this._select(
+        RECIPE_PERIODS.map((key) => [
+          key,
+          key === "default" ? t.periodDefault(this._recipeDays) : key === "all" ? t.periodAll : t.periodDays(Number(key)),
+        ]),
+        this._opts.recipePeriod,
+        (value) => {
+          this._opts.recipePeriod = value;
+          saveOptions(this._opts);
+        },
+        t.period,
+      );
+      period.dataset.role = "period";
+      ai.append(period);
+      const gen = el("button", "", `✨ ${t.recipesGenerate}`);
+      gen.type = "button";
+      gen.dataset.role = "generate";
+      gen.disabled = this._suggestions === "busy";
+      gen.addEventListener("click", () => this.generateRecipes());
+      ai.append(gen);
+    }
+    if (ai.childElementCount) frag.append(ai);
 
     const s = this._suggestions;
     if (s === "busy") {
@@ -1040,7 +1103,7 @@ class LarderExperimental extends HTMLElement {
     } else if (s && s.error) {
       frag.append(el("p", "error", typeof s.error === "string" ? s.error : t.recipesFailed));
     } else if (s && s.none) {
-      frag.append(el("p", "note", t.recipesNone(SOON_DAYS)));
+      frag.append(el("p", "note", s.days === null ? t.recipesNoneAll : t.recipesNone(s.days)));
     } else if (Array.isArray(s) && s.length) {
       frag.append(el("h2", "", t.suggestions));
       s.forEach((recipe, i) => frag.append(this._recipeNode(recipe, t, { suggestion: i })));

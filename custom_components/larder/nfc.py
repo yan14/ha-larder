@@ -24,6 +24,7 @@ from homeassistant.util import slugify
 
 from .const import CONF_CC, DOMAIN, EVENT_DOSE_SCANNED, panel_path
 from .estimate import async_get_estimator
+from .singleton import async_singleton
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -195,9 +196,9 @@ class NfcTags:
 
 
 async def async_get_nfc(hass: HomeAssistant) -> NfcTags:
-    domain_data = hass.data.setdefault(DOMAIN, {})
-    if (nfc := domain_data.get(DATA_NFC)) is None:
+    async def create() -> NfcTags:
         nfc = NfcTags(hass)
         await nfc.async_load()
-        domain_data[DATA_NFC] = nfc
-    return nfc
+        return nfc
+
+    return await async_singleton(hass, DATA_NFC, create)

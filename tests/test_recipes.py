@@ -73,7 +73,7 @@ async def test_nothing_expiring_does_not_call_the_ai(hass: HomeAssistant) -> Non
     await _fill(hass, "A1", "Reis", 20)
     calls = _fake_ai(hass)
     out = await _suggest(hass)
-    assert out == {"count": 0, "ingredients": [], "recipes": [], "summary": ""}
+    assert out == {"count": 0, "days": 3, "ingredients": [], "recipes": [], "summary": ""}
     assert calls == []
 
 
@@ -166,3 +166,85 @@ def test_blueprint_message_appends_recipe_ideas_only_when_available(hass: HomeAs
     assert render(result=result) == "1 läuft bald ab:\n• Schinken"  # KI nicht gelaufen oder fehlgeschlagen
     assert render(result=result, ideas={"summary": ""}) == "1 läuft bald ab:\n• Schinken"
     assert render(result=result, ideas={"summary": "• Omelett"}) == "1 läuft bald ab:\n• Schinken\n\n• Omelett"
+
+
+async def _options(hass: HomeAssistant, entry, **data) -> None:
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    await hass.config_entries.options.async_configure(result["flow_id"], {"estimate_mode": "table", **data})
+    await hass.async_block_till_done()
+
+
+async def test_period_comes_from_the_settings_and_can_be_overridden(hass: HomeAssistant) -> None:
+    entry = await _setup(hass, "AAAA")
+    await _setup(hass, "BBBB")
+    await _fill(hass, "AAAA", "Schinken", 2)
+    await _fill(hass, "BBBB", "Suppe", 10)
+    calls = _fake_ai(hass, {"recipes": [RECIPE]})
+
+    out = await _suggest(hass)
+    assert out["days"] == 3 and [i["content"] for i in out["ingredients"]] == ["Schinken"]
+
+    await _options(hass, entry, recipe_days=14)
+    out = await _suggest(hass)
+    assert out["days"] == 14 and [i["content"] for i in out["ingredients"]] == ["Schinken", "Suppe"]
+
+    out = await _suggest(hass, days=1)  # Angabe im Aufruf geht vor
+    assert out["days"] == 1 and out["recipes"] == [] and len(calls) == 2
+
+
+async def test_all_containers_ignores_the_period_but_never_sends_expired_or_empty(hass: HomeAssistant) -> None:
+    await _setup(hass, "AAAA")
+    await _setup(hass, "BBBB")
+    await _setup(hass, "CCCC")
+    await _setup(hass, "DDDD")
+    await _setup(hass, "EEEE")
+    await _fill(hass, "AAAA", "Schinken", 200)
+    await _fill(hass, "BBBB", "Alter Fisch", -2)  # abgelaufen
+    await hass.services.async_call("text", "set_value", {"entity_id": _eid(hass, "text", "CCCC"), "value": "Reis"}, blocking=True)  # ohne MHD
+    value = (dt_util.now().date() + timedelta(days=1)).isoformat()
+    await hass.services.async_call("date", "set_value", {"entity_id": _eid(hass, "date", "DDDD"), "date": value}, blocking=True)  # MHD ohne Inhalt
+    calls = _fake_ai(hass, {"recipes": [RECIPE]})
+
+    out = await _suggest(hass, all_containers=True)
+    assert out["days"] is None
+    assert [i["content"] for i in out["ingredients"]] == ["Schinken", "Reis"]
+    text = calls[0]["instructions"]
+    assert "Alter Fisch" not in text and "Dose DDDD" not in text and "Dose EEEE" not in text
+    assert "Reis | no best-before date known" in text
+
+    # ohne "alle": weder die Dose ohne MHD noch die namenlose mit MHD gehen an die KI
+    out = await _suggest(hass, days=30)
+    assert out["recipes"] == [] and len(calls) == 1
+
+
+def test_parse_recipes_limits_sizes() -> None:
+    out = parse_recipes({"recipes": [{"title": "x" * 500, "minutes": 1e9, "uses": {"a": 1}, "steps": ["s" * 900] * 300}]}, 3)
+    assert len(out[0]["title"]) == 120 and out[0]["minutes"] is None and out[0]["uses"] == []
+    assert len(out[0]["steps"]) == 100 and len(out[0]["steps"][0]) == 300
+
+
+async def test_settings_websocket(hass: HomeAssistant, hass_ws_client) -> None:
+    entry = await _setup(hass, "AAAA")
+    client = await hass_ws_client(hass)
+    await client.send_json({"id": 1, "type": "larder/settings"})
+    assert (await client.receive_json())["result"] == {"recipe_days": 3, "soon_days": 3}
+    await _options(hass, entry, recipe_days=0)
+    await client.send_json({"id": 2, "type": "larder/settings"})
+    assert (await client.receive_json())["result"] == {"recipe_days": 0, "soon_days": 3}
+
+
+async def test_soon_days_setting_changes_status_attribute_and_overview(hass: HomeAssistant) -> None:
+    entry = await _setup(hass, "AAAA")
+    await _fill(hass, "AAAA", "Schinken", 6)
+    await hass.async_block_till_done()
+    sensor = _eid(hass, "sensor", "AAAA")
+    assert hass.states.get(sensor).attributes["status"] == "ok"
+    assert hass.states.get(_eid(hass, "date", "AAAA")).attributes["soon_days"] == 3
+    out = await hass.services.async_call(DOMAIN, "get_expiring", {}, blocking=True, return_response=True)
+    assert out["count"] == 0
+
+    await _options(hass, entry, soon_days=7)
+    assert hass.states.get(sensor).attributes["status"] == "soon"
+    assert hass.states.get(_eid(hass, "date", "AAAA")).attributes["soon_days"] == 7
+    out = await hass.services.async_call(DOMAIN, "get_expiring", {}, blocking=True, return_response=True)
+    assert out["count"] == 1 and out["items"][0]["status"] == "soon"

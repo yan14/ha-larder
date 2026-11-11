@@ -5,7 +5,7 @@ from __future__ import annotations
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import area_registry as ar, device_registry as dr
 
-from .calendar_sync import async_get_calendar_sync
+from .calendar_sync import async_get_calendar_sync, async_setup_calendar_service
 from .const import CONF_AREA, CONF_CC, DOMAIN, PLATFORMS
 from .nfc import async_get_nfc
 from .entity import LarderConfigEntry, LarderRuntime
@@ -25,6 +25,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_websocket(hass)
     async_setup_services(hass)
     async_setup_recipe_service(hass)
+    async_setup_calendar_service(hass)
     async_setup_recipe_book_websocket(hass)
     (await async_get_calendar_sync(hass)).async_start()
     (await async_get_nfc(hass)).async_start()

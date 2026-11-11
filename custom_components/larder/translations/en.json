@@ -163,7 +163,9 @@
           "vacuum_default": "Vacuum preset for new containers",
           "nfc_notify": "NFC: notify the phone",
           "todo_entity": "Shopping list for emptied containers (optional)",
-          "experimental_panel": "Show “Larder experimental” in the sidebar"
+          "experimental_panel": "Show “Larder experimental” in the sidebar",
+          "recipe_days": "Period for recipe ideas (days)",
+          "soon_days": "\"Expiring soon\" from (days)"
         },
         "data_description": {
           "vacuum_default": "New containers start with the “Vacuum” switch on or off. Existing containers keep their value. Switch it off if most of your boxes are not vacuum-sealed.",
@@ -174,9 +176,14 @@
           "calendar_entity": "Writes each container's best-before date to this calendar as an all-day event (create, move, delete). The calendar must support creating and deleting events, e.g. Google, CalDAV or “Local Calendar”. Leave empty = off.",
           "nfc_notify": "When someone scans a linked tag, their phone (Companion app) gets a notification. Tapping it opens the container in the dashboard.",
           "todo_entity": "A to-do list of Home Assistant (e.g. “Shopping list”, Todoist, Bring!). When a container is emptied and its “Shopping list” switch is on, its contents are added to this list (not twice). Leave empty = off.",
-          "experimental_panel": "Adds a second, experimental dashboard with a start page, tiles, areas, categories and recipes. The normal Larder dashboard stays as it is. Things may still change."
+          "experimental_panel": "Adds a second, experimental dashboard with a start page, tiles, areas, categories and recipes. The normal Larder dashboard stays as it is. Things may still change.",
+          "recipe_days": "Recipe ideas \"from leftovers\" use containers that expire within this many days (0 = today only). In the dashboard you can change the period for a single request or turn it off.",
+          "soon_days": "From this many days left a container counts as \"expiring soon\" (hint in the dashboard, filter, sensor status and the default for the expiry overview)."
         }
       }
+    },
+    "error": {
+      "calendar_not_supported": "This calendar cannot be used: Larder must be able to create and delete events. Use for example \"Local Calendar\", Google or CalDAV."
     }
   },
   "services": {
@@ -208,7 +215,7 @@
       "fields": {
         "days": {
           "name": "Days",
-          "description": "Containers expiring within this many days."
+          "description": "Containers with a best-before date within this many days. Without a value the \"Expiring soon\" setting applies."
         },
         "include_expired": {
           "name": "Include expired",
@@ -242,7 +249,7 @@
       "fields": {
         "days": {
           "name": "Days ahead",
-          "description": "Containers expiring within this many days are used."
+          "description": "Use containers that expire within this many days. Without a value the period from the settings applies."
         },
         "servings": {
           "name": "People",
@@ -251,6 +258,20 @@
         "max_recipes": {
           "name": "Number of recipes",
           "description": "How many ideas to ask for (1–5)."
+        },
+        "all_containers": {
+          "name": "All containers",
+          "description": "No period: use every filled container, also those without a best-before date (never expired ones)."
+        }
+      }
+    },
+    "rebuild_calendar": {
+      "name": "Clean up calendar",
+      "description": "Re-syncs all best-before events in the selected calendar and removes duplicate or orphaned events.",
+      "fields": {
+        "include_unmarked": {
+          "name": "Also remove events without marker",
+          "description": "Additionally removes events without a Larder marker that are titled \"MHD: …\" or \"Best before: …\" (e.g. when the calendar drops descriptions). All events are then recreated."
         }
       }
     }

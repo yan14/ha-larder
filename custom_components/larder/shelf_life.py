@@ -350,22 +350,122 @@ def storage_from_temperature(temp_c: float) -> Storage:
     return Storage(PANTRY)
 
 
+# ---------- Vorlage für die Beschreibung eines Bereichs-Labels ----------
+#
+#   Storage: freezer
+#   Temperature: -18 °C
+#   Max storage: 18 months
+#   Notes: meat and fish
+#
+# Eine Angabe pro Zeile (oder durch ";" getrennt), Groß-/Kleinschreibung egal, alle Zeilen optional.
+# Deutsche Schlüssel gehen auch (Lagerort, Temperatur, Max. Lagerzeit, Hinweis). Text ohne Schlüssel
+# bleibt ein freier Hinweis wie bisher.
+
+TEMPLATE_KEYS = {
+    "storage": ("storage", "storage place", "lagerort", "lagerung"),
+    "temperature": ("temperature", "temp", "temperatur"),
+    "max_storage": (
+        "max storage", "max. storage", "maximum storage", "max storage time", "max. storage time",
+        "max lagerzeit", "max. lagerzeit", "maximale lagerzeit", "lagerzeit",
+    ),
+    "notes": ("notes", "note", "hinweis", "hinweise", "notizen"),
+}
+_KEY_LOOKUP = {alias: key for key, aliases in TEMPLATE_KEYS.items() for alias in aliases}
+
+_DURATION_RE = re.compile(r"(\d+(?:[.,]\d+)?)\s*([a-zäöü]*)", re.IGNORECASE)
+_UNITS = (
+    (365, ("y", "yr", "yrs", "year", "years", "j", "jahr", "jahre", "jahren")),
+    (30, ("mo", "mon", "month", "months", "monat", "monate", "monaten")),
+    (7, ("w", "wk", "week", "weeks", "woche", "wochen")),
+    (1, ("", "d", "day", "days", "t", "tag", "tage", "tagen")),
+)
+
+
+def _key_pattern() -> re.Pattern[str]:
+    aliases = sorted(_KEY_LOOKUP, key=len, reverse=True)  # längste zuerst ("max storage time" vor "storage")
+    words = "|".join(r"\s+".join(re.escape(w) for w in alias.split()) for alias in aliases)
+    return re.compile(rf"(?:^|(?<=[\s;,]))({words})\s*:", re.IGNORECASE)
+
+
+_KEY_RE = _key_pattern()
+
+
+def parse_label_template(text: str | None) -> dict[str, str]:
+    """`Schlüssel: Wert`-Angaben der Vorlage lesen, auch alle in einer Zeile.
+
+    Üblich ist eine Angabe pro Zeile; ein Wert reicht aber auch nur bis zum nächsten bekannten
+    Schlüssel, so dass alles in einer Zeile stehen darf (";" trennt ebenfalls). Freier Text ohne
+    Schlüssel wird ignoriert.
+    """
+    text = text or ""
+    matches = list(_KEY_RE.finditer(text))
+    out: dict[str, str] = {}
+    for i, match in enumerate(matches):
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        value = re.split(r"[\n;]", text[match.end():end], maxsplit=1)[0].strip(" ,")
+        canon = _KEY_LOOKUP[re.sub(r"\s+", " ", match.group(1).casefold())]
+        if value and canon not in out:
+            out[canon] = value
+    return out
+
+
+def parse_duration(text: str | None) -> int | None:
+    """'3 years', '18 Monate', '6 weeks', '90' (Tage) → Tage. None, wenn nicht lesbar."""
+    match = _DURATION_RE.search(text or "")
+    if not match:
+        return None
+    unit = match.group(2).casefold().rstrip(".")
+    factor = next((f for f, names in _UNITS if unit in names), None)
+    if factor is None:
+        return None
+    days = round(float(match.group(1).replace(",", ".")) * factor)
+    return days if days >= 1 else None
+
+
+def format_duration(days: int, language: str) -> str:
+    """Tage lesbar: 1095 → '3 Jahre' / '3 years', 540 → '18 Monate', 42 → '6 Wochen'."""
+    de = language.lower().startswith("de")
+    for size, one, many in (
+        (365, ("Jahr", "year"), ("Jahre", "years")),
+        (30, ("Monat", "month"), ("Monate", "months")),
+        (7, ("Woche", "week"), ("Wochen", "weeks")),
+        (1, ("Tag", "day"), ("Tage", "days")),
+    ):
+        if days % size == 0:
+            n = days // size
+            word = (one if n == 1 else many)[0 if de else 1]
+            return f"{n} {word}"
+    return f"{days} {'Tage' if de else 'days'}"
+
+
+def storage_from_words(text: str) -> Storage | None:
+    words = norm(text)
+    for key, factor, candidates in _WORDS:
+        if any(norm(c) in words for c in candidates):
+            return Storage(key, factor)
+    return None
+
+
 def classify_storage(
     area_name: str | None,
     temperature_c: float | None = None,
     label_texts: tuple[str, ...] | list[str] = (),
+    storage_hint: str | None = None,
 ) -> Storage | None:
-    """Lagerort bestimmen: Sensor, Temperatur im Label/Namen, dann Stichwörter. Sonst None."""
+    """Lagerort bestimmen: Sensor, "Storage:" der Vorlage, Temperatur im Label/Namen, dann Stichwörter."""
     if temperature_c is not None:
         return storage_from_temperature(temperature_c)
+    if storage_hint:
+        if (temp := parse_temperature(storage_hint)) is not None:
+            return storage_from_temperature(temp)
+        if (storage := storage_from_words(storage_hint)) is not None:
+            return storage
     for text in (*label_texts, area_name or ""):
         if (temp := parse_temperature(text)) is not None:
             return storage_from_temperature(temp)
     for text in (area_name or "", *label_texts):
-        words = norm(text)
-        for key, factor, candidates in _WORDS:
-            if any(norm(c) in words for c in candidates):
-                return Storage(key, factor)
+        if (storage := storage_from_words(text)) is not None:
+            return storage
     return None
 
 
@@ -404,13 +504,14 @@ def lookup(
     label_texts: tuple[str, ...] | list[str],
     vacuum: bool,
     language: str,
+    storage_hint: str | None = None,
 ) -> TableResult:
     """Haltbarkeit aus der Tabelle berechnen oder eine passende Ausnahme auslösen."""
     lang = "de" if language.lower().startswith("de") else "en"
     entry = find_entry(content)
     if entry is None:
         raise TableNoMatch
-    storage = classify_storage(area_name, temperature_c, label_texts)
+    storage = classify_storage(area_name, temperature_c, label_texts, storage_hint)
     if storage is None:
         raise TableUnknownStorage
 

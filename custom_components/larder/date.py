@@ -26,6 +26,7 @@ from .const import (
     SERVICE_MARK_OPENED,
     SERVICE_MARK_THAWED,
     SIGNAL_SETTINGS_CHANGED,
+    SOON_DAYS,
 )
 from .entity import LarderConfigEntry, LarderResettable
 from .estimate import (
@@ -101,7 +102,10 @@ class LarderBestBefore(DateEntity, LarderResettable):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         estimator = self.hass.data.get(DOMAIN, {}).get(DATA_ESTIMATOR)
-        return {"estimates": bool(estimator and estimator.enabled)}
+        return {
+            "estimates": bool(estimator and estimator.enabled),
+            "soon_days": getattr(estimator, "soon_days", SOON_DAYS),  # für die Dashboards
+        }
 
     async def async_set_value(self, value: date) -> None:
         if self._pending is not None:

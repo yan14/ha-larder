@@ -35,10 +35,16 @@ from .const import (
     CONF_NFC_NOTIFY,
     CONF_VACUUM_DEFAULT,
     CONF_OPENED_DAYS,
+    CONF_RECIPE_DAYS,
+    CONF_SOON_DAYS,
+    MAX_SOON_DAYS,
+    SOON_DAYS,
     CONF_THAWED_DAYS,
     CONF_EXPERIMENTAL,
     CONF_TODO_ENTITY,
     DEFAULT_OPENED_DAYS,
+    DEFAULT_RECIPE_DAYS,
+    MAX_RECIPE_DAYS,
     DEFAULT_THAWED_DAYS,
     ESTIMATE_MODES,
     ESTIMATE_TABLE,
@@ -56,7 +62,7 @@ from .const import (
 )
 from .calendar_sync import async_get_calendar_sync
 from .panel import async_sync_experimental_panel
-from .estimate import async_get_estimator
+from .estimate import SETTINGS, async_get_estimator
 from .qr import generate_code, parse_qr
 from .scan import async_get_webhook_id, webhook_urls
 
@@ -162,23 +168,21 @@ class LarderOptionsFlow(OptionsFlow):
     ) -> ConfigFlowResult:
         estimator = await async_get_estimator(self.hass)
 
+        errors: dict[str, str] = {}
         if user_input is not None:
-            await estimator.async_update_settings(
-                user_input.get(CONF_ESTIMATE_MODE, ESTIMATE_TABLE),
-                user_input.get(CONF_AI_TASK_ENTITY) or None,
-                user_input.get(CONF_OPENED_DAYS, DEFAULT_OPENED_DAYS),
-                user_input.get(CONF_CALENDAR_ENTITY) or None,
-                user_input.get(CONF_NFC_NOTIFY, True),
-                user_input.get(CONF_VACUUM_DEFAULT, True),
-                user_input.get(CONF_THAWED_DAYS, DEFAULT_THAWED_DAYS),
-                user_input.get(CONF_TODO_ENTITY) or None,
-                user_input.get(CONF_EXPERIMENTAL, False),
-            )
-            await async_sync_experimental_panel(self.hass)
             sync = await async_get_calendar_sync(self.hass)
-            await sync.async_sync_all()
-            async_dispatcher_send(self.hass, SIGNAL_SETTINGS_CHANGED)
-            return self.async_create_entry(data=self.config_entry.options)
+            calendar = user_input.get(CONF_CALENDAR_ENTITY)
+            if calendar and sync.supports(calendar) is False:
+                errors[CONF_CALENDAR_ENTITY] = "calendar_not_supported"
+            else:
+                # Leere Auswahlfelder fehlen in user_input: dann ist die Einstellung bewusst geleert
+                await estimator.async_update_settings(
+                    {conf: user_input.get(conf, default) for conf, (_attr, default, _n) in SETTINGS.items()}
+                )
+                await async_sync_experimental_panel(self.hass)
+                await sync.async_sync_all()
+                async_dispatcher_send(self.hass, SIGNAL_SETTINGS_CHANGED)
+                return self.async_create_entry(data=self.config_entry.options)
 
         webhook_id = await async_get_webhook_id(self.hass)
         url, path = webhook_urls(self.hass, webhook_id)
@@ -197,6 +201,12 @@ class LarderOptionsFlow(OptionsFlow):
                 vol.Optional(CONF_THAWED_DAYS, default=DEFAULT_THAWED_DAYS): NumberSelector(
                     NumberSelectorConfig(min=1, max=30, step=1, mode=NumberSelectorMode.BOX)
                 ),
+                vol.Optional(CONF_RECIPE_DAYS, default=DEFAULT_RECIPE_DAYS): NumberSelector(
+                    NumberSelectorConfig(min=0, max=MAX_RECIPE_DAYS, step=1, mode=NumberSelectorMode.BOX)
+                ),
+                vol.Optional(CONF_SOON_DAYS, default=SOON_DAYS): NumberSelector(
+                    NumberSelectorConfig(min=0, max=MAX_SOON_DAYS, step=1, mode=NumberSelectorMode.BOX)
+                ),
                 vol.Optional(CONF_VACUUM_DEFAULT, default=True): BooleanSelector(),
                 vol.Optional(CONF_NFC_NOTIFY, default=True): BooleanSelector(),
                 vol.Optional(CONF_CALENDAR_ENTITY): EntitySelector(
@@ -211,22 +221,10 @@ class LarderOptionsFlow(OptionsFlow):
                 ),
             }
         )
-        suggested = {
-            CONF_ESTIMATE_MODE: estimator.mode,
-            CONF_OPENED_DAYS: estimator.opened_days,
-            CONF_THAWED_DAYS: estimator.thawed_days,
-            CONF_NFC_NOTIFY: estimator.nfc_notify,
-            CONF_EXPERIMENTAL: estimator.experimental,
-            CONF_VACUUM_DEFAULT: estimator.vacuum_default,
-        }
-        if estimator.ai_task_entity:
-            suggested[CONF_AI_TASK_ENTITY] = estimator.ai_task_entity
-        if estimator.calendar_entity:
-            suggested[CONF_CALENDAR_ENTITY] = estimator.calendar_entity
-        if estimator.todo_entity:
-            suggested[CONF_TODO_ENTITY] = estimator.todo_entity
+        suggested = user_input if user_input is not None else {k: v for k, v in estimator.settings().items() if v is not None}
         return self.async_show_form(
             step_id="init",
             data_schema=self.add_suggested_values_to_schema(schema, suggested),
             description_placeholders={"webhook_url": url, "webhook_path": path},
+            errors=errors,
         )

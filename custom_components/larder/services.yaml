@@ -19,6 +19,13 @@ clear_best_before:
     entity:
       integration: larder
       domain: date
+rebuild_calendar:
+  fields:
+    include_unmarked:
+      required: false
+      default: false
+      selector:
+        boolean:
 clear_filled_at:
   target:
     entity:
@@ -28,7 +35,6 @@ get_expiring:
   fields:
     days:
       required: false
-      default: 3
       selector:
         number:
           min: 0
@@ -71,12 +77,16 @@ suggest_recipes:
   fields:
     days:
       required: false
-      default: 3
       selector:
         number:
           min: 0
-          max: 30
+          max: 365
           mode: box
+    all_containers:
+      required: false
+      default: false
+      selector:
+        boolean:
     servings:
       required: false
       selector:

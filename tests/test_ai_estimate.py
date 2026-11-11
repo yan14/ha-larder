@@ -342,7 +342,63 @@ async def test_days_are_clamped(hass: HomeAssistant) -> None:
     hass.services.async_remove("ai_task", "generate_data")
     _fake_ai(hass, data={"shelf_life_days": 99999.4, "storage_tip": ""})
     response = (await _estimate(hass))[_eid(hass, "date")]
-    assert response["days"] == 3650
+    # Kühlschrank: reine KI-Schätzungen sind auf 60 Tage begrenzt, der Tipp sagt es
+    assert response["days"] == 60
+    assert "capped at 2 months" in response["tip"]
+
+
+@pytest.mark.parametrize(
+    ("area", "limit"),
+    [("Kühlschrank", 60), ("Gefrierschrank", 548), ("Vorratskammer", 1095), ("Werkstatt", 365)],
+)
+async def test_ai_estimates_are_capped_per_storage_place(hass: HomeAssistant, area, limit) -> None:
+    await _prepare(hass, area=area)
+    hass.services.async_remove("ai_task", "generate_data")
+    _fake_ai(hass, data={"shelf_life_days": 5000, "storage_tip": "x"})
+    assert (await _estimate(hass))[_eid(hass, "date")]["days"] == limit
+
+
+async def test_ai_estimate_below_the_cap_is_untouched(hass: HomeAssistant) -> None:
+    await _prepare(hass)
+    hass.services.async_remove("ai_task", "generate_data")
+    _fake_ai(hass, data={"shelf_life_days": 59, "storage_tip": "Kühl lagern."})
+    response = (await _estimate(hass))[_eid(hass, "date")]
+    assert (response["days"], response["tip"]) == (59, "Kühl lagern.")
+
+
+async def test_old_ai_estimates_are_refreshed_but_corrected_ones_stay(hass: HomeAssistant) -> None:
+    from datetime import timedelta
+
+    from homeassistant.util import dt as dt_util
+
+    _, calls = await _prepare(hass)
+    await _estimate(hass)
+    await _estimate(hass, overwrite=True)
+    assert len(calls) == 1  # gemerkt
+
+    estimator = hass.data[DOMAIN]["estimator"]
+    (key,) = estimator._cache
+    old = (dt_util.now().date() - timedelta(days=400)).isoformat()
+    estimator._cache[key]["created"] = old
+    hass.services.async_remove("ai_task", "generate_data")
+    calls = _fake_ai(hass, data={"shelf_life_days": 6, "storage_tip": "neu"})
+    response = (await _estimate(hass, overwrite=True))[_eid(hass, "date")]
+    assert (response["days"], len(calls)) == (6, 1)  # nach einem Jahr neu geschätzt
+    assert estimator._cache[key]["created"] == dt_util.now().date().isoformat()
+
+    # KI nicht erreichbar: der alte Wert gilt weiter
+    estimator._cache[key]["created"] = old
+    hass.services.async_remove("ai_task", "generate_data")
+    _fake_ai(hass, error=HomeAssistantError("offline"))
+    assert (await _estimate(hass, overwrite=True))[_eid(hass, "date")]["days"] == 6
+
+    # vom Nutzer korrigierte Werte werden nie neu geschätzt
+    estimator.learn(key, 9)
+    estimator._cache[key]["created"] = old
+    hass.services.async_remove("ai_task", "generate_data")
+    calls = _fake_ai(hass, data={"shelf_life_days": 2})
+    assert (await _estimate(hass, overwrite=True))[_eid(hass, "date")]["days"] == 9
+    assert calls == []
 
 
 async def test_selected_ai_task_entity_is_passed(hass: HomeAssistant) -> None:

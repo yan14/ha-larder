@@ -17,6 +17,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN
+from .singleton import async_singleton
 
 STORAGE_VERSION = 1
 STORAGE_KEY = f"{DOMAIN}.recipes"
@@ -82,13 +83,12 @@ class RecipeBook:
 
 
 async def async_get_recipe_book(hass: HomeAssistant) -> RecipeBook:
-    domain_data = hass.data.setdefault(DOMAIN, {})
-    book: RecipeBook | None = domain_data.get(DATA_RECIPE_BOOK)
-    if book is None:
+    async def create() -> RecipeBook:
         book = RecipeBook(hass)
         await book.async_load()
-        domain_data[DATA_RECIPE_BOOK] = book
-    return book
+        return book
+
+    return await async_singleton(hass, DATA_RECIPE_BOOK, create)
 
 
 @callback

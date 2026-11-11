@@ -16,9 +16,11 @@ from homeassistant.helpers.event import (
     async_track_time_change,
 )
 
-from .const import DOMAIN
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
+
+from .const import DOMAIN, SIGNAL_SETTINGS_CHANGED
 from .entity import LarderConfigEntry, LarderEntity
-from .expiry import days_left, status_for
+from .expiry import days_left, soon_days, status_for
 
 
 async def async_setup_entry(
@@ -46,6 +48,10 @@ class LarderDaysLeftSensor(SensorEntity, LarderEntity):
             async_track_state_change_filtered(
                 self.hass, TrackStates(False, set(), {"date"}), self._date_changed
             ).async_remove
+        )
+        # "Läuft bald ab" ist einstellbar: bei geänderten Einstellungen den Status neu schreiben.
+        self.async_on_remove(
+            async_dispatcher_connect(self.hass, SIGNAL_SETTINGS_CHANGED, self.async_write_ha_state)
         )
         # Nach Mitternacht ändern sich die Tage, ohne dass sich das MHD ändert.
         self.async_on_remove(
@@ -88,6 +94,6 @@ class LarderDaysLeftSensor(SensorEntity, LarderEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         value = self.native_value
         return {
-            "status": status_for(value),
+            "status": status_for(value, soon_days(self.hass)),
             "best_before": self._best_before.isoformat() if self._best_before else None,
         }

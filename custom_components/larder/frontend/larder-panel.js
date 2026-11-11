@@ -65,7 +65,7 @@ export const STRINGS = {
     recipeServings: "Personen (optional)",
     recipeGo: "Vorschlagen",
     recipeBusy: "Die KI überlegt …",
-    recipeNone: (n) => `In den nächsten ${n} Tagen läuft nichts ab.`,
+    recipeNone: (n) => (n === 0 ? "Heute läuft nichts ab." : `In den nächsten ${n} Tagen läuft nichts ab.`),
     recipeFailed: "Die Rezeptideen konnten nicht erstellt werden.",
     recipeUses: "Verwendet",
     recipeExtra: "Zusätzlich",
@@ -77,7 +77,7 @@ export const STRINGS = {
     searchPlaceholder: "Suchen …",
     filterLabel: "Filter",
     filterAll: "Alle",
-    filterSoon: "Läuft bald ab (≤ 3 Tage)",
+    filterSoon: (n) => `Läuft bald ab (≤ ${n} ${n === 1 ? "Tag" : "Tage"})`,
     filterExpired: "Abgelaufen",
     filterFilled: "Befüllt",
     filterEmpty: "Leer",
@@ -180,7 +180,7 @@ export const STRINGS = {
     recipeServings: "People (optional)",
     recipeGo: "Suggest",
     recipeBusy: "The AI is thinking …",
-    recipeNone: (n) => `Nothing expires in the next ${n} days.`,
+    recipeNone: (n) => (n === 0 ? "Nothing expires today." : `Nothing expires in the next ${n} days.`),
     recipeFailed: "The recipe ideas could not be created.",
     recipeUses: "Uses",
     recipeExtra: "Also needed",
@@ -192,7 +192,7 @@ export const STRINGS = {
     searchPlaceholder: "Search …",
     filterLabel: "Filter",
     filterAll: "All",
-    filterSoon: "Expiring soon (≤ 3 days)",
+    filterSoon: (n) => `Expiring soon (≤ ${n} ${n === 1 ? "day" : "days"})`,
     filterExpired: "Expired",
     filterFilled: "Filled",
     filterEmpty: "Empty",
@@ -343,6 +343,12 @@ export function addDays(isoDate, n) {
 
 export const SOON_DAYS = 3;
 
+/** "Läuft bald ab" in Tagen: Einstellung der Integration (Attribut `soon_days` der MHD-Entität), sonst 3. */
+export function soonDaysOf(dateState) {
+  const value = dateState && dateState.attributes ? dateState.attributes.soon_days : undefined;
+  return Number.isInteger(value) && value >= 0 ? value : SOON_DAYS;
+}
+
 /**
  * Dosen nach Suche filtern und sortieren. `sort`: "area" (Reihenfolge von collectDevices),
  * "date" (frühestes MHD zuerst, ohne MHD zuletzt) oder "name". `filter`: all, soon, expired, filled, empty.
@@ -354,18 +360,18 @@ export function arrangeDevices(hass, devices, { query = "", filter = "all", sort
     const date = states[dev.entities.date];
     const content = isValidState(text) ? text.state.trim() : "";
     const days = isValidState(date) ? daysUntil(date.state, now) : null;
-    return { content, days };
+    return { content, days, soon: soonDaysOf(date) };
   };
   const q = query.trim().toLowerCase();
   const lang = (hass.language || "en").toLowerCase();
   const cmp = (a, b) => a.localeCompare(b, lang, { numeric: true, sensitivity: "base" });
   const rows = devices
     .map((dev) => ({ dev, ...info(dev) }))
-    .filter(({ dev, content, days }) => {
+    .filter(({ dev, content, days, soon }) => {
       if (q && ![dev.name, content, dev.areaName || ""].some((v) => v.toLowerCase().includes(q))) return false;
       switch (filter) {
         case "soon":
-          return days !== null && days >= 0 && days <= SOON_DAYS;
+          return days !== null && days >= 0 && days <= soon;
         case "expired":
           return days !== null && days < 0;
         case "filled":
@@ -395,18 +401,25 @@ function isAdmin(hass) {
 
 /**
  * Bereiche des hass-Objekts als sortierte Liste [{id, name}].
- * Mit `labelId` (Beschriftung "Larder") erscheinen nur Bereiche mit dieser Beschriftung; hat keiner
- * der Bereiche sie, werden alle gezeigt. `keep` ist ein Bereich, der immer dabei sein muss
- * (der aktuelle Bereich einer Dose, auch wenn er die Beschriftung nicht hat).
+ * Mit `labelIds` (Beschriftungen "Larder" bzw. "Larder: …", eine ID oder eine Liste) erscheinen nur
+ * Bereiche mit einer dieser Beschriftungen; hat keiner der Bereiche eine, werden alle gezeigt. `keep`
+ * ist ein Bereich, der immer dabei sein muss (der aktuelle Bereich einer Dose, auch ohne Beschriftung).
  */
-export function listAreas(hass, labelId = null, keep = null) {
+export function listAreas(hass, labelIds = null, keep = null) {
   const lang = ((hass && hass.language) || "en").toLowerCase();
   let areas = Object.values((hass && hass.areas) || {});
-  const tagged = (a) => Array.isArray(a.labels) && a.labels.includes(labelId);
-  if (labelId && areas.some(tagged)) areas = areas.filter((a) => tagged(a) || a.area_id === keep);
+  const ids = (Array.isArray(labelIds) ? labelIds : [labelIds]).filter(Boolean);
+  const tagged = (a) => Array.isArray(a.labels) && a.labels.some((l) => ids.includes(l));
+  if (ids.length && areas.some(tagged)) areas = areas.filter((a) => tagged(a) || a.area_id === keep);
   return areas
     .map((a) => ({ id: a.area_id, name: a.name }))
     .sort((a, b) => a.name.localeCompare(b.name, lang, { numeric: true, sensitivity: "base" }));
+}
+
+/** Beschriftung, die einen Bereich als Lagerort markiert: "Larder" oder "Larder: …" (z. B. "Larder: Freezer"). */
+export function isLarderLabel(label) {
+  const name = String((label && label.name) || "").trim().toLowerCase();
+  return name === "larder" || name.startsWith("larder:") || (label && label.label_id === "larder");
 }
 
 function navigate(path) {
@@ -903,7 +916,7 @@ class DoseCard {
       if (days < 0) {
         badge.className = "badge expired";
         badge.textContent = t.expired;
-      } else if (days <= 3) {
+      } else if (days <= soonDaysOf(date)) {
         badge.className = "badge soon";
         badge.textContent = days === 0 ? t.expiresToday : t.expiresInDays(days);
       }
@@ -930,7 +943,7 @@ class LarderPanel extends HTMLElement {
   constructor() {
     super();
     this._hass = null;
-    this.larderLabel = null; // ID der Beschriftung "Larder" (nur wenn es sie gibt)
+    this.larderLabel = null; // IDs der Beschriftungen "Larder" / "Larder: …" (nur wenn es sie gibt)
     this._cards = new Map();
     this._devices = [];
     this._pendingFill = null; // eben angelegte Dose, für die der Befüll-Dialog aufgehen soll
@@ -976,7 +989,7 @@ class LarderPanel extends HTMLElement {
           <h2 data-l="recipeTitle"></h2>
           <p class="hint" data-l="recipeHint"></p>
           <div class="recipeopts">
-            <label class="field"><span data-l="recipeDays"></span><input type="number" data-f="days" min="0" max="30" step="1" value="3" inputmode="numeric"></label>
+            <label class="field"><span data-l="recipeDays"></span><input type="number" data-f="days" min="0" max="365" step="1" value="3" inputmode="numeric"></label>
             <label class="field"><span data-l="recipeServings"></span><input type="number" data-f="servings" min="1" max="20" step="1" inputmode="numeric"></label>
           </div>
           <div class="error" role="alert"></div>
@@ -1088,18 +1101,16 @@ class LarderPanel extends HTMLElement {
   async loadAreaLabel() {
     const hass = this._hass;
     if (!hass || !hass.callWS || !isAdmin(hass)) return;
-    let id = null;
+    let ids = null;
     try {
       const labels = await hass.callWS({ type: "config/label_registry/list" });
-      const found = (Array.isArray(labels) ? labels : []).find(
-        (l) => String(l.name || "").trim().toLowerCase() === "larder" || l.label_id === "larder",
-      );
-      id = found ? found.label_id : null;
+      const found = (Array.isArray(labels) ? labels : []).filter(isLarderLabel).map((l) => l.label_id).sort();
+      ids = found.length ? found : null;
     } catch (err) {
-      id = null; // ohne Beschriftungen: alle Bereiche zeigen
+      ids = null; // ohne Beschriftungen: alle Bereiche zeigen
     }
-    if (id !== this.larderLabel) {
-      this.larderLabel = id;
+    if (JSON.stringify(ids) !== JSON.stringify(this.larderLabel)) {
+      this.larderLabel = ids;
       this._update();
     }
   }
@@ -1484,6 +1495,22 @@ class LarderPanel extends HTMLElement {
     this._recipeForm.querySelector(".error").textContent = "";
     this._recipeForm.querySelector(".recipelist").replaceChildren();
     this._recipeOverlay.hidden = false;
+    this._loadRecipeDays();
+  }
+
+  /** Feld "Tage voraus" einmalig mit dem Zeitraum aus den Einstellungen vorbelegen. */
+  async _loadRecipeDays() {
+    if (this._recipeDaysLoaded || !this._hass.callWS) return;
+    try {
+      const res = await this._hass.callWS({ type: `${DOMAIN}/settings` });
+      const days = Number(res && res.recipe_days);
+      if (Number.isInteger(days) && days >= 0) {
+        this._recipeForm.querySelector('[data-f="days"]').value = String(days);
+        this._recipeDaysLoaded = true;
+      }
+    } catch {
+      /* ältere Version der Integration: Vorgabe bleibt */
+    }
   }
 
   closeRecipeDialog() {
@@ -1498,7 +1525,7 @@ class LarderPanel extends HTMLElement {
     const form = this._recipeForm;
     const list = form.querySelector(".recipelist");
     const errorEl = form.querySelector(".error");
-    const days = Math.min(Math.max(parseInt(form.querySelector('[data-f="days"]').value, 10) || 0, 0), 30);
+    const days = Math.min(Math.max(parseInt(form.querySelector('[data-f="days"]').value, 10) || 0, 0), 365);
     const servings = parseInt(form.querySelector('[data-f="servings"]').value, 10);
     const serviceData = { days };
     if (servings > 0) serviceData.servings = Math.min(servings, 20);
@@ -1893,7 +1920,7 @@ class LarderPanel extends HTMLElement {
     };
     fill(bar.querySelector('[data-f="filter"]'), t.filterLabel, [
       ["all", t.filterAll],
-      ["soon", t.filterSoon],
+      ["soon", t.filterSoon(soonDaysOf(this._devices.length ? this._hass.states[this._devices[0].entities.date] : null))],
       ["expired", t.filterExpired],
       ["filled", t.filterFilled],
       ["empty", t.filterEmpty],

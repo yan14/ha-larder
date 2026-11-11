@@ -48,7 +48,7 @@ Every container becomes a device (identified by its ID, the `cc` parameter of a 
 | **Unit** | `select` | Unit of the quantity: portions (default), pieces, slices, grams or milliliters. Reset to portions by **Empty container**. Both show up in the dashboard, the fill dialog, the `get_expiring` result and the recipe ideas. Tip: use *portions* for finished dishes (chili, soup) and *pieces* or *slices* for countable food (eggs, ham) |
 | **Vacuum** | `switch` | Is the container vacuum-sealed? On by default for new containers; change the preset under **Configure** if most of your boxes are not vacuum-sealed. Used for the estimate |
 | **Shopping list** | `switch` | Should the contents go onto your shopping list when the container is emptied? Off by default, per container, and kept by **Empty container**. Only has an effect once a list is chosen under **Configure**, see [Shopping list](#shopping-list) |
-| **Days until best before** | `sensor` | Days left until the best-before date (negative = expired). The attribute `status` is `ok`, `soon` (3 days or less), `expired` or `none` |
+| **Days until best before** | `sensor` | Days left until the best-before date (negative = expired). The attribute `status` is `ok`, `soon` (3 days or less; adjustable under **Configure** → *"Expiring soon" from*), `expired` or `none` |
 | **QR code** | `image` | The container's QR code as an image: scanning it with the camera app opens the device directly in the Home Assistant app |
 
 The values survive restarts. "Empty container" is a regular button entity, so you can use it on dashboards and in automations via `button.press`.
@@ -115,7 +115,7 @@ As soon as at least one container exists, a sidebar entry **Larder** appears. It
 - All containers of the integration, grouped by **area** (the area of the device) and sorted by name.
 - Per container: area, **contents**, **best before** (with a hint "expired" or "n days left" starting 3 days before), **filled on**, the **Empty container** button and the QR code as a small image.
 - Contents, **quantity and unit**, best-before date and filled-on date can be edited right in the panel. "Now" sets "Filled on" to the current time.
-- The **area** of a container can be changed with the dropdown on its card, no detour through the device page needed. With many areas the list gets long: give the areas you use for food storage the **label** `Larder` (Settings → Areas, labels & zones → open an area → Labels, create a label named "Larder" once). The dashboard then offers only these areas, in the dropdown and in the add dialog. The current area of a container always stays in its list. If no area has the label, all areas are shown.
+- The **area** of a container can be changed with the dropdown on its card, no detour through the device page needed. With many areas the list gets long: give the areas you use for food storage the **label** `Larder` (Settings → Areas, labels & zones → open an area → Labels, create a label named "Larder" once). Labels whose name starts with `Larder:` count as well (for example `Larder: Freezer` with the [template](#template-for-the-area-label) in its description), so one label per area is enough. The dashboard then offers only these areas, in the dropdown and in the add dialog. The current area of a container always stays in its list. If no area has the label, all areas are shown.
 - The **Vacuum** checkbox switches the vacuum property of the container.
 - The **Add to shopping list when emptied** checkbox only appears once a [shopping list](#shopping-list) is chosen. It is also part of the fill dialog.
 - With the [estimate](#best-before-estimate-built-in-table-and-optional-ai) enabled, **Estimate best before** appears under the date as soon as contents are entered and no date is set.
@@ -179,6 +179,26 @@ The AI receives the area name, so it understands "0 °C compartment" or "Freezer
 - **Temperature sensor of the area:** in the area settings you can assign a temperature sensor. If it has a valid value, it is passed on (for example a real freezer temperature). The table uses it as well.
 - **Label with description:** assign a label to the area and write a hint in the label's description, for example "about -18 °C, meat and fish". Name and description are passed on.
 
+#### Template for the area label
+
+Free text works, but the description of an area label can also follow a fixed template. Recommended: one label per kind of storage place, named `Larder: Freezer`, `Larder: Fridge`, `Larder: Pantry` … (a plain `Larder` label is shared by all your storage areas, so do not put limits there). Larder then reads it exactly (the AI still gets the whole text):
+
+```text
+Storage: freezer
+Temperature: -18 °C
+Max storage: 18 months
+Notes: meat and fish
+```
+
+One entry per line is easiest to read; the entries may also follow each other in one line (`Storage: freezer Temperature: -18 °C Max storage: 18 months`) or be separated by `;`. Upper or lower case does not matter, every entry is optional. German keys work as well: `Lagerort`, `Temperatur`, `Max. Lagerzeit`, `Hinweis`.
+
+| Key | Values | Effect |
+|---|---|---|
+| `Storage` | `fridge`, `0 °C compartment`, `freezer`, `freezer compartment`, `pantry`, `cellar` … | Storage place for the table, wins over the area name (a temperature sensor of the area still comes first). |
+| `Temperature` | e.g. `-18 °C`, `4 °C` | Places the area by temperature, as before. |
+| `Max storage` | a number with `days`, `weeks`, `months` or `years` (`Tage`, `Wochen`, `Monate`, `Jahre`); a plain number means days | Upper limit for table and AI estimates in this area. Remembered estimates are capped as well, your own corrections are not. The tip says when a value was capped. With several labels the shortest limit applies. |
+| `Notes` | any text | Only a hint for the AI. |
+
 Only the contents text, the area name with its hints, vacuum yes/no and the filling date are sent, to the AI service you chose. Depending on the provider this may cost a small amount. Nothing is sent in the table-only mode.
 
 ### Using it
@@ -200,6 +220,8 @@ response_variable: result
 The result contains `best_before`, `days`, `tip` (a short storage tip), `source` (`table`, `ai` or `learned`), `basis` (for the table: matched food and place), `cached` and `applied`. The date is counted from **Filled on** (or from today if that is empty). **An existing best-before date is never overwritten** unless you set `overwrite`.
 
 **Remembering.** Each result is stored for the combination of *contents + area + vacuum* and is not calculated or asked again. If you change a suggested date afterwards, your value is remembered for the same combination and wins over table and AI. The data lives in Home Assistant's `.storage/larder.estimator`.
+
+**Limits for AI values.** A pure AI estimate is capped per storage place (fridge 60 days, 0 °C drawer 90 days, freezer 18 months, pantry 3 years, unknown place 1 year); the tip says when a value was capped. AI estimates you never corrected are asked again after 12 months (if the AI cannot be reached, the old value stays). Table values and your own corrections are never capped or refreshed by these defaults. Your own limit per area comes from the [area label](#template-for-the-area-label) (`Max storage: 3 years`) and applies to table and AI values.
 
 ### Filling a container quickly
 
@@ -248,14 +270,15 @@ Choose a notification action such as `notify.mobile_app_your_iphone` (Developer 
 
 The AI can suggest dishes that use up what expires soon. It needs the Home Assistant **AI Task** integration (the same one as for the [AI estimate](#ai-optional)); the table-only estimate mode does not matter.
 
-**In the dashboard:** administrators get a **Recipe ideas** button (top right, next to *+ Add container*). Choose how many days ahead to look (default 3) and optionally for how many people, press **Suggest**. You get up to three recipes with the containers they use, extra ingredients (only common staples), time and short steps. Expired containers are never used.
+**In the dashboard:** administrators get a **Recipe ideas** button (top right, next to *+ Add container*). Choose how many days ahead to look (the default comes from **Configure** → *Period for recipe ideas*, 3 days out of the box) and optionally for how many people, press **Suggest**. You get up to three recipes with the containers they use, extra ingredients (only common staples), time and short steps. Expired containers and containers without contents are never used. In **Larder experimental** the recipe page has a period selector next to *From leftovers*: the default from the settings, a fixed number of days, or **All containers (no period)**, which also includes containers without a best-before date.
 
 **In automations:** the service `larder.suggest_recipes` returns the same.
 
 ```yaml
 action: larder.suggest_recipes
 data:
-  days: 3        # containers expiring within 3 days
+  days: 3        # containers expiring within 3 days (omit to use the period from the settings)
+  # all_containers: true   # no period: every filled container
   servings: 2    # optional, default 2 people
   max_recipes: 3 # 1 to 5
 response_variable: ideas
@@ -299,7 +322,9 @@ Under Settings → Devices & services → **Larder** → **Configure** you can p
 
 Under Settings → Devices & services → **Larder** → **Configure** you can pick an existing **calendar** (Google, CalDAV, *Local Calendar* …). Every container then gets an all-day event "Best before: Pizza" on its best-before date. The event is created when a date is set, moved when the date or the contents change, and deleted when the date is cleared, the container is emptied or removed, or you pick another calendar. Your own events are recognised by a tag in the description and never touched otherwise.
 
-The calendar must be able to create **and** delete events. Read-only calendars (for example an iCal link) cannot be used; the *Local Calendar* integration is a good choice if you have no other one.
+**Clean-up.** On every start and whenever you save the settings, Larder checks the whole calendar, keeps exactly one event per container and removes duplicates. The service `larder.rebuild_calendar` does the same on demand and also removes events of containers that no longer exist. With `include_unmarked: true` it additionally removes events titled "Best before: …" / "MHD: …" that carry no Larder tag (for calendars that drop the description) and creates them anew.
+
+The calendar must be able to create **and** delete events. Read-only calendars (for example an iCal link) cannot be used and are rejected when you save the settings; the *Local Calendar* integration is a good choice if you have no other one. **CalDAV** (iCloud, Nextcloud …) works: Home Assistant's CalDAV calendar can only create events by itself, so Larder reads and deletes its own events directly through the CalDAV connection.
 
 ## NFC tags
 

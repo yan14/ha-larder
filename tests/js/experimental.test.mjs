@@ -84,7 +84,8 @@ function makeHass(doses, { admin = true, language = "de", ai = true, recipes = [
       return { recipe };
     }
     if (msg.type === `${D}/recipe_delete`) return { deleted: true };
-    if (msg.type === "call_service") return { response: { recipes: hass.suggestions } };
+    if (msg.type === `${D}/settings`) return { recipe_days: hass.recipeDays ?? 3 };
+    if (msg.type === "call_service") return { response: { recipes: hass.suggestions, days: msg.service_data.all_containers ? null : (msg.service_data.days ?? hass.recipeDays ?? 3) } };
     return {};
   };
   return hass;
@@ -458,7 +459,7 @@ test("Rezepte: Vorschläge aus Resten erzeugen und einzeln speichern", async () 
   await flush();
   assert.equal($(el, "h1").textContent, "Rezepte");
   const call = hass.wsCalls.find((m) => m.type === "call_service");
-  assert.deepEqual(call, { type: "call_service", domain: D, service: "suggest_recipes", service_data: { days: 3 }, return_response: true });
+  assert.deepEqual(call, { type: "call_service", domain: D, service: "suggest_recipes", service_data: {}, return_response: true }); // ohne Angabe gilt die Einstellung
   assert.deepEqual($$(el, "main .recipe h3").map((h) => h.firstChild.textContent), ["Lachs-Pasta", "Chili-Wrap"]);
   assert.deepEqual($$(el, "main .recipe")[0].querySelectorAll("li").length, 3); // 2 Zutaten + 1 Schritt
   assert.deepEqual([...$$(el, "main .recipe")[0].querySelectorAll("ul li")].map((l) => l.textContent), ["Lachs (1 Portion)", "Sahne"]);
@@ -513,4 +514,56 @@ test("Rezepte: Fehler und keine Treffer der KI, Benutzer ohne Rechte sehen keine
   await flush();
   assert.equal($(el3, '.recipe [data-role="edit"]'), null);
   assert.equal($(el3, '.recipe [data-role="delete"]'), null);
+});
+
+test("Rezepte: Zeitraum aus den Einstellungen, änderbar und abschaltbar", async () => {
+  assert.deepEqual(mod.recipeServiceData("default"), {});
+  assert.deepEqual(mod.recipeServiceData("7"), { days: 7 });
+  assert.deepEqual(mod.recipeServiceData("all"), { all_containers: true });
+  assert.deepEqual(mod.recipeServiceData("quatsch"), {});
+
+  document.body.innerHTML = "";
+  window.localStorage.clear();
+  const hass = makeHass(DOSES);
+  hass.recipeDays = 5;
+  const el = mount(hass);
+  await flush();
+  await go(el, "recipes");
+  const period = () => $(el, '[data-role="period"]');
+  assert.equal(period().value, "default");
+  assert.equal(period().options[0].textContent, "Standard (5 Tage)");
+  assert.equal(period().options[period().options.length - 1].textContent, "Alle Dosen (kein Zeitraum)");
+
+  const calls = () => hass.wsCalls.filter((m) => m.type === "call_service").map((m) => m.service_data);
+  $(el, '[data-role="generate"]').click();
+  await flush();
+  assert.match($(el, "main .note").textContent, /nächsten 5 Tagen/);
+
+  period().value = "14";
+  period().dispatchEvent(new Event("change"));
+  $(el, '[data-role="generate"]').click();
+  await flush();
+  assert.match($(el, "main .note").textContent, /nächsten 14 Tagen/);
+
+  period().value = "all";
+  period().dispatchEvent(new Event("change"));
+  $(el, '[data-role="generate"]').click();
+  await flush();
+  assert.equal($(el, "main .note").textContent, "Keine befüllte Dose gefunden.");
+  assert.deepEqual(calls(), [{}, { days: 14 }, { all_containers: true }]);
+
+  // Auswahl bleibt nach dem Neuladen erhalten
+  document.body.innerHTML = "";
+  const el2 = mount(makeHass(DOSES));
+  await flush();
+  await go(el2, "recipes");
+  assert.equal($(el2, '[data-role="period"]').value, "all");
+  window.localStorage.clear();
+});
+
+test("„Läuft bald ab“ folgt der Einstellung auch in Larder experimental", () => {
+  assert.equal(isSoon({ content: "Suppe", days: 5, soon: 3 }), false);
+  assert.equal(isSoon({ content: "Suppe", days: 5, soon: 7 }), true);
+  assert.equal(isSoon({ content: "Suppe", days: 5 }), false); // ohne Angabe: 3 Tage
+  assert.equal(isSoon({ content: "", days: 1, soon: 7 }), false);
 });

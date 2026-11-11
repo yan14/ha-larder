@@ -3,6 +3,21 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 1.8.0
+
+- **Recipe ideas, period:** the number of days to look ahead is now a setting (*Configure* → *Period for recipe ideas*, default 3). The dashboard dialog starts with it, and the service `larder.suggest_recipes` uses it when `days` is omitted (`days` now accepts up to 365).
+- **Larder experimental:** the recipe page has a period selector next to *From leftovers*: the default from the settings, a fixed number of days, or **All containers (no period)**. The last one uses every filled container, also those without a best-before date (service option `all_containers`). The choice is remembered per device.
+- Recipe ideas never use expired containers, and now also skip containers that have a date but no contents (their name was sent to the AI as an ingredient before). At most 40 containers are sent, the most urgent first, and over-long AI answers are trimmed so every suggestion can be saved to the recipe book.
+- **Calendar:** fixed duplicate and stale events. The cause on **CalDAV** calendars (iCloud, Nextcloud …): Home Assistant's CalDAV calendar can create events but not delete them, so every changed date or content added another event and nothing was ever removed. Larder now reads and deletes its own events directly through the CalDAV connection. Calendars that can neither delete nor be handled this way get no events at all any more and are rejected in the settings.
+- The calendar sync is self-healing: it searches the whole calendar for the events of a container, keeps exactly one matching event, deletes all others and only creates a new one if none fits. Each container remembers the ID of its event, so two containers with the same contents on the same day keep one event each, also in calendars that drop the description.
+- Only real value changes trigger the calendar sync (no more reactions to attribute-only changes), and a container that is temporarily *unavailable* (for example while Home Assistant starts) no longer removes its event.
+- Existing duplicates are cleaned up automatically on the next start or when you save the settings. New service **`larder.rebuild_calendar`** (*Clean up calendar*) re-syncs everything on demand and removes events of containers that no longer exist; with `include_unmarked` it also removes untagged "MHD: …" / "Best before: …" events.
+- **"Expiring soon" is a setting** (*Configure* → *"Expiring soon" from*, default 3 days): it drives the hint and the filter in both dashboards, the `status` attribute of the sensor and the default of `larder.get_expiring`.
+- **AI estimates:** a pure AI value is capped per storage place (fridge 60 days, 0 °C drawer 90 days, freezer 18 months, pantry 3 years, unknown 1 year) and the tip says so. AI values you never corrected are asked again after 12 months; if the AI cannot be reached, the old value stays. Table values and your own corrections are not affected.
+- **Template for the area label:** the description of an area label can follow a fixed template (`Storage: freezer`, `Temperature: -18 °C`, `Max storage: 18 months`, `Notes: …`; German keys work too). `Max storage` sets an upper limit for table and AI estimates in that area, also for remembered ones (your own corrections stay as they are); `Storage` places the area for the table even if its name does not say it. Free text in the description keeps working as before.
+- Labels named `Larder: …` (for example `Larder: Freezer`) also mark an area as a storage place for the area picker in the dashboard, so one label per area is enough.
+- Internal: settings are handled in one place now, and the calendar sync, the NFC handler and the recipe book are now created exactly once even when Home Assistant sets up all containers at the same time (a second instance could have reacted to every change twice).
+
 ## 1.7.1
 
 - **Larder experimental:** fixed the old dashboard showing up below the new one when the browser or the app still had an older copy of the dashboard loaded. The embedded card now comes with its own element name and is always loaded together with the matching version.

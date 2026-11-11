@@ -50,16 +50,22 @@ CONF_EXPERIMENTAL = "experimental_panel"  # zweites Panel "Larder experimental" 
 CONF_TODO_ENTITY = "todo_entity"  # To-do-Liste für "Beim Leeren auf die Einkaufsliste"
 CONF_VACUUM_DEFAULT = "vacuum_default"  # Vorbelegung des Schalters "Vakuum" bei neuen Dosen
 EVENT_DOSE_SCANNED = f"{DOMAIN}_dose_scanned"  # verknüpfter NFC-Tag wurde gescannt
+CONF_RECIPE_DAYS = "recipe_days"  # Zeitraum für Rezeptideen: Dosen, die in so vielen Tagen ablaufen
+DEFAULT_RECIPE_DAYS = 3
+MAX_RECIPE_DAYS = 365
 DEFAULT_OPENED_DAYS = 3  # so lange hält eine geöffnete Dose noch
 DEFAULT_THAWED_DAYS = 2  # so lange hält aufgetautes Essen noch
 SERVICE_ESTIMATE_BEST_BEFORE = "estimate_best_before"
 SERVICE_CLEAR_BEST_BEFORE = "clear_best_before"
+SERVICE_REBUILD_CALENDAR = "rebuild_calendar"
 SERVICE_CLEAR_FILLED_AT = "clear_filled_at"
 SERVICE_GET_EXPIRING = "get_expiring"
 SERVICE_SUGGEST_RECIPES = "suggest_recipes"
 SERVICE_MARK_OPENED = "mark_opened"
 SERVICE_MARK_THAWED = "mark_thawed"
-SOON_DAYS = 3  # ab so vielen Resttagen gilt eine Dose als "läuft bald ab"
+SOON_DAYS = 3  # ab so vielen Resttagen gilt eine Dose als "läuft bald ab" (Vorgabe, einstellbar)
+CONF_SOON_DAYS = "soon_days"
+MAX_SOON_DAYS = 30
 SIGNAL_SETTINGS_CHANGED = f"{DOMAIN}_settings_changed"
 
 # Seitenleisten-Panel "Larder"

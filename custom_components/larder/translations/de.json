@@ -163,7 +163,9 @@
           "vacuum_default": "Vakuum-Vorbelegung für neue Dosen",
           "nfc_notify": "NFC: Handy benachrichtigen",
           "todo_entity": "Einkaufsliste für geleerte Dosen (optional)",
-          "experimental_panel": "„Larder experimental“ in der Seitenleiste anzeigen"
+          "experimental_panel": "„Larder experimental“ in der Seitenleiste anzeigen",
+          "recipe_days": "Zeitraum für Rezeptideen (Tage)",
+          "soon_days": "„Läuft bald ab“ ab (Tage)"
         },
         "data_description": {
           "vacuum_default": "Neue Dosen starten mit eingeschaltetem oder ausgeschaltetem Schalter „Vakuum“. Bestehende Dosen behalten ihren Wert. Schalte es aus, wenn die meisten deiner Boxen nicht vakuumiert sind.",
@@ -174,9 +176,14 @@
           "calendar_entity": "Schreibt das MHD jeder Dose als Ganztags-Termin in diesen Kalender (anlegen, verschieben, löschen). Der Kalender muss Termine anlegen und löschen können, z. B. Google, CalDAV oder „Lokaler Kalender“. Leer lassen = aus.",
           "nfc_notify": "Scannt jemand einen verknüpften Tag, bekommt sein Handy (Companion-App) eine Benachrichtigung. Antippen öffnet die Dose im Dashboard.",
           "todo_entity": "Eine To-do-Liste von Home Assistant (z. B. „Einkaufsliste“, Todoist, Bring!). Wird eine Dose geleert und ihr Schalter „Einkaufsliste“ ist an, kommt der Inhalt auf diese Liste (nicht doppelt). Leer = aus.",
-          "experimental_panel": "Fügt ein zweites, experimentelles Dashboard mit Startseite, Kacheln, Bereichen, Kategorien und Rezepten hinzu. Das normale Larder-Dashboard bleibt unverändert. Es kann sich noch ändern."
+          "experimental_panel": "Fügt ein zweites, experimentelles Dashboard mit Startseite, Kacheln, Bereichen, Kategorien und Rezepten hinzu. Das normale Larder-Dashboard bleibt unverändert. Es kann sich noch ändern.",
+          "recipe_days": "Rezeptideen „aus Resten“ berücksichtigen Dosen, die in so vielen Tagen ablaufen (0 = nur heute). Im Dashboard lässt sich der Zeitraum für einen einzelnen Aufruf ändern oder ganz abschalten.",
+          "soon_days": "Ab so vielen Resttagen gilt eine Dose als „läuft bald ab“ (Hinweis im Dashboard, Filter, Status des Sensors und Vorgabe für die Ablauf-Übersicht)."
         }
       }
+    },
+    "error": {
+      "calendar_not_supported": "Dieser Kalender kann nicht verwendet werden: Larder muss Termine anlegen und wieder löschen können. Nimm z. B. „Lokaler Kalender“, Google oder CalDAV."
     }
   },
   "services": {
@@ -208,7 +215,7 @@
       "fields": {
         "days": {
           "name": "Tage",
-          "description": "Dosen, die innerhalb dieser Anzahl Tage ablaufen."
+          "description": "Dosen mit MHD innerhalb so vieler Tage. Ohne Angabe gilt die Einstellung „Läuft bald ab“."
         },
         "include_expired": {
           "name": "Abgelaufene einschließen",
@@ -242,7 +249,7 @@
       "fields": {
         "days": {
           "name": "Tage voraus",
-          "description": "Dosen, die innerhalb dieser Tage ablaufen, werden verwendet."
+          "description": "Dosen berücksichtigen, die in so vielen Tagen ablaufen. Ohne Angabe gilt der Zeitraum aus den Einstellungen."
         },
         "servings": {
           "name": "Personen",
@@ -251,6 +258,20 @@
         "max_recipes": {
           "name": "Anzahl Rezepte",
           "description": "Wie viele Ideen gewünscht sind (1–5)."
+        },
+        "all_containers": {
+          "name": "Alle Dosen",
+          "description": "Kein Zeitraum: alle befüllten Dosen berücksichtigen, auch solche ohne MHD (abgelaufene nie)."
+        }
+      }
+    },
+    "rebuild_calendar": {
+      "name": "Kalender aufräumen",
+      "description": "Gleicht alle MHD-Termine im gewählten Kalender neu ab und entfernt doppelte oder verwaiste Termine.",
+      "fields": {
+        "include_unmarked": {
+          "name": "Auch Termine ohne Kennung entfernen",
+          "description": "Löscht zusätzlich Termine ohne Larder-Kennung, die wie „MHD: …“ oder „Best before: …“ heißen (z. B. wenn der Kalender Beschreibungen verwirft). Danach werden alle Termine neu angelegt."
         }
       }
     }

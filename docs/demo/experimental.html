@@ -91,6 +91,7 @@ const hass = {
   hassUrl: (p) => p, callService() {}, callApi: async () => ({}),
   callWS: async (msg) => {
     if (msg.type === "larder/recipes") return { recipes };
+    if (msg.type === "larder/settings") return { recipe_days: 3 };
     if (msg.type === "call_service") return { response: { recipes: suggestions } };
     if (msg.type === "larder/nfc_tags") return { links: {}, by_device: {} };
     return {};

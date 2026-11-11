@@ -27,6 +27,7 @@ from homeassistant.helpers import (
     label_registry as lr,
 )
 from homeassistant.helpers.storage import Store
+from homeassistant.util import dt as dt_util
 
 from . import shelf_life
 from .const import (
@@ -35,12 +36,18 @@ from .const import (
     CONF_CALENDAR_ENTITY,
     CONF_ESTIMATE_MODE,
     CONF_NFC_NOTIFY,
+    CONF_SOON_DAYS,
+    MAX_SOON_DAYS,
+    SOON_DAYS,
     CONF_VACUUM_DEFAULT,
     CONF_OPENED_DAYS,
+    CONF_RECIPE_DAYS,
     CONF_THAWED_DAYS,
     CONF_EXPERIMENTAL,
     CONF_TODO_ENTITY,
     DEFAULT_OPENED_DAYS,
+    DEFAULT_RECIPE_DAYS,
+    MAX_RECIPE_DAYS,
     DEFAULT_THAWED_DAYS,
     DOMAIN,
     ESTIMATE_AI,
@@ -60,6 +67,7 @@ DATA_ESTIMATOR_LOCK = "estimator_lock"
 MIN_DAYS = 1
 MAX_DAYS = 3650
 MAX_RECENT = 60
+MAX_TIP = 300
 
 
 class EstimateError(HomeAssistantError):
@@ -81,6 +89,8 @@ class StorageContext:
     hints: list[str]
     temperature_c: float | None = None
     label_texts: tuple[str, ...] = ()
+    storage_hint: str | None = None  # "Storage:" aus der Label-Vorlage
+    max_days: int | None = None  # "Max storage:" aus der Label-Vorlage (kürzeste, wenn mehrere)
 
 
 @dataclass(frozen=True)
@@ -107,6 +117,14 @@ def parse_key(key: str) -> tuple[str, str, bool]:
     """(Inhalt, Bereich, Vakuum) aus einem Cache-Schlüssel zurücklesen."""
     content, area, vacuum = key.rsplit("|", 2)
     return content, area, vacuum == "vacuum"
+
+
+def _clamp(value: Any, default: int, low: int, high: int) -> int:
+    """Gespeicherte Zahl robust lesen (kaputte Werte fallen auf den Standard zurück)."""
+    try:
+        return min(max(int(value), low), high)
+    except (TypeError, ValueError):
+        return default
 
 
 def _origin_after_change(previous: dict[str, Any]) -> str | None:
@@ -145,12 +163,25 @@ def storage_context(hass: HomeAssistant, cc: str) -> StorageContext:
                 hints.append(f"measured temperature in this place: {state.state} {unit}".strip())
     label_registry = lr.async_get(hass)
     label_texts: list[str] = []
+    storage_hint: str | None = None
+    limits: list[int] = []
     for label_id in sorted(area.labels):
         if label := label_registry.async_get_label(label_id):
             text = f"{label.name}: {label.description}" if label.description else label.name
             hints.append(text)
             label_texts.append(text)
-    return StorageContext(area.name, hints, temperature_c, tuple(label_texts))
+            template = shelf_life.parse_label_template(label.description)
+            storage_hint = storage_hint or template.get("storage")
+            if (days := shelf_life.parse_duration(template.get("max_storage"))) is not None:
+                limits.append(days)
+    return StorageContext(
+        area.name,
+        hints,
+        temperature_c,
+        tuple(label_texts),
+        storage_hint,
+        min(limits) if limits else None,
+    )
 
 
 def build_instructions(
@@ -171,6 +202,10 @@ def build_instructions(
     if context.hints:
         lines.append("Additional information about the storage location:")
         lines.extend(f"- {hint}" for hint in context.hints)
+    if context.max_days:
+        lines.append(
+            f"The household allows at most {context.max_days} days in this place; never answer more."
+        )
     lines += [
         "Container: "
         + (
@@ -200,42 +235,88 @@ STRUCTURE: dict[str, Any] = {
 }
 
 
+def _number(low: int, high: int):
+    return lambda value, default: _clamp(value, default, low, high)
+
+
+def _flag(value: Any, default: bool) -> bool:
+    return default if value is None else bool(value)
+
+
+def _entity(value: Any, default: None) -> str | None:
+    return str(value) if value else None
+
+
+def _mode(value: Any, default: str) -> str:
+    return value if value in ESTIMATE_MODES else default
+
+
+# Einstellung → (Attribut des Schätzers, Vorgabe, Prüfung). Eine neue Einstellung braucht nur hier eine Zeile.
+SETTINGS: dict[str, tuple[str, Any, Any]] = {
+    CONF_ESTIMATE_MODE: ("mode", ESTIMATE_TABLE, _mode),
+    CONF_OPENED_DAYS: ("opened_days", DEFAULT_OPENED_DAYS, _number(1, 365)),
+    CONF_THAWED_DAYS: ("thawed_days", DEFAULT_THAWED_DAYS, _number(1, 365)),
+    CONF_RECIPE_DAYS: ("recipe_days", DEFAULT_RECIPE_DAYS, _number(0, MAX_RECIPE_DAYS)),
+    CONF_SOON_DAYS: ("soon_days", SOON_DAYS, _number(0, MAX_SOON_DAYS)),
+    CONF_CALENDAR_ENTITY: ("calendar_entity", None, _entity),
+    CONF_TODO_ENTITY: ("todo_entity", None, _entity),
+    CONF_EXPERIMENTAL: ("experimental", False, _flag),
+    CONF_NFC_NOTIFY: ("nfc_notify", True, _flag),
+    CONF_VACUUM_DEFAULT: ("vacuum_default", True, _flag),
+    CONF_AI_TASK_ENTITY: ("ai_task_entity", None, _entity),
+}
+
+# Obergrenze für reine KI-Schätzungen je Lagerort (Tage); Tabelle und eigene Werte sind nicht betroffen.
+AI_MAX_DAYS = {shelf_life.FRIDGE: 60, shelf_life.ZERO: 90, shelf_life.FREEZER: 548, shelf_life.PANTRY: 1095}
+AI_MAX_DAYS_UNKNOWN = 365
+AI_REFRESH_DAYS = 365  # so alte KI-Schätzungen werden beim nächsten Gebrauch neu geholt
+_KEEP_OLD_ON = ("ai_failed", "ai_unavailable", "table_no_match", "table_unknown_storage")
+
+
+def _cap_note(days: int, language: str, own: bool) -> str:
+    """Hinweis im Tipp, wenn ein Wert begrenzt wurde."""
+    span = shelf_life.format_duration(days, language)
+    if language.lower().startswith("de"):
+        return f"Begrenzt auf die max. Lagerzeit des Bereichs ({span})." if own else f"KI-Schätzung auf {span} begrenzt."
+    return f"Capped at the area's max storage time ({span})." if own else f"AI estimate capped at {span}."
+
+
+def _cap_table(result: shelf_life.TableResult, max_days: int | None, language: str) -> shelf_life.TableResult:
+    if not max_days or result.days <= max_days:
+        return result
+    return shelf_life.TableResult(max_days, f"{result.tip} {_cap_note(max_days, language, True)}".strip(), result.basis)
+
+
 class Estimator:
     """Globale Einstellungen und gemerkte Schätzungen (gilt für alle Dosen)."""
 
     def __init__(self, hass: HomeAssistant) -> None:
         self.hass = hass
         self._store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
-        self.mode = ESTIMATE_TABLE
-        self.opened_days = DEFAULT_OPENED_DAYS
-        self.thawed_days = DEFAULT_THAWED_DAYS
-        self.calendar_entity: str | None = None
-        self.todo_entity: str | None = None
-        self.experimental = False
-        self.nfc_notify = True
-        self.vacuum_default = True
-        self.ai_task_entity: str | None = None
+        for attr, default, _normalize in SETTINGS.values():
+            setattr(self, attr, default)
         self._cache: dict[str, dict[str, Any]] = {}
         self._recent: list[str] = []
 
     async def async_load(self) -> None:
         data = await self._store.async_load() or {}
-        settings = data.get("settings", {})
-        mode = settings.get(CONF_ESTIMATE_MODE)
-        if mode not in ESTIMATE_MODES:
+        settings = dict(data.get("settings", {}))
+        if settings.get(CONF_ESTIMATE_MODE) not in ESTIMATE_MODES:
             # Einstellung aus Version 0.5: KI an → nur KI (bisheriges Verhalten), sonst Tabelle.
-            mode = ESTIMATE_AI if settings.get(CONF_AI_ENABLED) else ESTIMATE_TABLE
-        self.mode = mode
-        self.opened_days = min(max(int(settings.get(CONF_OPENED_DAYS, DEFAULT_OPENED_DAYS)), 1), 365)
-        self.thawed_days = min(max(int(settings.get(CONF_THAWED_DAYS, DEFAULT_THAWED_DAYS)), 1), 365)
-        self.ai_task_entity = settings.get(CONF_AI_TASK_ENTITY) or None
-        self.calendar_entity = settings.get(CONF_CALENDAR_ENTITY) or None
-        self.todo_entity = settings.get(CONF_TODO_ENTITY) or None
-        self.experimental = bool(settings.get(CONF_EXPERIMENTAL, False))
-        self.nfc_notify = bool(settings.get(CONF_NFC_NOTIFY, True))
-        self.vacuum_default = bool(settings.get(CONF_VACUUM_DEFAULT, True))
+            settings[CONF_ESTIMATE_MODE] = ESTIMATE_AI if settings.get(CONF_AI_ENABLED) else ESTIMATE_TABLE
+        self._apply(settings)
         self._cache = data.get("cache", {})
+        today = dt_util.now().date().isoformat()
+        for entry in self._cache.values():
+            if entry.get("source") == "ai":
+                entry.setdefault("created", today)  # ältere Einträge altern ab jetzt
         self._recent = [str(x) for x in data.get("recent", []) if str(x).strip()][:MAX_RECENT]
+
+    def _apply(self, settings: dict[str, Any]) -> None:
+        """Einstellungen übernehmen; fehlende Schlüssel bleiben unverändert, kaputte Werte werden zur Vorgabe."""
+        for conf, (attr, default, normalize) in SETTINGS.items():
+            if conf in settings:
+                setattr(self, attr, normalize(settings[conf], default))
 
     @property
     def enabled(self) -> bool:
@@ -245,52 +326,18 @@ class Estimator:
     def ai_enabled(self) -> bool:
         return self.mode in (ESTIMATE_TABLE_AI, ESTIMATE_AI)
 
+    def settings(self) -> dict[str, Any]:
+        return {conf: getattr(self, attr) for conf, (attr, _default, _normalize) in SETTINGS.items()}
+
     def _data(self) -> dict[str, Any]:
-        return {
-            "settings": {
-                CONF_ESTIMATE_MODE: self.mode,
-                CONF_OPENED_DAYS: self.opened_days,
-                CONF_THAWED_DAYS: self.thawed_days,
-                CONF_CALENDAR_ENTITY: self.calendar_entity,
-                CONF_TODO_ENTITY: self.todo_entity,
-                CONF_EXPERIMENTAL: self.experimental,
-                CONF_NFC_NOTIFY: self.nfc_notify,
-                CONF_VACUUM_DEFAULT: self.vacuum_default,
-                CONF_AI_TASK_ENTITY: self.ai_task_entity,
-            },
-            "cache": self._cache,
-            "recent": self._recent,
-        }
+        return {"settings": self.settings(), "cache": self._cache, "recent": self._recent}
 
     def _schedule_save(self) -> None:
         self._store.async_delay_save(self._data, 1)
 
-    async def async_update_settings(
-        self,
-        mode: str,
-        entity: str | None,
-        opened_days: int | None = None,
-        calendar_entity: str | None = None,
-        nfc_notify: bool | None = None,
-        vacuum_default: bool | None = None,
-        thawed_days: int | None = None,
-        todo_entity: str | None = None,
-        experimental: bool | None = None,
-    ) -> None:
-        if experimental is not None:
-            self.experimental = experimental
-        self.calendar_entity = calendar_entity or None
-        self.todo_entity = todo_entity or None
-        if nfc_notify is not None:
-            self.nfc_notify = nfc_notify
-        if vacuum_default is not None:
-            self.vacuum_default = vacuum_default
-        if thawed_days is not None:
-            self.thawed_days = min(max(int(thawed_days), 1), 365)
-        self.mode = mode if mode in ESTIMATE_MODES else ESTIMATE_TABLE
-        if opened_days is not None:
-            self.opened_days = min(max(int(opened_days), 1), 365)
-        self.ai_task_entity = entity or None
+    async def async_update_settings(self, settings: dict[str, Any]) -> None:
+        """Einstellungen ändern (Schlüssel wie in `SETTINGS`; nicht genannte bleiben, wie sie sind)."""
+        self._apply(settings)
         await self._store.async_save(self._data())
 
     def learn(self, key: str, days: int, tip: str | None = None) -> None:
@@ -403,17 +450,47 @@ class Estimator:
             raise EstimateError("no_area")
 
         key = cache_key(content, context.area_name, vacuum)
-        if (hit := self._cache.get(key)) is not None:
+        hit = self._cache.get(key)
+        if hit is not None and self._is_stale(hit):
+            # Alte KI-Schätzung: neu schätzen; klappt das nicht, gilt der alte Wert weiter
+            try:
+                return await self._async_estimate_fresh(key, content, context, vacuum, filled)
+            except EstimateError as err:
+                if err.translation_key not in _KEEP_OLD_ON:
+                    raise
+        if hit is not None:
+            days, tip = int(hit["days"]), str(hit.get("tip", ""))
+            max_days = context.max_days
+            if max_days and hit.get("source") in ("table", "ai") and days > max_days:
+                # Lagerzeit am Bereich wurde (später) gesenkt: gilt auch für gemerkte Werte, nicht für eigene
+                days = max_days
+                tip = f"{tip} {_cap_note(max_days, self.hass.config.language, True)}".strip()
             return Estimate(
-                int(hit["days"]),
-                str(hit.get("tip", "")),
+                days,
+                tip,
                 True,
                 key,
                 hit.get("source", "learned"),
                 str(hit.get("basis", "")),
                 hit.get("origin"),
             )
+        return await self._async_estimate_fresh(key, content, context, vacuum, filled)
 
+    @staticmethod
+    def _is_stale(entry: dict[str, Any]) -> bool:
+        """KI-Schätzung, die der Nutzer nie korrigiert hat und die älter als ein Jahr ist."""
+        if entry.get("source") != "ai":
+            return False
+        try:
+            created = date.fromisoformat(str(entry.get("created")))
+        except ValueError:
+            return False
+        return (dt_util.now().date() - created).days >= AI_REFRESH_DAYS
+
+    async def _async_estimate_fresh(
+        self, key: str, content: str, context: StorageContext, vacuum: bool, filled: date
+    ) -> Estimate:
+        """Ohne gemerkten Wert schätzen: Tabelle und/oder KI, je nach Modus."""
         language = self.hass.config.language
         if self.mode in (ESTIMATE_TABLE, ESTIMATE_TABLE_AI):
             try:
@@ -424,6 +501,7 @@ class Estimator:
                     label_texts=context.label_texts,
                     vacuum=vacuum,
                     language=language,
+                    storage_hint=context.storage_hint,
                 )
             except shelf_life.TableUnsuitable as err:
                 # Nie an die KI weiterreichen: Die Tabelle sagt bewusst "hier nicht lagern".
@@ -435,6 +513,7 @@ class Estimator:
                 if self.mode == ESTIMATE_TABLE:
                     raise EstimateError("table_unknown_storage", area=context.area_name) from err
             else:
+                result = _cap_table(result, context.max_days, language)
                 self._cache[key] = {
                     "days": result.days,
                     "tip": result.tip,
@@ -493,15 +572,27 @@ class Estimator:
         result = (response or {}).get("data")
         try:
             days = round(float(result["shelf_life_days"]))
-        except (TypeError, KeyError, ValueError) as err:
+        except (TypeError, KeyError, ValueError, OverflowError) as err:
             raise EstimateError("ai_failed", error="unexpected answer") from err
         days = min(max(days, MIN_DAYS), MAX_DAYS)
-        tip = str(result.get("storage_tip") or "").strip()
+        tip = str(result.get("storage_tip") or "").strip()[:MAX_TIP]
+        storage = shelf_life.classify_storage(
+            context.area_name, context.temperature_c, context.label_texts, context.storage_hint
+        )
+        limit = AI_MAX_DAYS.get(storage.key, AI_MAX_DAYS_UNKNOWN) if storage else AI_MAX_DAYS_UNKNOWN
+        own_limit = context.max_days is not None and context.max_days <= limit
+        if own_limit:
+            limit = context.max_days
+        if days > limit:
+            _LOGGER.info("KI-Schätzung für %s von %s auf %s Tage begrenzt", content.strip(), days, limit)
+            days = limit
+            tip = f"{tip} {_cap_note(limit, language, own_limit)}".strip()
 
         self._cache[key] = {
             "days": days,
             "tip": tip,
             "source": "ai",
+            "created": dt_util.now().date().isoformat(),
             "content": content.strip(),
             "area": context.area_name,
         }

@@ -31,6 +31,7 @@ def async_setup_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_add)
     websocket_api.async_register_command(hass, ws_delete)
     websocket_api.async_register_command(hass, ws_contents)
+    websocket_api.async_register_command(hass, ws_settings)
     websocket_api.async_register_command(hass, ws_nfc_tags)
     websocket_api.async_register_command(hass, ws_nfc_link)
     websocket_api.async_register_command(hass, ws_nfc_unlink)
@@ -191,3 +192,13 @@ async def ws_contents(
 ) -> None:
     """Vorschläge für das Feld Inhalt (für alle Nutzer, enthält nur Inhaltstexte)."""
     connection.send_result(msg["id"], {"contents": (await async_get_estimator(hass)).content_suggestions()})
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/settings"})
+@websocket_api.async_response
+async def ws_settings(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Einstellungen, die die Dashboards brauchen (für alle Nutzer, nichts Vertrauliches)."""
+    estimator = await async_get_estimator(hass)
+    connection.send_result(msg["id"], {"recipe_days": estimator.recipe_days, "soon_days": estimator.soon_days})

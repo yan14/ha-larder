@@ -597,3 +597,108 @@ async def test_content_suggestions_recent_first_and_non_admin(
     res = await _ws(hass, hass_ws_client, {"type": f"{DOMAIN}/contents"})
     assert res["success"]
     assert res["result"]["contents"] == ["pizza", "Suppe"]
+
+
+
+# ---------- Vorlage für die Beschreibung eines Bereichs-Labels ----------
+
+
+def test_label_template_is_parsed_in_english_and_german() -> None:
+    text = "Storage: freezer\nTemperature: -18 °C\nMax storage: 18 months\nNotes: meat and fish\nirgendein freier Text"
+    assert sl.parse_label_template(text) == {
+        "storage": "freezer",
+        "temperature": "-18 °C",
+        "max_storage": "18 months",
+        "notes": "meat and fish",
+    }
+    assert sl.parse_label_template("Lagerort: Vorrat; Max. Lagerzeit: 3 Jahre") == {"storage": "Vorrat", "max_storage": "3 Jahre"}
+    assert sl.parse_label_template("MAX   STORAGE : 6 weeks") == {"max_storage": "6 weeks"}
+    assert sl.parse_label_template(None) == {} and sl.parse_label_template("ca. -18 °C, Fleisch") == {}
+    # Das Beschreibungsfeld eines Labels ist einzeilig: alles in einer Zeile
+    one_line = "Storage: freezer Temperature: -18 °C Max storage: 18 months Notes: meat and fish"
+    assert sl.parse_label_template(one_line) == {
+        "storage": "freezer",
+        "temperature": "-18 °C",
+        "max_storage": "18 months",
+        "notes": "meat and fish",
+    }
+    assert sl.parse_label_template("Max. Lagerzeit: 3 Jahre, Hinweis: Truhe") == {"max_storage": "3 Jahre", "notes": "Truhe"}
+    assert sl.parse_label_template("Max storage time: 1 year") == {"max_storage": "1 year"}
+
+
+@pytest.mark.parametrize(
+    ("text", "days"),
+    [
+        ("3 years", 1095), ("3 Jahre", 1095), ("1 year", 365), ("18 months", 540), ("18 Monate", 540),
+        ("6 weeks", 42), ("2 Wochen", 14), ("90 days", 90), ("90", 90), ("10 Tage", 10), ("1,5 Jahre", 548),
+        ("bald", None), ("", None), (None, None), ("3 lightyears", None), ("0 days", None),
+    ],
+)
+def test_parse_duration(text, days) -> None:
+    assert sl.parse_duration(text) == days
+
+
+def test_format_duration() -> None:
+    assert sl.format_duration(1095, "de") == "3 Jahre"
+    assert sl.format_duration(365, "en") == "1 year"
+    assert sl.format_duration(540, "de") == "18 Monate"
+    assert sl.format_duration(42, "en") == "6 weeks"
+    assert sl.format_duration(10, "de") == "10 Tage"
+
+
+def test_storage_from_the_template_beats_the_area_name() -> None:
+    assert sl.classify_storage("Keller", None, (), "freezer").key == sl.FREEZER
+    assert sl.classify_storage("Keller", None, (), "-18 °C").key == sl.FREEZER
+    assert sl.classify_storage("Keller", None, (), "unbekannt").key == sl.PANTRY  # Name als Rückfall
+    assert sl.classify_storage("Keller", 5.0, (), "freezer").key == sl.FRIDGE  # Sensor gewinnt
+
+
+async def _label_area(hass: HomeAssistant, description: str) -> None:
+    label = lr.async_get(hass).async_create("Larder", description=description)
+    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "34OL")})
+    area_id = dr.async_get(hass).async_get(device.id).area_id
+    ar.async_get(hass).async_update(area_id, labels={label.label_id})
+
+
+async def test_max_storage_from_the_label_caps_table_values(hass: HomeAssistant) -> None:
+    await _prepare(hass, "Reis", "Vorratsschrank", None)
+    out = (await _estimate(hass, overwrite=True, apply=False))[_eid(hass, "date")]
+    uncapped = out["days"]
+    assert uncapped > 60
+
+    await _label_area(hass, "Storage: pantry\nMax storage: 2 months")
+    # gemerkter Tabellenwert wird beim Lesen begrenzt
+    out = (await _estimate(hass, overwrite=True, apply=False))[_eid(hass, "date")]
+    assert out["days"] == 60 and "max storage time (2 months)" in out["tip"]
+
+    # eigene Korrektur bleibt unangetastet
+    estimator = hass.data[DOMAIN]["estimator"]
+    (key,) = estimator._cache
+    estimator.learn(key, 200)
+    out = (await _estimate(hass, overwrite=True, apply=False))[_eid(hass, "date")]
+    assert out["days"] == 200
+
+    # neu berechneter Tabellenwert wird ebenfalls begrenzt
+    await estimator.async_delete_entry(key)
+    out = (await _estimate(hass, overwrite=True, apply=False))[_eid(hass, "date")]
+    assert out["days"] == 60 and estimator._cache[key]["days"] == 60
+
+
+async def test_storage_line_of_the_label_lets_the_table_place_an_unknown_area(hass: HomeAssistant) -> None:
+    await _prepare(hass, "Tomatensuppe", "Garage", None)
+    with pytest.raises(HomeAssistantError):
+        await _estimate(hass, overwrite=True, apply=False)
+    await _label_area(hass, "Storage: fridge")
+    out = (await _estimate(hass, overwrite=True, apply=False))[_eid(hass, "date")]
+    assert out["days"] == 3 and out["basis"].endswith("· fridge")
+
+
+async def test_max_storage_from_the_label_caps_ai_values_and_is_in_the_prompt(hass: HomeAssistant) -> None:
+    _, calls = await _prepare(hass, "Wildschwein-Ragout", "Gefrierschrank", "ai")
+    await _label_area(hass, "Max storage: 6 months; Notes: Truhe im Keller")
+    hass.services.async_remove("ai_task", "generate_data")
+    calls = _fake_ai(hass, data={"shelf_life_days": 365, "storage_tip": "Gut einfrieren."})
+    out = (await _estimate(hass, overwrite=True, apply=False))[_eid(hass, "date")]
+    assert out["days"] == 180
+    assert out["tip"] == "Gut einfrieren. Capped at the area's max storage time (6 months)."
+    assert "at most 180 days in this place" in calls[0]["instructions"]

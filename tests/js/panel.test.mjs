@@ -1560,3 +1560,52 @@ test("Dose befüllen: Einkaufsliste-Checkbox nur mit gewählter Liste, Wert wird
     ),
   );
 });
+
+test("„Läuft bald ab“ folgt der Einstellung (Attribut soon_days der MHD-Entität)", async () => {
+  const { soonDaysOf } = await import("../../custom_components/larder/frontend/larder-panel.js");
+  assert.equal(soonDaysOf(null), 3);
+  assert.equal(soonDaysOf({ attributes: { soon_days: 0 } }), 0);
+  assert.equal(soonDaysOf({ attributes: { soon_days: "x" } }), 3);
+
+  const hass = makeHass(FRIDGE_DOSES, { areas: AREAS });
+  const devices = collectDevices(hass);
+  const run = () => names(arrangeDevices(hass, devices, { filter: "soon" }));
+  assert.deepEqual(run(), ["Dose B"]);
+  for (const dev of devices) {
+    const st = hass.states[dev.entities.date];
+    if (st) st.attributes = { ...(st.attributes || {}), soon_days: 30 };
+  }
+  assert.deepEqual(run(), ["Dose C", "Dose B"]);
+  assert.equal(STRINGS.de.filterSoon(30), "Läuft bald ab (≤ 30 Tage)");
+  assert.equal(STRINGS.en.filterSoon(1), "Expiring soon (≤ 1 day)");
+});
+
+test("Bereichsauswahl: auch Beschriftungen „Larder: …“ markieren einen Bereich, ein Label reicht", async () => {
+  const { isLarderLabel } = await import("../../custom_components/larder/frontend/larder-panel.js");
+  assert.equal(isLarderLabel({ name: "Larder: Freezer" }), true);
+  assert.equal(isLarderLabel({ name: " larder:pantry" }), true);
+  assert.equal(isLarderLabel({ name: "Larder" }), true);
+  assert.equal(isLarderLabel({ name: "Larderobe" }), false);
+  assert.equal(isLarderLabel({ name: "-18 °C" }), false);
+
+  const areas = {
+    kitchen: { area_id: "kitchen", name: "Küche", labels: ["lbl1"] },
+    freezer: { area_id: "freezer", name: "Truhe", labels: ["frz"] },
+    cellar: { area_id: "cellar", name: "Keller", labels: [] },
+    garage: { area_id: "garage", name: "Garage", labels: ["temp"] },
+  };
+  const el = mount(
+    labelHass(
+      [
+        { label_id: "lbl1", name: "Larder" },
+        { label_id: "frz", name: "Larder: Freezer" },
+        { label_id: "temp", name: "-18 °C" },
+      ],
+      areas,
+    ),
+  );
+  await flush();
+  el.openAddDialog();
+  await flush();
+  assert.deepEqual([...$(el, "form.dialog select").options].map((o) => o.textContent), ["Kein Bereich", "Küche", "Truhe"]);
+});

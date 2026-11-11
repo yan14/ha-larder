@@ -76,6 +76,9 @@
     },
     "suggest_recipes": {
       "service": "mdi:chef-hat"
+    },
+    "rebuild_calendar": {
+      "service": "mdi:calendar-sync"
     }
   }
 }
