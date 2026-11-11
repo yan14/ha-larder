@@ -24,6 +24,7 @@ from .const import (
     SERVICE_CLEAR_BEST_BEFORE,
     SERVICE_ESTIMATE_BEST_BEFORE,
     SERVICE_MARK_OPENED,
+    SERVICE_MARK_THAWED,
     SIGNAL_SETTINGS_CHANGED,
 )
 from .entity import LarderConfigEntry, LarderResettable
@@ -51,6 +52,12 @@ async def async_setup_entry(
         SERVICE_MARK_OPENED,
         {vol.Optional("days"): vol.All(vol.Coerce(int), vol.Range(min=1, max=365))},
         "async_mark_opened",
+        supports_response=SupportsResponse.OPTIONAL,
+    )
+    platform.async_register_entity_service(
+        SERVICE_MARK_THAWED,
+        {vol.Optional("days"): vol.All(vol.Coerce(int), vol.Range(min=1, max=365))},
+        "async_mark_thawed",
         supports_response=SupportsResponse.OPTIONAL,
     )
     platform.async_register_entity_service(
@@ -124,6 +131,15 @@ class LarderBestBefore(DateEntity, LarderResettable):
         """Dose wurde geöffnet: das MHD wird auf höchstens `days` Tage ab heute verkürzt."""
         if days is None:
             days = (await async_get_estimator(self.hass)).opened_days
+        return self._shorten(days)
+
+    async def async_mark_thawed(self, days: int | None = None) -> dict[str, Any]:
+        """Inhalt wurde aufgetaut: das MHD wird auf höchstens `days` Tage ab heute verkürzt."""
+        if days is None:
+            days = (await async_get_estimator(self.hass)).thawed_days
+        return self._shorten(days)
+
+    def _shorten(self, days: int) -> dict[str, Any]:
         limit = dt_util.now().date() + timedelta(days=days)
         current = self._attr_native_value
         new = limit if current is None else min(current, limit)

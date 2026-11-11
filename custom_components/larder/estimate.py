@@ -37,7 +37,9 @@ from .const import (
     CONF_NFC_NOTIFY,
     CONF_VACUUM_DEFAULT,
     CONF_OPENED_DAYS,
+    CONF_THAWED_DAYS,
     DEFAULT_OPENED_DAYS,
+    DEFAULT_THAWED_DAYS,
     DOMAIN,
     ESTIMATE_AI,
     ESTIMATE_MODES,
@@ -204,6 +206,7 @@ class Estimator:
         self._store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
         self.mode = ESTIMATE_TABLE
         self.opened_days = DEFAULT_OPENED_DAYS
+        self.thawed_days = DEFAULT_THAWED_DAYS
         self.calendar_entity: str | None = None
         self.nfc_notify = True
         self.vacuum_default = True
@@ -220,6 +223,7 @@ class Estimator:
             mode = ESTIMATE_AI if settings.get(CONF_AI_ENABLED) else ESTIMATE_TABLE
         self.mode = mode
         self.opened_days = min(max(int(settings.get(CONF_OPENED_DAYS, DEFAULT_OPENED_DAYS)), 1), 365)
+        self.thawed_days = min(max(int(settings.get(CONF_THAWED_DAYS, DEFAULT_THAWED_DAYS)), 1), 365)
         self.ai_task_entity = settings.get(CONF_AI_TASK_ENTITY) or None
         self.calendar_entity = settings.get(CONF_CALENDAR_ENTITY) or None
         self.nfc_notify = bool(settings.get(CONF_NFC_NOTIFY, True))
@@ -240,6 +244,7 @@ class Estimator:
             "settings": {
                 CONF_ESTIMATE_MODE: self.mode,
                 CONF_OPENED_DAYS: self.opened_days,
+                CONF_THAWED_DAYS: self.thawed_days,
                 CONF_CALENDAR_ENTITY: self.calendar_entity,
                 CONF_NFC_NOTIFY: self.nfc_notify,
                 CONF_VACUUM_DEFAULT: self.vacuum_default,
@@ -260,12 +265,15 @@ class Estimator:
         calendar_entity: str | None = None,
         nfc_notify: bool | None = None,
         vacuum_default: bool | None = None,
+        thawed_days: int | None = None,
     ) -> None:
         self.calendar_entity = calendar_entity or None
         if nfc_notify is not None:
             self.nfc_notify = nfc_notify
         if vacuum_default is not None:
             self.vacuum_default = vacuum_default
+        if thawed_days is not None:
+            self.thawed_days = min(max(int(thawed_days), 1), 365)
         self.mode = mode if mode in ESTIMATE_MODES else ESTIMATE_TABLE
         if opened_days is not None:
             self.opened_days = min(max(int(opened_days), 1), 365)

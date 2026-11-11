@@ -80,6 +80,11 @@
           }
         }
       }
+    },
+    "number": {
+      "portions": {
+        "name": "Portionen"
+      }
     }
   },
   "exceptions": {
@@ -135,6 +140,7 @@
           "estimate_mode": "MHD-Schätzung",
           "ai_task_entity": "KI-Aufgabe (leer = Standard von Home Assistant)",
           "opened_days": "Haltbarkeit nach dem Öffnen (Tage)",
+          "thawed_days": "Haltbarkeit nach dem Auftauen (Tage)",
           "calendar_entity": "Kalender für das MHD (optional)",
           "vacuum_default": "Vakuum-Vorbelegung für neue Dosen",
           "nfc_notify": "NFC: Handy benachrichtigen"
@@ -144,6 +150,7 @@
           "estimate_mode": "Zeigt im Dashboard den Button „MHD schätzen“, außer bei „Aus“.",
           "ai_task_entity": "Nur nötig, wenn du mehrere KI-Dienste eingerichtet hast und eine KI-Stufe gewählt ist.",
           "opened_days": "Der Button „Geöffnet“ im Dashboard kürzt das MHD auf höchstens so viele Tage ab heute.",
+          "thawed_days": "Der Button „Aufgetaut“ im Dashboard kürzt das MHD auf höchstens so viele Tage ab heute. Aufgetautes nicht wieder einfrieren.",
           "calendar_entity": "Schreibt das MHD jeder Dose als Ganztags-Termin in diesen Kalender (anlegen, verschieben, löschen). Der Kalender muss Termine anlegen und löschen können, z. B. Google, CalDAV oder „Lokaler Kalender“. Leer lassen = aus.",
           "nfc_notify": "Scannt jemand einen verknüpften Tag, bekommt sein Handy (Companion-App) eine Benachrichtigung. Antippen öffnet die Dose im Dashboard."
         }
@@ -190,6 +197,16 @@
     "mark_opened": {
       "name": "Als geöffnet markieren",
       "description": "Kürzt das MHD auf höchstens die angegebene Zahl Tage ab heute. Ohne MHD wird es gesetzt. Standard ist die Einstellung „Haltbarkeit nach dem Öffnen“.",
+      "fields": {
+        "days": {
+          "name": "Tage",
+          "description": "Tage ab heute (leer = Wert aus den Einstellungen)."
+        }
+      }
+    },
+    "mark_thawed": {
+      "name": "Als aufgetaut markieren",
+      "description": "Kürzt das MHD auf höchstens die angegebene Zahl Tage ab heute, für gerade aufgetautes Essen. Ohne Datum wird eines gesetzt. Standard ist die Einstellung „Haltbarkeit nach dem Auftauen“.",
       "fields": {
         "days": {
           "name": "Tage",

@@ -56,6 +56,8 @@ export const STRINGS = {
     fillFailed: "Das Speichern ist fehlgeschlagen.",
     plusOneDay: "+1 Tag",
     opened: "Geöffnet",
+    thawed: "Aufgetaut",
+    portions: "Portionen",
     searchPlaceholder: "Suchen …",
     filterLabel: "Filter",
     filterAll: "Alle",
@@ -153,6 +155,8 @@ export const STRINGS = {
     fillFailed: "Saving failed.",
     plusOneDay: "+1 day",
     opened: "Opened",
+    thawed: "Thawed",
+    portions: "Portions",
     searchPlaceholder: "Search …",
     filterLabel: "Filter",
     filterAll: "All",
@@ -418,7 +422,7 @@ const STYLE = `
   .dialog h2 { margin: 0; font-size: 20px; font-weight: 500; }
   .dialog .field { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--secondary-text-color); }
   .dialog .field[hidden] { display: none; }
-  .dialog input[type="text"], .dialog input[type="date"], .dialog input[type="datetime-local"], .dialog select { font: inherit; color: var(--primary-text-color); background: var(--card-background-color, #fff);
+  .dialog input[type="text"], .dialog input[type="number"], .dialog input[type="date"], .dialog input[type="datetime-local"], .dialog select { font: inherit; color: var(--primary-text-color); background: var(--card-background-color, #fff);
     border: 1px solid var(--divider-color); border-radius: 6px; padding: 8px; box-sizing: border-box; }
   .dialog .modes { display: flex; flex-direction: column; gap: 6px; color: var(--primary-text-color); font-size: 15px; }
   .dialog .error { color: var(--error-color, #db4437); font-size: 14px; min-height: 1em; }
@@ -529,8 +533,9 @@ class DoseCard {
       <div class="arealine"></div>
       <div class="row arearow"><label data-l="area"></label><select data-f="area"></select></div>
       <div class="row"><label data-l="content"></label><input data-f="content" type="text" maxlength="255"></div>
+      <div class="row portionsrow"><label data-l="portions"></label><input data-f="portions" type="number" min="0" max="99" step="1" inputmode="numeric"></div>
       <div class="row"><label data-l="bestBefore"></label><input data-f="bestBefore" type="date"><span class="badge"></span></div>
-      <div class="quickrow"><button class="plus1" type="button"></button><button class="opened" type="button"></button></div>
+      <div class="quickrow"><button class="plus1" type="button"></button><button class="opened" type="button"></button><button class="thawed" type="button"></button></div>
       <div class="row"><label data-l="filledAt"></label><input data-f="filledAt" type="datetime-local"><button class="now" type="button"></button></div>
       <div class="estimaterow"><button class="estimate" type="button"></button><span class="tip" role="status"></span></div>
       <div class="row vacrow"><label class="check"><input type="checkbox" data-f="vacuum"><span data-l="vacuum"></span></label></div>
@@ -542,6 +547,7 @@ class DoseCard {
       content: this.q('[data-f="content"]'),
       bestBefore: this.q('[data-f="bestBefore"]'),
       filledAt: this.q('[data-f="filledAt"]'),
+      portions: this.q('[data-f="portions"]'),
     };
 
     this._areaSig = "";
@@ -583,6 +589,14 @@ class DoseCard {
     });
     this.q("button.opened").addEventListener("click", () => {
       if (this.ids.date) this._call(DOMAIN, "mark_opened", { entity_id: this.ids.date });
+    });
+    this.q("button.thawed").addEventListener("click", () => {
+      if (this.ids.date) this._call(DOMAIN, "mark_thawed", { entity_id: this.ids.date });
+    });
+    this.inputs.portions.addEventListener("change", () => {
+      if (!this.ids.number) return;
+      const n = Math.min(Math.max(parseInt(this.inputs.portions.value, 10) || 0, 0), 99);
+      this._call("number", "set_value", { entity_id: this.ids.number, value: n });
     });
     this.q("button.now").addEventListener("click", () => {
       if (this.ids.datetime) this._call("datetime", "set_value", { entity_id: this.ids.datetime, datetime: new Date().toISOString() });
@@ -694,6 +708,8 @@ class DoseCard {
     this.q("button.now").textContent = t.now;
     this.q("button.plus1").textContent = t.plusOneDay;
     this.q("button.opened").textContent = t.opened;
+    this.q("button.thawed").textContent = t.thawed;
+    this.q('[data-l="portions"]').textContent = t.portions;
     this.q("button.empty").textContent = t.emptyContainer;
     this.q("button.fill").textContent = t.fill;
     this.q('[data-l="vacuum"]').textContent = t.vacuum;
@@ -709,6 +725,11 @@ class DoseCard {
     this._setInput(this.inputs.content, isValidState(text) ? text.state : "");
     this._setInput(this.inputs.bestBefore, isValidState(date) ? date.state : "");
     this._setInput(this.inputs.filledAt, isValidState(dt) ? toLocalInputValue(dt.state) : "");
+    const portions = states[dev.entities.number];
+    const nPortions = isValidState(portions) ? Number(portions.state) : 0;
+    this._setInput(this.inputs.portions, nPortions > 0 ? String(nPortions) : "");
+    this.inputs.portions.disabled = !ok(portions);
+    this.q(".portionsrow").style.display = portions ? "" : "none";
     this.inputs.content.disabled = !ok(text);
     this.inputs.bestBefore.disabled = !ok(date);
     this.inputs.filledAt.disabled = !ok(dt);
@@ -806,6 +827,7 @@ class LarderPanel extends HTMLElement {
         <form class="dialog fillform" novalidate>
           <h2></h2>
           <label class="field"><span data-l="content"></span><input type="text" data-f="content" maxlength="255" list="zs-contents" autocomplete="off"><datalist id="zs-contents"></datalist></label>
+          <label class="field" data-w="portions"><span data-l="portions"></span><input type="number" data-f="portions" min="0" max="99" step="1" inputmode="numeric"></label>
           <label class="check" data-w="vacuum"><input type="checkbox" data-f="vacuum"><span data-l="vacuum"></span></label>
           <label class="field"><span data-l="filledAt"></span><input type="datetime-local" data-f="filledAt"></label>
           <label class="field"><span data-l="bestBefore"></span><input type="date" data-f="bestBefore"></label>
@@ -1117,6 +1139,10 @@ class LarderPanel extends HTMLElement {
     this._fillForm.querySelector("h2").textContent = `${t.fillTitle}: ${dev.name}`;
     f("content").value = isValidState(text) ? text.state : "";
     f("content").placeholder = t.fillPlaceholder;
+    const portions = states[dev.entities.number];
+    const nPortions = isValidState(portions) ? Number(portions.state) : 0;
+    f("portions").value = nPortions > 0 ? String(nPortions) : "";
+    this._fillForm.querySelector('[data-w="portions"]').hidden = !portions || portions.state === "unavailable";
     f("vacuum").checked = !!vac && vac.state === "on";
     this._fillForm.querySelector('[data-w="vacuum"]').hidden = !vac || vac.state === "unavailable";
     f("filledAt").value = isValidState(dt) ? toLocalInputValue(dt.state) : toLocalInputValue(new Date().toISOString());
@@ -1182,6 +1208,11 @@ class LarderPanel extends HTMLElement {
       await hass.callService("text", "set_value", { entity_id: ids.text, value: content });
       if (vac && vac.state !== "unavailable") {
         await hass.callService("switch", f("vacuum").checked ? "turn_on" : "turn_off", { entity_id: ids.switch });
+      }
+      const portionsState = states[ids.number];
+      if (portionsState && portionsState.state !== "unavailable") {
+        const n = Math.min(Math.max(parseInt(f("portions").value, 10) || 0, 0), 99);
+        await hass.callService("number", "set_value", { entity_id: ids.number, value: n });
       }
       if (ids.datetime && !Number.isNaN(filled.getTime())) {
         await hass.callService("datetime", "set_value", { entity_id: ids.datetime, datetime: filled.toISOString() });

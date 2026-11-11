@@ -525,6 +525,49 @@ async def test_mark_opened_shortens_or_sets(hass: HomeAssistant) -> None:
     assert out["best_before"] == (today + timedelta(days=7)).isoformat()
 
 
+async def test_mark_thawed_shortens_and_uses_its_own_setting(hass: HomeAssistant) -> None:
+    entry = await _setup(hass)
+    date_id = _eid(hass, "date")
+    today = dt_util.now().date()
+    await _fill(hass, "34OL", "Chili", 90)  # eingefroren
+    out = (await hass.services.async_call(DOMAIN, "mark_thawed", {"entity_id": date_id}, blocking=True, return_response=True))[date_id]
+    assert out["best_before"] == (today + timedelta(days=2)).isoformat() and out["shortened"] is True
+    # nie verlängern
+    await _fill(hass, "34OL", "Chili", 1)
+    out = (await hass.services.async_call(DOMAIN, "mark_thawed", {"entity_id": date_id, "days": 4}, blocking=True, return_response=True))[date_id]
+    assert out["best_before"] == (today + timedelta(days=1)).isoformat() and out["shortened"] is False
+    # Einstellung "Tage nach dem Auftauen" (unabhängig von "nach dem Öffnen")
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    await hass.config_entries.options.async_configure(result["flow_id"], {"estimate_mode": "table", "thawed_days": 4})
+    await _fill(hass, "34OL", "Chili", 90)
+    out = (await hass.services.async_call(DOMAIN, "mark_thawed", {"entity_id": date_id}, blocking=True, return_response=True))[date_id]
+    assert out["best_before"] == (today + timedelta(days=4)).isoformat()
+    out = (await hass.services.async_call(DOMAIN, "mark_opened", {"entity_id": date_id}, blocking=True, return_response=True))[date_id]
+    assert out["best_before"] == (today + timedelta(days=3)).isoformat()
+
+
+async def test_portions_entity_defaults_to_zero_and_is_reset_by_emptying(hass: HomeAssistant) -> None:
+    await _setup(hass)
+    portions = _eid(hass, "number")
+    assert float(hass.states.get(portions).state) == 0
+    await hass.services.async_call("number", "set_value", {"entity_id": portions, "value": 4}, blocking=True)
+    assert float(hass.states.get(portions).state) == 4
+    await hass.services.async_call("button", "press", {"entity_id": _eid(hass, "button")}, blocking=True)
+    assert float(hass.states.get(portions).state) == 0
+
+
+async def test_get_expiring_reports_portions(hass: HomeAssistant) -> None:
+    await _setup(hass)
+    await _fill(hass, "34OL", "Chili", 1)
+    plain = await hass.services.async_call(DOMAIN, "get_expiring", {}, blocking=True, return_response=True)
+    assert plain["items"][0]["portions"] is None
+    assert "Portion" not in plain["summary"]
+    await hass.services.async_call("number", "set_value", {"entity_id": _eid(hass, "number"), "value": 4}, blocking=True)
+    out = await hass.services.async_call(DOMAIN, "get_expiring", {}, blocking=True, return_response=True)
+    assert out["items"][0]["portions"] == 4
+    assert "(4 Portionen" in out["summary"] or "(4 portions" in out["summary"]
+
+
 async def test_content_suggestions_recent_first_and_non_admin(
     hass: HomeAssistant, hass_ws_client, hass_admin_user
 ) -> None:

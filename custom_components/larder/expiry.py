@@ -54,6 +54,7 @@ _TEXT = {
         "tomorrow": "morgen",
         "in_days": lambda d: f"in {d} Tagen",
         "unnamed": "Dose",
+        "portions": lambda n: "1 Portion" if n == 1 else f"{n} Portionen",
     },
     "en": {
         "title": "Larder",
@@ -71,6 +72,7 @@ _TEXT = {
         "tomorrow": "tomorrow",
         "in_days": lambda d: f"in {d} days",
         "unnamed": "Container",
+        "portions": lambda n: "1 portion" if n == 1 else f"{n} portions",
     },
 }
 
@@ -95,7 +97,10 @@ def build_summary(items: list[dict[str, Any]], language: str) -> str:
     lines = [text["head"](soon, expired) + ":"]
     for item in items:
         label = item["content"] or item["name"] or text["unnamed"]
-        place = f" ({item['area']})" if item["area"] else ""
+        extras = [text["portions"](item["portions"])] if item.get("portions") else []
+        if item["area"]:
+            extras.append(item["area"])
+        place = f" ({', '.join(extras)})" if extras else ""
         lines.append(f"• {label}{place}: {_when(text, item['days_left'])}")
     return "\n".join(lines)
 
@@ -129,10 +134,17 @@ def collect_expiring(
             and content_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE)
             else ""
         )
+        portions_id = registry.async_get_entity_id("number", DOMAIN, f"{cc}_portions")
+        portions_state = hass.states.get(portions_id) if portions_id else None
+        try:
+            portions = int(float(portions_state.state)) if portions_state is not None else 0
+        except ValueError:
+            portions = 0
         items.append(
             {
                 "name": entry.title,
                 "content": content,
+                "portions": portions or None,
                 "area": storage_context(hass, cc).area_name,
                 "best_before": best.isoformat(),
                 "days_left": left,

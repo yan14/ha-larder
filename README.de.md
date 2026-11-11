@@ -14,7 +14,8 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 - 🔖 **[Zwilling-Fresh-&-Save-QR-Codes](#ios-kurzbefehl-für-die-originalen-zwilling-codes)**: die originalen Codes auf den Deckeln funktionieren weiter (iOS-Kurzbefehl)
 - 🏷️ **[Eigener QR-Code für jede Dose](#dose-anlegen)**: für jede beliebige Box, mit eindeutiger ID und fertigem Bild
 - 📲 **[NFC-Tag-Integration](#nfc-tags)**: Tag auf die Box kleben statt einen Code zu drucken
-- ✏️ **[Schnelles Befüllen](#dose-schnell-befüllen)**: Inhalt, MHD und Vakuum in wenigen Taps, mit Vorschlägen aus früheren Inhalten
+- 🧊 **Aufgetaut-Button und Portionen**: MHD nach dem Auftauen verkürzen, Portionen pro Dose festhalten
+- ✏️ **[Schnelles Befüllen](#dose-schnell-befüllen)**: Inhalt, Portionen, MHD und Vakuum in wenigen Taps, mit Vorschlägen aus früheren Inhalten
 - 🧮 **[MHD-Schätzung](#mhd-schätzen-eingebaute-tabelle-und-optional-ki)**: eingebaute Haltbarkeitstabelle, optional mit KI
 - 🔔 **[Ablauf-Benachrichtigungen](#ablauf-benachrichtigungen)**: tägliche Zusammenfassung per Blueprint, still, wenn nichts abläuft
 - 📅 **[Kalendereinträge](#mhd-im-kalender)**: MHDs erscheinen in deinem Kalender
@@ -40,6 +41,7 @@ Pro Dose entsteht ein Gerät (eindeutig über die ID, den Parameter `cc` eines Z
 | **MHD** | `date` | Mindesthaltbarkeitsdatum |
 | **Inhalt** | `text` | Was ist in der Dose? |
 | **Behälter leeren** | `button` | Setzt die Dose komplett zurück: **Inhalt** wird leer, **MHD** und **Befüllt am** werden gelöscht. **Vakuum** bleibt bewusst erhalten, es ist eine Eigenschaft der Dose und nicht des Inhalts |
+| **Portionen** | `number` | Wie viele Portionen in der Dose sind (0 = nicht angegeben). Wird von **Behälter leeren** zurückgesetzt. Steht im Dashboard, im Befüll-Dialog und im Ergebnis von `get_expiring` |
 | **Vakuum** | `switch` | Ist die Dose vakuumiert? Bei neuen Dosen standardmäßig an; die Vorbelegung änderst du unter **Konfigurieren**, wenn die meisten deiner Boxen nicht vakuumiert sind. Wird für die Schätzung verwendet |
 | **Tage bis MHD** | `sensor` | Verbleibende Tage bis zum MHD (negativ = abgelaufen). Das Attribut `status` ist `ok`, `soon` (3 Tage oder weniger), `expired` oder `none` |
 | **QR-Code** | `image` | QR-Code der Dose als Bild: Scannen mit der Kamera-App öffnet direkt das Gerät in der Home-Assistant-App |
@@ -107,14 +109,14 @@ Sobald mindestens eine Dose angelegt ist, erscheint in der Seitenleiste der Eint
 
 - Alle Dosen der Integration, gruppiert nach **Bereich** (Area des Geräts) und sortiert nach Name.
 - Pro Dose: Bereich, **Inhalt**, **MHD** (mit Hinweis „abgelaufen“ oder „noch n Tage“ ab 3 Tagen davor), **Eingelagert am** (= „Befüllt am“), der Button **Behälter leeren** und der QR-Code als kleines Bild.
-- Inhalt, MHD und Datum lassen sich direkt im Panel ändern. „Jetzt“ setzt „Eingelagert am“ auf die aktuelle Zeit.
+- Inhalt, Portionen, MHD und Datum lassen sich direkt im Panel ändern. „Jetzt“ setzt „Eingelagert am“ auf die aktuelle Zeit.
 - Den **Bereich** einer Dose änderst du über das Auswahlfeld auf ihrer Karte, ohne Umweg über die Geräteseite.
 - Das Häkchen **Vakuum** schaltet die Vakuum-Eigenschaft der Dose um.
 - Ist die [Schätzung](#mhd-schätzen-eingebaute-tabelle-und-optional-ki) aktiviert, erscheint unter dem Datum der Button **MHD schätzen**, sobald ein Inhalt eingetragen und noch kein MHD gesetzt ist.
 - **+ Dose hinzufügen** (oben rechts) legt eine Dose an: entweder *Neuen QR-Code erstellen* oder *Zwilling-QR-Code einlesen*, mit optionalem Namen und Bereich. Es ist derselbe Ablauf wie unter Einstellungen → Geräte & Dienste.
-- Unter dem Datum: **+1 Tag** verschiebt das MHD um einen Tag, **Geöffnet** kürzt es auf die in den Einstellungen gesetzte Zahl Tage (Standard 3). Ohne Datum wird eines gesetzt.
+- Unter dem Datum: **+1 Tag** verschiebt das MHD um einen Tag, **Geöffnet** kürzt es auf die in den Einstellungen gesetzte Zahl Tage (Standard 3), und **Aufgetaut** macht dasselbe für Essen, das du gerade aus dem Gefrierfach geholt hast (Standard 2 Tage, nicht wieder einfrieren). Beides verlängert nie ein Datum. Ohne Datum wird eines gesetzt.
 - **Suche, Filter und Sortierung** über den Karten: Suche in Name, Inhalt und Bereich; Filter nach *läuft bald ab*, *abgelaufen*, *befüllt* oder *leer*; Sortierung nach Bereich, MHD (frühestes zuerst) oder Name. Deine Auswahl wird im Browser gemerkt.
-- Eine leere Dose zeigt **Befüllen**, einen schnellen Dialog für Inhalt, Vakuum und MHD (siehe [unten](#dose-schnell-befüllen)).
+- Eine leere Dose zeigt **Befüllen**, einen schnellen Dialog für Inhalt, Portionen, Vakuum und MHD (siehe [unten](#dose-schnell-befüllen)).
 - Administratoren sehen außerdem den Reiter **Schätzungen** (siehe [unten](#gemerkte-schätzungen-verwalten)).
 - Neue Dosen, geänderte Werte und geänderte Bereiche erscheinen sofort, ohne dass du etwas neu laden musst.
 
@@ -196,7 +198,7 @@ Das Ergebnis enthält `best_before`, `days`, `tip` (ein kurzer Lagertipp), `sour
 
 <p align="center"><img src="docs/images/fill-dialog-de.png" width="560" alt="Dialog Dose befüllen"></p>
 
-Eine leere Dose zeigt den Button **Befüllen**. Er öffnet einen kleinen Dialog: **Inhalt** (mit Vorschlägen aus früheren Eingaben, neueste zuerst, danach deine gemerkten Schätzungen), **Vakuum**, **Befüllt am** (vorbelegt mit jetzt), optional ein **MHD** und **MHD automatisch schätzen** (nur wenn die Schätzung aktiv und das MHD leer ist). **Speichern** setzt alles und schätzt das MHD.
+Eine leere Dose zeigt den Button **Befüllen**. Er öffnet einen kleinen Dialog: **Inhalt** (mit Vorschlägen aus früheren Eingaben, neueste zuerst, danach deine gemerkten Schätzungen), **Portionen** (optional), **Vakuum**, **Befüllt am** (vorbelegt mit jetzt), optional ein **MHD** und **MHD automatisch schätzen** (nur wenn die Schätzung aktiv und das MHD leer ist). **Speichern** setzt alles und schätzt das MHD.
 
 Der Dialog öffnet sich auch von selbst nach einem Scan: wenn der Kurzbefehl `app_url` öffnet oder du die NFC-Benachrichtigung antippst und die Dose leer ist. Hat die Dose schon einen Inhalt, wird sie nur hervorgehoben. Das funktioniert für alle Nutzer, nicht nur für Administratoren.
 
@@ -224,7 +226,7 @@ data:
   days: 3               # Dosen, die innerhalb von 3 Tagen ablaufen
   include_expired: true
 response_variable: result
-# result.count, result.expired, result.summary (Text), result.items (name, content, area, best_before, days_left, status)
+# result.count, result.expired, result.summary (Text), result.items (name, content, portions, area, best_before, days_left, status)
 ```
 
 Am einfachsten geht es mit dem mitgelieferten Blueprint, der einmal täglich eine Benachrichtigung schickt und schweigt, wenn nichts abläuft:

@@ -37,6 +37,11 @@
       "days_left": {
         "default": "mdi:timer-sand"
       }
+    },
+    "number": {
+      "portions": {
+        "default": "mdi:food-variant"
+      }
     }
   },
   "services": {
@@ -54,6 +59,9 @@
     },
     "mark_opened": {
       "service": "mdi:package-variant"
+    },
+    "mark_thawed": {
+      "service": "mdi:snowflake-melt"
     }
   }
 }

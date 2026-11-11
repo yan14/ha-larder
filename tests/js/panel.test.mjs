@@ -33,6 +33,7 @@ function makeHass(doses, { areas = {}, language = "de", stateOverrides = {} } = 
       button: `button.${d.id}_leeren`,
       image: `image.${d.id}_qr`,
       switch: `switch.${d.id}_vacuum`,
+      number: `number.${d.id}_portionen`,
     };
     for (const eid of Object.values(ids)) {
       entities[eid] = { entity_id: eid, device_id: d.id, platform: D, area_id: d.entityArea || null };
@@ -40,6 +41,7 @@ function makeHass(doses, { areas = {}, language = "de", stateOverrides = {} } = 
     states[ids.text] = { entity_id: ids.text, state: d.content ?? "unknown", attributes: {} };
     states[ids.date] = { entity_id: ids.date, state: d.mhd ?? "unknown", attributes: { estimates: !!d.ai } };
     states[ids.switch] = { entity_id: ids.switch, state: d.vacuum ?? "on", attributes: {} };
+    states[ids.number] = { entity_id: ids.number, state: String(d.portions ?? 0), attributes: {} };
     states[ids.datetime] = { entity_id: ids.datetime, state: d.filled ?? "unknown", attributes: {} };
     states[ids.button] = { entity_id: ids.button, state: "unknown", attributes: {} };
     states[ids.image] = {
@@ -116,7 +118,7 @@ test("collectDevices: nur Zwilling-Geräte, sortiert nach Bereich, dann Name; oh
     ],
   );
   assert.ok(out.every((d) => d.deviceId !== "foreign"));
-  assert.deepEqual(Object.keys(out[0].entities).sort(), ["button", "date", "datetime", "image", "switch", "text"]);
+  assert.deepEqual(Object.keys(out[0].entities).sort(), ["button", "date", "datetime", "image", "number", "switch", "text"]);
 });
 
 test("collectDevices: Anzeigename des Nutzers und Bereich der Entität als Rückfall", () => {
@@ -905,6 +907,33 @@ test("Schnellaktionen: +1 Tag setzt das MHD, Geöffnet ruft den Service", () => 
   ]);
 });
 
+test("Schnellaktionen: Aufgetaut ruft den Service mark_thawed", () => {
+  const hass = adminHass([{ id: "d1", name: "A", content: "Chili", mhd: "2027-03-01" }]);
+  const el = mount(hass);
+  assert.equal($(el, "button.thawed").textContent, "Aufgetaut");
+  $(el, "button.thawed").click();
+  assert.deepEqual(hass.calls, [{ domain: D, service: "mark_thawed", data: { entity_id: "date.d1_mhd" } }]);
+});
+
+test("Portionen: Eingabe auf der Karte setzt die Zahl, leer wird 0, 0 zeigt ein leeres Feld", () => {
+  const hass = adminHass([{ id: "d1", name: "A", content: "Chili", portions: 3 }]);
+  const el = mount(hass);
+  const input = $(el, '.card [data-f="portions"]');
+  assert.equal(input.value, "3");
+  assert.equal($(el, '[data-l="portions"]').textContent, "Portionen");
+  input.value = "5";
+  input.dispatchEvent(new dom.window.Event("change"));
+  input.value = "";
+  input.dispatchEvent(new dom.window.Event("change"));
+  assert.deepEqual(hass.calls, [
+    { domain: "number", service: "set_value", data: { entity_id: "number.d1_portionen", value: 5 } },
+    { domain: "number", service: "set_value", data: { entity_id: "number.d1_portionen", value: 0 } },
+  ]);
+  document.body.innerHTML = "";
+  const none = mount(adminHass([{ id: "d1", name: "A", content: "Chili" }]));
+  assert.equal($(none, '.card [data-f="portions"]').value, "");
+});
+
 test("Schnellaktionen: ohne Inhalt versteckt, ohne MHD ist +1 Tag gesperrt", () => {
   const empty = mount(adminHass([{ id: "d1", name: "A" }]));
   assert.equal($(empty, ".quickrow").classList.contains("visible"), false);
@@ -1200,6 +1229,7 @@ test("Dose befüllen: Pflichtfeld Inhalt, Speichern setzt Entitäten und schätz
 
   $(el, 'form.fillform [data-f="content"]').value = "Pizza";
   $(el, 'form.fillform [data-f="vacuum"]').checked = false;
+  $(el, 'form.fillform [data-f="portions"]').value = "4";
   $(el, 'form.fillform [data-f="filledAt"]').value = "2026-11-09T11:00";
   form.dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
   await flush();
@@ -1207,6 +1237,7 @@ test("Dose befüllen: Pflichtfeld Inhalt, Speichern setzt Entitäten und schätz
   assert.deepEqual(hass.calls, [
     { domain: "text", service: "set_value", data: { entity_id: "text.d1_inhalt", value: "Pizza" } },
     { domain: "switch", service: "turn_off", data: { entity_id: "switch.d1_vacuum" } },
+    { domain: "number", service: "set_value", data: { entity_id: "number.d1_portionen", value: 4 } },
     { domain: "datetime", service: "set_value", data: { entity_id: "datetime.d1_befuellt", datetime: "2026-11-09T10:00:00.000Z" } },
   ]);
   assert.equal($(el, ".overlay.fill").hidden, true);
