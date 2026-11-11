@@ -2,10 +2,11 @@
  * Larder experimental: zweite, kachelbasierte Oberfläche (Start, Behälter, Bereiche, Kategorien, Rezepte).
  *
  * Sie nutzt dieselben Entitäten wie das normale Larder-Dashboard und bettet dessen Komponente
- * <larder-panel embedded> für Dialoge (Hinzufügen, Befüllen, NFC) und die Detailansicht einer Dose ein.
+ * <larder-panel-embedded embedded> für Dialoge (Hinzufügen, Befüllen, NFC) und die Detailansicht einer Dose ein.
  * Eingeschaltet wird sie in den Einstellungen der Integration.
  */
-import { collectDevices, daysUntil, SOON_DAYS } from "./larder-panel.js";
+// Mit derselben Versionsangabe laden wie dieses Modul, damit nie eine ältere Kopie aus dem Cache benutzt wird.
+const { collectDevices, daysUntil, SOON_DAYS } = await import(`./larder-panel.js${new URL(import.meta.url).search}`);
 
 const DOMAIN = "larder";
 const STORAGE_KEY = `${DOMAIN}.experimental`;
@@ -360,7 +361,7 @@ const STYLE = `
   .dialog .buttons { display: flex; justify-content: flex-end; gap: 8px; }
   .dialog .buttons button { font: inherit; padding: 8px 16px; border-radius: 8px; cursor: pointer; background: none; border: 0; color: var(--primary-color); }
   .dialog .buttons button.submit { background: var(--primary-color); color: var(--text-primary-color, #fff); }
-  larder-panel[only] { flex: 1; }
+  larder-panel-embedded[only] { flex: 1; }
 `;
 
 class LarderExperimental extends HTMLElement {
@@ -384,14 +385,14 @@ class LarderExperimental extends HTMLElement {
       <main></main>
       <nav></nav>
       <div class="overlay" hidden><form class="dialog" novalidate></form></div>
-      <larder-panel embedded></larder-panel>`;
+      <larder-panel-embedded embedded></larder-panel-embedded>`;
     this._header = this.shadowRoot.querySelector("header");
     this._title = this.shadowRoot.querySelector("h1");
     this._main = this.shadowRoot.querySelector("main");
     this._nav = this.shadowRoot.querySelector("nav");
     this._overlay = this.shadowRoot.querySelector(".overlay");
     this._form = this.shadowRoot.querySelector("form.dialog");
-    this._classic = this.shadowRoot.querySelector("larder-panel");
+    this._classic = this.shadowRoot.querySelector("larder-panel-embedded");
     this._settingsBtn = this.shadowRoot.querySelector("#settings");
     this.shadowRoot.querySelector("#menu").addEventListener("click", () => {
       this.dispatchEvent(new Event("hass-toggle-menu", { bubbles: true, composed: true }));

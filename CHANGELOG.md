@@ -3,6 +3,10 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 1.7.1
+
+- **Larder experimental:** fixed the old dashboard showing up below the new one when the browser or the app still had an older copy of the dashboard loaded. The embedded card now comes with its own element name and is always loaded together with the matching version.
+
 ## 1.7.0
 
 - **Larder experimental:** a second, optional dashboard (turn it on under *Configure*, it then appears as a second sidebar entry; the normal dashboard is unchanged). Tile-based, made for the phone, with a bottom bar: **Start** (greeting, what to use up soon, shortcuts), **Containers** (tiles or list, sort by best-before date, area, alphabet or category), **Areas**, **Categories** and **Recipes**.

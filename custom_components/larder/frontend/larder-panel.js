@@ -2031,3 +2031,9 @@ class LarderPanel extends HTMLElement {
 if (!customElements.get("larder-panel")) {
   customElements.define("larder-panel", LarderPanel);
 }
+
+// Eingebettete Variante für "Larder experimental" unter eigenem Namen: Hat der Browser noch ein älteres
+// <larder-panel> aus einer früheren Sitzung registriert, nutzt die eingebettete Variante trotzdem diesen Code.
+if (!customElements.get("larder-panel-embedded")) {
+  customElements.define("larder-panel-embedded", class extends LarderPanel {});
+}

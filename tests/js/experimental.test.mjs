@@ -120,6 +120,14 @@ test.beforeEach(() => {
   dom.window.localStorage.clear();
 });
 
+test("Die eingebettete Karte ist eine eigene Variante, unabhängig von einem schon registrierten <larder-panel>", () => {
+  const el = mount(makeHass(DOSES));
+  assert.equal(el._classic.tagName.toLowerCase(), "larder-panel-embedded");
+  assert.ok(el._classic.hasAttribute("embedded"));
+  assert.ok(customElements.get("larder-panel-embedded"));
+  assert.ok(customElements.get("larder-panel"));
+});
+
 test("Texte: Deutsch und Englisch haben dieselben Schlüssel", () => {
   const shape = (o) => JSON.stringify(Object.keys(o).sort());
   assert.equal(shape(TEXTS.de), shape(TEXTS.en));
