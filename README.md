@@ -17,7 +17,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 - ✏️ **[Quick filling](#filling-containers)**: contents, quantity, best-before date and vacuum in a few taps, also for several containers at once and with a [serial scan](#selecting-several-containers)
 - 🧮 **[Best-before estimate](#best-before-estimate)**: built-in shelf-life table, optionally with AI, with limits per storage place
 - 🍳 **[Recipes](#recipes)**: ideas from what expires soon or from selected containers, a recipe book, and recipes read from a photo
-- 🔔 **[Expiry notifications](#expiry-notifications)**: daily summary via blueprint, quiet when nothing expires
+- 🔔 **[Daily summary](#daily-summary)**: push with buttons to several phones and read out on Alexa or other speakers, optionally at the first motion in the kitchen
 - 🛒 **[Shopping list](#shopping-list)**: on request, the contents of an emptied container go onto a to-do list, never leftovers
 - 📅 **[Calendar entries](#best-before-dates-in-your-calendar)**: best-before dates in your calendar (Local Calendar, Google, CalDAV …)
 - 🌍 Available in English and German
@@ -29,7 +29,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 - [Why this project?](#why-this-project)
 - [Installation](#installation) · [Getting started](#getting-started) · [Adding a container](#adding-a-container) · [Areas and labels](#areas-and-labels) · [Settings](#settings)
 - [Dashboard "Larder"](#dashboard-larder) · [Filling containers](#filling-containers) · [Larder experimental](#larder-experimental)
-- [Best-before estimate](#best-before-estimate) · [Recipes](#recipes) · [Expiry notifications](#expiry-notifications) · [Shopping list](#shopping-list) · [Calendar](#best-before-dates-in-your-calendar)
+- [Best-before estimate](#best-before-estimate) · [Recipes](#recipes) · [Daily summary](#daily-summary) · [Shopping list](#shopping-list) · [Calendar](#best-before-dates-in-your-calendar)
 - [Scanning](#scanning): [own QR codes](#your-own-qr-codes), [NFC tags](#nfc-tags), [Zwilling codes (iOS Shortcut)](#ios-shortcut-for-the-original-zwilling-codes)
 - [Reference](#reference): [entities](#entities), [services and events](#services-and-events), [webhook](#webhook-interface)
 - [Alternatives](#alternatives) · [Development](#development)
@@ -68,7 +68,7 @@ Since Home Assistant 2026.11 the community store HACS is built in as the **Marke
 2. **Give each container an area** that says where it is stored, for example "Fridge", "Freezer" or "Pantry". The estimate needs it. Optionally add a `Larder: …` label with the [template](#template-for-the-area-label) to the areas.
 3. **Fill the containers** in the dashboard: contents, quantity, best-before date (or let Larder estimate it).
 4. **Check the [settings](#settings)** once: estimate mode, notification period, calendar, shopping list, experimental dashboard.
-5. **Import the [blueprint](#expiry-notifications)** for a daily notification of what expires soon.
+5. **Import the [blueprint](#daily-summary)** for a daily summary of what expires soon (push and/or voice).
 6. **Put a code on the boxes:** print [your own QR code](#your-own-qr-codes), stick on an [NFC tag](#nfc-tags), or use the [Shortcut](#ios-shortcut-for-the-original-zwilling-codes) for the original Zwilling codes.
 
 ## Adding a container
@@ -240,7 +240,7 @@ More than 50 entries for common food: dishes and leftovers, soups, raw meat, fis
 
 How a container is matched:
 
-- **Contents** are matched by keywords in German and English, e.g. "Tomatensuppe", "Penne", "leftover chicken curry". The most specific match wins ("boiled eggs" beats "eggs").
+- **Contents** are matched by keywords in German and English, e.g. "Tomatensuppe", "Penne", "leftover chicken curry". The most specific match wins ("boiled eggs" beats "eggs"), the order of the words does not matter ("Eier gekocht" = "gekochte Eier"), and in compound words the last part counts ("Butterkekse" are cookies, "Lachsfilet" is fish). When the table gets better, remembered table values are recalculated on their next use; your own corrections stay. Dates already set on a container are not changed: estimate again (with *overwrite*) if needed.
 - **Storage place** comes from the area: a temperature sensor on the area first, then the `Storage` or `Temperature` line of the [area label](#template-for-the-area-label), then a temperature in a label or the area name (for example "about -18 °C"), then words such as *fridge*, *0 °C compartment*, *freezer*, *freezer compartment* (a bit less cold, so shorter), *pantry*, *cellar*. If it cannot place the area, it tells you instead of guessing.
 - **Vacuum** extends the time (about +30 % cold, +50 % in the freezer and pantry). Perishable food in the fridge (minced meat, fish, cold cuts, leftovers, soft cheese, …) gets **no** bonus, because vacuum does not make it safer.
 
@@ -323,7 +323,7 @@ response_variable: ideas
 # ideas.ingredients (the containers used), ideas.count
 ```
 
-**In the daily notification:** the [blueprint](#expiry-notifications) has the switch **Add recipe ideas**. The recipes are appended to the message; if the AI fails, the normal message is still sent. Re-import the blueprint to get the new switch.
+**In the daily notification:** the [blueprint](#daily-summary) has the switch **Add recipe ideas**. The recipes are appended to the message; if the AI fails, the normal message is still sent. Re-import the blueprint to get the new switch.
 
 Only the contents, quantity with unit, remaining days and storage place (area name) are sent to the AI service you chose, never container names, IDs or anything else. The suggestions are ideas from a language model, not tested recipes: check that food is safe to eat, especially thawed or older food.
 
@@ -335,24 +335,38 @@ In [Larder experimental](#larder-experimental) the **Recipes** page is your own 
 
 **Recipe from a photo or file** (📷, administrators): take a photo of a recipe from a cookbook or a card, pick up to four photos (for example two pages) or a PDF. The AI reads the recipe, translates it into your language if needed and opens it for you to **check**; nothing is saved until you tap *Save*. The selected AI task must support attachments (for example Anthropic, OpenAI, Google). Photos are shrunk before uploading, are kept in Home Assistant's media folder (`media/larder/recipe_photos`) only while they are read and are deleted afterwards. Only the photo or file is sent, to the AI service you chose.
 
-## Expiry notifications
+## Daily summary
 
-The service `larder.get_expiring` lists all containers whose best-before date is near or has passed and returns a ready-made text in the language of Home Assistant:
+The included blueprint sends a **daily summary** of what expires soon. Nothing is sent when nothing expires.
+
+[![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fexpiry_notification.yaml)
+
+| Option | What it does |
+|---|---|
+| **Push notification** | One or more notify actions, separated by commas (`notify.mobile_app_your_iphone, notify.mobile_app_partner`), or a notify group. Empty for voice only. |
+| **Buttons in the push** | **Recipes** opens the recipe page of [Larder experimental](#larder-experimental) (or the recipe dialog of the normal dashboard), **Dashboard** opens Larder. Tapping the notification itself opens the dashboard as well. |
+| **Voice output** | Notify actions that read the summary out loud, for example `notify.alexa_media_kitchen` (Alexa Media Player) or a group of speakers. The spoken text is made for listening: "Salmon expires today. Gouda expires tomorrow. Pizza has expired." (at most six containers, the rest is counted). With recipe ideas it adds "Idea: …". |
+| **Voice options** | Extra data for the voice action. Alexa Media Player needs the type, for example `type: announce` (with chime) or `type: tts`. |
+| **Speak only when someone is home** | Persons, groups or zones; the voice output is skipped when nobody is home. The push is always sent. |
+| **Time** and **motion sensors** | Without motion sensors the summary is sent at the time. With motion sensors (for example the kitchen) it is sent at the **first motion after that time**, once per day, and at the **latest time** at the latest if nobody came by. |
+| **Days ahead**, **include expired**, **add recipe ideas** | As before. Recipe ideas need the *AI Task* integration; if the AI fails, the message is still sent. |
+
+Existing automations keep working; re-import the blueprint to get the new options.
+
+**Without the blueprint:** the service `larder.get_expiring` returns the same data for your own automations:
 
 ```yaml
 action: larder.get_expiring
 data:
-  days: 3               # containers expiring within 3 days
+  days: 3               # containers expiring within 3 days (default: "Expiring soon" from the settings)
   include_expired: true
 response_variable: result
-# result.count, result.expired, result.summary (text), result.items (name, content, quantity, unit, area, best_before, days_left, status)
+# result.count, result.expired, result.summary (text with bullets for a push),
+# result.speech (sentences to read out), result.labels (button titles),
+# result.items (name, content, quantity, unit, area, best_before, days_left, status)
 ```
 
-The easiest way is the included blueprint, which sends a notification once a day and stays quiet when nothing expires:
-
-[![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fexpiry_notification.yaml)
-
-Choose a notification action such as `notify.mobile_app_your_iphone` (Developer tools → Actions), the time and how many days ahead to look. For your own dashboards or automations there is also the sensor **Days until best before** on every container.
+`larder.suggest_recipes` also returns `speech` ("Idea: …"). For your own dashboards there is the sensor **Days until best before** on every container.
 
 ## Shopping list
 
@@ -468,7 +482,7 @@ The values survive restarts. "Empty container" is a regular button entity, so yo
 | `larder.estimate_best_before` | Estimate the best-before date of a container, see [Using it](#using-it) |
 | `larder.clear_best_before` / `larder.clear_filled_at` | Clear a single date |
 | `larder.mark_opened` / `larder.mark_thawed` | Shorten the best-before date after opening or thawing (`days` optional) |
-| `larder.get_expiring` | List what expires soon, with a ready-made text, see [Expiry notifications](#expiry-notifications) |
+| `larder.get_expiring` | List what expires soon, with a ready-made text, see [Daily summary](#daily-summary) |
 | `larder.suggest_recipes` | [Recipe ideas](#recipe-ideas) from what expires soon, from all or from selected containers |
 | `larder.rebuild_calendar` | Clean up the [calendar](#best-before-dates-in-your-calendar) |
 

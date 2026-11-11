@@ -702,3 +702,43 @@ async def test_max_storage_from_the_label_caps_ai_values_and_is_in_the_prompt(ha
     assert out["days"] == 180
     assert out["tip"] == "Gut einfrieren. Capped at the area's max storage time (6 months)."
     assert "at most 180 days in this place" in calls[0]["instructions"]
+
+
+# ---------- Erkennung: Fälle aus dem echten Gebrauch ----------
+
+
+@pytest.mark.parametrize(
+    ("content", "expected"),
+    [
+        ("Gekochte Eier", "egg_boiled"), ("Eier gekocht", "egg_boiled"), ("Eier (gekocht)", "egg_boiled"),
+        ("Ei gekocht", "egg_boiled"), ("Eier hart", "egg_boiled"), ("Hartgekochte Eier", "egg_boiled"),
+        ("Eier", "egg"), ("Eiersalat", "salad_dish"), ("Rührei", "egg_cooked"),
+        ("Lachsfilet", "fish"), ("Fischfilet", "fish"), ("Hähnchenfilet", "poultry"), ("Schweinefilet", "meat"), ("Filet", "meat"),
+        ("Spinat gehackt", "leafy"), ("Gehackte Tomaten", "vegetables"), ("Gehacktes", "ground_meat"), ("Rinderhack", "ground_meat"),
+        ("Milchreis", "dish"), ("Grießbrei", "dish"), ("Kartoffelpüree", "dish"), ("Reis gekocht", "dish"),
+        ("TK Erbsen", "vegetables"), ("Edamame", "vegetables"), ("Mais", "vegetables"),
+        ("Butterkekse", "cookies"), ("Zwiebelkuchen", "cake"), ("Gebäck", "cake"),
+        ("Dinkelmehl Typ 630", "flour"), ("Dinkelvollkornmehl", "flour"), ("Weizenmehl", "flour"),
+        ("Basmati Reis", "rice"), ("Bulgur", "rice"), ("Müsli Yannick", "cereal"), ("Reisnudeln", "pasta"),
+        ("Kokosmilch", "milk"), ("Schinken", "deli"), ("Brokkoli", "vegetables"), ("Teewurst", "deli"),
+    ],
+)
+def test_recognition_of_real_contents(content, expected) -> None:
+    entry = sl.find_entry(content)
+    assert entry is not None and entry.id == expected
+
+
+async def test_old_table_values_are_recalculated_after_a_table_update(hass: HomeAssistant) -> None:
+    await _prepare(hass, "Eier gekocht", "Kühlschrank", None)
+    estimator = hass.data[DOMAIN]["estimator"]
+    out = (await _estimate(hass, overwrite=True, apply=False))[_eid(hass, "date")]
+    assert out["days"] == 7 and "boiled" in out["basis"].lower()
+    (key,) = estimator._cache
+    # gemerkter Wert einer älteren Tabelle (damals als rohe Eier erkannt)
+    estimator._cache[key].update(days=27, basis="Eggs (raw, in shell) · fridge", table_version=1)
+    out = (await _estimate(hass, overwrite=True, apply=False))[_eid(hass, "date")]
+    assert out["days"] == 7 and estimator._cache[key]["table_version"] == sl.TABLE_VERSION
+    # eigene Korrekturen bleiben
+    estimator.learn(key, 5)
+    out = (await _estimate(hass, overwrite=True, apply=False))[_eid(hass, "date")]
+    assert out["days"] == 5

@@ -3,6 +3,14 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 1.11.0
+
+- **Better recognition of contents** (table and category icons): the order of the words no longer matters ("Eier gekocht" are boiled eggs, not raw eggs), compound words count by their last part ("Butterkekse" are cookies, "Zwiebelkuchen" is cake), and fish/meat cuts go by the animal ("Lachsfilet" is fish, not raw meat). "Gehackt" no longer means minced meat ("Spinat gehackt" is spinach, "Gehackte Tomaten" are vegetables). New entries: peas, beans, edamame, corn and more vegetables, flour types (Dinkelmehl Typ 630 …), milk rice, semolina pudding, mashed potatoes, pancakes, more fish.
+- Remembered table values from older versions are recalculated on their next use, so wrong values (for example raw eggs for boiled eggs) disappear by themselves. Your own corrections stay. Dates already set on containers are not changed.
+- **Daily summary** (blueprint, re-import it): push to several notify actions at once, with **Recipes** and **Dashboard** buttons; optional **voice output** on Alexa (Alexa Media Player, `type: announce`) or other speakers with a notify action, only when someone is home; optionally sent at the **first motion** after a time (for example in the kitchen) with a latest time as fallback, once per day. Closes #11.
+- `larder.get_expiring` returns `speech` (sentences to read out) and `labels`; `larder.suggest_recipes` returns `speech` ("Idea: …").
+- Links: `/larder-experimental?view=recipes` opens a view of Larder experimental, `/larder?recipes=1` the recipe ideas dialog.
+
 ## 1.10.2
 
 - **Serial scan:** a switch **📷 QR code | 📶 NFC** at the top of the containers page changes the scan method; tap or swipe it. NFC closes the app's QR scanner, QR code opens it again. Inside the QR scanner, **Switch to NFC** does the same.

@@ -451,6 +451,9 @@ class Estimator:
 
         key = cache_key(content, context.area_name, vacuum)
         hit = self._cache.get(key)
+        if hit is not None and hit.get("source") == "table" and hit.get("table_version") != shelf_life.TABLE_VERSION:
+            # Tabelle oder Erkennung wurde verbessert: neu nachschlagen (eigene Korrekturen bleiben)
+            hit = None
         if hit is not None and self._is_stale(hit):
             # Alte KI-Schätzung: neu schätzen; klappt das nicht, gilt der alte Wert weiter
             try:
@@ -518,6 +521,7 @@ class Estimator:
                     "days": result.days,
                     "tip": result.tip,
                     "source": "table",
+                    "table_version": shelf_life.TABLE_VERSION,
                     "basis": result.basis,
                     "content": content.strip(),
                     "area": context.area_name,

@@ -154,6 +154,16 @@ def parse_recipes(data: Any, limit: int) -> list[dict[str, Any]]:
     return recipes[:limit]
 
 
+def build_speech(recipes: list[dict[str, Any]], language: str) -> str:
+    """Ein Satz zum Vorlesen mit den (höchstens zwei) besten Ideen."""
+    titles = [r["title"] for r in recipes[:2]]
+    if not titles:
+        return ""
+    if language.lower().startswith("de"):
+        return f"Idee: {titles[0]}." if len(titles) == 1 else f"Ideen: {titles[0]} oder {titles[1]}."
+    return f"Idea: {titles[0]}." if len(titles) == 1 else f"Ideas: {titles[0]} or {titles[1]}."
+
+
 def build_summary(recipes: list[dict[str, Any]]) -> str:
     """Kurzer Text für Benachrichtigungen: eine Zeile pro Rezept."""
     lines = []
@@ -193,7 +203,7 @@ async def async_suggest_recipes(
         if (item["content"] or "").strip() and (chosen is None or item["cc"] in chosen)
     ][:MAX_INGREDIENTS]
     if not items:
-        return {"count": 0, "days": days, "ingredients": [], "recipes": [], "summary": ""}
+        return {"count": 0, "days": days, "ingredients": [], "recipes": [], "summary": "", "speech": ""}
     if not hass.services.has_service("ai_task", "generate_data"):
         raise EstimateError("ai_unavailable")
 
@@ -232,6 +242,7 @@ async def async_suggest_recipes(
         "ingredients": items,
         "recipes": recipes,
         "summary": build_summary(recipes),
+        "speech": build_speech(recipes, language),
     }
 
 

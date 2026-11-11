@@ -1,23 +1,97 @@
 blueprint:
-  name: Larder – expiry notification
+  name: Larder – daily summary
   description: >
-    Sends a notification once a day listing the containers whose best-before date is near or
-    has passed (text in the language of Home Assistant). Nothing is sent when nothing expires.
-    Tägliche Benachrichtigung mit den Dosen, deren MHD bald abläuft oder abgelaufen ist.
+    Once a day: what expires soon, as a push notification (with buttons to the recipes and the
+    dashboard) and optionally read out loud, for example on Alexa or another speaker that has a
+    notify action. Optionally triggered by motion (for example in the kitchen in the morning) and
+    only spoken when someone is home. Nothing is sent when nothing expires.
+    Tägliche Zusammenfassung: was bald abläuft, als Push (mit Knöpfen zu Rezepten und Dashboard)
+    und optional als Sprachausgabe, z. B. auf Alexa; optional bei Bewegung in der Küche und nur,
+    wenn jemand zu Hause ist.
   domain: automation
   source_url: https://github.com/yan14/ha-larder/blob/main/blueprints/automation/larder/expiry_notification.yaml
   input:
     notify_action:
-      name: Notification action
+      name: Push notification
       description: >
-        Action to send the message with, for example notify.mobile_app_your_iphone
-        (Developer tools → Actions, search for "notify").
+        Notify action(s) for the push message, for example notify.mobile_app_your_iphone or a
+        notify group. Several are separated by commas. Leave empty for voice only.
+        (Developer tools → Actions, search for "notify".)
+      default: ""
       selector:
         text:
+    title:
+      name: Title
+      default: "Larder"
+      selector:
+        text:
+    buttons:
+      name: Buttons in the push
+      description: Adds "Recipes" and "Dashboard" buttons to the push notification (Home Assistant app).
+      default: true
+      selector:
+        boolean:
+    recipes_page:
+      name: "Recipes button opens"
+      default: experimental
+      selector:
+        select:
+          options:
+            - label: Larder experimental (recipe page)
+              value: experimental
+            - label: Larder (recipe ideas dialog)
+              value: classic
+    voice_action:
+      name: Voice output (optional)
+      description: >
+        Notify action(s) that read the summary out loud, for example notify.alexa_media_kitchen
+        (Alexa Media Player) or a notify group of speakers. Several are separated by commas.
+        The text is written to be spoken: whole sentences, at most six containers.
+      default: ""
+      selector:
+        text:
+    voice_data:
+      name: Voice options
+      description: >
+        Extra data for the voice action. Alexa Media Player needs the type, for example
+        type: announce (with chime) or type: tts. Leave empty for other speakers.
+      default: {}
+      selector:
+        object:
+    presence:
+      name: Speak only when someone is home (optional)
+      description: >
+        Persons, groups or zones. The voice output is only sent when at least one of them is
+        home. The push notification is always sent.
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: [person, group, zone, device_tracker, binary_sensor, input_boolean]
     send_time:
-      name: Time
-      description: When to check and notify.
+      name: Time (or earliest time with motion)
+      description: >
+        Without motion sensors: when the summary is sent. With motion sensors: the earliest time
+        a motion may trigger it.
       default: "08:00:00"
+      selector:
+        time:
+    motion_sensors:
+      name: Motion sensors (optional)
+      description: >
+        Send the summary at the first motion after the time above, once per day, for example
+        when you enter the kitchen in the morning.
+      default: []
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain: binary_sensor
+    latest_time:
+      name: Latest time (with motion)
+      description: If no motion was detected until this time, the summary is sent anyway.
+      default: "11:00:00"
       selector:
         time:
     days:
@@ -39,27 +113,56 @@ blueprint:
       name: Add recipe ideas
       description: >
         Also asks the AI for recipe ideas that use up the expiring containers and adds them to
-        the message. Needs the "AI Task" integration; only contents, quantity, remaining days and
-        storage place are sent. If the AI fails, the normal message is still sent.
-        Fragt zusätzlich die KI nach Rezeptideen und hängt sie an die Nachricht an.
+        the message (the voice output names the best one or two). Needs the "AI Task"
+        integration; only contents, quantity, remaining days and storage place are sent. If the
+        AI fails, the normal message is still sent.
       default: false
       selector:
         boolean:
-    title:
-      name: Title
-      default: "Larder"
-      selector:
-        text:
 
 mode: single
+max_exceeded: silent
 
 variables:
   notify_action: !input notify_action
+  voice_action: !input voice_action
+  voice_data: !input voice_data
+  presence: !input presence
+  motion_sensors: !input motion_sensors
+  send_time: !input send_time
+  latest_time: !input latest_time
   recipes: !input recipes
+  buttons: !input buttons
+  recipes_page: !input recipes_page
+  # Aktionen wie notify.mobile_app_iphone, getrennt durch Komma, Semikolon, Leerzeichen oder Zeilen
+  push_targets: "{{ (notify_action or '') | string | lower | regex_findall('[a-z0-9_]+[.][a-z0-9_]+') }}"
+  voice_targets: "{{ (voice_action or '') | string | lower | regex_findall('[a-z0-9_]+[.][a-z0-9_]+') }}"
 
 triggers:
   - trigger: time
     at: !input send_time
+    id: time
+  - trigger: state
+    entity_id: !input motion_sensors
+    to: "on"
+    id: motion
+  - trigger: time
+    at: !input latest_time
+    id: latest
+
+conditions:
+  # ohne Bewegungsmelder: nur die feste Uhrzeit; mit: Bewegung im Zeitfenster oder spätestens um latest_time
+  - condition: template
+    value_template: >-
+      {% set has_motion = motion_sensors | length > 0 %}
+      {% if not has_motion %}{{ trigger.id == 'time' }}
+      {% elif trigger.id == 'motion' %}{{ today_at(send_time) <= now() < today_at(latest_time) }}
+      {% else %}{{ trigger.id == 'latest' }}{% endif %}
+  # höchstens einmal am Tag
+  - condition: template
+    value_template: >-
+      {{ this.attributes.last_triggered is none
+         or (this.attributes.last_triggered | as_datetime | as_local).date() < now().date() }}
 
 actions:
   - action: larder.get_expiring
@@ -78,10 +181,45 @@ actions:
           days: !input days
         response_variable: ideas
         continue_on_error: true
-  - action: "{{ notify_action }}"
-    data:
-      title: !input title
+  - variables:
       message: |-
         {{ result.summary }}{% if ideas is defined and ideas.summary %}
 
         {{ ideas.summary }}{% endif %}
+      speech: >-
+        {{ result.speech }}{% if ideas is defined and ideas.speech %} {{ ideas.speech }}{% endif %}
+      recipes_uri: >-
+        {{ '/larder-experimental?view=recipes' if recipes_page == 'experimental' else '/larder?recipes=1' }}
+      push_data: >-
+        {%- if buttons -%}
+        {{ {'url': '/larder', 'clickAction': '/larder',
+            'actions': [
+              {'action': 'URI', 'title': result.labels.recipes | default('Recipes'), 'uri': recipes_uri},
+              {'action': 'URI', 'title': result.labels.dashboard | default('Dashboard'), 'uri': '/larder'}
+            ]} }}
+        {%- else -%}{{ {} }}{%- endif -%}
+      someone_home: >-
+        {{ presence | length == 0
+           or presence | select('is_state', ['home', 'on']) | list | length > 0
+           or presence | map('states') | select('is_number') | map('int') | select('>', 0) | list | length > 0 }}
+  - repeat:
+      for_each: "{{ push_targets }}"
+      sequence:
+        - action: "{{ repeat.item }}"
+          data:
+            title: !input title
+            message: "{{ message }}"
+            data: "{{ push_data }}"
+          continue_on_error: true
+  - if:
+      - condition: template
+        value_template: "{{ voice_targets | length > 0 and someone_home }}"
+    then:
+      - repeat:
+          for_each: "{{ voice_targets }}"
+          sequence:
+            - action: "{{ repeat.item }}"
+              data:
+                message: "{{ speech }}"
+                data: "{{ voice_data }}"
+              continue_on_error: true

@@ -585,7 +585,17 @@ class LarderExperimental extends HTMLElement {
     if (first) {
       this.loadRecipes();
       this.loadSettings();
+      this._handleViewParam();
     }
+  }
+
+  /** `?view=recipes` usw. (z. B. Knopf "Rezepte" in der täglichen Benachrichtigung). */
+  _handleViewParam() {
+    const params = new URLSearchParams(window.location.search);
+    const view = params.get("view");
+    if (!view || !VIEWS.includes(view)) return;
+    window.history.replaceState(null, "", window.location.pathname);
+    this.setView(view);
   }
 
   set narrow(value) {

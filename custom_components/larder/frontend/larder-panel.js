@@ -1911,6 +1911,15 @@ class LarderPanel extends HTMLElement {
     return true;
   }
 
+  /** `?recipes=1` (Knopf "Rezepte" in der täglichen Benachrichtigung): Rezept-Dialog öffnen. */
+  _handleRecipesParam() {
+    if (this.hasAttribute("embedded")) return;
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has("recipes") || !this._hass || !this._hass.user) return;
+    window.history.replaceState(null, "", window.location.pathname);
+    this.openRecipeDialog();
+  }
+
   /** `?open=<Geräte-ID>` (aus der Benachrichtigung nach einem NFC-Scan): Dose hervorheben. */
   _handleOpenParam() {
     const id = new URLSearchParams(window.location.search).get("open");
@@ -2010,6 +2019,7 @@ class LarderPanel extends HTMLElement {
     this._fillForm.querySelector("button.submit").textContent = t.fillSave;
     this._handleAddParam();
     this._handleOpenParam();
+    this._handleRecipesParam();
     this._subscribe();
     if (!this._nfcLoaded && isAdmin(hass)) {
       this._nfcLoaded = true;

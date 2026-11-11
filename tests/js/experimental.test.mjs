@@ -789,3 +789,13 @@ test("Serien-Scan: NFC-Ereignisse und QR-Scanner der App wählen Dosen aus", asy
   assert.equal(unsubscribed, true);
   assert.equal(external._commandHandler, original);
 });
+
+test("Link aus der Benachrichtigung: ?view=recipes öffnet die Rezeptseite", async () => {
+  document.body.innerHTML = "";
+  window.history.replaceState(null, "", "/larder-experimental?view=recipes");
+  const el = mount(makeHass(DOSES));
+  await flush();
+  assert.equal($(el, "h1").textContent, "Rezepte");
+  assert.equal(window.location.search, "");
+  window.history.replaceState(null, "", "/");
+});

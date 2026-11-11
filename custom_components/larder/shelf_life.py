@@ -54,10 +54,17 @@ class Entry:
     perishable: bool = False  # Vakuum verlängert die Kühlhaltbarkeit nicht
 
 
+def _kw(raw: str) -> str:
+    """Stichwort normalisieren; "~" (schwach) und "+" (alle Teile, beliebige Reihenfolge) bleiben erhalten."""
+    weak = raw.startswith("~")
+    parts = [norm(p) for p in raw.lstrip("~").split("+")]
+    return ("~" if weak else "") + "+".join(p for p in parts if p)
+
+
 def _e(id_, de, en, cat, kw, fridge, zero, freezer, pantry, *, pri=1, perishable=False) -> Entry:
     return Entry(
         id_, de, en, cat,
-        tuple(norm(k) for k in kw.split("|")),
+        tuple(_kw(k) for k in kw.split("|")),
         {FRIDGE: fridge, ZERO: zero, FREEZER: freezer, PANTRY: pantry},
         pri, perishable,
     )
@@ -111,11 +118,17 @@ TIPS: dict[str, tuple[str, str]] = {
     ),
 }
 
-# Reihenfolge ist egal: Treffer mit höherer Priorität, dann mit dem längsten Stichwort, gewinnen.
+# Reihenfolge ist egal: Treffer mit höherer Priorität, dann am Wortende (Grundwort eines
+# zusammengesetzten Worts: "Butter|kekse"), dann mit dem längsten Stichwort, gewinnen.
+# Stichwörter: "a+b" heißt beide Teile kommen vor (beliebige Reihenfolge, "Eier gekocht"),
+# "~a" ist ein schwaches Stichwort, das nur zählt, wenn sonst nichts passt ("filet").
+# TABLE_VERSION erhöhen, wenn sich Einträge oder die Erkennung ändern: gemerkte Tabellenwerte
+# werden dann neu berechnet (eigene Korrekturen bleiben).
+TABLE_VERSION = 2
 ENTRIES: tuple[Entry, ...] = (
     # --- Gerichte und Reste (Priorität 3) ---
     _e("dish", "Gericht / Reste", "Dish / leftovers", "dish",
-       "reste|leftover|gekocht|cooked|auflauf|lasagne|gratin|gericht|meal prep|pfanne|bratkartoffel|eintopf|quiche|pizza|dal|chili|curry|bolognese|gulasch|goulash|ragout|frikadelle|bulette|knoedel|gemuesepfanne",
+       "reste|leftover|gekocht|cooked|auflauf|lasagne|gratin|gericht|meal prep|pfanne|bratkartoffel|eintopf|quiche|pizza|dal|chili|curry|bolognese|gulasch|goulash|ragout|frikadelle|bulette|knoedel|gemuesepfanne|milchreis|griessbrei|pudding|pueree|kartoffelbrei|pfannkuchen|crepe|kaiserschmarrn|risotto|paella|gebraten|fried rice|bratreis",
        3, 4, 90, None, pri=3, perishable=True),
     _e("soup", "Suppe / Brühe / Soße", "Soup / broth / sauce", "dish",
        "suppe|bruehe|soup|broth|sosse|sauce|stew|tomatensosse|bechamel|dressing",
@@ -143,16 +156,16 @@ ENTRIES: tuple[Entry, ...] = (
        365, 365, 365, 365, pri=3),
     # --- Fleisch, Fisch, Wurst (Priorität 2) ---
     _e("ground_meat", "Hackfleisch", "Ground meat", "raw_meat",
-       "hackfleisch|gehackt|mett|ground beef|ground meat|ground pork|mince|hack",
+       "hackfleisch|gehacktes|mett|ground beef|ground meat|ground pork|mince|hack|rinderhack|schweinehack|gemischtes hack|hackbaellchen",
        1, 2, 90, None, pri=2, perishable=True),
     _e("poultry", "Geflügel (roh)", "Poultry (raw)", "raw_meat",
        "haehnchen|huehnchen|huhn|pute|truthahn|gefluegel|chicken|turkey|poultry|ente|gans",
        1, 2, 180, None, pri=2, perishable=True),
     _e("meat", "Fleisch (roh)", "Meat (raw)", "raw_meat",
-       "fleisch|steak|schnitzel|rind|schwein|lamm|kotelett|braten|beef|pork|lamb|filet|roulade",
+       "fleisch|steak|schnitzel|rind|schwein|lamm|kotelett|braten|beef|pork|lamb|~filet|roulade|gulaschfleisch|geschnetzeltes",
        2, 4, 180, None, pri=2, perishable=True),
     _e("fish", "Fisch / Meeresfrüchte (roh)", "Fish / seafood (raw)", "fish",
-       "fisch|lachs|forelle|thunfisch|garnele|shrimp|salmon|fish|cod|kabeljau|meeresfruechte|seafood|scholle|zander",
+       "fisch|lachs|forelle|thunfisch|garnele|shrimp|salmon|fish|cod|kabeljau|meeresfruechte|seafood|scholle|zander|lachsfilet|fischfilet|seelachs|dorsch|tilapia|pangasius|hering|makrele|tuna|prawn|calamari|tintenfisch|muschel",
        1, 2, 90, None, pri=2, perishable=True),
     _e("deli", "Wurst / Aufschnitt / Schinken", "Cold cuts / sausage / ham", "deli",
        "wurst|aufschnitt|schinken|salami|speck|bacon|ham |sausage|cold cuts|fleischwurst|leberwurst|bratwurst|wiener",
@@ -167,7 +180,7 @@ ENTRIES: tuple[Entry, ...] = (
        "joghurt|yoghurt|yogurt|quark|skyr|kefir|schmand|sauerrahm|sour cream",
        5, 7, 60, None, pri=2, perishable=True),
     _e("milk", "Milch", "Milk", "dairy",
-       "milch|milk|buttermilch|hafermilch|haferdrink|sojadrink|mandelmilch|pflanzendrink|oat drink",
+       "milch|milk|buttermilch|hafermilch|haferdrink|sojadrink|mandelmilch|pflanzendrink|oat drink|kokosmilch",
        4, 6, 90, None, pri=2, perishable=True),
     _e("cream", "Sahne", "Cream", "dairy",
        "sahne|schlagsahne|cream|creme fraiche|schlagobers",
@@ -176,10 +189,10 @@ ENTRIES: tuple[Entry, ...] = (
        "butter|margarine",
        30, 45, 180, 2, pri=2),
     _e("egg_boiled", "Eier (gekocht)", "Eggs (boiled)", "egg",
-       "gekochte eier|hartgekochte|hard boiled|boiled egg|fruehstuecksei|gekochtes ei",
+       "gekochte eier|hartgekochte|hard boiled|boiled egg|fruehstuecksei|gekochtes ei|eier+gekocht|ei+gekocht|eier+hart|ei+hart|egg+boiled|eggs+boiled|soleier|ostereier|eier+gefaerbt",
        7, 10, None, None, pri=3, perishable=True),
     _e("egg_cooked", "Rührei / Omelett", "Scrambled eggs / omelette", "egg",
-       "ruehrei|spiegelei|omelett|omelette|scrambled|fried egg",
+       "ruehrei|spiegelei|omelett|omelette|scrambled|fried egg|eier+gebraten|frittata",
        3, 4, None, None, pri=3, perishable=True),
     _e("egg_separated", "Eigelb / Eiweiß (roh)", "Egg yolk / white (raw)", "egg",
        "eigelb|eiweiss|egg white|egg yolk",
@@ -195,7 +208,7 @@ ENTRIES: tuple[Entry, ...] = (
        4, 6, 90, None, pri=2, perishable=True),
     # --- Obst, Gemüse (Priorität 1-2) ---
     _e("leafy", "Salat / Blattgemüse", "Salad greens", "produce",
-       "salat|kopfsalat|rucola|spinat|feldsalat|lettuce|spinach|arugula|mangold|pak choi",
+       "salat|kopfsalat|rucola|spinat|blattspinat|feldsalat|lettuce|spinach|arugula|mangold|pak choi",
        5, 7, None, None, pri=1),
     _e("root", "Kartoffeln / Zwiebeln / Knoblauch", "Potatoes / onions / garlic", "produce",
        "kartoffel|zwiebel|knoblauch|potato|onion|garlic|suesskartoffel|kuerbis|pumpkin|ingwer",
@@ -219,7 +232,7 @@ ENTRIES: tuple[Entry, ...] = (
        "obst|banane|traube|melone|pfirsich|fruit|ananas|mango|kiwi|pflaume|nektarine",
        5, 7, 120, 3, pri=1),
     _e("vegetables", "Gemüse (frisch)", "Vegetables (fresh)", "produce",
-       "gemuese|tomate|gurke|paprika|zucchini|karotte|moehre|brokkoli|blumenkohl|kohl|lauch|sellerie|spargel|aubergine|radieschen|vegetable|carrot|broccoli|cucumber|pepper",
+       "gemuese|tomate|gurke|paprika|zucchini|karotte|moehre|brokkoli|blumenkohl|kohl|lauch|sellerie|spargel|aubergine|radieschen|vegetable|carrot|broccoli|cucumber|pepper|erbse|bohne|edamame|mais|rosenkohl|gruenkohl|rotkohl|wirsing|kohlrabi|fenchel|pastinake|rote bete|peas|beans|corn|sweetcorn",
        7, 12, 90, 3, pri=1),
     # --- Backwaren, Süßes ---
     _e("bread", "Brot / Brötchen", "Bread / rolls", "bread",
@@ -229,7 +242,7 @@ ENTRIES: tuple[Entry, ...] = (
        "kuchen|torte|gebaeck|muffin|cake|pastry|brownie|kaesekuchen",
        4, 5, 90, 3, pri=2),
     _e("cookies", "Kekse / Cracker", "Cookies / crackers", "sweet",
-       "keks|plaetzchen|cookie|cracker|kracker|waffel|biscuit|zwieback",
+       "keks|plaetzchen|cookie|cracker|kracker|waffel|biscuit|zwieback|butterkeks|lebkuchen|spekulatius",
        30, 30, 180, 30, pri=2),
     _e("chips", "Chips / Snacks", "Chips / snacks", "sweet",
        "chips|salzstange|snack|popcorn|erdnussflips|brezel",
@@ -254,7 +267,7 @@ ENTRIES: tuple[Entry, ...] = (
        "reis|rice|couscous|bulgur|quinoa|hirse|polenta|griess|risotto|basmati|jasmin",
        2, 3, 30, 365, pri=1),
     _e("flour", "Mehl / Stärke / Backzutaten", "Flour / starch / baking", "dry",
-       "mehl|flour|staerke|backpulver|speisestaerke|paniermehl|semolina",
+       "mehl|flour|staerke|backpulver|speisestaerke|paniermehl|semolina|dinkelmehl|weizenmehl|roggenmehl|vollkornmehl|type 405|type 550|typ 405|typ 550|typ 630|typ 1050",
        180, 180, 365, 180, pri=1),
     _e("cereal", "Haferflocken / Müsli / Cornflakes", "Oats / muesli / cereal", "dry",
        "haferflocken|muesli|cornflakes|cereal|oats|granola|porridge",
@@ -282,29 +295,64 @@ ENTRIES: tuple[Entry, ...] = (
        180, 180, None, 180, pri=1),
 )
 
-_KEYWORD_RES: dict[str, re.Pattern[str]] = {}
+_KEYWORD_RES: dict[str, tuple[re.Pattern[str], re.Pattern[str]]] = {}
+_PLURAL = r"(?:e|en|n|s|es|er|ern)?"
+
+
+def _part_match(part: str, text: str) -> tuple[bool, bool]:
+    """(passt, am Wortende). Kurze Teile nur am Wortanfang oder als Grundwort am Wortende
+    (reis ≠ kreis, aber Milch|reis), lange auch in der Wortmitte (Tomaten|suppe)."""
+    if (patterns := _KEYWORD_RES.get(part)) is None:
+        word_start = re.compile(rf"(?<![a-z0-9]){re.escape(part)}")
+        # Grundwort: allein oder nach mindestens drei Buchstaben (Milch|reis, aber nicht K|reis)
+        word_end = re.compile(rf"(?:(?<![a-z0-9])|(?<=[a-z]{{3}})){re.escape(part)}{_PLURAL}(?![a-z0-9])")
+        patterns = _KEYWORD_RES[part] = (word_start, word_end)
+    word_start, word_end = patterns
+    if len(part) <= 2:
+        # "ei" nur als eigenes Wort (sonst steckt es in "Reis", "Brei" …)
+        return bool(re.search(rf"(?<![a-z0-9]){re.escape(part)}(?![a-z0-9])", text)), True
+    at_end = len(part) >= 4 and bool(word_end.search(text))
+    if at_end:
+        return True, True
+    if len(part) >= 5:
+        return part in text, False
+    return bool(word_start.search(text)), False
+
+
+def _keyword_score(keyword: str, text: str) -> tuple[bool, bool, int] | None:
+    """(schwach, am Wortende, Länge) des Treffers, oder None."""
+    weak = keyword.startswith("~")
+    parts = keyword.lstrip("~").split("+")
+    at_end = False
+    for part in parts:
+        ok, end = _part_match(part, text)
+        if not ok:
+            return None
+        at_end = at_end or end
+    return weak, at_end, sum(len(p) for p in parts)
 
 
 def _keyword_matches(keyword: str, text: str) -> bool:
-    """Kurze Stichwörter nur am Wortanfang (reis ≠ kreis), lange auch in Wortmitte (Tomatensuppe)."""
-    if len(keyword) >= 5:
-        return keyword in text
-    if (pattern := _KEYWORD_RES.get(keyword)) is None:
-        pattern = _KEYWORD_RES[keyword] = re.compile(rf"(?<![a-z0-9]){re.escape(keyword)}")
-    return bool(pattern.search(text))
+    return _keyword_score(keyword, f" {norm(text)} " if text.strip() == text else text) is not None
 
 
 def find_entry(content: str) -> Entry | None:
-    """Besten Tabelleneintrag zum Inhalt finden: höhere Priorität, dann längstes Stichwort."""
+    """Besten Tabelleneintrag zum Inhalt finden: kein schwaches Stichwort, höhere Priorität,
+    Grundwort am Wortende, dann längstes Stichwort."""
     text = f" {norm(content)} "
-    best: tuple[int, int] | None = None
+    best: tuple[int, int, int, int] | None = None
     best_entry: Entry | None = None
     for entry in ENTRIES:
         for keyword in entry.keywords:
-            if keyword and _keyword_matches(keyword, text):
-                score = (entry.priority, len(keyword))
-                if best is None or score > best:
-                    best, best_entry = score, entry
+            if not keyword:
+                continue
+            found = _keyword_score(keyword, text)
+            if found is None:
+                continue
+            weak, at_end, length = found
+            score = (0 if weak else 1, entry.priority, 1 if at_end else 0, length)
+            if best is None or score > best:
+                best, best_entry = score, entry
     return best_entry
 
 

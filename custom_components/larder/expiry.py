@@ -128,6 +128,88 @@ def build_summary(items: list[dict[str, Any]], language: str) -> str:
     return "\n".join(lines)
 
 
+MAX_SPOKEN = 6  # so viele Dosen nennt die Sprachausgabe, der Rest wird gezählt
+
+_SPEECH = {
+    "de": {
+        "none": "Nichts läuft bald ab.",
+        "and": "und",
+        "more": lambda n: f"{n} weitere",
+        "today": lambda names, n: f"Heute {'läuft' if n == 1 else 'laufen'} {names} ab.",
+        "tomorrow": lambda names, n: f"Morgen {'läuft' if n == 1 else 'laufen'} {names} ab.",
+        "in_days": lambda d, names, n: f"In {d} Tagen {'läuft' if n == 1 else 'laufen'} {names} ab.",
+        "expired": lambda names, n: f"{'Abgelaufen ist' if n == 1 else 'Abgelaufen sind'} {names}.",
+    },
+    "en": {
+        "none": "Nothing expires soon.",
+        "and": "and",
+        "more": lambda n: f"{n} more",
+        "today": lambda names, n: f"{names} {'expires' if n == 1 else 'expire'} today.",
+        "tomorrow": lambda names, n: f"{names} {'expires' if n == 1 else 'expire'} tomorrow.",
+        "in_days": lambda d, names, n: f"{names} {'expires' if n == 1 else 'expire'} in {d} days.",
+        "expired": lambda names, n: f"{names} {'has' if n == 1 else 'have'} expired.",
+    },
+}
+
+LABELS = {
+    "de": {"recipes": "Rezepte", "dashboard": "Dashboard"},
+    "en": {"recipes": "Recipes", "dashboard": "Dashboard"},
+}
+
+
+def _join(words: list[str], conj: str) -> str:
+    if len(words) <= 1:
+        return "".join(words)
+    return f"{', '.join(words[:-1])} {conj} {words[-1]}"
+
+
+def build_speech(items: list[dict[str, Any]], language: str, limit: int = MAX_SPOKEN) -> str:
+    """Kurzer Text zum Vorlesen (Alexa, Assist): ganze Sätze, keine Symbole, höchstens `limit` Dosen.
+
+    Reihenfolge: heute, morgen, später, zuletzt Abgelaufenes.
+    """
+    text = _SPEECH["de" if language.lower().startswith("de") else "en"]
+    if not items:
+        return text["none"]
+    unnamed = _TEXT["de" if language.lower().startswith("de") else "en"]["unnamed"]
+    groups: dict[int, list[str]] = {}
+    expired: list[str] = []
+    for item in items:
+        name = (item["content"] or item["name"] or unnamed).strip()
+        if item["days_left"] is None:
+            continue
+        if item["days_left"] < 0:
+            expired.append(name)
+        else:
+            groups.setdefault(item["days_left"], []).append(name)
+    ordered = [(d, groups[d]) for d in sorted(groups)] + ([(-1, expired)] if expired else [])
+    sentences: list[str] = []
+    spoken = 0
+    skipped = 0
+    for days, names in ordered:
+        room = limit - spoken
+        if room <= 0:
+            skipped += len(names)
+            continue
+        shown = names[:room]
+        spoken += len(shown)
+        skipped += len(names) - len(shown)
+        joined = _join(shown, text["and"])
+        count = len(shown)
+        if days < 0:
+            sentences.append(text["expired"](joined, count))
+        elif days == 0:
+            sentences.append(text["today"](joined, count))
+        elif days == 1:
+            sentences.append(text["tomorrow"](joined, count))
+        else:
+            sentences.append(text["in_days"](days, joined, count))
+    if skipped:
+        extra = text["more"](skipped)
+        sentences.append(f"{'Dazu' if language.lower().startswith('de') else 'Plus'} {extra}.")
+    return " ".join(s[0].upper() + s[1:] for s in sentences)
+
+
 def collect_expiring(
     hass: HomeAssistant,
     days: int | None = SOON_DAYS,
@@ -212,6 +294,8 @@ def async_setup_services(hass: HomeAssistant) -> None:
             "expired": sum(1 for i in items if i["status"] == STATUS_EXPIRED),
             "items": items,
             "summary": build_summary(items, hass.config.language),
+            "speech": build_speech(items, hass.config.language),
+            "labels": LABELS["de" if hass.config.language.lower().startswith("de") else "en"],
         }
 
     hass.services.async_register(

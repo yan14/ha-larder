@@ -73,7 +73,7 @@ async def test_nothing_expiring_does_not_call_the_ai(hass: HomeAssistant) -> Non
     await _fill(hass, "A1", "Reis", 20)
     calls = _fake_ai(hass)
     out = await _suggest(hass)
-    assert out == {"count": 0, "days": 3, "ingredients": [], "recipes": [], "summary": ""}
+    assert out == {"count": 0, "days": 3, "ingredients": [], "recipes": [], "summary": "", "speech": ""}
     assert calls == []
 
 
@@ -157,7 +157,8 @@ def test_blueprint_message_appends_recipe_ideas_only_when_available(hass: HomeAs
     from homeassistant.util.yaml import load_yaml
 
     path = Path(__file__).parents[1] / "blueprints/automation/larder/expiry_notification.yaml"
-    message = load_yaml(path)["actions"][-1]["data"]["message"]
+    variables = next(a["variables"] for a in load_yaml(path)["actions"] if "variables" in a)
+    message = variables["message"]
 
     def render(**variables):
         return Template(message, hass).async_render(variables)
