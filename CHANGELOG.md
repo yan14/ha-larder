@@ -3,6 +3,15 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 1.10.0
+
+- **Select several containers** (Larder experimental, containers page, **☑ Select**): tap containers to select them, then **Fill (n)** fills all selected empty containers at once with the same contents, dates and vacuum (quantity per container, each gets its own estimate), or **✨ Recipe ideas** asks for recipes from exactly the selected containers. Closes #3.
+- **Serial scan** during the selection (**📡 Scan**, administrators): every scanned container is selected, via NFC tags or via the QR scanner of the Home Assistant app, which stays open for one code after the other and confirms each hit. Good for an inventory or after shopping. Closes #9.
+- **Recipe ideas from selected containers:** new option `containers` (device IDs) for `larder.suggest_recipes`; the recipe page has a **☑** button to pick containers. Expired and empty containers are still left out. Closes #15.
+- The fill dialog of the normal dashboard can fill several containers at once (used by the selection).
+- New WebSocket command `larder/resolve_code` (QR content → container).
+- **README restructured:** contents, getting started, a table of all settings, areas and labels in one place, scanning and a reference of entities, services and events.
+
 ## 1.9.0
 
 - **Recipe from a photo or file** (Larder experimental, recipe page, 📷): take or pick up to four photos of a recipe, or a PDF. The AI reads it through *AI Task*, translates it into your language if needed and opens it as a draft for you to check before it is saved to the recipe book (marked *From a photo*). Photos are shrunk on the device before uploading, stored only briefly in Home Assistant's media folder while the AI reads them, and deleted right after. Needs an AI task that supports attachments. Closes #12.

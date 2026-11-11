@@ -182,6 +182,7 @@ def collect_expiring(
         items.append(
             {
                 "name": entry.title,
+                "cc": cc,
                 "content": content,
                 "quantity": quantity or None,
                 "unit": unit if quantity else None,

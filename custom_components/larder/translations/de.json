@@ -274,6 +274,10 @@
         "all_containers": {
           "name": "Alle Dosen",
           "description": "Kein Zeitraum: alle befüllten Dosen berücksichtigen, auch solche ohne MHD (abgelaufene nie)."
+        },
+        "containers": {
+          "name": "Dosen",
+          "description": "Nur diese Dosen verwenden (Geräte), egal wann sie ablaufen. Abgelaufene und leere Dosen werden nie verwendet."
         }
       }
     },

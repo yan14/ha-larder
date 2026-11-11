@@ -50,6 +50,7 @@ export const STRINGS = {
     estimateFailed: "Die Schätzung ist fehlgeschlagen.",
     fill: "Befüllen",
     fillTitle: "Dose befüllen",
+    fillTitleMany: (n) => `${n} Dosen befüllen`,
     fillPlaceholder: "z. B. Pizza, Suppe …",
     fillEstimate: "MHD automatisch schätzen",
     fillSave: "Speichern",
@@ -165,6 +166,7 @@ export const STRINGS = {
     estimateFailed: "The estimate failed.",
     fill: "Fill",
     fillTitle: "Fill container",
+    fillTitleMany: (n) => `Fill ${n} containers`,
     fillPlaceholder: "e.g. pizza, soup …",
     fillEstimate: "Estimate best before automatically",
     fillSave: "Save",
@@ -1017,7 +1019,7 @@ class LarderPanel extends HTMLElement {
     });
     this._fillOverlay = this.shadowRoot.querySelector(".overlay.fill");
     this._fillForm = this.shadowRoot.querySelector("form.fillform");
-    this._fillDevice = null;
+    this._fillDevices = [];
     this._contents = [];
     this._fillOverlay.addEventListener("click", (ev) => {
       if (ev.target === this._fillOverlay) this.closeFillDialog();
@@ -1356,11 +1358,18 @@ class LarderPanel extends HTMLElement {
     }
   }
 
-  /** Dialog "Dose befüllen": Inhalt (mit Vorschlägen), Vakuum, Eingelagert am, MHD, optional schätzen. */
-  openFillDialog(deviceId) {
+  /**
+   * Dialog "Dose befüllen": Inhalt (mit Vorschlägen), Vakuum, Eingelagert am, MHD, optional schätzen.
+   * Mit einer Liste von Geräte-IDs werden mehrere Dosen auf einmal mit denselben Angaben befüllt
+   * (Menge gilt pro Dose); die Vorbelegung kommt dann von der ersten Dose, Inhalt und MHD bleiben leer.
+   */
+  openFillDialog(deviceIds) {
     const hass = this._hass;
-    const dev = hass && this._devices.find((d) => d.deviceId === deviceId);
-    if (!dev) return false;
+    const wanted = Array.isArray(deviceIds) ? deviceIds : [deviceIds];
+    const devs = hass ? wanted.map((id) => this._devices.find((d) => d.deviceId === id)).filter(Boolean) : [];
+    if (!devs.length) return false;
+    const many = devs.length > 1;
+    const dev = devs[0];
     const t = strings(hass);
     const states = hass.states || {};
     const f = (name) => this._fillForm.querySelector(`[data-f="${name}"]`);
@@ -1368,9 +1377,9 @@ class LarderPanel extends HTMLElement {
     const date = states[dev.entities.date];
     const dt = states[dev.entities.datetime];
     const vac = states[dev.entities.switch];
-    this._fillDevice = deviceId;
-    this._fillForm.querySelector("h2").textContent = `${t.fillTitle}: ${dev.name}`;
-    f("content").value = isValidState(text) ? text.state : "";
+    this._fillDevices = devs.map((d) => d.deviceId);
+    this._fillForm.querySelector("h2").textContent = many ? t.fillTitleMany(devs.length) : `${t.fillTitle}: ${dev.name}`;
+    f("content").value = !many && isValidState(text) ? text.state : "";
     f("content").placeholder = t.fillPlaceholder;
     const quantity = states[dev.entities.number];
     const nQuantity = isValidState(quantity) ? Number(quantity.state) : 0;
@@ -1383,8 +1392,8 @@ class LarderPanel extends HTMLElement {
     const shop = states[dev.entities.shopping];
     f("shopping").checked = !!shop && shop.state === "on";
     this._fillForm.querySelector('[data-w="shopping"]').hidden = !hasShoppingList(shop) || shop.state === "unavailable";
-    f("filledAt").value = isValidState(dt) ? toLocalInputValue(dt.state) : toLocalInputValue(new Date().toISOString());
-    f("bestBefore").value = isValidState(date) ? date.state : "";
+    f("filledAt").value = !many && isValidState(dt) ? toLocalInputValue(dt.state) : toLocalInputValue(new Date().toISOString());
+    f("bestBefore").value = !many && isValidState(date) ? date.state : "";
     const canEstimate = !!(date && date.attributes && date.attributes.estimates) && date.state !== "unavailable";
     this._fillForm.querySelector('[data-w="estimate"]').hidden = !canEstimate;
     f("estimate").checked = true;
@@ -1397,7 +1406,7 @@ class LarderPanel extends HTMLElement {
 
   closeFillDialog() {
     this._fillOverlay.hidden = true;
-    this._fillDevice = null;
+    this._fillDevices = [];
   }
 
   /** Vorschläge für den Inhalt vom Server holen (zuletzt benutzte zuerst). */
@@ -1422,9 +1431,8 @@ class LarderPanel extends HTMLElement {
 
   async submitFill() {
     const hass = this._hass;
-    const id = this._fillDevice;
-    const dev = hass && this._devices.find((d) => d.deviceId === id);
-    if (!dev || this._busy) return;
+    const devs = hass ? (this._fillDevices || []).map((id) => this._devices.find((d) => d.deviceId === id)).filter(Boolean) : [];
+    if (!devs.length || this._busy) return;
     const t = strings(hass);
     const f = (name) => this._fillForm.querySelector(`[data-f="${name}"]`);
     const errorEl = this._fillForm.querySelector(".error");
@@ -1433,38 +1441,21 @@ class LarderPanel extends HTMLElement {
       errorEl.textContent = t.fillNoContent;
       return;
     }
-    const states = hass.states || {};
-    const ids = dev.entities;
-    const vac = states[ids.switch];
-    const filled = new Date(f("filledAt").value);
-    const bestBefore = f("bestBefore").value;
+    const values = {
+      content,
+      vacuum: f("vacuum").checked,
+      shopping: f("shopping").checked,
+      quantity: parseQuantity(f("quantity").value),
+      unit: f("unit").value,
+      filled: new Date(f("filledAt").value),
+      bestBefore: f("bestBefore").value,
+    };
     const wantEstimate =
-      f("estimate").checked && !this._fillForm.querySelector('[data-w="estimate"]').hidden && !bestBefore;
+      f("estimate").checked && !this._fillForm.querySelector('[data-w="estimate"]').hidden && !values.bestBefore;
     this._busy = true;
     this._fillForm.querySelector("button.submit").disabled = true;
     try {
-      await hass.callService("text", "set_value", { entity_id: ids.text, value: content });
-      if (vac && vac.state !== "unavailable") {
-        await hass.callService("switch", f("vacuum").checked ? "turn_on" : "turn_off", { entity_id: ids.switch });
-      }
-      const shopState = states[ids.shopping];
-      if (hasShoppingList(shopState) && shopState.state !== "unavailable") {
-        await hass.callService("switch", f("shopping").checked ? "turn_on" : "turn_off", { entity_id: ids.shopping });
-      }
-      const quantityState = states[ids.number];
-      if (quantityState && quantityState.state !== "unavailable") {
-        await hass.callService("number", "set_value", { entity_id: ids.number, value: parseQuantity(f("quantity").value) });
-        const unitState = states[ids.select];
-        if (unitState && unitState.state !== "unavailable" && f("unit").value) {
-          await hass.callService("select", "select_option", { entity_id: ids.select, option: f("unit").value });
-        }
-      }
-      if (ids.datetime && !Number.isNaN(filled.getTime())) {
-        await hass.callService("datetime", "set_value", { entity_id: ids.datetime, datetime: filled.toISOString() });
-      }
-      if (ids.date && bestBefore) {
-        await hass.callService("date", "set_value", { entity_id: ids.date, date: bestBefore });
-      }
+      for (const dev of devs) await this._fillOne(dev, values);
     } catch (err) {
       errorEl.textContent = (err && err.message) || t.fillFailed;
       return;
@@ -1474,8 +1465,41 @@ class LarderPanel extends HTMLElement {
     }
     this.closeFillDialog();
     if (wantEstimate) {
-      const card = this._cards.get(id);
-      if (card) await card._estimate();
+      for (const dev of devs) {
+        const card = this._cards.get(dev.deviceId);
+        if (card) await card._estimate();
+      }
+    }
+    this.dispatchEvent(new CustomEvent("larder-filled", { detail: { deviceIds: devs.map((d) => d.deviceId) } }));
+  }
+
+  /** Eine Dose mit den Angaben aus dem Dialog befüllen. */
+  async _fillOne(dev, values) {
+    const hass = this._hass;
+    const states = hass.states || {};
+    const ids = dev.entities;
+    await hass.callService("text", "set_value", { entity_id: ids.text, value: values.content });
+    const vac = states[ids.switch];
+    if (vac && vac.state !== "unavailable") {
+      await hass.callService("switch", values.vacuum ? "turn_on" : "turn_off", { entity_id: ids.switch });
+    }
+    const shopState = states[ids.shopping];
+    if (hasShoppingList(shopState) && shopState.state !== "unavailable") {
+      await hass.callService("switch", values.shopping ? "turn_on" : "turn_off", { entity_id: ids.shopping });
+    }
+    const quantityState = states[ids.number];
+    if (quantityState && quantityState.state !== "unavailable") {
+      await hass.callService("number", "set_value", { entity_id: ids.number, value: values.quantity });
+      const unitState = states[ids.select];
+      if (unitState && unitState.state !== "unavailable" && values.unit) {
+        await hass.callService("select", "select_option", { entity_id: ids.select, option: values.unit });
+      }
+    }
+    if (ids.datetime && !Number.isNaN(values.filled.getTime())) {
+      await hass.callService("datetime", "set_value", { entity_id: ids.datetime, datetime: values.filled.toISOString() });
+    }
+    if (ids.date && values.bestBefore) {
+      await hass.callService("date", "set_value", { entity_id: ids.date, date: values.bestBefore });
     }
   }
 

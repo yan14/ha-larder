@@ -11,7 +11,7 @@ import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError
 
-from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import config_validation as cv, device_registry as dr
 
 from .const import DOMAIN, MAX_RECIPE_DAYS, SERVICE_SUGGEST_RECIPES
 from .estimate import EstimateError, async_get_estimator
@@ -71,11 +71,15 @@ def build_instructions(
     servings: int | None,
     max_recipes: int,
     all_containers: bool = False,
+    chosen: bool = False,
 ) -> str:
     lines = [
         "You suggest simple home-cooking ideas that use up food before it spoils.",
         (
-            "These containers are in the fridge, freezer or pantry (the most urgent first):"
+            "The household picked these containers and wants recipes that use them together "
+            "(the most urgent first):"
+            if chosen
+            else "These containers are in the fridge, freezer or pantry (the most urgent first):"
             if all_containers
             else "These containers are in the fridge, freezer or pantry and expire soon "
             "(the most urgent first):"
@@ -96,6 +100,19 @@ def build_instructions(
         f"Write all texts in the language with code '{language}'. Keep steps short.",
     ]
     return "\n".join(lines)
+
+
+def _container_ccs(hass: HomeAssistant, containers: list[str]) -> set[str]:
+    """IDs der Dosen (cc) zu den angegebenen Geräte-IDs (oder direkt angegebenen cc)."""
+    registry = dr.async_get(hass)
+    out: set[str] = set()
+    for value in containers:
+        device = registry.async_get(value)
+        if device is not None:
+            out.update(ident for domain, ident in device.identifiers if domain == DOMAIN)
+        else:
+            out.add(value)
+    return out
 
 
 def _as_list(value: Any) -> list[str]:
@@ -153,13 +170,19 @@ async def async_suggest_recipes(
     servings: int | None = None,
     max_recipes: int = DEFAULT_RECIPES,
     all_containers: bool = False,
+    containers: list[str] | None = None,
 ) -> dict[str, Any]:
     """Rezeptideen aus Dosen, die in `days` Tagen ablaufen (ohne Angabe: Einstellung).
 
     Mit `all_containers` gilt kein Zeitraum: alle befüllten Dosen zählen, auch ohne MHD.
+    Mit `containers` (Geräte-IDs der Dosen) zählen genau diese Dosen, egal wann sie ablaufen.
     Abgelaufene Dosen und Dosen ohne Inhalt gehen nie an die KI.
     """
     estimator = await async_get_estimator(hass)
+    chosen: set[str] | None = None
+    if containers:
+        chosen = _container_ccs(hass, containers)
+        all_containers = True
     if all_containers:
         days = None
     elif days is None:
@@ -167,7 +190,7 @@ async def async_suggest_recipes(
     items = [
         item
         for item in collect_expiring(hass, days, include_expired=False, include_undated=all_containers)
-        if (item["content"] or "").strip()
+        if (item["content"] or "").strip() and (chosen is None or item["cc"] in chosen)
     ][:MAX_INGREDIENTS]
     if not items:
         return {"count": 0, "days": days, "ingredients": [], "recipes": [], "summary": ""}
@@ -183,6 +206,7 @@ async def async_suggest_recipes(
             servings=servings,
             max_recipes=max_recipes,
             all_containers=all_containers,
+            chosen=chosen is not None,
         ),
         "structure": STRUCTURE,
     }
@@ -224,6 +248,7 @@ def async_setup_recipe_service(hass: HomeAssistant) -> None:
             servings=call.data.get("servings"),
             max_recipes=call.data["max_recipes"],
             all_containers=call.data["all_containers"],
+            containers=call.data.get("containers"),
         )
 
     hass.services.async_register(
@@ -234,6 +259,7 @@ def async_setup_recipe_service(hass: HomeAssistant) -> None:
             {
                 vol.Optional("days"): vol.All(vol.Coerce(int), vol.Range(min=0, max=MAX_RECIPE_DAYS)),
                 vol.Optional("all_containers", default=False): cv.boolean,
+                vol.Optional("containers"): vol.All(cv.ensure_list, [cv.string], vol.Length(min=1, max=MAX_INGREDIENTS)),
                 vol.Optional("servings"): vol.All(vol.Coerce(int), vol.Range(min=1, max=20)),
                 vol.Optional("max_recipes", default=DEFAULT_RECIPES): vol.All(
                     vol.Coerce(int), vol.Range(min=1, max=MAX_RECIPES)

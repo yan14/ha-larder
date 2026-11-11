@@ -87,6 +87,12 @@ suggest_recipes:
       default: false
       selector:
         boolean:
+    containers:
+      required: false
+      selector:
+        device:
+          integration: larder
+          multiple: true
     servings:
       required: false
       selector:

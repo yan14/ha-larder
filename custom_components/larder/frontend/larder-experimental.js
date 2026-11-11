@@ -91,6 +91,25 @@ export const TEXTS = {
     steps: "Zubereitung",
     fromAi: "Von der KI",
     fromPhoto: "Aus Foto",
+    selectStart: "Auswählen",
+    selectDone: "Fertig",
+    selected: (n) => (n === 1 ? "1 ausgewählt" : `${n} ausgewählt`),
+    selectHint: "Tippe Dosen an, um sie auszuwählen.",
+    selectFill: (n) => `Befüllen (${n})`,
+    selectRecipes: "Rezeptideen",
+    selectAll: "Alle",
+    selectNone: "Keine",
+    scanStart: "Scannen",
+    scanStop: "Scan beenden",
+    scanHint: "Serien-Scan: Halte NFC-Tags ans Handy oder scanne QR-Codes; jede Dose wird ausgewählt.",
+    scanTitle: "Dosen scannen",
+    scanDescription: "Scanne die QR-Codes der Dosen nacheinander. Schließen, wenn du fertig bist.",
+    scanAdded: (name, n) => `✓ ${name} (${n} ausgewählt)`,
+    scanUnknown: "Diese Dose ist noch nicht angelegt.",
+    scanInvalid: "Kein Larder-Code.",
+    recipesPick: "Dosen wählen",
+    recipesNoneChosen: "Die gewählten Dosen sind leer oder abgelaufen.",
+    suggestionsChosen: (n) => `Vorschläge aus ${n === 1 ? "1 gewählten Dose" : `${n} gewählten Dosen`}`,
     photoRead: "Rezept aus Foto oder Datei lesen",
     photoBusy: "Die KI liest das Rezept …",
     photoFailed: "Das Rezept konnte nicht gelesen werden.",
@@ -176,6 +195,25 @@ export const TEXTS = {
     steps: "Method",
     fromAi: "From the AI",
     fromPhoto: "From a photo",
+    selectStart: "Select",
+    selectDone: "Done",
+    selected: (n) => `${n} selected`,
+    selectHint: "Tap containers to select them.",
+    selectFill: (n) => `Fill (${n})`,
+    selectRecipes: "Recipe ideas",
+    selectAll: "All",
+    selectNone: "None",
+    scanStart: "Scan",
+    scanStop: "Stop scanning",
+    scanHint: "Serial scan: hold NFC tags to the phone or scan QR codes; every container gets selected.",
+    scanTitle: "Scan containers",
+    scanDescription: "Scan the QR codes of the containers one after another. Close when you are done.",
+    scanAdded: (name, n) => `✓ ${name} (${n} selected)`,
+    scanUnknown: "This container has not been added yet.",
+    scanInvalid: "Not a Larder code.",
+    recipesPick: "Pick containers",
+    recipesNoneChosen: "The selected containers are empty or expired.",
+    suggestionsChosen: (n) => `Suggestions from ${n === 1 ? "1 selected container" : `${n} selected containers`}`,
     photoRead: "Read a recipe from a photo or file",
     photoBusy: "The AI is reading the recipe …",
     photoFailed: "The recipe could not be read.",
@@ -370,6 +408,16 @@ const STYLE = `
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .tile .sub { font-size: 11px; color: var(--secondary-text-color); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tile.empty { opacity: .65; border-style: dashed; }
+  .tile.selected, .row.selected { outline: 3px solid var(--primary-color); outline-offset: -3px; opacity: 1; }
+  .tile .check, .row .check { position: absolute; top: 6px; right: 8px; font-size: 16px; color: var(--primary-color); }
+  .row { position: relative; }
+  .selbar { position: sticky; bottom: calc(57px + env(safe-area-inset-bottom, 0px)); z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    margin: 12px -16px -16px; padding: 10px 16px; background: var(--card-background-color, #fff); border-top: 1px solid var(--divider-color); }
+  .selbar .count { flex: 1; font-size: 14px; color: var(--secondary-text-color); min-width: 90px; }
+  .selbar button { font: inherit; font-size: 14px; border-radius: 18px; padding: 7px 12px; cursor: pointer;
+    background: var(--card-background-color, #fff); color: var(--primary-text-color); border: 1px solid var(--divider-color); }
+  .selbar button.primary { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: var(--primary-color); }
+  .bar button.on { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: var(--primary-color); }
   .badge { font-size: 11px; padding: 1px 8px; border-radius: 10px; color: #fff; white-space: nowrap; background: var(--secondary-text-color); }
   .badge.soon { background: var(--warning-color, #ffa600); }
   .badge.expired { background: var(--error-color, #db4437); }
@@ -439,6 +487,10 @@ class LarderExperimental extends HTMLElement {
     this._savedSuggestions = new Set();
     this._openRecipe = null;
     this._photo = null; // null, "busy" oder { error }
+    this._selecting = false; // Auswahlmodus in der Behälter-Ansicht
+    this._selected = new Set(); // Geräte-IDs
+    this._scan = null; // laufender Serien-Scan
+    this._chosenFor = null; // Geräte-IDs, aus denen die aktuellen Vorschläge stammen
     this.attachShadow({ mode: "open" });
     this.shadowRoot.innerHTML = `
       <style>${STYLE}</style>
@@ -467,6 +519,9 @@ class LarderExperimental extends HTMLElement {
     });
     this._settingsBtn.addEventListener("click", () => navigate(`/config/integrations/integration/${DOMAIN}`));
     this._classic.addEventListener("larder-detail-closed", () => this._closeDetail());
+    this._classic.addEventListener("larder-filled", () => {
+      if (this._selecting) this.stopSelecting();
+    });
     this._form.addEventListener("submit", (ev) => {
       ev.preventDefault();
       this._submitRecipe();
@@ -491,6 +546,10 @@ class LarderExperimental extends HTMLElement {
       }
     }
     this._update();
+  }
+
+  disconnectedCallback() {
+    this.stopScan();
   }
 
   get hass() {
@@ -520,6 +579,10 @@ class LarderExperimental extends HTMLElement {
 
   setView(view, filter = null) {
     if (!VIEWS.includes(view)) return;
+    if (view !== "containers") {
+      this.stopScan();
+      this._selecting = false;
+    }
     this._view = view;
     this._filter = { area: null, category: null, soon: false, ...(filter || {}) };
     this._openRecipe = null;
@@ -544,6 +607,10 @@ class LarderExperimental extends HTMLElement {
 
   /** Antippen einer Dose: leere Dosen gleich befüllen, gefüllte in der Detailansicht öffnen. */
   openContainer(row) {
+    if (this._selecting) {
+      this.toggleSelected(row.id);
+      return;
+    }
     if (row.content === "" && isAdmin(this._hass)) this._classic.openFillDialog(row.id);
     else this.openDetail(row.id);
   }
@@ -599,6 +666,10 @@ class LarderExperimental extends HTMLElement {
       [...this._savedSuggestions],
       this._openRecipe,
       this._photo,
+      this._selecting,
+      [...this._selected],
+      !!this._scan,
+      this._chosenFor,
     ]);
     if (sig === this._sig) return;
     this._sig = sig;
@@ -643,6 +714,7 @@ class LarderExperimental extends HTMLElement {
     tile.append(el("span", "name", empty ? t.empty : row.content));
     tile.append(el("span", "sub", showArea && row.areaName ? `${row.name} · ${row.areaName}` : row.name));
     if (!empty && row.days !== null) tile.append(el("span", `badge ${dayClass(row)}`, daysLabel(t, row.days)));
+    this._markSelected(tile, row);
     tile.addEventListener("click", () => this.openContainer(row));
     return tile;
   }
@@ -657,8 +729,170 @@ class LarderExperimental extends HTMLElement {
     text.append(el("span", "sub", row.areaName ? `${row.name} · ${row.areaName}` : row.name));
     btn.append(el("span", "ico", CATEGORY_ICONS[row.category] || CATEGORY_ICONS.other), text);
     if (!empty && row.days !== null) btn.append(el("span", `badge ${dayClass(row)}`, daysLabel(t, row.days)));
+    this._markSelected(btn, row);
     btn.addEventListener("click", () => this.openContainer(row));
     return btn;
+  }
+
+  _markSelected(node, row) {
+    if (!this._selecting) return;
+    const on = this._selected.has(row.id);
+    node.classList.toggle("selected", on);
+    node.setAttribute("aria-pressed", on ? "true" : "false");
+    if (on) node.append(el("span", "check", "✓"));
+  }
+
+  // ----- Auswahl (mehrere Dosen befüllen, Rezeptideen aus gewählten Dosen, Serien-Scan) -----
+
+  startSelecting(preselect = []) {
+    if (this._view !== "containers") this.setView("containers");
+    this._selecting = true;
+    for (const id of preselect) this._selected.add(id);
+    this._update();
+  }
+
+  stopSelecting() {
+    this.stopScan();
+    this._selecting = false;
+    this._selected = new Set();
+    this._update();
+  }
+
+  toggleSelected(id, on = null) {
+    const next = new Set(this._selected);
+    if (on === true || (on === null && !next.has(id))) next.add(id);
+    else next.delete(id);
+    this._selected = next;
+    this._update();
+  }
+
+  fillSelected() {
+    const rows = this._rows().filter((r) => this._selected.has(r.id) && r.content === "");
+    if (rows.length) this._classic.openFillDialog(rows.map((r) => r.id));
+  }
+
+  /** Rezeptideen aus den gewählten Dosen: zur Rezeptseite wechseln und die KI fragen. */
+  recipesFromSelected() {
+    const ids = this._rows().filter((r) => this._selected.has(r.id) && r.content !== "").map((r) => r.id);
+    if (!ids.length) return;
+    this.stopSelecting();
+    this.setView("recipes");
+    this.generateRecipes(ids);
+  }
+
+  /** Serien-Scan: NFC-Scans (Ereignis larder_dose_scanned) und, in der Companion-App, deren QR-Scanner. */
+  async startScan() {
+    const hass = this._hass;
+    if (!hass || this._scan || !isAdmin(hass)) return;
+    const scan = { unsub: null, external: null };
+    this._scan = scan;
+    this._update();
+    try {
+      if (hass.connection && hass.connection.subscribeEvents) {
+        scan.unsub = await hass.connection.subscribeEvents((ev) => {
+          const id = ev && ev.data && ev.data.device_id;
+          if (id && this._scan === scan) this.toggleSelected(id, true);
+        }, `${DOMAIN}_dose_scanned`);
+        if (this._scan !== scan && scan.unsub) scan.unsub();
+      }
+    } catch {
+      /* ohne Ereignisse bleibt der QR-Scanner der App */
+    }
+    if (this._scan === scan) this._startExternalScanner(scan);
+  }
+
+  /**
+   * QR-Scanner der Home-Assistant-App (iOS/Android) öffnen. Er bleibt offen, bis man ihn schließt;
+   * jeder Treffer wählt die Dose aus und meldet sich kurz im Scanner. Die Befehle der App laufen
+   * über einen einzigen Empfänger des Frontends, der hier nur ergänzt (und danach wiederhergestellt) wird.
+   */
+  _startExternalScanner(scan) {
+    const external = this._hass && this._hass.auth && this._hass.auth.external;
+    if (!external || !external.config || !external.config.hasBarCodeScanner || typeof external.addCommandHandler !== "function") return;
+    const original = external._commandHandler;
+    if (typeof original !== "function") return;
+    const t = texts(this._hass);
+    const notify = (message) => external.fireMessage({ type: "bar_code/notify", payload: { message } });
+    const handler = (msg) => {
+      if (this._scan === scan && msg && msg.command === "bar_code/scan_result") {
+        this._handleScannedCode(String((msg.payload && msg.payload.rawValue) || ""), notify, t);
+      } else if (this._scan === scan && msg && msg.command === "bar_code/aborted") {
+        scan.external = null;
+        external.addCommandHandler(original);
+        this.stopScan();
+      }
+      return original(msg);
+    };
+    external.addCommandHandler(handler);
+    scan.external = { external, original };
+    external.fireMessage({
+      type: "bar_code/scan",
+      payload: { title: t.scanTitle, description: t.scanDescription, alternative_option_label: t.scanStop },
+    });
+  }
+
+  async _handleScannedCode(code, notify, t) {
+    try {
+      const res = await this._hass.callWS({ type: `${DOMAIN}/resolve_code`, code });
+      if (!res || !res.valid) notify(t.scanInvalid);
+      else if (!res.device_id) notify(t.scanUnknown);
+      else {
+        this.toggleSelected(res.device_id, true);
+        notify(t.scanAdded(res.name || res.cc, this._selected.size));
+      }
+    } catch {
+      notify(t.scanInvalid);
+    }
+  }
+
+  stopScan() {
+    const scan = this._scan;
+    if (!scan) return;
+    this._scan = null;
+    if (scan.unsub) {
+      try {
+        scan.unsub();
+      } catch {
+        /* Verbindung schon weg */
+      }
+    }
+    if (scan.external) {
+      const { external, original } = scan.external;
+      external.addCommandHandler(original);
+      external.fireMessage({ type: "bar_code/close" });
+    }
+    this._update();
+  }
+
+  _selectBar(t, rows) {
+    const bar = el("div", "selbar");
+    bar.append(el("span", "count", this._selected.size ? t.selected(this._selected.size) : t.selectHint));
+    const chosen = rows.filter((r) => this._selected.has(r.id));
+    const button = (role, text, onClick, { primary = false, disabled = false } = {}) => {
+      const b = el("button", primary ? "primary" : "", text);
+      b.type = "button";
+      b.dataset.role = role;
+      b.disabled = disabled;
+      b.addEventListener("click", onClick);
+      bar.append(b);
+      return b;
+    };
+    const allIds = rows.map((r) => r.id);
+    const allOn = allIds.length && allIds.every((id) => this._selected.has(id));
+    button("select-all", allOn ? t.selectNone : t.selectAll, () => {
+      this._selected = allOn ? new Set() : new Set(allIds);
+      this._update();
+    });
+    if (isAdmin(this._hass)) {
+      const empty = chosen.filter((r) => r.content === "").length;
+      button("fill-selected", t.selectFill(empty), () => this.fillSelected(), { disabled: !empty });
+    }
+    if (this._canGenerate()) {
+      const filled = chosen.filter((r) => r.content !== "").length;
+      button("recipes-selected", `✨ ${t.selectRecipes}`, () => this.recipesFromSelected(), { disabled: !filled });
+    }
+    button("select-done", t.selectDone, () => this.stopSelecting(), { primary: true });
+    return bar;
   }
 
   _select(options, value, onChange, label) {
@@ -752,11 +986,25 @@ class LarderExperimental extends HTMLElement {
       el("span", "grow"),
     );
     const add = this._addButton(t);
-    if (add) bar.append(add);
-    bar.append(this._modeButton(t));
+    if (add && !this._selecting) bar.append(add);
+    if (this._selecting && isAdmin(this._hass)) {
+      const scan = el("button", this._scan ? "on" : "", this._scan ? `⏹ ${t.scanStop}` : `📡 ${t.scanStart}`);
+      scan.type = "button";
+      scan.dataset.role = "scan";
+      scan.addEventListener("click", () => (this._scan ? this.stopScan() : this.startScan()));
+      bar.append(scan);
+    }
+    if (!this._selecting) {
+      const select = el("button", "", `☑ ${t.selectStart}`);
+      select.type = "button";
+      select.dataset.role = "select";
+      select.addEventListener("click", () => this.startSelecting());
+      bar.append(select, this._modeButton(t));
+    }
 
     const frag = document.createDocumentFragment();
     frag.append(bar);
+    if (this._scan) frag.append(el("p", "note", t.scanHint));
     const chips = this._chips(t, allRows);
     if (chips) frag.append(chips);
 
@@ -793,6 +1041,7 @@ class LarderExperimental extends HTMLElement {
         flush();
       }
     }
+    if (this._selecting) frag.append(this._selectBar(t, rows));
     this._main.replaceChildren(frag);
   }
 
@@ -976,10 +1225,11 @@ class LarderExperimental extends HTMLElement {
     }
   }
 
-  async generateRecipes() {
+  async generateRecipes(containers = null) {
     const hass = this._hass;
     if (!hass || !hass.callWS || this._suggestions === "busy") return;
     const period = this._opts.recipePeriod;
+    this._chosenFor = containers && containers.length ? [...containers] : null;
     this._suggestions = "busy";
     this._savedSuggestions = new Set();
     this._update();
@@ -988,13 +1238,13 @@ class LarderExperimental extends HTMLElement {
         type: "call_service",
         domain: DOMAIN,
         service: "suggest_recipes",
-        service_data: recipeServiceData(period),
+        service_data: this._chosenFor ? { containers: this._chosenFor } : recipeServiceData(period),
         return_response: true,
       });
       const out = (res && res.response) || {};
       this._suggestions = Array.isArray(out.recipes) ? out.recipes : [];
       if (!this._suggestions.length) {
-        const used = period === "all" ? null : Number.isInteger(out.days) ? out.days : period === "default" ? this._recipeDays : Number(period);
+        const used = this._chosenFor ? "chosen" : period === "all" ? null : Number.isInteger(out.days) ? out.days : period === "default" ? this._recipeDays : Number(period);
         this._suggestions = { none: true, days: used };
       }
     } catch (err) {
@@ -1159,6 +1409,15 @@ class LarderExperimental extends HTMLElement {
       ),
       el("span", "grow"),
     );
+    if (this._canGenerate()) {
+      const pick = el("button", "icon", "☑");
+      pick.type = "button";
+      pick.dataset.role = "pick";
+      pick.setAttribute("aria-label", t.recipesPick);
+      pick.title = t.recipesPick;
+      pick.addEventListener("click", () => this.startSelecting());
+      bar.append(pick);
+    }
     if (this._canGenerate() && this._hass.fetchWithAuth) {
       const photo = el("button", "icon", "📷");
       photo.type = "button";
@@ -1213,9 +1472,9 @@ class LarderExperimental extends HTMLElement {
     } else if (s && s.error) {
       frag.append(el("p", "error", typeof s.error === "string" ? s.error : t.recipesFailed));
     } else if (s && s.none) {
-      frag.append(el("p", "note", s.days === null ? t.recipesNoneAll : t.recipesNone(s.days)));
+      frag.append(el("p", "note", s.days === "chosen" ? t.recipesNoneChosen : s.days === null ? t.recipesNoneAll : t.recipesNone(s.days)));
     } else if (Array.isArray(s) && s.length) {
-      frag.append(el("h2", "", t.suggestions));
+      frag.append(el("h2", "", this._chosenFor ? t.suggestionsChosen(this._chosenFor.length) : t.suggestions));
       s.forEach((recipe, i) => frag.append(this._recipeNode(recipe, t, { suggestion: i })));
       frag.append(el("h2", "", t.views.recipes));
     }

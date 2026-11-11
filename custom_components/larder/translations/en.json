@@ -274,6 +274,10 @@
         "all_containers": {
           "name": "All containers",
           "description": "No period: use every filled container, also those without a best-before date (never expired ones)."
+        },
+        "containers": {
+          "name": "Containers",
+          "description": "Use exactly these containers (devices), whatever their best-before date. Expired and empty containers are never used."
         }
       }
     },

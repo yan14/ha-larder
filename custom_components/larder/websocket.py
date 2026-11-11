@@ -8,12 +8,13 @@ import voluptuous as vol
 
 from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import config_validation as cv, device_registry as dr
 from homeassistant.exceptions import HomeAssistantError
 
 from .const import DOMAIN
 from .estimate import MAX_DAYS, MIN_DAYS, async_get_estimator
 from .nfc import async_get_nfc
+from .qr import parse_qr
 
 DATA_WS_REGISTERED = "websocket_registered"
 
@@ -32,6 +33,7 @@ def async_setup_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_delete)
     websocket_api.async_register_command(hass, ws_contents)
     websocket_api.async_register_command(hass, ws_settings)
+    websocket_api.async_register_command(hass, ws_resolve_code)
     websocket_api.async_register_command(hass, ws_nfc_tags)
     websocket_api.async_register_command(hass, ws_nfc_link)
     websocket_api.async_register_command(hass, ws_nfc_unlink)
@@ -202,3 +204,25 @@ async def ws_settings(
     """Einstellungen, die die Dashboards brauchen (für alle Nutzer, nichts Vertrauliches)."""
     estimator = await async_get_estimator(hass)
     connection.send_result(msg["id"], {"recipe_days": estimator.recipe_days, "soon_days": estimator.soon_days})
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/resolve_code", vol.Required("code"): str})
+@callback
+def ws_resolve_code(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Gescannten QR-Inhalt einer Dose zuordnen (Serien-Scan im Dashboard)."""
+    parsed = parse_qr(msg["code"])
+    if parsed is None:
+        connection.send_result(msg["id"], {"valid": False})
+        return
+    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, parsed.cc)})
+    connection.send_result(
+        msg["id"],
+        {
+            "valid": True,
+            "cc": parsed.cc,
+            "device_id": device.id if device else None,
+            "name": (device.name_by_user or device.name) if device else None,
+        },
+    )

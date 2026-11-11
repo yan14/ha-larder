@@ -1609,3 +1609,29 @@ test("Bereichsauswahl: auch Beschriftungen „Larder: …“ markieren einen Ber
   await flush();
   assert.deepEqual([...$(el, "form.dialog select").options].map((o) => o.textContent), ["Kein Bereich", "Küche", "Truhe"]);
 });
+
+test("Mehrere Dosen auf einmal befüllen: gleiche Angaben für alle, Schätzung für jede", async () => {
+  const hass = fillHass([
+    { id: "d1", name: "Dose 1", content: "unknown", ai: true },
+    { id: "d2", name: "Dose 2", content: "unknown", ai: true },
+  ]);
+  const el = mount(hass);
+  let filled = null;
+  el.addEventListener("larder-filled", (ev) => (filled = ev.detail.deviceIds));
+  assert.equal(el.openFillDialog(["d1", "d2", "gibt-es-nicht"]), true);
+  await flush();
+  assert.equal($(el, "form.fillform h2").textContent, "2 Dosen befüllen");
+  $(el, 'form.fillform [data-f="content"]').value = "Bolognese";
+  $(el, 'form.fillform [data-f="quantity"]').value = "2";
+  $(el, "form.fillform").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  await flush();
+  await flush();
+  const texts = hass.calls.filter((c) => c.domain === "text").map((c) => [c.data.entity_id, c.data.value]);
+  assert.deepEqual(texts, [["text.d1_inhalt", "Bolognese"], ["text.d2_inhalt", "Bolognese"]]);
+  const qty = hass.calls.filter((c) => c.domain === "number").map((c) => c.data.value);
+  assert.deepEqual(qty, [2, 2]);
+  const estimates = hass.wsCalls.filter((m) => m.type === "call_service").map((m) => m.target.entity_id);
+  assert.deepEqual(estimates, ["date.d1_mhd", "date.d2_mhd"]);
+  assert.deepEqual(filled, ["d1", "d2"]);
+  assert.equal($(el, ".overlay.fill").hidden, true);
+});

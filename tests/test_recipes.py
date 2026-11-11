@@ -248,3 +248,39 @@ async def test_soon_days_setting_changes_status_attribute_and_overview(hass: Hom
     assert hass.states.get(_eid(hass, "date", "AAAA")).attributes["soon_days"] == 7
     out = await hass.services.async_call(DOMAIN, "get_expiring", {}, blocking=True, return_response=True)
     assert out["count"] == 1 and out["items"][0]["status"] == "soon"
+
+
+async def test_recipes_from_selected_containers_ignore_the_period(hass: HomeAssistant) -> None:
+    await _setup(hass, "AAAA")
+    await _setup(hass, "BBBB")
+    await _setup(hass, "CCCC")
+    await _setup(hass, "DDDD")
+    await _fill(hass, "AAAA", "Schinken", 200)
+    await _fill(hass, "BBBB", "Suppe", 1)
+    await _fill(hass, "CCCC", "Alter Fisch", -1)  # abgelaufen: bleibt draußen, auch wenn gewählt
+    await hass.services.async_call("text", "set_value", {"entity_id": _eid(hass, "text", "DDDD"), "value": "Reis"}, blocking=True)
+    calls = _fake_ai(hass, {"recipes": [RECIPE]})
+    device = lambda cc: dr.async_get(hass).async_get_device(identifiers={(DOMAIN, cc)}).id  # noqa: E731
+
+    out = await _suggest(hass, containers=[device("AAAA"), device("CCCC"), device("DDDD")])
+    assert [i["content"] for i in out["ingredients"]] == ["Schinken", "Reis"]
+    assert "picked these containers" in calls[0]["instructions"] and "Suppe" not in calls[0]["instructions"]
+
+    out = await _suggest(hass, containers=["BBBB"])  # cc direkt geht auch
+    assert [i["content"] for i in out["ingredients"]] == ["Suppe"]
+
+    out = await _suggest(hass, containers=[device("CCCC")])
+    assert out["recipes"] == [] and len(calls) == 2
+
+
+async def test_resolve_code_websocket(hass: HomeAssistant, hass_ws_client) -> None:
+    await _setup(hass, "AAAA")
+    client = await hass_ws_client(hass)
+    await client.send_json({"id": 1, "type": "larder/resolve_code", "code": "https://example.com/x?cc=AAAA&tc=1"})
+    res = (await client.receive_json())["result"]
+    assert res["valid"] and res["cc"] == "AAAA" and res["device_id"] and res["name"] == "Dose AAAA"
+    await client.send_json({"id": 2, "type": "larder/resolve_code", "code": "ZZZZ"})
+    res = (await client.receive_json())["result"]
+    assert res["valid"] and res["device_id"] is None
+    await client.send_json({"id": 3, "type": "larder/resolve_code", "code": ""})
+    assert (await client.receive_json())["result"] == {"valid": False}

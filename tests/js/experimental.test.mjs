@@ -636,3 +636,118 @@ test("Rezept aus Foto: hochladen, Entwurf prüfen und als Foto-Rezept speichern"
   await go(el2, "recipes");
   assert.equal($(el2, '[data-role="photo"]'), null);
 });
+
+test("Auswahl: Dosen antippen, leere gemeinsam befüllen, gefüllte für Rezeptideen", async () => {
+  document.body.innerHTML = "";
+  const hass = makeHass([...DOSES, { id: "d6", name: "Dose 6", area: "cellar" }]);
+  hass.suggestions = [{ title: "Lachs-Risotto", uses: ["Lachs", "Reis"], steps: [] }];
+  const el = mount(hass);
+  await flush();
+  await go(el, "containers");
+  $(el, '[data-role="select"]').click();
+  await flush();
+  assert.equal($(el, ".selbar .count").textContent, "Tippe Dosen an, um sie auszuwählen.");
+  const tile = (id) => $(el, `main .tile[data-id="${id}"]`);
+  for (const id of ["d1", "d4", "d5", "d6"]) tile(id).click();
+  await flush();
+  assert.equal($(el, ".selbar .count").textContent, "4 ausgewählt");
+  assert.ok(tile("d1").classList.contains("selected"));
+  assert.equal($(el, ".overlay").hidden, true); // Antippen öffnet im Auswahlmodus nichts
+
+  // Befüllen: nur die leeren (d5, d6) im Dialog der klassischen Ansicht
+  let opened = null;
+  el._classic.openFillDialog = (ids) => (opened = ids);
+  assert.equal($(el, '[data-role="fill-selected"]').textContent, "Befüllen (2)");
+  $(el, '[data-role="fill-selected"]').click();
+  assert.deepEqual([...opened].sort(), ["d5", "d6"]);
+
+  // Rezeptideen aus den gefüllten (d1, d4)
+  $(el, '[data-role="recipes-selected"]').click();
+  await flush();
+  await flush();
+  assert.equal($(el, "h1").textContent, "Rezepte");
+  const call = hass.wsCalls.find((m) => m.type === "call_service");
+  assert.deepEqual([...call.service_data.containers].sort(), ["d1", "d4"]);
+  assert.equal($$(el, "main h2")[0].textContent, "Vorschläge aus 2 gewählten Dosen");
+
+  // nach dem Befüllen endet der Auswahlmodus
+  await go(el, "containers");
+  $(el, '[data-role="select"]').click();
+  tile("d6").click();
+  await flush();
+  el._classic.dispatchEvent(new CustomEvent("larder-filled", { detail: { deviceIds: ["d6"] } }));
+  await flush();
+  assert.equal($(el, ".selbar"), null);
+});
+
+test("Serien-Scan: NFC-Ereignisse und QR-Scanner der App wählen Dosen aus", async () => {
+  document.body.innerHTML = "";
+  const hass = makeHass(DOSES);
+  let eventCb = null;
+  let unsubscribed = false;
+  hass.connection = {
+    subscribeEvents: async (cb, type) => {
+      assert.equal(type, "larder_dose_scanned");
+      eventCb = cb;
+      return () => (unsubscribed = true);
+    },
+  };
+  const sent = [];
+  const original = () => true;
+  const external = {
+    config: { hasBarCodeScanner: 1 },
+    _commandHandler: original,
+    addCommandHandler(h) {
+      this._commandHandler = h;
+    },
+    fireMessage: (m) => sent.push(m),
+  };
+  hass.auth = { external };
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/resolve_code`) {
+      if (msg.code === "cc=d2") return { valid: true, cc: "d2", device_id: "d2", name: "Dose 2" };
+      if (msg.code === "cc=NEU") return { valid: true, cc: "NEU", device_id: null };
+      return { valid: false };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await go(el, "containers");
+  $(el, '[data-role="select"]').click();
+  await flush();
+  $(el, '[data-role="scan"]').click();
+  await flush();
+  await flush();
+  assert.match($(el, "main .note").textContent, /Serien-Scan/);
+  assert.equal(sent[0].type, "bar_code/scan");
+  assert.notEqual(external._commandHandler, original);
+
+  eventCb({ data: { device_id: "d1" } }); // NFC
+  assert.ok(external._commandHandler({ command: "bar_code/scan_result", payload: { rawValue: "cc=d2", format: "qr_code" } }));
+  external._commandHandler({ command: "bar_code/scan_result", payload: { rawValue: "cc=NEU", format: "qr_code" } });
+  external._commandHandler({ command: "bar_code/scan_result", payload: { rawValue: "Hallo", format: "qr_code" } });
+  await flush();
+  await flush();
+  assert.equal($(el, ".selbar .count").textContent, "2 ausgewählt");
+  assert.deepEqual(
+    sent.filter((m) => m.type === "bar_code/notify").map((m) => m.payload.message),
+    ["✓ Dose 2 (2 ausgewählt)", "Diese Dose ist noch nicht angelegt.", "Kein Larder-Code."],
+  );
+
+  $(el, '[data-role="scan"]').click(); // beenden
+  await flush();
+  assert.equal(unsubscribed, true);
+  assert.equal(external._commandHandler, original);
+  assert.equal(sent[sent.length - 1].type, "bar_code/close");
+
+  // Schließen im Scanner der App beendet den Scan ebenfalls
+  $(el, '[data-role="scan"]').click();
+  await flush();
+  await flush();
+  external._commandHandler({ command: "bar_code/aborted", payload: { reason: "canceled" } });
+  await flush();
+  assert.equal(external._commandHandler, original);
+  assert.equal($(el, '[data-role="scan"]').textContent.includes("Scannen"), true);
+});
