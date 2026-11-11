@@ -203,7 +203,7 @@ The result contains `best_before`, `days`, `tip` (a short storage tip), `source`
 
 An empty container shows a **Fill** button. It opens a small dialog: **contents** (with suggestions from what you entered before, newest first, then your remembered estimates), **quantity and unit** (optional), **vacuum**, **filled on** (preset to now), optionally a **best-before date**, and **Estimate best before automatically** (only if estimating is on and the date is empty). **Save** sets everything and estimates the date.
 
-The dialog also opens by itself after a scan: when the Shortcut opens `app_url` or you tap the NFC notification and the container is empty. For a container that already has contents the dashboard only highlights it. This works for all users, not only administrators.
+The dialog also opens by itself right after you add a new container in the dashboard (including after writing an NFC tag), so you can fill it straight away. It also opens after a scan: when the Shortcut opens `app_url` or you tap the NFC notification and the container is empty. For a container that already has contents the dashboard only highlights it. This works for all users, not only administrators.
 
 ### Managing remembered estimates
 

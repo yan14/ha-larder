@@ -887,6 +887,7 @@ class LarderPanel extends HTMLElement {
     this.larderLabel = null; // ID der Beschriftung "Larder" (nur wenn es sie gibt)
     this._cards = new Map();
     this._devices = [];
+    this._pendingFill = null; // eben angelegte Dose, für die der Befüll-Dialog aufgehen soll
     this._registries = null;
     this.attachShadow({ mode: "open" });
     this.shadowRoot.innerHTML = `
@@ -1193,6 +1194,7 @@ class LarderPanel extends HTMLElement {
 
     this._busy = true;
     this._form.querySelector("button.submit").disabled = true;
+    const knownDevices = new Set(this._devices.map((d) => d.deviceId));
     let flowId = null;
     try {
       let result = await hass.callApi("POST", "config/config_entries/flow", {
@@ -1225,6 +1227,9 @@ class LarderPanel extends HTMLElement {
           }
         }
         this.closeAddDialog();
+        // Neue Dose: sobald ihr Gerät da ist, gleich "Dose befüllen" öffnen (wie nach dem Scan einer leeren Dose).
+        this._pendingFill = { known: knownDevices, until: Date.now() + 20000 };
+        this._checkPendingFill();
         return;
       }
       if (result.type === "abort") {
@@ -1246,6 +1251,24 @@ class LarderPanel extends HTMLElement {
       this._busy = false;
       this._form.querySelector("button.submit").disabled = false;
     }
+  }
+
+  /** Wartet auf das Gerät einer eben angelegten Dose und öffnet dann den Befüll-Dialog dafür. */
+  _checkPendingFill() {
+    const pending = this._pendingFill;
+    const hass = this._hass;
+    if (!pending || !hass) return;
+    if (Date.now() > pending.until) {
+      this._pendingFill = null;
+      return;
+    }
+    const states = hass.states || {};
+    const dev = this._devices.find(
+      (d) => !pending.known.has(d.deviceId) && d.entities.text && states[d.entities.text],
+    );
+    if (!dev || !this._cards.has(dev.deviceId)) return;
+    this._pendingFill = null;
+    this.highlight(dev.deviceId, true);
   }
 
   /** `?add=<ID>` (vom Scan-Webhook): Dialog mit Code öffnen, bzw. Hinweis für Nicht-Administratoren. */
@@ -1836,6 +1859,8 @@ class LarderPanel extends HTMLElement {
       this._layoutSig = sig;
       this._rebuild(hass);
     }
+
+    this._checkPendingFill();
 
     const t = strings(hass);
     this._title.textContent = t.title;

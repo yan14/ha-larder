@@ -1291,6 +1291,44 @@ test("Rezeptideen: ohne ablaufende Dosen ein Hinweis, bei Fehler die Fehlermeldu
   assert.equal($(el2, "button.submit.submit, form.recipeform button.submit").disabled, false);
 });
 
+test("Neue Dose: nach dem Anlegen öffnet sich der Befüll-Dialog, sobald ihr Gerät da ist", async () => {
+  const existing = { id: "d1", name: "Alte Dose", content: "Käse" };
+  const hass = adminHass([existing]);
+  hass.callApi = async (method, path, body) => {
+    hass.apiCalls.push({ method, path, body });
+    if (path.endsWith("flow")) return { flow_id: "f1" };
+    if (body && body.next_step_id) return { type: "form" };
+    return { type: "create_entry", result: { entry_id: "e1" } };
+  };
+  const el = mount(hass);
+  await flush();
+  el.openAddDialog();
+  $(el, "form.dialog").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  await flush();
+  assert.equal($(el, ".overlay").hidden, true);
+  assert.equal($(el, ".overlay.fill").hidden, true); // Gerät noch nicht da
+
+  const next = adminHass([existing, { id: "d2", name: "Neue Dose" }]);
+  el.hass = next;
+  await flush();
+  assert.equal($(el, ".overlay.fill").hidden, false);
+  assert.match($(el, "form.fillform h2").textContent, /Neue Dose/);
+
+  // nur einmal: nach dem Schließen öffnet ein weiteres hass-Update den Dialog nicht erneut
+  $(el, "form.fillform button.cancel").click();
+  el.hass = adminHass([existing, { id: "d2", name: "Neue Dose" }]);
+  await flush();
+  assert.equal($(el, ".overlay.fill").hidden, true);
+});
+
+test("Befüll-Dialog öffnet sich nicht von selbst, wenn keine Dose angelegt wurde", async () => {
+  const el = mount(adminHass([{ id: "d1", name: "A" }]));
+  await flush();
+  el.hass = adminHass([{ id: "d1", name: "A" }, { id: "d2", name: "B" }]);
+  await flush();
+  assert.equal($(el, ".overlay.fill").hidden, true);
+});
+
 test("Dialog schließen beendet das Warten auf einen Tag", async () => {
   const hass = nfcHass([{ id: "d1", name: "A" }]);
   const el = mount(hass);
