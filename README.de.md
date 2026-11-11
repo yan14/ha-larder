@@ -6,7 +6,33 @@
 
 🇩🇪 Deutsch · [🇬🇧 English](README.md)
 
-Home-Assistant-Integration für wiederverwendbare Vorratsdosen mit QR-Code oder NFC-Tag. Sie funktioniert mit den originalen Zwilling-Dosen (deren QR-Codes lassen sich einlesen), aber jede Dose ist möglich. Pro Dose entsteht ein Gerät (eindeutig über die ID, den Parameter `cc` eines Zwilling-QR-Codes) mit:
+Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltbarkeit festhalten, vor dem Ablauf erinnert werden und jede Dose per Scan wiederfinden.
+
+## Highlights
+
+- 🖥️ **[Eigenes Dashboard](#dashboard-larder)** in der Seitenleiste: alle Dosen auf einen Blick, alles anlegen und bearbeiten, aktualisiert sich selbst
+- 🔖 **[Zwilling-Fresh-&-Save-QR-Codes](#ios-kurzbefehl-für-die-originalen-zwilling-codes)**: die originalen Codes auf den Deckeln funktionieren weiter (iOS-Kurzbefehl)
+- 🏷️ **[Eigener QR-Code für jede Dose](#dose-anlegen)**: für jede beliebige Box, mit eindeutiger ID und fertigem Bild
+- 📲 **[NFC-Tag-Integration](#nfc-tags)**: Tag auf die Box kleben statt einen Code zu drucken
+- ✏️ **[Schnelles Befüllen](#dose-schnell-befüllen)**: Inhalt, MHD und Vakuum in wenigen Taps, mit Vorschlägen aus früheren Inhalten
+- 🧮 **[MHD-Schätzung](#mhd-schätzen-eingebaute-tabelle-und-optional-ki)**: eingebaute Haltbarkeitstabelle, optional mit KI
+- 🔔 **[Ablauf-Benachrichtigungen](#ablauf-benachrichtigungen)**: tägliche Zusammenfassung per Blueprint, still, wenn nichts abläuft
+- 📅 **[Kalendereinträge](#mhd-im-kalender)**: MHDs erscheinen in deinem Kalender
+- 🌍 In Deutsch und Englisch verfügbar
+
+<p align="center"><img src="docs/images/dashboard-de.png" width="720" alt="Dashboard Larder (Demo-Daten)"></p>
+
+## Warum dieses Projekt?
+
+Alles begann mit dem Kauf der Zwilling Fresh & Save Family Box. Dabei fiel mir der QR-Code auf den Deckeln auf, der jede Box mit dem Verwaltungssystem in der Zwilling-App verknüpft. Dann musste ich feststellen, dass die App und ihre Funktionen zum 31.12.2026 eingestellt werden.
+
+Ein Ersatz musste her, und da ich Home Assistant ohnehin im Einsatz habe, lag es nahe, dort eine Integration zu bauen.
+
+Dann kam eine zweite Idee: Auch gewöhnliche Boxen sollten einen QR-Code bekommen. Den muss man aber umständlich ausdrucken, und weil ich noch einige NFC-Aufkleber herumliegen hatte, war die Idee der NFC-Tag-Integration geboren.
+
+## Entitäten
+
+Pro Dose entsteht ein Gerät (eindeutig über die ID, den Parameter `cc` eines Zwilling-QR-Codes) mit:
 
 | Entität | Typ | Zweck |
 | --- | --- | --- |
@@ -21,13 +47,6 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen mit QR-Code oder 
 Die Werte bleiben über Neustarts erhalten. „Behälter leeren“ ist eine normale Button-Entität, lässt sich also auf Dashboards und in Automationen über `button.press` verwenden.
 
 **Einzelnes Feld leeren:** Die Datums-Entitäten von Home Assistant lassen sich im Entitäts-Dialog selbst nicht leeren (der Button „Löschen“ im Datumsfeld bewirkt dort nichts). Nutze stattdessen eines davon: das Feld im Dashboard leeren, **Behälter leeren** für alles zusammen, oder die Services `larder.clear_best_before` bzw. `larder.clear_filled_at` (z. B. in den Entwicklerwerkzeugen oder in einer Automation).
-
-Zusätzlich gibt es:
-
-- ein **Dashboard** „Larder“ in der Seitenleiste (siehe [unten](#dashboard-larder)), das alle Dosen zeigt, mit dem du Dosen hinzufügen und alles bearbeiten kannst und das sich selbst aktualisiert,
-- einen **Scan-Webhook** für die originalen Zwilling-QR-Codes (iOS-Kurzbefehl, siehe unten).
-
-<p align="center"><img src="docs/images/dashboard-de.png" width="720" alt="Dashboard Larder (Demo-Daten)"></p>
 
 ## Installation über den Marketplace (HACS)
 

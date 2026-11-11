@@ -6,7 +6,33 @@
 
 [🇩🇪 Deutsch](README.de.md) · 🇬🇧 English
 
-Home Assistant integration for reusable food storage containers with a QR code or NFC tag. It works with the original Zwilling containers (their QR codes can be read), but any container will do. Every container becomes a device (identified by its ID, the `cc` parameter of a Zwilling QR code) with:
+Home Assistant integration for reusable food storage containers: note what is inside and until when it keeps, get reminded before it expires, and find any container with a scan.
+
+## Highlights
+
+- 🖥️ **[Own dashboard](#dashboard-larder)** in the sidebar: all containers at a glance, add and edit everything, updates itself
+- 🔖 **[Zwilling Fresh & Save QR codes](#ios-shortcut-for-the-original-zwilling-codes)**: the original codes on the lids keep working (iOS Shortcut)
+- 🏷️ **[Your own QR code for every container](#adding-a-container)**: for any box, with a unique ID and a ready-made image
+- 📲 **[NFC tag integration](#nfc-tags)**: stick a tag on the box instead of printing a code
+- ✏️ **[Quick fill dialog](#filling-a-container-quickly)**: contents, best-before date and vacuum in a few taps, with suggestions from earlier contents
+- 🧮 **[Best-before estimate](#best-before-estimate-built-in-table-and-optional-ai)**: built-in shelf-life table, optionally with AI
+- 🔔 **[Expiry notifications](#expiry-notifications)**: daily summary via blueprint, quiet when nothing expires
+- 📅 **[Calendar entries](#best-before-dates-in-your-calendar)**: best-before dates appear in your calendar
+- 🌍 Available in English and German
+
+<p align="center"><img src="docs/images/dashboard-en.png" width="720" alt="Dashboard Larder (demo data)"></p>
+
+## Why this project?
+
+It all started with buying the Zwilling Fresh & Save Family Box. I noticed the QR code on the lids, which links each box to the management system in the Zwilling app. Then I found out that the app and its functions will be discontinued on 31 December 2026.
+
+So I needed a replacement, and since I already run Home Assistant, building an integration there was the obvious choice.
+
+Then came a second idea: why not give ordinary boxes a QR code too? Printing those is tedious, though, and I still had a few NFC stickers lying around. That is how the NFC tag integration was born.
+
+## Entities
+
+Every container becomes a device (identified by its ID, the `cc` parameter of a Zwilling QR code) with:
 
 | Entity | Type | Purpose |
 | --- | --- | --- |
@@ -21,13 +47,6 @@ Home Assistant integration for reusable food storage containers with a QR code o
 The values survive restarts. "Empty container" is a regular button entity, so you can use it on dashboards and in automations via `button.press`.
 
 **Clearing a single field:** the date entities of Home Assistant itself cannot be cleared from the entity dialog (the picker's "Clear" button has no effect there). Use one of these instead: empty the field in the dashboard, press **Empty container** to reset everything, or call the services `larder.clear_best_before` / `larder.clear_filled_at` (for example in Developer tools or an automation).
-
-You also get:
-
-- a **dashboard** "Larder" in the sidebar (see [below](#dashboard-larder)) that lists all containers, lets you add containers and edit everything, and updates itself,
-- a **scan webhook** for the original Zwilling QR codes (iOS Shortcut, see below).
-
-<p align="center"><img src="docs/images/dashboard-en.png" width="720" alt="Dashboard Larder (demo data)"></p>
 
 ## Installation via the Marketplace (HACS)
 
