@@ -416,6 +416,7 @@ function adminHass(doses = [{ id: "d1", name: "Dose A", area: "kitchen" }], resp
   hass.nfcLinks = {};
   hass.callWS = async (msg) => {
     if (msg.type === `${D}/nfc_tags`) return { by_device: hass.nfcLinks }; // Hintergrundabruf, nicht mitzählen
+    if (msg.type === "config/label_registry/list") return []; // Hintergrundabruf, nicht mitzählen
     hass.wsCalls.push(msg);
     return {};
   };
@@ -582,6 +583,74 @@ test("listAreas sortiert Bereiche nach Name", () => {
   assert.deepEqual(listAreas({}), []);
 });
 
+test("listAreas: nur Bereiche mit der Beschriftung, ohne markierten Bereich alle, der aktuelle bleibt", () => {
+  const areas = {
+    kitchen: { area_id: "kitchen", name: "Küche", labels: ["larder"] },
+    cellar: { area_id: "cellar", name: "Keller", labels: [] },
+    pantry: { area_id: "pantry", name: "Vorrat", labels: ["larder", "x"] },
+    garage: { area_id: "garage", name: "Garage" },
+  };
+  const hass = { language: "de", areas };
+  const ids = (list) => list.map((a) => a.id);
+  assert.deepEqual(ids(listAreas(hass, "larder")), ["kitchen", "pantry"]);
+  assert.deepEqual(ids(listAreas(hass, "larder", "cellar")), ["cellar", "kitchen", "pantry"]); // aktueller Bereich bleibt wählbar
+  assert.deepEqual(ids(listAreas(hass, null)), ["garage", "cellar", "kitchen", "pantry"]); // ohne Beschriftung: alle
+  assert.deepEqual(ids(listAreas(hass, "unbekannt")), ["garage", "cellar", "kitchen", "pantry"]); // niemand hat sie: alle
+});
+
+function labelHass(labels, areas) {
+  const hass = adminHass([{ id: "d1", name: "Dose A", area: "cellar", content: "Käse" }]);
+  hass.areas = areas;
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === "config/label_registry/list") {
+      if (labels instanceof Error) throw labels;
+      return labels;
+    }
+    return base(msg);
+  };
+  return hass;
+}
+
+const LABELED_AREAS = {
+  kitchen: { area_id: "kitchen", name: "Küche", labels: ["lbl1"] },
+  cellar: { area_id: "cellar", name: "Keller", labels: [] },
+  garage: { area_id: "garage", name: "Garage", labels: [] },
+};
+
+test("Bereichsauswahl: mit Beschriftung 'Larder' nur markierte Bereiche (plus aktueller Bereich der Dose)", async () => {
+  const el = mount(labelHass([{ label_id: "lbl1", name: "Larder" }], LABELED_AREAS));
+  await flush();
+  const cardOptions = [...$(el, '.card [data-f="area"]').options].map((o) => o.textContent);
+  assert.deepEqual(cardOptions, ["Kein Bereich", "Keller", "Küche"]); // Keller: aktueller Bereich der Dose, Garage fehlt
+  el.openAddDialog();
+  await flush();
+  assert.deepEqual([...$(el, "form.dialog select").options].map((o) => o.textContent), ["Kein Bereich", "Küche"]);
+});
+
+test("Bereichsauswahl: Beschriftung findet man über den Namen, egal wie geschrieben", async () => {
+  const el = mount(labelHass([{ label_id: "abc", name: " LARDER " }], { ...LABELED_AREAS, kitchen: { area_id: "kitchen", name: "Küche", labels: ["abc"] } }));
+  await flush();
+  el.openAddDialog();
+  await flush();
+  assert.deepEqual([...$(el, "form.dialog select").options].map((o) => o.textContent), ["Kein Bereich", "Küche"]);
+});
+
+test("Bereichsauswahl: ohne Beschriftung, ohne markierte Bereiche oder bei Fehler erscheinen alle Bereiche", async () => {
+  const all = ["Kein Bereich", "Garage", "Keller", "Küche"];
+  for (const labels of [[], [{ label_id: "lbl1", name: "Larder" }], new Error("kein Zugriff")]) {
+    document.body.innerHTML = "";
+    const areas = Array.isArray(labels) && labels.length
+      ? { ...LABELED_AREAS, kitchen: { area_id: "kitchen", name: "Küche", labels: [] } } // Beschriftung da, aber nirgends gesetzt
+      : LABELED_AREAS;
+    const el = mount(labelHass(labels, areas));
+    await flush();
+    el.openAddDialog();
+    await flush();
+    assert.deepEqual([...$(el, "form.dialog select").options].map((o) => o.textContent), all);
+  }
+});
+
 // ---------- Vakuum und MHD-Schätzung ----------
 
 test("Vakuum-Schalter zeigt den Zustand und schaltet die Entität", () => {
@@ -622,6 +691,7 @@ test("MHD schätzen ruft den Service auf und zeigt Schätzung samt Tipp", async 
   const dateId = "date.d1_mhd";
   hass.callWS = async (msg) => {
     if (msg.type === `${D}/nfc_tags`) return { by_device: {} };
+    if (msg.type === "config/label_registry/list") return [];
     hass.wsCalls.push(msg);
     return {
       response: { [dateId]: { status: "estimated", days: 4, tip: "Gut verschließen", source: "table", basis: "Suppe · Kühlschrank", best_before: "2026-11-14", applied: true } },
@@ -723,6 +793,7 @@ function estimatesHass(entries = ENTRIES) {
   const hass = adminHass([{ id: "d1", name: "A", area: "kitchen" }]);
   hass.callWS = async (msg) => {
     if (msg.type === `${D}/nfc_tags`) return { by_device: {} };
+    if (msg.type === "config/label_registry/list") return [];
     hass.wsCalls.push(msg);
     if (msg.type === `${D}/estimates`) return { mode: "table", entries };
     return { entries: msg.type.endsWith("delete") ? entries.slice(1) : entries };

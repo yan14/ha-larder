@@ -112,7 +112,7 @@ As soon as at least one container exists, a sidebar entry **Larder** appears. It
 - All containers of the integration, grouped by **area** (the area of the device) and sorted by name.
 - Per container: area, **contents**, **best before** (with a hint "expired" or "n days left" starting 3 days before), **filled on**, the **Empty container** button and the QR code as a small image.
 - Contents, **quantity and unit**, best-before date and filled-on date can be edited right in the panel. "Now" sets "Filled on" to the current time.
-- The **area** of a container can be changed with the dropdown on its card, no detour through the device page needed.
+- The **area** of a container can be changed with the dropdown on its card, no detour through the device page needed. With many areas the list gets long: give the areas you use for food storage the **label** `Larder` (Settings → Areas, labels & zones → open an area → Labels, create a label named "Larder" once). The dashboard then offers only these areas, in the dropdown and in the add dialog. The current area of a container always stays in its list. If no area has the label, all areas are shown.
 - The **Vacuum** checkbox switches the vacuum property of the container.
 - With the [estimate](#best-before-estimate-built-in-table-and-optional-ai) enabled, **Estimate best before** appears under the date as soon as contents are entered and no date is set.
 - **Recipe ideas** (top right, administrators, only with the *AI Task* integration) opens the [recipe dialog](#recipe-ideas).

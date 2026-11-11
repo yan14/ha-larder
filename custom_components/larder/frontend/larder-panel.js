@@ -382,10 +382,18 @@ function isAdmin(hass) {
   return !!(hass && hass.user && hass.user.is_admin);
 }
 
-/** Bereiche des hass-Objekts als sortierte Liste [{id, name}]. */
-export function listAreas(hass) {
+/**
+ * Bereiche des hass-Objekts als sortierte Liste [{id, name}].
+ * Mit `labelId` (Beschriftung "Larder") erscheinen nur Bereiche mit dieser Beschriftung; hat keiner
+ * der Bereiche sie, werden alle gezeigt. `keep` ist ein Bereich, der immer dabei sein muss
+ * (der aktuelle Bereich einer Dose, auch wenn er die Beschriftung nicht hat).
+ */
+export function listAreas(hass, labelId = null, keep = null) {
   const lang = ((hass && hass.language) || "en").toLowerCase();
-  return Object.values((hass && hass.areas) || {})
+  let areas = Object.values((hass && hass.areas) || {});
+  const tagged = (a) => Array.isArray(a.labels) && a.labels.includes(labelId);
+  if (labelId && areas.some(tagged)) areas = areas.filter((a) => tagged(a) || a.area_id === keep);
+  return areas
     .map((a) => ({ id: a.area_id, name: a.name }))
     .sort((a, b) => a.name.localeCompare(b.name, lang, { numeric: true, sensitivity: "base" }));
 }
@@ -761,7 +769,7 @@ class DoseCard {
     this.q('[data-l="area"]').textContent = t.area;
     if (admin) {
       const select = this.q('[data-f="area"]');
-      const areas = listAreas(hass);
+      const areas = listAreas(hass, this._panel.larderLabel, dev.areaId);
       const sig = JSON.stringify([areas, t.noArea]);
       if (sig !== this._areaSig) {
         this._areaSig = sig;
@@ -876,6 +884,7 @@ class LarderPanel extends HTMLElement {
   constructor() {
     super();
     this._hass = null;
+    this.larderLabel = null; // ID der Beschriftung "Larder" (nur wenn es sie gibt)
     this._cards = new Map();
     this._devices = [];
     this._registries = null;
@@ -1004,8 +1013,33 @@ class LarderPanel extends HTMLElement {
   }
 
   set hass(hass) {
+    const first = !this._hass;
     this._hass = hass;
     this._update();
+    if (first) this.loadAreaLabel();
+  }
+
+  /**
+   * ID der Beschriftung "Larder" suchen (Name ohne Beachtung der Groß-/Kleinschreibung). Nur Bereiche mit
+   * dieser Beschriftung erscheinen dann in der Bereichsauswahl. Nur für Administratoren (Registerabfrage).
+   */
+  async loadAreaLabel() {
+    const hass = this._hass;
+    if (!hass || !hass.callWS || !isAdmin(hass)) return;
+    let id = null;
+    try {
+      const labels = await hass.callWS({ type: "config/label_registry/list" });
+      const found = (Array.isArray(labels) ? labels : []).find(
+        (l) => String(l.name || "").trim().toLowerCase() === "larder" || l.label_id === "larder",
+      );
+      id = found ? found.label_id : null;
+    } catch (err) {
+      id = null; // ohne Beschriftungen: alle Bereiche zeigen
+    }
+    if (id !== this.larderLabel) {
+      this.larderLabel = id;
+      this._update();
+    }
   }
 
   set narrow(value) {
@@ -1105,6 +1139,7 @@ class LarderPanel extends HTMLElement {
     const radio = this._form.querySelector(`input[name="mode"][value="${code ? "scan" : "new"}"]`);
     radio.checked = true;
     this._nfcTag = null;
+    this.loadAreaLabel();
     this._refreshWriteSupport();
     this._syncMode();
     this._fillAreaOptions(t);
@@ -1122,7 +1157,7 @@ class LarderPanel extends HTMLElement {
   _fillAreaOptions(t) {
     const select = this._form.querySelector('[data-f="area"]');
     select.replaceChildren(
-      ...[{ id: "", name: t.noArea }, ...listAreas(this._hass)].map((a) => {
+      ...[{ id: "", name: t.noArea }, ...listAreas(this._hass, this.larderLabel)].map((a) => {
         const opt = document.createElement("option");
         opt.value = a.id;
         opt.textContent = a.name;
@@ -1523,7 +1558,7 @@ class LarderPanel extends HTMLElement {
     content.dataset.f = "content";
     const area = el("select");
     area.dataset.f = "area";
-    for (const a of listAreas(hass)) {
+    for (const a of listAreas(hass, this.larderLabel)) {
       const opt = el("option", "", a.name);
       opt.value = a.name;
       area.append(opt);

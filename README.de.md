@@ -112,7 +112,7 @@ Sobald mindestens eine Dose angelegt ist, erscheint in der Seitenleiste der Eint
 - Alle Dosen der Integration, gruppiert nach **Bereich** (Area des Geräts) und sortiert nach Name.
 - Pro Dose: Bereich, **Inhalt**, **MHD** (mit Hinweis „abgelaufen“ oder „noch n Tage“ ab 3 Tagen davor), **Eingelagert am** (= „Befüllt am“), der Button **Behälter leeren** und der QR-Code als kleines Bild.
 - Inhalt, Menge und Einheit, MHD und Datum lassen sich direkt im Panel ändern. „Jetzt“ setzt „Eingelagert am“ auf die aktuelle Zeit.
-- Den **Bereich** einer Dose änderst du über das Auswahlfeld auf ihrer Karte, ohne Umweg über die Geräteseite.
+- Den **Bereich** einer Dose änderst du über das Auswahlfeld auf ihrer Karte, ohne Umweg über die Geräteseite. Bei vielen Bereichen wird die Liste lang: Gib den Bereichen, die du für Vorräte nutzt, die **Beschriftung** `Larder` (Einstellungen → Bereiche, Beschriftungen & Zonen → Bereich öffnen → Beschriftungen, einmalig eine Beschriftung „Larder“ anlegen). Das Dashboard bietet dann nur diese Bereiche an, im Auswahlfeld und im Hinzufügen-Dialog. Der aktuelle Bereich einer Dose bleibt immer in ihrer Liste. Hat kein Bereich die Beschriftung, werden alle Bereiche gezeigt.
 - Das Häkchen **Vakuum** schaltet die Vakuum-Eigenschaft der Dose um.
 - Ist die [Schätzung](#mhd-schätzen-eingebaute-tabelle-und-optional-ki) aktiviert, erscheint unter dem Datum der Button **MHD schätzen**, sobald ein Inhalt eingetragen und noch kein MHD gesetzt ist.
 - **Rezeptideen** (oben rechts, Administratoren, nur mit der Integration *AI Task*) öffnet den [Rezept-Dialog](#rezeptideen).
