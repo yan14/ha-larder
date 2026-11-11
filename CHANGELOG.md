@@ -3,6 +3,11 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 1.8.1
+
+- **Larder experimental:** the page stayed empty after reloading the browser on it. Home Assistant could create the dashboard before its code had finished loading; the values it handed over were then lost. They are now picked up when the dashboard starts.
+- **Larder experimental:** the bottom bar now sits at the bottom of the screen also when a page has little content.
+
 ## 1.8.0
 
 - **Recipe ideas, period:** the number of days to look ahead is now a setting (*Configure* → *Period for recipe ideas*, default 3). The dashboard dialog starts with it, and the service `larder.suggest_recipes` uses it when `days` is omitted (`days` now accepts up to 365).

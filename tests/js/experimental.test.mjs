@@ -567,3 +567,17 @@ test("„Läuft bald ab“ folgt der Einstellung auch in Larder experimental", (
   assert.equal(isSoon({ content: "Suppe", days: 5 }), false); // ohne Angabe: 3 Tage
   assert.equal(isSoon({ content: "", days: 1, soon: 7 }), false);
 });
+
+test("Neuladen: Eigenschaften, die HA vor dem Laden des Moduls setzt, werden übernommen", async () => {
+  document.body.innerHTML = "";
+  // Element existiert schon, bevor die Klasse registriert ist (wie beim Neuladen in HA)
+  const el = document.createElement("larder-exp-late");
+  el.narrow = true;
+  el.hass = makeHass(DOSES);
+  document.body.appendChild(el);
+  customElements.define("larder-exp-late", class extends customElements.get("larder-experimental") {});
+  await flush();
+  assert.equal(el.hasAttribute("narrow"), true);
+  assert.match($(el, "main").textContent, /Hallo Yan/);
+  assert.ok($(el, 'nav button[data-view="containers"]'));
+});

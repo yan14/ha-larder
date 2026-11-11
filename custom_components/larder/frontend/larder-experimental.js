@@ -301,7 +301,7 @@ function saveOptions(opts) {
 }
 
 const STYLE = `
-  :host { display: flex; flex-direction: column; min-height: 100%; background: var(--primary-background-color);
+  :host { display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; background: var(--primary-background-color);
     color: var(--primary-text-color); font-family: var(--paper-font-body1_-_font-family, Roboto, sans-serif); }
   [hidden] { display: none !important; }
   header { display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 56px; box-sizing: border-box;
@@ -429,6 +429,23 @@ class LarderExperimental extends HTMLElement {
     this._overlay.addEventListener("click", (ev) => {
       if (ev.target === this._overlay) this._closeDialog();
     });
+  }
+
+  /**
+   * Home Assistant legt das Panel-Element beim Neuladen der Seite unter Umständen an, bevor dieses
+   * Modul fertig geladen ist (es wartet auf das klassische Dashboard). Dann landen hass, narrow,
+   * route und panel als einfache Eigenschaften am noch nicht aufgewerteten Element und verdecken
+   * die Setter dieser Klasse; die Seite bliebe leer. Hier werden sie nachträglich übernommen.
+   */
+  connectedCallback() {
+    for (const prop of ["narrow", "route", "panel", "hass"]) {
+      if (Object.prototype.hasOwnProperty.call(this, prop)) {
+        const value = this[prop];
+        delete this[prop];
+        this[prop] = value;
+      }
+    }
+    this._update();
   }
 
   get hass() {
