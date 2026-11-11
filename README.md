@@ -245,9 +245,12 @@ The calendar must be able to create **and** delete events. Read-only calendars (
 
 Instead of printing a QR code you can stick an NFC tag on the container. This uses Home Assistant's own **tags**: every scan fires a `tag_scanned` event, and the integration remembers which tag belongs to which container. Other tags in your home are ignored.
 
-1. **Write a tag** with the Home Assistant app (Settings → Companion App → NFC, or Settings → Tags). Any tag ID works.
-2. **Link it to a container** in the dashboard (administrators): on the card press **Link NFC tag** and hold the phone to the tag. Or use **+ Add container → Scan NFC tag**, which creates a new container and links the tag in one go.
-3. **Scan it later.** If the dashboard is open, it jumps to the container and highlights it. Otherwise the scanning phone (Companion app) gets a notification, and tapping it opens the dashboard on that container. iPhones show their own banner after reading a tag, tap it first.
+**Quickest way (in the Home Assistant app):** open the dashboard, press **+ Add container → Write a new NFC tag**, enter a name and press **Add**. Larder creates the container, creates a new tag in Home Assistant, links the two, and the app opens its tag writer: hold the phone to an empty NFC tag, done. The option only appears in the Companion app on a phone that can write NFC tags (not in a desktop browser).
+
+If you already have a tag written with the Home Assistant app (Settings → Companion App → NFC, or Settings → Tags), link it instead:
+
+1. **Link it to a container** in the dashboard (administrators): on the card press **Link NFC tag** and hold the phone to the tag. Or use **+ Add container → Scan NFC tag**, which creates a new container and links the tag in one go.
+2. **Scan it later.** If the dashboard is open, it jumps to the container and highlights it. Otherwise the scanning phone (Companion app) gets a notification, and tapping it opens the dashboard on that container. iPhones show their own banner after reading a tag, tap it first.
 
 For your own automations a linked scan fires the event `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`). The notification can be switched off in the settings ("NFC: notify the phone"). One container has at most one tag, and a tag belongs to one container.
 

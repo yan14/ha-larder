@@ -69,6 +69,8 @@ export const STRINGS = {
     sortName: "Nach Name",
     noMatch: "Keine Dose passt zu Suche und Filter.",
     nfcScan: "NFC-Tag scannen",
+    nfcWrite: "Neuen NFC-Tag beschreiben",
+    nfcWriteHint: "Nach „Hinzufügen“ öffnet die App das Beschreiben: Halte das Handy dann an einen leeren NFC-Tag.",
     nfcWaiting: "Halte das Handy jetzt an den NFC-Tag …",
     nfcGot: "Tag erkannt.",
     nfcInUse: "Dieser Tag ist schon mit einer anderen Dose verknüpft.",
@@ -164,6 +166,8 @@ export const STRINGS = {
     sortName: "By name",
     noMatch: "No container matches the search and filter.",
     nfcScan: "Scan NFC tag",
+    nfcWrite: "Write a new NFC tag",
+    nfcWriteHint: "After “Add” the app opens its tag writer: hold your phone to an empty NFC tag.",
     nfcWaiting: "Hold your phone to the NFC tag now …",
     nfcGot: "Tag detected.",
     nfcInUse: "This tag is already linked to another container.",
@@ -788,6 +792,7 @@ class LarderPanel extends HTMLElement {
             <label><input type="radio" name="mode" value="new" checked> <span data-l="modeNew"></span></label>
             <label><input type="radio" name="mode" value="scan"> <span data-l="modeZwilling"></span></label>
             <label><input type="radio" name="mode" value="nfc"> <span data-l="nfcScan"></span></label>
+            <label data-w="nfcwrite" hidden><input type="radio" name="mode" value="nfcwrite"> <span data-l="nfcWrite"></span></label>
           </div>
           <div class="nfcstatus" data-w="nfc" role="status" hidden></div>
           <label class="field" data-w="code" hidden><span data-l="codeLabel"></span><input type="text" data-f="code" autocomplete="off"></label>
@@ -894,14 +899,52 @@ class LarderPanel extends HTMLElement {
     const mode = this._mode();
     this._form.querySelector('[data-w="code"]').hidden = mode !== "scan";
     const status = this._form.querySelector('[data-w="nfc"]');
-    status.hidden = mode !== "nfc";
-    if (mode === "nfc") {
+    status.hidden = mode !== "nfc" && mode !== "nfcwrite";
+    if (mode === "nfcwrite") {
+      this._nfcTag = null;
+      this.cancelCapture("dialog");
+      status.textContent = strings(this._hass).nfcWriteHint;
+    } else if (mode === "nfc") {
       this._nfcTag = null;
       this._setNfcStatus();
       this.startCapture((tag) => this._dialogTag(tag), "dialog");
     } else {
       this.cancelCapture("dialog");
     }
+  }
+
+  /** Kann die App (Companion) NFC-Tags beschreiben? Dann gibt es im Dialog "Neuen NFC-Tag beschreiben". */
+  _refreshWriteSupport() {
+    const ext = this._hass && this._hass.auth && this._hass.auth.external;
+    const label = this._form.querySelector('[data-w="nfcwrite"]');
+    if (!ext || typeof ext.fireMessage !== "function") {
+      label.hidden = true;
+      return;
+    }
+    Promise.resolve(ext.config)
+      .then((cfg) => {
+        label.hidden = !(cfg && cfg.canWriteTag);
+      })
+      .catch(() => {
+        label.hidden = true;
+      });
+  }
+
+  /** Neuen Tag in Home Assistant anlegen (damit er in der Tag-Liste steht) und die App zum Beschreiben auffordern. */
+  async _writeNewTag(tagId, name) {
+    const hass = this._hass;
+    try {
+      await hass.callWS({ type: "tag/create", tag_id: tagId, name });
+    } catch (err) {
+      /* nicht schlimm: der Tag funktioniert auch ohne Eintrag in der Tag-Liste */
+    }
+    hass.auth.external.fireMessage({ type: "tag/write", payload: { name, tag: tagId } });
+  }
+
+  _newTagId() {
+    if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
+    const hex = () => Math.floor(Math.random() * 65536).toString(16).padStart(4, "0");
+    return `${hex()}${hex()}-${hex()}-${hex()}-${hex()}-${hex()}${hex()}${hex()}`;
   }
 
   _setNfcStatus(message) {
@@ -937,6 +980,7 @@ class LarderPanel extends HTMLElement {
     const radio = this._form.querySelector(`input[name="mode"][value="${code ? "scan" : "new"}"]`);
     radio.checked = true;
     this._nfcTag = null;
+    this._refreshWriteSupport();
     this._syncMode();
     this._fillAreaOptions(t);
     this._form.querySelector('[data-f="area"]').value = "";
@@ -997,7 +1041,7 @@ class LarderPanel extends HTMLElement {
       });
       flowId = result.flow_id;
       result = await hass.callApi("POST", `config/config_entries/flow/${flowId}`, {
-        next_step_id: mode === "scan" ? "scan" : "create", // "nfc" legt wie "neu" eine neue ID an
+        next_step_id: mode === "scan" ? "scan" : "create", // "nfc" und "nfcwrite" legen wie "neu" eine neue ID an
       });
       result = await hass.callApi("POST", `config/config_entries/flow/${flowId}`, input);
       if (result.type === "create_entry") {
@@ -1006,6 +1050,16 @@ class LarderPanel extends HTMLElement {
           const entryId = result.result && result.result.entry_id;
           try {
             await this._linkTag({ tag_id: this._nfcTag, entry_id: entryId });
+          } catch (err) {
+            this.showError(t.nfcFailed + (err && err.message ? ` ${err.message}` : ""));
+          }
+        }
+        if (mode === "nfcwrite") {
+          const entryId = result.result && result.result.entry_id;
+          const tagId = this._newTagId();
+          try {
+            await this._linkTag({ tag_id: tagId, entry_id: entryId });
+            await this._writeNewTag(tagId, name || result.title || "Larder");
           } catch (err) {
             this.showError(t.nfcFailed + (err && err.message ? ` ${err.message}` : ""));
           }

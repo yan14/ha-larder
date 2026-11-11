@@ -1040,6 +1040,70 @@ test("Dialog: 'NFC-Tag scannen' wartet auf den Tag, legt die Dose an und verknü
   assert.equal($(el, ".overlay").hidden, true);
 });
 
+function writeHass(canWriteTag) {
+  const hass = nfcHass([], {});
+  hass.apiCalls = [];
+  hass.callApi = async (method, path, body) => {
+    hass.apiCalls.push({ method, path, body });
+    if (path.endsWith("flow")) return { flow_id: "f1" };
+    if (body && body.next_step_id) return { type: "form" };
+    return { type: "create_entry", title: "Dose 1", result: { entry_id: "e1" } };
+  };
+  hass.messages = [];
+  hass.auth = {
+    external: { config: Promise.resolve({ canWriteTag }), fireMessage: (m) => hass.messages.push(m) },
+  };
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === "tag/create") {
+      hass.wsCalls.push(msg);
+      return {};
+    }
+    return base(msg);
+  };
+  return hass;
+}
+
+test("Dialog: 'Neuen NFC-Tag beschreiben' legt Dose, Tag und Verknüpfung an und startet das Beschreiben", async () => {
+  const hass = writeHass(true);
+  const el = mount(hass);
+  await flush();
+  el.openAddDialog();
+  await flush();
+  assert.equal($(el, '[data-w="nfcwrite"]').hidden, false);
+  const radio = $(el, 'input[name="mode"][value="nfcwrite"]');
+  radio.checked = true;
+  radio.dispatchEvent(new dom.window.Event("change"));
+  assert.equal($(el, ".nfcstatus").hidden, false);
+  assert.match($(el, ".nfcstatus").textContent, /öffnet die App das Beschreiben/);
+
+  $(el, '[data-f="name"]').value = "Dose 1";
+  $(el, "form.dialog").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  await flush();
+  assert.deepEqual(hass.apiCalls.map((c) => c.body), [
+    { handler: D, show_advanced_options: false },
+    { next_step_id: "create" },
+    { name: "Dose 1" },
+  ]);
+  const link = hass.wsCalls.find((c) => c.type === `${D}/nfc_link`);
+  const created = hass.wsCalls.find((c) => c.type === "tag/create");
+  assert.equal(link.entry_id, "e1");
+  assert.match(link.tag_id, /^[0-9a-f-]{36}$/);
+  assert.deepEqual(created, { type: "tag/create", tag_id: link.tag_id, name: "Dose 1" });
+  assert.deepEqual(hass.messages, [{ type: "tag/write", payload: { name: "Dose 1", tag: link.tag_id } }]);
+  assert.equal($(el, ".overlay").hidden, true);
+});
+
+test("Dialog: 'Neuen NFC-Tag beschreiben' erscheint nur, wenn die App Tags beschreiben kann", async () => {
+  for (const hass of [writeHass(false), adminHass([])]) {
+    const el = mount(hass);
+    await flush();
+    el.openAddDialog();
+    await flush();
+    assert.equal($(el, '[data-w="nfcwrite"]').hidden, true);
+  }
+});
+
 test("Dialog schließen beendet das Warten auf einen Tag", async () => {
   const hass = nfcHass([{ id: "d1", name: "A" }]);
   const el = mount(hass);

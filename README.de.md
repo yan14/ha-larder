@@ -245,9 +245,12 @@ Der Kalender muss Termine anlegen **und** löschen können. Reine Lese-Kalender 
 
 Statt einen QR-Code zu drucken, kannst du einen NFC-Tag auf die Dose kleben. Dafür werden die **Tags** von Home Assistant genutzt: Jeder Scan löst ein `tag_scanned`-Ereignis aus, und die Integration merkt sich, welcher Tag zu welcher Dose gehört. Andere Tags im Haus werden ignoriert.
 
-1. **Tag beschreiben** mit der Home-Assistant-App (Einstellungen → Companion-App → NFC, oder Einstellungen → Tags). Jede Tag-ID ist möglich.
-2. **Mit einer Dose verknüpfen** im Dashboard (Administratoren): Auf der Karte **NFC-Tag verknüpfen** drücken und das Handy an den Tag halten. Oder **+ Dose hinzufügen → NFC-Tag scannen**: Das legt eine neue Dose an und verknüpft den Tag gleich mit.
-3. **Später scannen.** Ist das Dashboard offen, springt es zur Dose und hebt sie hervor. Sonst bekommt das scannende Handy (Companion-App) eine Benachrichtigung, deren Antippen das Dashboard bei dieser Dose öffnet. Das iPhone zeigt nach dem Lesen eines Tags ein eigenes Banner, das zuerst angetippt wird.
+**Der schnellste Weg (in der Home-Assistant-App):** Dashboard öffnen, **+ Dose hinzufügen → Neuen NFC-Tag beschreiben** wählen, einen Namen eingeben und **Hinzufügen** drücken. Larder legt die Dose an, erstellt einen neuen Tag in Home Assistant und verknüpft beides. Danach öffnet die App das Beschreiben: Handy an einen leeren NFC-Tag halten, fertig. Die Option erscheint nur in der Companion-App auf einem Handy, das NFC-Tags beschreiben kann (nicht im Browser am Rechner).
+
+Hast du schon einen mit der Home-Assistant-App beschriebenen Tag (Einstellungen → Companion-App → NFC, oder Einstellungen → Tags), verknüpfst du ihn stattdessen:
+
+1. **Mit einer Dose verknüpfen** im Dashboard (Administratoren): Auf der Karte **NFC-Tag verknüpfen** drücken und das Handy an den Tag halten. Oder **+ Dose hinzufügen → NFC-Tag scannen**: Das legt eine neue Dose an und verknüpft den Tag gleich mit.
+2. **Später scannen.** Ist das Dashboard offen, springt es zur Dose und hebt sie hervor. Sonst bekommt das scannende Handy (Companion-App) eine Benachrichtigung, deren Antippen das Dashboard bei dieser Dose öffnet. Das iPhone zeigt nach dem Lesen eines Tags ein eigenes Banner, das zuerst angetippt wird.
 
 Für eigene Automationen löst ein verknüpfter Scan das Ereignis `larder_dose_scanned` aus (`cc`, `device_id`, `name`, `scanned_by`). Die Benachrichtigung lässt sich in den Einstellungen abschalten („NFC: Handy benachrichtigen“). Eine Dose hat höchstens einen Tag, und ein Tag gehört zu genau einer Dose.
 
