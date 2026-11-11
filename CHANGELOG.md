@@ -3,6 +3,10 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 1.6.1
+
+- Dashboard on phones: the header bar now wraps into two rows on narrow screens (title and **Add container** on top, tabs and **Recipe ideas** below), so nothing sticks out of the screen any more.
+
 ## 1.6.0
 
 - **Shopping list:** pick a to-do list (e.g. Shopping list, Todoist, Bring!) under *Configure*. Every container gets a new **Shopping list** switch (off by default) that is also shown in the dashboard and in the fill dialog as "Add to shopping list when emptied". When you empty a container with the switch on, its contents are added to the list. Leftovers such as "pizza leftovers" stay off and are never added. Already open items are not added twice.
