@@ -53,8 +53,8 @@ def test_every_entity_key_has_name_and_icon(lang: str) -> None:
     for module in ("button", "date", "datetime", "image", "sensor", "switch", "text"):
         src = (BASE / f"{module}.py").read_text(encoding="utf-8")
         found = re.findall(r'_key = "(\w+)"', src)
-        assert len(found) == 1, module
-        keys.add((module, found[0]))
+        assert found, module
+        keys.update((module, key) for key in found)
     trans = _load(lang)["entity"]
     icons = json.loads((BASE / "icons.json").read_text(encoding="utf-8"))["entity"]
     for module, key in keys:

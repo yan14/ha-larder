@@ -96,6 +96,7 @@ async def test_flow_creates_device_with_entities(hass: HomeAssistant) -> None:
         "34OL_best_before",
         "34OL_qr_code",
         "34OL_vacuum",
+        "34OL_shopping",
         "34OL_portions",
         "34OL_unit",
         "34OL_days_left",

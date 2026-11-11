@@ -57,12 +57,13 @@ doses.forEach((d, i) => {
   const id = `demo${String(i).padStart(2, "0")}`;
   const [name, area, content, mhd, hoursAgo] = d;
   devices[id] = { id, name, name_by_user: null, area_id: area };
-  const ids = { text: `text.${id}_c`, date: `date.${id}_b`, datetime: `datetime.${id}_f`, button: `button.${id}_e`, image: `image.${id}_q`, switch: `switch.${id}_v`, number: `number.${id}_p`, select: `select.${id}_u` };
+  const ids = { text: `text.${id}_c`, date: `date.${id}_b`, datetime: `datetime.${id}_f`, button: `button.${id}_e`, image: `image.${id}_q`, switch: `switch.${id}_v`, number: `number.${id}_p`, select: `select.${id}_u`, shopping: `switch.${id}_shopping` };
   for (const e of Object.values(ids)) entities[e] = { entity_id: e, device_id: id, platform: "larder" };
   const has = content !== "";
   states[ids.text] = { entity_id: ids.text, state: has ? content : "", attributes: {} };
   states[ids.date] = { entity_id: ids.date, state: has && mhd !== null ? day(mhd) : "unknown", attributes: { estimates: true } };
   states[ids.switch] = { entity_id: ids.switch, state: name === "Rice" || name === "Reis" ? "off" : "on", attributes: {} };
+  states[ids.shopping] = { entity_id: ids.shopping, state: [0, 2, 5].includes(i) ? "on" : "off", attributes: { list: "todo.shopping_list" } };
   states[ids.datetime] = { entity_id: ids.datetime, state: has && hoursAgo !== null ? ago(hoursAgo) : "unknown", attributes: {} };
   const portions = { 0: 4, 1: 2, 2: 5, 5: 3, 6: 6 }[i] || 0;
   const unitOf = { 2: "slices" }[i] || "portions";

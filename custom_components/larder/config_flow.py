@@ -36,6 +36,7 @@ from .const import (
     CONF_VACUUM_DEFAULT,
     CONF_OPENED_DAYS,
     CONF_THAWED_DAYS,
+    CONF_TODO_ENTITY,
     DEFAULT_OPENED_DAYS,
     DEFAULT_THAWED_DAYS,
     ESTIMATE_MODES,
@@ -168,6 +169,7 @@ class LarderOptionsFlow(OptionsFlow):
                 user_input.get(CONF_NFC_NOTIFY, True),
                 user_input.get(CONF_VACUUM_DEFAULT, True),
                 user_input.get(CONF_THAWED_DAYS, DEFAULT_THAWED_DAYS),
+                user_input.get(CONF_TODO_ENTITY) or None,
             )
             sync = await async_get_calendar_sync(self.hass)
             await sync.async_sync_all()
@@ -196,6 +198,9 @@ class LarderOptionsFlow(OptionsFlow):
                 vol.Optional(CONF_CALENDAR_ENTITY): EntitySelector(
                     EntitySelectorConfig(domain="calendar")
                 ),
+                vol.Optional(CONF_TODO_ENTITY): EntitySelector(
+                    EntitySelectorConfig(domain="todo")
+                ),
                 vol.Optional(CONF_AI_TASK_ENTITY): EntitySelector(
                     EntitySelectorConfig(domain="ai_task")
                 ),
@@ -212,6 +217,8 @@ class LarderOptionsFlow(OptionsFlow):
             suggested[CONF_AI_TASK_ENTITY] = estimator.ai_task_entity
         if estimator.calendar_entity:
             suggested[CONF_CALENDAR_ENTITY] = estimator.calendar_entity
+        if estimator.todo_entity:
+            suggested[CONF_TODO_ENTITY] = estimator.todo_entity
         return self.async_show_form(
             step_id="init",
             data_schema=self.add_suggested_values_to_schema(schema, suggested),

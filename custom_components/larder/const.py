@@ -46,6 +46,7 @@ CONF_OPENED_DAYS = "opened_days"
 CONF_THAWED_DAYS = "thawed_days"
 CONF_CALENDAR_ENTITY = "calendar_entity"
 CONF_NFC_NOTIFY = "nfc_notify"
+CONF_TODO_ENTITY = "todo_entity"  # To-do-Liste für "Beim Leeren auf die Einkaufsliste"
 CONF_VACUUM_DEFAULT = "vacuum_default"  # Vorbelegung des Schalters "Vakuum" bei neuen Dosen
 EVENT_DOSE_SCANNED = f"{DOMAIN}_dose_scanned"  # verknüpfter NFC-Tag wurde gescannt
 DEFAULT_OPENED_DAYS = 3  # so lange hält eine geöffnete Dose noch

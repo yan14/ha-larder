@@ -35,6 +35,7 @@ function makeHass(doses, { areas = {}, language = "de", stateOverrides = {} } = 
       switch: `switch.${d.id}_vacuum`,
       number: `number.${d.id}_portionen`,
       select: `select.${d.id}_einheit`,
+      shopping: `switch.${d.id}_einkaufsliste`,
     };
     for (const eid of Object.values(ids)) {
       entities[eid] = { entity_id: eid, device_id: d.id, platform: D, area_id: d.entityArea || null };
@@ -42,6 +43,11 @@ function makeHass(doses, { areas = {}, language = "de", stateOverrides = {} } = 
     states[ids.text] = { entity_id: ids.text, state: d.content ?? "unknown", attributes: {} };
     states[ids.date] = { entity_id: ids.date, state: d.mhd ?? "unknown", attributes: { estimates: !!d.ai } };
     states[ids.switch] = { entity_id: ids.switch, state: d.vacuum ?? "on", attributes: {} };
+    states[ids.shopping] = {
+      entity_id: ids.shopping,
+      state: d.shopping ?? "off",
+      attributes: { list: d.shoppingList ?? null },
+    };
     states[ids.number] = { entity_id: ids.number, state: String(d.portions ?? 0), attributes: {} };
     states[ids.select] = {
       entity_id: ids.select,
@@ -124,7 +130,7 @@ test("collectDevices: nur Zwilling-Geräte, sortiert nach Bereich, dann Name; oh
     ],
   );
   assert.ok(out.every((d) => d.deviceId !== "foreign"));
-  assert.deepEqual(Object.keys(out[0].entities).sort(), ["button", "date", "datetime", "image", "number", "select", "switch", "text"]);
+  assert.deepEqual(Object.keys(out[0].entities).sort(), ["button", "date", "datetime", "image", "number", "select", "shopping", "switch", "text"]);
 });
 
 test("collectDevices: Anzeigename des Nutzers und Bereich der Entität als Rückfall", () => {
@@ -672,6 +678,43 @@ test("Vakuum-Schalter zeigt den Zustand und schaltet die Entität", () => {
     { domain: "switch", service: "turn_on", data: { entity_id: "switch.d2_vacuum" } },
     { domain: "switch", service: "turn_off", data: { entity_id: "switch.d1_vacuum" } },
   ]);
+});
+
+test("Einkaufsliste: Schalter nur sichtbar, wenn eine Liste gewählt ist, und getrennt vom Vakuum-Schalter", () => {
+  const hass = adminHass([
+    { id: "d1", name: "Dose A", area: "kitchen", shopping: "on", shoppingList: "todo.einkaufen" },
+    { id: "d2", name: "Dose B", area: "kitchen", shopping: "off", shoppingList: "todo.einkaufen" },
+    { id: "d3", name: "Dose C", area: "kitchen", shoppingList: null },
+  ]);
+  const el = mount(hass);
+  const [a, b, c] = $$(el, '[data-f="shopping"]');
+  assert.equal($$(el, '[data-l="shopping"]')[0].textContent, "Beim Leeren auf die Einkaufsliste");
+  const rows = $$(el, ".shoprow").map((r) => r.style.display !== "none");
+  assert.deepEqual(rows, [true, true, false]);
+  assert.equal(a.checked, true);
+  assert.equal(b.checked, false);
+  assert.equal(c.checked, false);
+
+  b.checked = true;
+  b.dispatchEvent(new dom.window.Event("change"));
+  a.checked = false;
+  a.dispatchEvent(new dom.window.Event("change"));
+  assert.deepEqual(hass.calls, [
+    { domain: "switch", service: "turn_on", data: { entity_id: "switch.d2_einkaufsliste" } },
+    { domain: "switch", service: "turn_off", data: { entity_id: "switch.d1_einkaufsliste" } },
+  ]);
+});
+
+test("Einkaufsliste wird auch über translation_key erkannt, der Vakuum-Schalter bleibt unberührt", () => {
+  const hass = adminHass([{ id: "d1", name: "Dose A", area: "kitchen", shoppingList: "todo.einkaufen" }]);
+  hass.entities["switch.d1_einkaufsliste"].translation_key = "shopping";
+  hass.entities["switch.d1_einkaufsliste"].entity_id = "switch.d1_liste_x";
+  hass.states["switch.d1_liste_x"] = hass.states["switch.d1_einkaufsliste"];
+  hass.entities["switch.d1_liste_x"] = hass.entities["switch.d1_einkaufsliste"];
+  delete hass.entities["switch.d1_einkaufsliste"];
+  const [dev] = collectDevices(hass);
+  assert.equal(dev.entities.shopping, "switch.d1_liste_x");
+  assert.equal(dev.entities.switch, "switch.d1_vacuum");
 });
 
 test("'MHD schätzen' erscheint nur bei aktivierter KI, vorhandenem Inhalt und leerem MHD", () => {
@@ -1490,4 +1533,30 @@ test("Dose befüllen: englische Texte", () => {
   el.openFillDialog("d1");
   assert.match($(el, "form.fillform h2").textContent, /Fill container/);
   assert.equal($(el, "form.fillform button.submit").textContent, "Save");
+});
+
+test("Dose befüllen: Einkaufsliste-Checkbox nur mit gewählter Liste, Wert wird gespeichert", async () => {
+  const hass = fillHass([
+    { id: "d1", name: "Dose 1", content: "unknown", shoppingList: "todo.einkaufen" },
+    { id: "d2", name: "Dose 2", content: "unknown" },
+  ]);
+  const el = mount(hass);
+  el.openFillDialog("d2");
+  await flush();
+  assert.equal($(el, 'form.fillform [data-w="shopping"]').hidden, true);
+  $(el, "form.fillform button.cancel").click();
+
+  el.openFillDialog("d1");
+  await flush();
+  assert.equal($(el, 'form.fillform [data-w="shopping"]').hidden, false);
+  assert.equal($(el, 'form.fillform [data-f="shopping"]').checked, false);
+  $(el, 'form.fillform [data-f="content"]').value = "Reis";
+  $(el, 'form.fillform [data-f="shopping"]').checked = true;
+  $(el, "form.fillform").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  await flush();
+  assert.ok(
+    hass.calls.some(
+      (c) => c.domain === "switch" && c.service === "turn_on" && c.data.entity_id === "switch.d1_einkaufsliste",
+    ),
+  );
 });

@@ -43,6 +43,7 @@ export const STRINGS = {
       `Nur Administratoren können Dosen hinzufügen. Gescannter Code: ${code}`,
     areaChangeFailed: "Der Bereich konnte nicht geändert werden.",
     vacuum: "Vakuum",
+    shopping: "Beim Leeren auf die Einkaufsliste",
     estimate: "MHD schätzen",
     estimating: "Schätze …",
     estimated: (days) => `Geschätzt: ca. ${days} ${days === 1 ? "Tag" : "Tage"} haltbar`,
@@ -157,6 +158,7 @@ export const STRINGS = {
     adminOnly: (code) => `Only administrators can add containers. Scanned code: ${code}`,
     areaChangeFailed: "The area could not be changed.",
     vacuum: "Vacuum",
+    shopping: "Add to shopping list when emptied",
     estimate: "Estimate best before",
     estimating: "Estimating…",
     estimated: (days) => `Estimated: about ${days} ${days === 1 ? "day" : "days"} shelf life`,
@@ -257,6 +259,11 @@ function strings(hass) {
   return STRINGS[lang] || STRINGS.en;
 }
 
+/** Der Schalter "Einkaufsliste" ist nur sinnvoll, wenn in den Einstellungen eine To-do-Liste gewählt ist. */
+function hasShoppingList(state) {
+  return !!(state && state.attributes && state.attributes.list);
+}
+
 /** Alle Geräte der Integration, sortiert nach Bereich (ohne Bereich zuletzt) und Name. */
 export function collectDevices(hass) {
   const byDevice = new Map();
@@ -267,8 +274,12 @@ export function collectDevices(hass) {
       dev = { deviceId: ent.device_id, entities: {}, entityAreaId: null };
       byDevice.set(ent.device_id, dev);
     }
-    // Pro Gerät gibt es genau eine Entität je Domain: text, date, datetime, button, image.
-    dev.entities[ent.entity_id.split(".")[0]] = ent.entity_id;
+    // Pro Gerät gibt es je Domain eine Entität (text, date, datetime, button, image, number, select),
+    // nur "switch" gibt es zweimal: Vakuum (switch) und Einkaufsliste (shopping).
+    const domain = ent.entity_id.split(".")[0];
+    const isShopping =
+      domain === "switch" && (ent.translation_key === "shopping" || /shopping|einkaufsliste/i.test(ent.entity_id));
+    dev.entities[isShopping ? "shopping" : domain] = ent.entity_id;
     if (!dev.entityAreaId && ent.area_id) dev.entityAreaId = ent.area_id;
   }
 
@@ -479,7 +490,7 @@ const STYLE = `
   .dialog .buttons button { font: inherit; padding: 8px 14px; border-radius: 8px; cursor: pointer; border: 0; }
   .dialog .buttons button.cancel { background: none; color: var(--primary-color); }
   .dialog .buttons button.submit { background: var(--primary-color); color: var(--text-primary-color, #fff); }
-  .row.vacrow label.check { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 14px;
+  .row.vacrow label.check, .row.shoprow label.check { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 14px;
     color: var(--primary-text-color); cursor: pointer; }
   .estimaterow { display: none; flex-direction: column; gap: 4px; margin-top: -4px; }
   .estimaterow.visible { display: flex; }
@@ -618,6 +629,7 @@ class DoseCard {
       <div class="row"><label data-l="filledAt"></label><input data-f="filledAt" type="datetime-local"><button class="now" type="button"></button></div>
       <div class="estimaterow"><button class="estimate" type="button"></button><span class="tip" role="status"></span></div>
       <div class="row vacrow"><label class="check"><input type="checkbox" data-f="vacuum"><span data-l="vacuum"></span></label></div>
+      <div class="row shoprow"><label class="check"><input type="checkbox" data-f="shopping"><span data-l="shopping"></span></label></div>
       <div class="nfcrow"><span class="nfcstate"></span><button class="nfcbtn" type="button"></button></div>
       <div class="actions"><button class="fill" type="button"></button><button class="empty" type="button"></button><span class="spacer"></span><img class="qr" alt=""></div>`;
     this.el = el;
@@ -690,6 +702,9 @@ class DoseCard {
     this.inputs.content.addEventListener("input", () => this._setTip(""));
     this.q('[data-f="vacuum"]').addEventListener("change", (ev) => {
       if (this.ids.switch) this._call("switch", ev.target.checked ? "turn_on" : "turn_off", { entity_id: this.ids.switch });
+    });
+    this.q('[data-f="shopping"]').addEventListener("change", (ev) => {
+      if (this.ids.shopping) this._call("switch", ev.target.checked ? "turn_on" : "turn_off", { entity_id: this.ids.shopping });
     });
     this.q("button.estimate").addEventListener("click", () => this._estimate());
     this.q("button.fill").addEventListener("click", () => this._panel.openFillDialog(this.deviceId));
@@ -795,6 +810,7 @@ class DoseCard {
     this.q("button.empty").textContent = t.emptyContainer;
     this.q("button.fill").textContent = t.fill;
     this.q('[data-l="vacuum"]').textContent = t.vacuum;
+    this.q('[data-l="shopping"]').textContent = t.shopping;
     if (!this._estimating) this.q("button.estimate").textContent = t.estimate;
 
     const text = states[dev.entities.text];
@@ -840,6 +856,13 @@ class DoseCard {
     this.q(".vacrow").style.display = vac ? "" : "none";
     vacInput.disabled = !ok(vac);
     vacInput.checked = !!vac && vac.state === "on";
+
+    // "Beim Leeren auf die Einkaufsliste": nur sichtbar, wenn in den Einstellungen eine Liste gewählt ist.
+    const shop = states[dev.entities.shopping];
+    const shopInput = this.q('[data-f="shopping"]');
+    this.q(".shoprow").style.display = hasShoppingList(shop) ? "" : "none";
+    shopInput.disabled = !ok(shop);
+    shopInput.checked = !!shop && shop.state === "on";
 
     // "MHD schätzen": nur sichtbar, wenn die Schätzung nicht ausgeschaltet ist, Inhalt da und MHD noch leer.
     const aiOn = !!(date && date.attributes && date.attributes.estimates);
@@ -917,6 +940,7 @@ class LarderPanel extends HTMLElement {
           <label class="field"><span data-l="content"></span><input type="text" data-f="content" maxlength="255" list="zs-contents" autocomplete="off"><datalist id="zs-contents"></datalist></label>
           <label class="field" data-w="quantity"><span data-l="quantity"></span><span class="qty"><input type="number" data-f="quantity" min="0" max="9999" step="1" inputmode="numeric"><select data-f="unit"></select></span></label>
           <label class="check" data-w="vacuum"><input type="checkbox" data-f="vacuum"><span data-l="vacuum"></span></label>
+          <label class="check" data-w="shopping"><input type="checkbox" data-f="shopping"><span data-l="shopping"></span></label>
           <label class="field"><span data-l="filledAt"></span><input type="datetime-local" data-f="filledAt"></label>
           <label class="field"><span data-l="bestBefore"></span><input type="date" data-f="bestBefore"></label>
           <label class="check" data-w="estimate"><input type="checkbox" data-f="estimate" checked><span data-l="fillEstimate"></span></label>
@@ -1308,6 +1332,9 @@ class LarderPanel extends HTMLElement {
     this._fillForm.querySelector('[data-w="quantity"]').hidden = !quantity || quantity.state === "unavailable";
     f("vacuum").checked = !!vac && vac.state === "on";
     this._fillForm.querySelector('[data-w="vacuum"]').hidden = !vac || vac.state === "unavailable";
+    const shop = states[dev.entities.shopping];
+    f("shopping").checked = !!shop && shop.state === "on";
+    this._fillForm.querySelector('[data-w="shopping"]').hidden = !hasShoppingList(shop) || shop.state === "unavailable";
     f("filledAt").value = isValidState(dt) ? toLocalInputValue(dt.state) : toLocalInputValue(new Date().toISOString());
     f("bestBefore").value = isValidState(date) ? date.state : "";
     const canEstimate = !!(date && date.attributes && date.attributes.estimates) && date.state !== "unavailable";
@@ -1371,6 +1398,10 @@ class LarderPanel extends HTMLElement {
       await hass.callService("text", "set_value", { entity_id: ids.text, value: content });
       if (vac && vac.state !== "unavailable") {
         await hass.callService("switch", f("vacuum").checked ? "turn_on" : "turn_off", { entity_id: ids.switch });
+      }
+      const shopState = states[ids.shopping];
+      if (hasShoppingList(shopState) && shopState.state !== "unavailable") {
+        await hass.callService("switch", f("shopping").checked ? "turn_on" : "turn_off", { entity_id: ids.shopping });
       }
       const quantityState = states[ids.number];
       if (quantityState && quantityState.state !== "unavailable") {

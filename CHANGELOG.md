@@ -3,6 +3,11 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 1.6.0
+
+- **Shopping list:** pick a to-do list (e.g. Shopping list, Todoist, Bring!) under *Configure*. Every container gets a new **Shopping list** switch (off by default) that is also shown in the dashboard and in the fill dialog as "Add to shopping list when emptied". When you empty a container with the switch on, its contents are added to the list. Leftovers such as "pizza leftovers" stay off and are never added. Already open items are not added twice.
+- The switch belongs to the container and is kept when it is emptied. Without a chosen list it has no effect and is hidden in the dashboard.
+
 ## 1.5.2
 
 - Release notes are now written by hand in `CHANGELOG.md` and shown on every GitHub release (and in the update dialog of Home Assistant). No functional changes.

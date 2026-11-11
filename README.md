@@ -19,6 +19,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 - ✏️ **[Quick fill dialog](#filling-a-container-quickly)**: contents, quantity, best-before date and vacuum in a few taps, with suggestions from earlier contents
 - 🧮 **[Best-before estimate](#best-before-estimate-built-in-table-and-optional-ai)**: built-in shelf-life table, optionally with AI
 - 🔔 **[Expiry notifications](#expiry-notifications)**: daily summary via blueprint, quiet when nothing expires
+- 🛒 **[Shopping list](#shopping-list)**: on request, the contents of an emptied container go onto a to-do list, never leftovers
 - 📅 **[Calendar entries](#best-before-dates-in-your-calendar)**: best-before dates appear in your calendar
 - 🌍 Available in English and German
 
@@ -45,6 +46,7 @@ Every container becomes a device (identified by its ID, the `cc` parameter of a 
 | **Quantity** | `number` | How much is in the container, e.g. 4 (0 = not specified). Reset by **Empty container** |
 | **Unit** | `select` | Unit of the quantity: portions (default), pieces, slices, grams or milliliters. Reset to portions by **Empty container**. Both show up in the dashboard, the fill dialog, the `get_expiring` result and the recipe ideas. Tip: use *portions* for finished dishes (chili, soup) and *pieces* or *slices* for countable food (eggs, ham) |
 | **Vacuum** | `switch` | Is the container vacuum-sealed? On by default for new containers; change the preset under **Configure** if most of your boxes are not vacuum-sealed. Used for the estimate |
+| **Shopping list** | `switch` | Should the contents go onto your shopping list when the container is emptied? Off by default, per container, and kept by **Empty container**. Only has an effect once a list is chosen under **Configure**, see [Shopping list](#shopping-list) |
 | **Days until best before** | `sensor` | Days left until the best-before date (negative = expired). The attribute `status` is `ok`, `soon` (3 days or less), `expired` or `none` |
 | **QR code** | `image` | The container's QR code as an image: scanning it with the camera app opens the device directly in the Home Assistant app |
 
@@ -114,6 +116,7 @@ As soon as at least one container exists, a sidebar entry **Larder** appears. It
 - Contents, **quantity and unit**, best-before date and filled-on date can be edited right in the panel. "Now" sets "Filled on" to the current time.
 - The **area** of a container can be changed with the dropdown on its card, no detour through the device page needed. With many areas the list gets long: give the areas you use for food storage the **label** `Larder` (Settings → Areas, labels & zones → open an area → Labels, create a label named "Larder" once). The dashboard then offers only these areas, in the dropdown and in the add dialog. The current area of a container always stays in its list. If no area has the label, all areas are shown.
 - The **Vacuum** checkbox switches the vacuum property of the container.
+- The **Add to shopping list when emptied** checkbox only appears once a [shopping list](#shopping-list) is chosen. It is also part of the fill dialog.
 - With the [estimate](#best-before-estimate-built-in-table-and-optional-ai) enabled, **Estimate best before** appears under the date as soon as contents are entered and no date is set.
 - **Recipe ideas** (top right, administrators, only with the *AI Task* integration) opens the [recipe dialog](#recipe-ideas).
 - **+ Add container** (top right) adds a container: either *Create new QR code* or *Read Zwilling QR code*, with optional name and area. It uses the same flow as Settings → Devices & services.
@@ -262,6 +265,15 @@ response_variable: ideas
 **In the daily notification:** the [blueprint](#expiry-notifications) has the switch **Add recipe ideas**. The recipes are appended to the message; if the AI fails, the normal message is still sent. Re-import the blueprint to get the new switch.
 
 Only the contents, quantity with unit, remaining days and storage place (area name) are sent to the AI service you chose, never container names, IDs or anything else. Depending on the provider each request may cost a small amount, nothing is sent without you pressing the button or running the automation. The suggestions are ideas from a language model, not tested recipes: check that food is safe to eat, especially thawed or older food.
+
+## Shopping list
+
+Under Settings → Devices & services → **Larder** → **Configure** you can pick a **to-do list** of Home Assistant, for example the built-in *Shopping list*, Todoist or Bring!. Each container then has a checkbox **Add to shopping list when emptied** (the `Shopping list` switch, off by default). When you press **Empty container** on a container with the checkbox on, its contents are added to the list, for example "Basmati".
+
+- Not everything belongs on the list: leftovers like "pizza leftovers" simply stay unchecked and are never added. The setting belongs to the container and is kept when you empty it, so rice is always bought again and pizza never.
+- An item that is already open on the list is not added twice. Items that are already checked off do not count, so you can buy the same thing again.
+- Without a chosen list nothing happens and the checkbox is hidden. If the list is unavailable, the container is still emptied.
+- Planned: several target lists (for example butcher and supermarket), and adding expired containers as well.
 
 ## Best-before dates in your calendar
 

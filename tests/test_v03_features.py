@@ -40,7 +40,7 @@ def _entity_id(hass: HomeAssistant, domain: str, cc: str = "34OL") -> str:
     return next(
         e.entity_id
         for e in er.async_entries_for_device(reg, device.id)
-        if e.domain == domain
+        if e.domain == domain and (domain != "switch" or e.unique_id.endswith("_vacuum"))
     )
 
 
