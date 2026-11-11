@@ -1,0 +1,34 @@
+name: Update release notes
+
+# Schreibt die Texte aus CHANGELOG.md in bestehende GitHub-Releases (einmalig für ältere Versionen
+# oder nach einer Korrektur im Changelog). Manuell starten: Actions → Update release notes → Run workflow.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  notes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Update the release notes
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          for tag in $(gh release list --limit 200 --json tagName --jq '.[].tagName'); do
+            version="${tag#[vV]}"
+            notes=$(awk -v v="$version" '/^## /{p = ($2 == v); next} p' CHANGELOG.md | sed '/./,$!d')
+            if [ -z "$notes" ]; then
+              echo "No changelog section for $tag, skipping."
+              continue
+            fi
+            old=$(gh release view "$tag" --json body --jq .body)
+            case "$old" in
+              *"$notes"*) echo "$tag already has its notes."; continue ;;
+            esac
+            printf '%s\n\n%s\n' "$notes" "$old" > body.md
+            gh release edit "$tag" --notes-file body.md
+            echo "Updated $tag"
+          done
