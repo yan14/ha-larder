@@ -29,11 +29,23 @@ Zusätzlich gibt es:
 
 <p align="center"><img src="docs/images/dashboard-de.png" width="720" alt="Dashboard Larder (Demo-Daten)"></p>
 
-## Installation über HACS
+## Installation über den Marketplace (HACS)
+
+Seit Home Assistant 2026.11 ist der Community Store HACS als **Marketplace** fest eingebaut. Larder ist noch nicht im Standardkatalog, daher fügst du es als benutzerdefiniertes Repository hinzu:
+
+1. **Einstellungen → Marketplace** → **Über Link hinzufügen**
+2. URL: `https://github.com/yan14/ha-larder`, Kategorie **Integration**
+3. „Larder“ herunterladen (für ein eigenes Repository braucht es eine GitHub-Verbindung; Home Assistant zeigt dafür einen Code, den du bei GitHub eingibst).
+4. Einrichten unter **Einstellungen → Geräte & Dienste → Integration hinzufügen → Larder** (siehe unten).
+
+<details>
+<summary>Home Assistant vor 2026.11 (klassisches HACS)</summary>
 
 1. HACS → Drei-Punkte-Menü → **Benutzerdefinierte Repositories**
 2. URL: `https://github.com/yan14/ha-larder`, Kategorie **Integration**
 3. „Larder“ installieren, Home Assistant neu starten.
+
+</details>
 
 > **Du kommst vom alten „Zwilling Food Storage“ (bis 0.10)?** Larder ist eine neue Integration (Domain `larder`). Entferne die alte Integration, füge Larder hinzu und lege deine Dosen neu an.
 

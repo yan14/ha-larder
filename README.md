@@ -29,11 +29,23 @@ You also get:
 
 <p align="center"><img src="docs/images/dashboard-en.png" width="720" alt="Dashboard Larder (demo data)"></p>
 
-## Installation via HACS
+## Installation via the Marketplace (HACS)
+
+Since Home Assistant 2026.11 the community store HACS is built in as the **Marketplace**. Larder is not in the default catalogue yet, so you add it as a custom repository:
+
+1. **Settings → Marketplace** → **Add from link**
+2. URL: `https://github.com/yan14/ha-larder`, category **Integration**
+3. Download "Larder" (adding a custom repository needs a GitHub connection; Home Assistant shows a code to enter on GitHub).
+4. Set it up under **Settings → Devices & services → Add integration → Larder** (see below).
+
+<details>
+<summary>Home Assistant before 2026.11 (classic HACS)</summary>
 
 1. HACS → three-dot menu → **Custom repositories**
 2. URL: `https://github.com/yan14/ha-larder`, category **Integration**
 3. Install "Larder" and restart Home Assistant.
+
+</details>
 
 > **Coming from the old "Zwilling Food Storage" (up to 0.10)?** Larder is a new integration (domain `larder`). Remove the old one, add Larder and add your containers again.
 
