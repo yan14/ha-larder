@@ -40,7 +40,7 @@ Every container becomes a device (identified by its ID, the `cc` parameter of a 
 | **Best before** | `date` | Best-before date (MHD) |
 | **Contents** | `text` | What is in the container? |
 | **Empty container** | `button` | Resets the whole container: **Contents** become empty, **Best before** and **Filled on** are cleared. **Vacuum** is deliberately kept, it is a property of the container, not of its contents |
-| **Vacuum** | `switch` | Is the container vacuum-sealed? On by default. Switch it off for a normal box. Used for the estimate |
+| **Vacuum** | `switch` | Is the container vacuum-sealed? On by default for new containers; change the preset under **Configure** if most of your boxes are not vacuum-sealed. Used for the estimate |
 | **Days until best before** | `sensor` | Days left until the best-before date (negative = expired). The attribute `status` is `ok`, `soon` (3 days or less), `expired` or `none` |
 | **QR code** | `image` | The container's QR code as an image: scanning it with the camera app opens the device directly in the Home Assistant app |
 

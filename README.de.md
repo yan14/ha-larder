@@ -40,7 +40,7 @@ Pro Dose entsteht ein Gerät (eindeutig über die ID, den Parameter `cc` eines Z
 | **MHD** | `date` | Mindesthaltbarkeitsdatum |
 | **Inhalt** | `text` | Was ist in der Dose? |
 | **Behälter leeren** | `button` | Setzt die Dose komplett zurück: **Inhalt** wird leer, **MHD** und **Befüllt am** werden gelöscht. **Vakuum** bleibt bewusst erhalten, es ist eine Eigenschaft der Dose und nicht des Inhalts |
-| **Vakuum** | `switch` | Ist die Dose vakuumiert? Standardmäßig an. Für eine normale Box ausschalten. Wird für die Schätzung verwendet |
+| **Vakuum** | `switch` | Ist die Dose vakuumiert? Bei neuen Dosen standardmäßig an; die Vorbelegung änderst du unter **Konfigurieren**, wenn die meisten deiner Boxen nicht vakuumiert sind. Wird für die Schätzung verwendet |
 | **Tage bis MHD** | `sensor` | Verbleibende Tage bis zum MHD (negativ = abgelaufen). Das Attribut `status` ist `ok`, `soon` (3 Tage oder weniger), `expired` oder `none` |
 | **QR-Code** | `image` | QR-Code der Dose als Bild: Scannen mit der Kamera-App öffnet direkt das Gerät in der Home-Assistant-App |
 

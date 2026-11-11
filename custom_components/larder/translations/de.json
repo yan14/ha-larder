@@ -136,9 +136,11 @@
           "ai_task_entity": "KI-Aufgabe (leer = Standard von Home Assistant)",
           "opened_days": "Haltbarkeit nach dem Öffnen (Tage)",
           "calendar_entity": "Kalender für das MHD (optional)",
+          "vacuum_default": "Vakuum-Vorbelegung für neue Dosen",
           "nfc_notify": "NFC: Handy benachrichtigen"
         },
         "data_description": {
+          "vacuum_default": "Neue Dosen starten mit eingeschaltetem oder ausgeschaltetem Schalter „Vakuum“. Bestehende Dosen behalten ihren Wert. Schalte es aus, wenn die meisten deiner Boxen nicht vakuumiert sind.",
           "estimate_mode": "Zeigt im Dashboard den Button „MHD schätzen“, außer bei „Aus“.",
           "ai_task_entity": "Nur nötig, wenn du mehrere KI-Dienste eingerichtet hast und eine KI-Stufe gewählt ist.",
           "opened_days": "Der Button „Geöffnet“ im Dashboard kürzt das MHD auf höchstens so viele Tage ab heute.",

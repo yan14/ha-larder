@@ -33,6 +33,7 @@ from .const import (
     CONF_CALENDAR_ENTITY,
     CONF_ESTIMATE_MODE,
     CONF_NFC_NOTIFY,
+    CONF_VACUUM_DEFAULT,
     CONF_OPENED_DAYS,
     DEFAULT_OPENED_DAYS,
     ESTIMATE_MODES,
@@ -163,6 +164,7 @@ class LarderOptionsFlow(OptionsFlow):
                 user_input.get(CONF_OPENED_DAYS, DEFAULT_OPENED_DAYS),
                 user_input.get(CONF_CALENDAR_ENTITY) or None,
                 user_input.get(CONF_NFC_NOTIFY, True),
+                user_input.get(CONF_VACUUM_DEFAULT, True),
             )
             sync = await async_get_calendar_sync(self.hass)
             await sync.async_sync_all()
@@ -183,6 +185,7 @@ class LarderOptionsFlow(OptionsFlow):
                 vol.Optional(CONF_OPENED_DAYS, default=DEFAULT_OPENED_DAYS): NumberSelector(
                     NumberSelectorConfig(min=1, max=30, step=1, mode=NumberSelectorMode.BOX)
                 ),
+                vol.Optional(CONF_VACUUM_DEFAULT, default=True): BooleanSelector(),
                 vol.Optional(CONF_NFC_NOTIFY, default=True): BooleanSelector(),
                 vol.Optional(CONF_CALENDAR_ENTITY): EntitySelector(
                     EntitySelectorConfig(domain="calendar")
@@ -196,6 +199,7 @@ class LarderOptionsFlow(OptionsFlow):
             CONF_ESTIMATE_MODE: estimator.mode,
             CONF_OPENED_DAYS: estimator.opened_days,
             CONF_NFC_NOTIFY: estimator.nfc_notify,
+            CONF_VACUUM_DEFAULT: estimator.vacuum_default,
         }
         if estimator.ai_task_entity:
             suggested[CONF_AI_TASK_ENTITY] = estimator.ai_task_entity

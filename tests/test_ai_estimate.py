@@ -134,6 +134,29 @@ async def test_vacuum_switch_restores_last_state(hass: HomeAssistant) -> None:
     assert hass.states.get("switch.dose_34ol_vacuum").state == "off"
 
 
+async def test_vacuum_default_setting_applies_to_new_containers_only(hass: HomeAssistant) -> None:
+    entry = await _setup(hass)
+    first = _eid(hass, "switch")
+    assert hass.states.get(first).state == "on"
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"estimate_mode": "table", "vacuum_default": False}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+
+    await _setup(hass, "HA-NEW00001")
+    assert hass.states.get(_eid(hass, "switch", "HA-NEW00001")).state == "off"
+    assert hass.states.get(first).state == "on"  # bestehende Dose bleibt unverändert
+
+
+async def test_vacuum_default_is_on_without_setting(hass: HomeAssistant) -> None:
+    from custom_components.larder.estimate import async_get_estimator
+
+    await _setup(hass)
+    assert (await async_get_estimator(hass)).vacuum_default is True
+
+
 # ---------- Schätzung ----------
 
 

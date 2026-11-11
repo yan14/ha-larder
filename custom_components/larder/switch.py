@@ -7,6 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .entity import LarderConfigEntry, LarderEntity
+from .estimate import async_get_estimator
 
 
 async def async_setup_entry(
@@ -20,8 +21,9 @@ async def async_setup_entry(
 class LarderVacuumSwitch(SwitchEntity, LarderEntity):
     """Eigenschaft der Dose (nicht des Inhalts): vakuumiert oder normale Box.
 
-    Der Schalter ist standardmäßig an (die Zwilling-Dosen sind Vakuumdosen) und bleibt
-    über Neustarts erhalten. 'Behälter leeren' ändert ihn nicht, er ist deshalb nicht
+    Eine neue Dose startet mit der Vorbelegung aus den Einstellungen (Standard: an, die
+    Zwilling-Dosen sind Vakuumdosen). Danach bleibt der Wert über Neustarts erhalten und
+    folgt späteren Änderungen der Vorbelegung nicht. 'Behälter leeren' ändert ihn nicht, er ist deshalb nicht
     bei den zurücksetzbaren Entitäten registriert.
     """
 
@@ -32,6 +34,8 @@ class LarderVacuumSwitch(SwitchEntity, LarderEntity):
         await super().async_added_to_hass()
         if (last := await self._async_last_state()) is not None:
             self._attr_is_on = last.state == "on"
+        else:
+            self._attr_is_on = (await async_get_estimator(self.hass)).vacuum_default
 
     async def async_turn_on(self, **kwargs) -> None:
         self._attr_is_on = True

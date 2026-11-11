@@ -38,6 +38,7 @@ CONF_AI_TASK_ENTITY = "ai_task_entity"
 CONF_OPENED_DAYS = "opened_days"
 CONF_CALENDAR_ENTITY = "calendar_entity"
 CONF_NFC_NOTIFY = "nfc_notify"
+CONF_VACUUM_DEFAULT = "vacuum_default"  # Vorbelegung des Schalters "Vakuum" bei neuen Dosen
 EVENT_DOSE_SCANNED = f"{DOMAIN}_dose_scanned"  # verknüpfter NFC-Tag wurde gescannt
 DEFAULT_OPENED_DAYS = 3  # so lange hält eine geöffnete Dose noch
 SERVICE_ESTIMATE_BEST_BEFORE = "estimate_best_before"
