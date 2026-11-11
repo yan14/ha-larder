@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.helpers import config_validation as cv, entity_registry as er
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, SERVICE_GET_EXPIRING, SOON_DAYS
+from .const import DEFAULT_UNIT, DOMAIN, SERVICE_GET_EXPIRING, SOON_DAYS, UNITS
 from .estimate import storage_context
 
 DATA_SERVICE_REGISTERED = "get_expiring_registered"
@@ -54,7 +54,13 @@ _TEXT = {
         "tomorrow": "morgen",
         "in_days": lambda d: f"in {d} Tagen",
         "unnamed": "Dose",
-        "portions": lambda n: "1 Portion" if n == 1 else f"{n} Portionen",
+        "units": {
+            "portions": lambda n: "1 Portion" if n == 1 else f"{n} Portionen",
+            "pieces": lambda n: f"{n} Stück",
+            "slices": lambda n: "1 Scheibe" if n == 1 else f"{n} Scheiben",
+            "grams": lambda n: f"{n} g",
+            "milliliters": lambda n: f"{n} ml",
+        },
     },
     "en": {
         "title": "Larder",
@@ -72,7 +78,13 @@ _TEXT = {
         "tomorrow": "tomorrow",
         "in_days": lambda d: f"in {d} days",
         "unnamed": "Container",
-        "portions": lambda n: "1 portion" if n == 1 else f"{n} portions",
+        "units": {
+            "portions": lambda n: "1 portion" if n == 1 else f"{n} portions",
+            "pieces": lambda n: "1 piece" if n == 1 else f"{n} pieces",
+            "slices": lambda n: "1 slice" if n == 1 else f"{n} slices",
+            "grams": lambda n: f"{n} g",
+            "milliliters": lambda n: f"{n} ml",
+        },
     },
 }
 
@@ -87,6 +99,11 @@ def _when(text: dict[str, Any], days: int) -> str:
     return text["in_days"](days)
 
 
+def quantity_text(text: dict[str, Any], item: dict[str, Any]) -> str:
+    """'4 Portionen', '5 Scheiben' ... in der Sprache der Zusammenfassung."""
+    return text["units"].get(item.get("unit"), text["units"][DEFAULT_UNIT])(item["quantity"])
+
+
 def build_summary(items: list[dict[str, Any]], language: str) -> str:
     """Kurzer Text für Benachrichtigungen, in der Sprache von Home Assistant."""
     text = _TEXT["de" if language.lower().startswith("de") else "en"]
@@ -97,7 +114,7 @@ def build_summary(items: list[dict[str, Any]], language: str) -> str:
     lines = [text["head"](soon, expired) + ":"]
     for item in items:
         label = item["content"] or item["name"] or text["unnamed"]
-        extras = [text["portions"](item["portions"])] if item.get("portions") else []
+        extras = [quantity_text(text, item)] if item.get("quantity") else []
         if item["area"]:
             extras.append(item["area"])
         place = f" ({', '.join(extras)})" if extras else ""
@@ -134,17 +151,21 @@ def collect_expiring(
             and content_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE)
             else ""
         )
-        portions_id = registry.async_get_entity_id("number", DOMAIN, f"{cc}_portions")
-        portions_state = hass.states.get(portions_id) if portions_id else None
+        quantity_id = registry.async_get_entity_id("number", DOMAIN, f"{cc}_portions")
+        quantity_state = hass.states.get(quantity_id) if quantity_id else None
         try:
-            portions = int(float(portions_state.state)) if portions_state is not None else 0
+            quantity = int(float(quantity_state.state)) if quantity_state is not None else 0
         except ValueError:
-            portions = 0
+            quantity = 0
+        unit_id = registry.async_get_entity_id("select", DOMAIN, f"{cc}_unit")
+        unit_state = hass.states.get(unit_id) if unit_id else None
+        unit = unit_state.state if unit_state is not None and unit_state.state in UNITS else DEFAULT_UNIT
         items.append(
             {
                 "name": entry.title,
                 "content": content,
-                "portions": portions or None,
+                "quantity": quantity or None,
+                "unit": unit if quantity else None,
                 "area": storage_context(hass, cc).area_name,
                 "best_before": best.isoformat(),
                 "days_left": left,

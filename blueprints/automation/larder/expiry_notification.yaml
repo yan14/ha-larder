@@ -35,6 +35,16 @@ blueprint:
       default: true
       selector:
         boolean:
+    recipes:
+      name: Add recipe ideas
+      description: >
+        Also asks the AI for recipe ideas that use up the expiring containers and adds them to
+        the message. Needs the "AI Task" integration; only contents, quantity, remaining days and
+        storage place are sent. If the AI fails, the normal message is still sent.
+        Fragt zusätzlich die KI nach Rezeptideen und hängt sie an die Nachricht an.
+      default: false
+      selector:
+        boolean:
     title:
       name: Title
       default: "Larder"
@@ -45,6 +55,7 @@ mode: single
 
 variables:
   notify_action: !input notify_action
+  recipes: !input recipes
 
 triggers:
   - trigger: time
@@ -58,7 +69,19 @@ actions:
     response_variable: result
   - condition: template
     value_template: "{{ result.count > 0 }}"
+  - if:
+      - condition: template
+        value_template: "{{ recipes }}"
+    then:
+      - action: larder.suggest_recipes
+        data:
+          days: !input days
+        response_variable: ideas
+        continue_on_error: true
   - action: "{{ notify_action }}"
     data:
       title: !input title
-      message: "{{ result.summary }}"
+      message: |-
+        {{ result.summary }}{% if ideas is defined and ideas.summary %}
+
+        {{ ideas.summary }}{% endif %}

@@ -12,6 +12,7 @@ from .entity import LarderConfigEntry, LarderRuntime
 from .estimate import async_get_estimator
 from .expiry import async_setup_services
 from .panel import async_setup_panel, async_teardown_panel
+from .recipes import async_setup_recipe_service
 from .scan import async_setup_webhook, async_teardown_webhook
 from .websocket import async_setup_websocket
 
@@ -22,6 +23,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     await async_get_estimator(hass)
     async_setup_websocket(hass)
     async_setup_services(hass)
+    async_setup_recipe_service(hass)
     (await async_get_calendar_sync(hass)).async_start()
     (await async_get_nfc(hass)).async_start()
     await async_setup_webhook(hass)

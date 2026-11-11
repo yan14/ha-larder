@@ -24,7 +24,7 @@ class LarderPortions(NumberEntity, LarderResettable):
 
     _key = "portions"
     _attr_native_min_value = 0
-    _attr_native_max_value = 99
+    _attr_native_max_value = 9999
     _attr_native_step = 1
     _attr_mode = NumberMode.BOX
     _attr_native_value: float = 0

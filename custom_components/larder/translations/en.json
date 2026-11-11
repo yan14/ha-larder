@@ -83,7 +83,19 @@
     },
     "number": {
       "portions": {
-        "name": "Portions"
+        "name": "Quantity"
+      }
+    },
+    "select": {
+      "unit": {
+        "name": "Unit",
+        "state": {
+          "portions": "Portions",
+          "pieces": "Pieces",
+          "slices": "Slices",
+          "grams": "Grams",
+          "milliliters": "Milliliters"
+        }
       }
     }
   },
@@ -129,6 +141,9 @@
     },
     "nfc_tag_in_use": {
       "message": "This tag is already linked to “{name}”. Unlink it there first."
+    },
+    "recipes_failed": {
+      "message": "The AI recipe suggestion failed: {error}"
     }
   },
   "options": {
@@ -211,6 +226,24 @@
         "days": {
           "name": "Days",
           "description": "Days from today (empty = value from the settings)."
+        }
+      }
+    },
+    "suggest_recipes": {
+      "name": "Suggest recipes",
+      "description": "Asks the AI for recipe ideas that use up containers whose best-before date is near. Returns the recipes and a short summary. Needs the “AI Task” integration; only contents, quantity, remaining days and storage place are sent. Expired containers are left out.",
+      "fields": {
+        "days": {
+          "name": "Days ahead",
+          "description": "Containers expiring within this many days are used."
+        },
+        "servings": {
+          "name": "People",
+          "description": "Scale the recipes for this many people (empty = 2)."
+        },
+        "max_recipes": {
+          "name": "Number of recipes",
+          "description": "How many ideas to ask for (1–5)."
         }
       }
     }

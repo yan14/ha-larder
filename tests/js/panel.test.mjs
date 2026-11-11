@@ -34,6 +34,7 @@ function makeHass(doses, { areas = {}, language = "de", stateOverrides = {} } = 
       image: `image.${d.id}_qr`,
       switch: `switch.${d.id}_vacuum`,
       number: `number.${d.id}_portionen`,
+      select: `select.${d.id}_einheit`,
     };
     for (const eid of Object.values(ids)) {
       entities[eid] = { entity_id: eid, device_id: d.id, platform: D, area_id: d.entityArea || null };
@@ -42,6 +43,11 @@ function makeHass(doses, { areas = {}, language = "de", stateOverrides = {} } = 
     states[ids.date] = { entity_id: ids.date, state: d.mhd ?? "unknown", attributes: { estimates: !!d.ai } };
     states[ids.switch] = { entity_id: ids.switch, state: d.vacuum ?? "on", attributes: {} };
     states[ids.number] = { entity_id: ids.number, state: String(d.portions ?? 0), attributes: {} };
+    states[ids.select] = {
+      entity_id: ids.select,
+      state: d.unit ?? "portions",
+      attributes: { options: ["portions", "pieces", "slices", "grams", "milliliters"] },
+    };
     states[ids.datetime] = { entity_id: ids.datetime, state: d.filled ?? "unknown", attributes: {} };
     states[ids.button] = { entity_id: ids.button, state: "unknown", attributes: {} };
     states[ids.image] = {
@@ -118,7 +124,7 @@ test("collectDevices: nur Zwilling-Geräte, sortiert nach Bereich, dann Name; oh
     ],
   );
   assert.ok(out.every((d) => d.deviceId !== "foreign"));
-  assert.deepEqual(Object.keys(out[0].entities).sort(), ["button", "date", "datetime", "image", "number", "switch", "text"]);
+  assert.deepEqual(Object.keys(out[0].entities).sort(), ["button", "date", "datetime", "image", "number", "select", "switch", "text"]);
 });
 
 test("collectDevices: Anzeigename des Nutzers und Bereich der Entität als Rückfall", () => {
@@ -382,6 +388,8 @@ test("Deutsche und englische Panel-Texte sind vollständig und gleichartig", () 
       for (const n of [0, 1, 2]) {
         assert.ok(String(STRINGS.de[key](n)).length > 0 && String(STRINGS.en[key](n)).length > 0, `${key}(${n})`);
       }
+    } else if (typeof STRINGS.de[key] === "object") {
+      assert.deepEqual(Object.keys(STRINGS.de[key]), Object.keys(STRINGS.en[key]), key);
     } else {
       assert.ok(STRINGS.de[key].length > 0 && STRINGS.en[key].length > 0, key);
     }
@@ -915,23 +923,30 @@ test("Schnellaktionen: Aufgetaut ruft den Service mark_thawed", () => {
   assert.deepEqual(hass.calls, [{ domain: D, service: "mark_thawed", data: { entity_id: "date.d1_mhd" } }]);
 });
 
-test("Portionen: Eingabe auf der Karte setzt die Zahl, leer wird 0, 0 zeigt ein leeres Feld", () => {
-  const hass = adminHass([{ id: "d1", name: "A", content: "Chili", portions: 3 }]);
+test("Menge: Eingabe und Einheit auf der Karte setzen die Entitäten, leer wird 0", () => {
+  const hass = adminHass([{ id: "d1", name: "A", content: "Schinken", portions: 3, unit: "slices" }]);
   const el = mount(hass);
-  const input = $(el, '.card [data-f="portions"]');
+  const input = $(el, '.card [data-f="quantity"]');
+  const unit = $(el, '.card [data-f="unit"]');
   assert.equal(input.value, "3");
-  assert.equal($(el, '[data-l="portions"]').textContent, "Portionen");
+  assert.equal(unit.value, "slices");
+  assert.deepEqual([...unit.options].map((o) => o.textContent), ["Portionen", "Stück", "Scheiben", "Gramm", "Milliliter"]);
+  assert.equal($(el, '[data-l="quantity"]').textContent, "Menge");
   input.value = "5";
   input.dispatchEvent(new dom.window.Event("change"));
+  unit.value = "pieces";
+  unit.dispatchEvent(new dom.window.Event("change"));
   input.value = "";
   input.dispatchEvent(new dom.window.Event("change"));
   assert.deepEqual(hass.calls, [
     { domain: "number", service: "set_value", data: { entity_id: "number.d1_portionen", value: 5 } },
+    { domain: "select", service: "select_option", data: { entity_id: "select.d1_einheit", option: "pieces" } },
     { domain: "number", service: "set_value", data: { entity_id: "number.d1_portionen", value: 0 } },
   ]);
   document.body.innerHTML = "";
   const none = mount(adminHass([{ id: "d1", name: "A", content: "Chili" }]));
-  assert.equal($(none, '.card [data-f="portions"]').value, "");
+  assert.equal($(none, '.card [data-f="quantity"]').value, "");
+  assert.equal($(none, '.card [data-f="unit"]').value, "portions");
 });
 
 test("Schnellaktionen: ohne Inhalt versteckt, ohne MHD ist +1 Tag gesperrt", () => {
@@ -1133,6 +1148,78 @@ test("Dialog: 'Neuen NFC-Tag beschreiben' erscheint nur, wenn die App Tags besch
   }
 });
 
+function recipeHass(response, { services = true, admin = true } = {}) {
+  const hass = adminHass([{ id: "d1", name: "A", content: "Schinken", mhd: iso(1), portions: 5, unit: "slices" }]);
+  hass.user = { is_admin: admin };
+  if (services) hass.services = { ai_task: { generate_data: {} }, [D]: { suggest_recipes: {} } };
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === "call_service" && msg.service === "suggest_recipes") {
+      hass.wsCalls.push(msg);
+      if (response instanceof Error) throw response;
+      return { response };
+    }
+    return base(msg);
+  };
+  return hass;
+}
+
+test("Rezeptideen: Button nur für Administratoren und nur mit KI-Integration und Service", () => {
+  assert.equal($(mount(recipeHass({})), "button.ideas").classList.contains("visible"), true);
+  assert.equal($(mount(recipeHass({})), "button.ideas").textContent, "Rezeptideen");
+  document.body.innerHTML = "";
+  assert.equal($(mount(recipeHass({}, { services: false })), "button.ideas").classList.contains("visible"), false);
+  document.body.innerHTML = "";
+  assert.equal($(mount(recipeHass({}, { admin: false })), "button.ideas").classList.contains("visible"), false);
+});
+
+test("Rezeptideen: Dialog ruft den Service mit Tagen und Personen auf und zeigt die Rezepte", async () => {
+  const hass = recipeHass({
+    recipes: [
+      { title: "Schinken-Omelett", minutes: 15, uses: ["Schinken"], extra_ingredients: ["Butter"], steps: ["Braten", "Servieren"] },
+    ],
+  });
+  const el = mount(hass);
+  $(el, "button.ideas").click();
+  assert.equal($(el, ".overlay.recipes").hidden, false);
+  $(el, 'form.recipeform [data-f="days"]').value = "5";
+  $(el, 'form.recipeform [data-f="servings"]').value = "3";
+  $(el, "form.recipeform").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  await flush();
+  assert.deepEqual(hass.wsCalls.pop(), {
+    type: "call_service",
+    domain: D,
+    service: "suggest_recipes",
+    service_data: { days: 5, servings: 3 },
+    return_response: true,
+  });
+  const text = $(el, ".recipelist").textContent;
+  assert.match(text, /Schinken-Omelett/);
+  assert.match(text, /15 Min\./);
+  assert.match(text, /Verwendet: Schinken/);
+  assert.match(text, /Zusätzlich: Butter/);
+  assert.equal(el.shadowRoot.querySelectorAll(".recipe li").length, 2);
+});
+
+test("Rezeptideen: ohne ablaufende Dosen ein Hinweis, bei Fehler die Fehlermeldung", async () => {
+  const none = recipeHass({ recipes: [] });
+  const el = mount(none);
+  $(el, "button.ideas").click();
+  $(el, "form.recipeform").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  await flush();
+  assert.equal($(el, ".recipelist").textContent, "In den nächsten 3 Tagen läuft nichts ab.");
+  assert.deepEqual(none.wsCalls.pop().service_data, { days: 3 }); // ohne Personen
+
+  document.body.innerHTML = "";
+  const failing = recipeHass(new Error("AI kaputt"));
+  const el2 = mount(failing);
+  $(el2, "button.ideas").click();
+  $(el2, "form.recipeform").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  await flush();
+  assert.equal($(el2, ".recipeform .error").textContent, "AI kaputt");
+  assert.equal($(el2, "button.submit.submit, form.recipeform button.submit").disabled, false);
+});
+
 test("Dialog schließen beendet das Warten auf einen Tag", async () => {
   const hass = nfcHass([{ id: "d1", name: "A" }]);
   const el = mount(hass);
@@ -1229,7 +1316,8 @@ test("Dose befüllen: Pflichtfeld Inhalt, Speichern setzt Entitäten und schätz
 
   $(el, 'form.fillform [data-f="content"]').value = "Pizza";
   $(el, 'form.fillform [data-f="vacuum"]').checked = false;
-  $(el, 'form.fillform [data-f="portions"]').value = "4";
+  $(el, 'form.fillform [data-f="quantity"]').value = "5";
+  $(el, 'form.fillform [data-f="unit"]').value = "slices";
   $(el, 'form.fillform [data-f="filledAt"]').value = "2026-11-09T11:00";
   form.dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
   await flush();
@@ -1237,7 +1325,8 @@ test("Dose befüllen: Pflichtfeld Inhalt, Speichern setzt Entitäten und schätz
   assert.deepEqual(hass.calls, [
     { domain: "text", service: "set_value", data: { entity_id: "text.d1_inhalt", value: "Pizza" } },
     { domain: "switch", service: "turn_off", data: { entity_id: "switch.d1_vacuum" } },
-    { domain: "number", service: "set_value", data: { entity_id: "number.d1_portionen", value: 4 } },
+    { domain: "number", service: "set_value", data: { entity_id: "number.d1_portionen", value: 5 } },
+    { domain: "select", service: "select_option", data: { entity_id: "select.d1_einheit", option: "slices" } },
     { domain: "datetime", service: "set_value", data: { entity_id: "datetime.d1_befuellt", datetime: "2026-11-09T10:00:00.000Z" } },
   ]);
   assert.equal($(el, ".overlay.fill").hidden, true);

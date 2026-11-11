@@ -14,8 +14,9 @@ Home Assistant integration for reusable food storage containers: note what is in
 - 🔖 **[Zwilling Fresh & Save QR codes](#ios-shortcut-for-the-original-zwilling-codes)**: the original codes on the lids keep working (iOS Shortcut)
 - 🏷️ **[Your own QR code for every container](#adding-a-container)**: for any box, with a unique ID and a ready-made image
 - 📲 **[NFC tag integration](#nfc-tags)**: stick a tag on the box instead of printing a code
-- 🧊 **Thawed button and portions**: shorten the best-before date after thawing, note how many portions a container holds
-- ✏️ **[Quick fill dialog](#filling-a-container-quickly)**: contents, portions, best-before date and vacuum in a few taps, with suggestions from earlier contents
+- 🧊 **Thawed button, quantity and unit**: shorten the best-before date after thawing; note "4 portions", "5 slices" or "300 g" per container
+- 🍳 **[Recipe ideas with AI](#recipe-ideas)**: dishes that use up what expires soon, in the dashboard and in the daily notification
+- ✏️ **[Quick fill dialog](#filling-a-container-quickly)**: contents, quantity, best-before date and vacuum in a few taps, with suggestions from earlier contents
 - 🧮 **[Best-before estimate](#best-before-estimate-built-in-table-and-optional-ai)**: built-in shelf-life table, optionally with AI
 - 🔔 **[Expiry notifications](#expiry-notifications)**: daily summary via blueprint, quiet when nothing expires
 - 📅 **[Calendar entries](#best-before-dates-in-your-calendar)**: best-before dates appear in your calendar
@@ -41,7 +42,8 @@ Every container becomes a device (identified by its ID, the `cc` parameter of a 
 | **Best before** | `date` | Best-before date (MHD) |
 | **Contents** | `text` | What is in the container? |
 | **Empty container** | `button` | Resets the whole container: **Contents** become empty, **Best before** and **Filled on** are cleared. **Vacuum** is deliberately kept, it is a property of the container, not of its contents |
-| **Portions** | `number` | How many portions are in the container (0 = not specified). Reset by **Empty container**. Shown in the dashboard, the fill dialog and the `get_expiring` result |
+| **Quantity** | `number` | How much is in the container, e.g. 4 (0 = not specified). Reset by **Empty container** |
+| **Unit** | `select` | Unit of the quantity: portions (default), pieces, slices, grams or milliliters. Reset to portions by **Empty container**. Both show up in the dashboard, the fill dialog, the `get_expiring` result and the recipe ideas. Tip: use *portions* for finished dishes (chili, soup) and *pieces* or *slices* for countable food (eggs, ham) |
 | **Vacuum** | `switch` | Is the container vacuum-sealed? On by default for new containers; change the preset under **Configure** if most of your boxes are not vacuum-sealed. Used for the estimate |
 | **Days until best before** | `sensor` | Days left until the best-before date (negative = expired). The attribute `status` is `ok`, `soon` (3 days or less), `expired` or `none` |
 | **QR code** | `image` | The container's QR code as an image: scanning it with the camera app opens the device directly in the Home Assistant app |
@@ -109,15 +111,16 @@ As soon as at least one container exists, a sidebar entry **Larder** appears. It
 
 - All containers of the integration, grouped by **area** (the area of the device) and sorted by name.
 - Per container: area, **contents**, **best before** (with a hint "expired" or "n days left" starting 3 days before), **filled on**, the **Empty container** button and the QR code as a small image.
-- Contents, **portions**, best-before date and filled-on date can be edited right in the panel. "Now" sets "Filled on" to the current time.
+- Contents, **quantity and unit**, best-before date and filled-on date can be edited right in the panel. "Now" sets "Filled on" to the current time.
 - The **area** of a container can be changed with the dropdown on its card, no detour through the device page needed.
 - The **Vacuum** checkbox switches the vacuum property of the container.
 - With the [estimate](#best-before-estimate-built-in-table-and-optional-ai) enabled, **Estimate best before** appears under the date as soon as contents are entered and no date is set.
+- **Recipe ideas** (top right, administrators, only with the *AI Task* integration) opens the [recipe dialog](#recipe-ideas).
 - **+ Add container** (top right) adds a container: either *Create new QR code* or *Read Zwilling QR code*, with optional name and area. It uses the same flow as Settings → Devices & services.
 - Under the date: **+1 day** moves the best-before date by a day, **Opened** shortens it to the number of days you set in the settings (default 3), and **Thawed** does the same for food you just took out of the freezer (default 2 days, do not refreeze it). Neither ever extends a date. Without a date, one is set.
 - **Search, filter and sort** above the cards: search in name, contents and area; filter by *expiring soon*, *expired*, *filled* or *empty*; sort by area, best-before date (earliest first) or name. Your choice is remembered in the browser.
 - Administrators also get the **Estimates** tab (see [below](#managing-remembered-estimates)).
-- An empty container shows **Fill**, a quick dialog for contents, portions, vacuum and best-before date (see [below](#filling-a-container-quickly)).
+- An empty container shows **Fill**, a quick dialog for contents, quantity, vacuum and best-before date (see [below](#filling-a-container-quickly)).
 - New containers, changed values and changed areas show up immediately, no reload needed.
 
 <p align="center"><img src="docs/images/dashboard-soon-en.png" width="720" alt="Filter: expiring soon"></p>
@@ -198,7 +201,7 @@ The result contains `best_before`, `days`, `tip` (a short storage tip), `source`
 
 <p align="center"><img src="docs/images/fill-dialog-en.png" width="560" alt="Fill container dialog"></p>
 
-An empty container shows a **Fill** button. It opens a small dialog: **contents** (with suggestions from what you entered before, newest first, then your remembered estimates), **portions** (optional), **vacuum**, **filled on** (preset to now), optionally a **best-before date**, and **Estimate best before automatically** (only if estimating is on and the date is empty). **Save** sets everything and estimates the date.
+An empty container shows a **Fill** button. It opens a small dialog: **contents** (with suggestions from what you entered before, newest first, then your remembered estimates), **quantity and unit** (optional), **vacuum**, **filled on** (preset to now), optionally a **best-before date**, and **Estimate best before automatically** (only if estimating is on and the date is empty). **Save** sets everything and estimates the date.
 
 The dialog also opens by itself after a scan: when the Shortcut opens `app_url` or you tap the NFC notification and the container is empty. For a container that already has contents the dashboard only highlights it. This works for all users, not only administrators.
 
@@ -226,7 +229,7 @@ data:
   days: 3               # containers expiring within 3 days
   include_expired: true
 response_variable: result
-# result.count, result.expired, result.summary (text), result.items (name, content, portions, area, best_before, days_left, status)
+# result.count, result.expired, result.summary (text), result.items (name, content, quantity, unit, area, best_before, days_left, status)
 ```
 
 The easiest way is the included blueprint, which sends a notification once a day and stays quiet when nothing expires:
@@ -234,6 +237,31 @@ The easiest way is the included blueprint, which sends a notification once a day
 [![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fexpiry_notification.yaml)
 
 Choose a notification action such as `notify.mobile_app_your_iphone` (Developer tools → Actions), the time and how many days ahead to look. For your own dashboards or automations there is also the sensor **Days until best before** on every container.
+
+## Recipe ideas
+
+<p align="center"><img src="docs/images/recipes-dialog-en.png" width="560" alt="Recipe ideas dialog (demo data)"></p>
+
+The AI can suggest dishes that use up what expires soon. It needs the Home Assistant **AI Task** integration (the same one as for the [AI estimate](#ai-optional)); the table-only estimate mode does not matter.
+
+**In the dashboard:** administrators get a **Recipe ideas** button (top right, next to *+ Add container*). Choose how many days ahead to look (default 3) and optionally for how many people, press **Suggest**. You get up to three recipes with the containers they use, extra ingredients (only common staples), time and short steps. Expired containers are never used.
+
+**In automations:** the service `larder.suggest_recipes` returns the same.
+
+```yaml
+action: larder.suggest_recipes
+data:
+  days: 3        # containers expiring within 3 days
+  servings: 2    # optional, default 2 people
+  max_recipes: 3 # 1 to 5
+response_variable: ideas
+# ideas.recipes (title, minutes, uses, extra_ingredients, steps), ideas.summary (text),
+# ideas.ingredients (the containers used), ideas.count
+```
+
+**In the daily notification:** the [blueprint](#expiry-notifications) has the switch **Add recipe ideas**. The recipes are appended to the message; if the AI fails, the normal message is still sent. Re-import the blueprint to get the new switch.
+
+Only the contents, quantity with unit, remaining days and storage place (area name) are sent to the AI service you chose, never container names, IDs or anything else. Depending on the provider each request may cost a small amount, nothing is sent without you pressing the button or running the automation. The suggestions are ideas from a language model, not tested recipes: check that food is safe to eat, especially thawed or older food.
 
 ## Best-before dates in your calendar
 

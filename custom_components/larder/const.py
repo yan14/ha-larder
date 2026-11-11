@@ -10,10 +10,16 @@ PLATFORMS: list[Platform] = [
     Platform.DATETIME,
     Platform.IMAGE,
     Platform.NUMBER,
+    Platform.SELECT,
     Platform.SENSOR,
     Platform.SWITCH,
     Platform.TEXT,
 ]
+
+# Einheiten der Menge (Entität "Einheit"); die Schlüssel sind zugleich die Optionen der Auswahl.
+UNIT_PORTIONS = "portions"
+UNITS = [UNIT_PORTIONS, "pieces", "slices", "grams", "milliliters"]
+DEFAULT_UNIT = UNIT_PORTIONS
 
 CONF_QR_CODE = "qr_code"
 CONF_CC = "cc"  # eindeutige ID der Dose (Parameter "cc" im QR-Code)
@@ -48,6 +54,7 @@ SERVICE_ESTIMATE_BEST_BEFORE = "estimate_best_before"
 SERVICE_CLEAR_BEST_BEFORE = "clear_best_before"
 SERVICE_CLEAR_FILLED_AT = "clear_filled_at"
 SERVICE_GET_EXPIRING = "get_expiring"
+SERVICE_SUGGEST_RECIPES = "suggest_recipes"
 SERVICE_MARK_OPENED = "mark_opened"
 SERVICE_MARK_THAWED = "mark_thawed"
 SOON_DAYS = 3  # ab so vielen Resttagen gilt eine Dose als "läuft bald ab"

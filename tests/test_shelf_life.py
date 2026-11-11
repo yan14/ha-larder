@@ -556,16 +556,30 @@ async def test_portions_entity_defaults_to_zero_and_is_reset_by_emptying(hass: H
     assert float(hass.states.get(portions).state) == 0
 
 
-async def test_get_expiring_reports_portions(hass: HomeAssistant) -> None:
+async def test_unit_select_defaults_to_portions_and_is_reset_by_emptying(hass: HomeAssistant) -> None:
     await _setup(hass)
-    await _fill(hass, "34OL", "Chili", 1)
+    unit = _eid(hass, "select")
+    assert hass.states.get(unit).state == "portions"
+    await hass.services.async_call("select", "select_option", {"entity_id": unit, "option": "slices"}, blocking=True)
+    assert hass.states.get(unit).state == "slices"
+    await hass.services.async_call("button", "press", {"entity_id": _eid(hass, "button")}, blocking=True)
+    assert hass.states.get(unit).state == "portions"
+
+
+async def test_get_expiring_reports_quantity_and_unit(hass: HomeAssistant) -> None:
+    await _setup(hass)
+    await _fill(hass, "34OL", "Schinken", 1)
     plain = await hass.services.async_call(DOMAIN, "get_expiring", {}, blocking=True, return_response=True)
-    assert plain["items"][0]["portions"] is None
-    assert "Portion" not in plain["summary"]
-    await hass.services.async_call("number", "set_value", {"entity_id": _eid(hass, "number"), "value": 4}, blocking=True)
+    assert plain["items"][0]["quantity"] is None and plain["items"][0]["unit"] is None
+    assert "Portion" not in plain["summary"] and "Scheibe" not in plain["summary"]
+    await hass.services.async_call("number", "set_value", {"entity_id": _eid(hass, "number"), "value": 5}, blocking=True)
+    await hass.services.async_call("select", "select_option", {"entity_id": _eid(hass, "select"), "option": "slices"}, blocking=True)
     out = await hass.services.async_call(DOMAIN, "get_expiring", {}, blocking=True, return_response=True)
-    assert out["items"][0]["portions"] == 4
-    assert "(4 Portionen" in out["summary"] or "(4 portions" in out["summary"]
+    assert (out["items"][0]["quantity"], out["items"][0]["unit"]) == (5, "slices")
+    assert "(5 Scheiben" in out["summary"] or "(5 slices" in out["summary"]
+    await hass.services.async_call("select", "select_option", {"entity_id": _eid(hass, "select"), "option": "grams"}, blocking=True)
+    out = await hass.services.async_call(DOMAIN, "get_expiring", {}, blocking=True, return_response=True)
+    assert "(500 g" not in out["summary"] and "(5 g" in out["summary"]
 
 
 async def test_content_suggestions_recent_first_and_non_admin(

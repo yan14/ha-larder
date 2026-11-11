@@ -179,7 +179,7 @@ async def test_flow_create_generates_unique_id(hass: HomeAssistant) -> None:
     device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, cc)})
     assert device is not None
     entities = er.async_entries_for_device(er.async_get(hass), device.id)
-    assert {e.domain for e in entities} == {"button", "date", "datetime", "image", "number", "sensor", "switch", "text"}
+    assert {e.domain for e in entities} == {"button", "date", "datetime", "image", "number", "select", "sensor", "switch", "text"}
     assert parse_qr(cc).cc == cc
 
 

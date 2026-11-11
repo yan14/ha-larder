@@ -42,6 +42,11 @@
       "portions": {
         "default": "mdi:food-variant"
       }
+    },
+    "select": {
+      "unit": {
+        "default": "mdi:scale"
+      }
     }
   },
   "services": {
@@ -62,6 +67,9 @@
     },
     "mark_thawed": {
       "service": "mdi:snowflake-melt"
+    },
+    "suggest_recipes": {
+      "service": "mdi:chef-hat"
     }
   }
 }

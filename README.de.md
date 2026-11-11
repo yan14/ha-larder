@@ -14,8 +14,9 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 - 🔖 **[Zwilling-Fresh-&-Save-QR-Codes](#ios-kurzbefehl-für-die-originalen-zwilling-codes)**: die originalen Codes auf den Deckeln funktionieren weiter (iOS-Kurzbefehl)
 - 🏷️ **[Eigener QR-Code für jede Dose](#dose-anlegen)**: für jede beliebige Box, mit eindeutiger ID und fertigem Bild
 - 📲 **[NFC-Tag-Integration](#nfc-tags)**: Tag auf die Box kleben statt einen Code zu drucken
-- 🧊 **Aufgetaut-Button und Portionen**: MHD nach dem Auftauen verkürzen, Portionen pro Dose festhalten
-- ✏️ **[Schnelles Befüllen](#dose-schnell-befüllen)**: Inhalt, Portionen, MHD und Vakuum in wenigen Taps, mit Vorschlägen aus früheren Inhalten
+- 🧊 **Aufgetaut-Button, Menge und Einheit**: MHD nach dem Auftauen verkürzen; „4 Portionen“, „5 Scheiben“ oder „300 g“ pro Dose festhalten
+- 🍳 **[Rezeptideen mit KI](#rezeptideen)**: Gerichte, die aufbrauchen, was bald abläuft, im Dashboard und in der täglichen Benachrichtigung
+- ✏️ **[Schnelles Befüllen](#dose-schnell-befüllen)**: Inhalt, Menge, MHD und Vakuum in wenigen Taps, mit Vorschlägen aus früheren Inhalten
 - 🧮 **[MHD-Schätzung](#mhd-schätzen-eingebaute-tabelle-und-optional-ki)**: eingebaute Haltbarkeitstabelle, optional mit KI
 - 🔔 **[Ablauf-Benachrichtigungen](#ablauf-benachrichtigungen)**: tägliche Zusammenfassung per Blueprint, still, wenn nichts abläuft
 - 📅 **[Kalendereinträge](#mhd-im-kalender)**: MHDs erscheinen in deinem Kalender
@@ -41,7 +42,8 @@ Pro Dose entsteht ein Gerät (eindeutig über die ID, den Parameter `cc` eines Z
 | **MHD** | `date` | Mindesthaltbarkeitsdatum |
 | **Inhalt** | `text` | Was ist in der Dose? |
 | **Behälter leeren** | `button` | Setzt die Dose komplett zurück: **Inhalt** wird leer, **MHD** und **Befüllt am** werden gelöscht. **Vakuum** bleibt bewusst erhalten, es ist eine Eigenschaft der Dose und nicht des Inhalts |
-| **Portionen** | `number` | Wie viele Portionen in der Dose sind (0 = nicht angegeben). Wird von **Behälter leeren** zurückgesetzt. Steht im Dashboard, im Befüll-Dialog und im Ergebnis von `get_expiring` |
+| **Menge** | `number` | Wie viel in der Dose ist, z. B. 4 (0 = nicht angegeben). Wird von **Behälter leeren** zurückgesetzt |
+| **Einheit** | `select` | Einheit der Menge: Portionen (Standard), Stück, Scheiben, Gramm oder Milliliter. Wird von **Behälter leeren** auf Portionen zurückgesetzt. Beides steht im Dashboard, im Befüll-Dialog, im Ergebnis von `get_expiring` und fließt in die Rezeptideen ein. Tipp: *Portionen* für fertige Gerichte (Chili, Suppe), *Stück* oder *Scheiben* für Zählbares (Eier, Schinken) |
 | **Vakuum** | `switch` | Ist die Dose vakuumiert? Bei neuen Dosen standardmäßig an; die Vorbelegung änderst du unter **Konfigurieren**, wenn die meisten deiner Boxen nicht vakuumiert sind. Wird für die Schätzung verwendet |
 | **Tage bis MHD** | `sensor` | Verbleibende Tage bis zum MHD (negativ = abgelaufen). Das Attribut `status` ist `ok`, `soon` (3 Tage oder weniger), `expired` oder `none` |
 | **QR-Code** | `image` | QR-Code der Dose als Bild: Scannen mit der Kamera-App öffnet direkt das Gerät in der Home-Assistant-App |
@@ -109,14 +111,15 @@ Sobald mindestens eine Dose angelegt ist, erscheint in der Seitenleiste der Eint
 
 - Alle Dosen der Integration, gruppiert nach **Bereich** (Area des Geräts) und sortiert nach Name.
 - Pro Dose: Bereich, **Inhalt**, **MHD** (mit Hinweis „abgelaufen“ oder „noch n Tage“ ab 3 Tagen davor), **Eingelagert am** (= „Befüllt am“), der Button **Behälter leeren** und der QR-Code als kleines Bild.
-- Inhalt, Portionen, MHD und Datum lassen sich direkt im Panel ändern. „Jetzt“ setzt „Eingelagert am“ auf die aktuelle Zeit.
+- Inhalt, Menge und Einheit, MHD und Datum lassen sich direkt im Panel ändern. „Jetzt“ setzt „Eingelagert am“ auf die aktuelle Zeit.
 - Den **Bereich** einer Dose änderst du über das Auswahlfeld auf ihrer Karte, ohne Umweg über die Geräteseite.
 - Das Häkchen **Vakuum** schaltet die Vakuum-Eigenschaft der Dose um.
 - Ist die [Schätzung](#mhd-schätzen-eingebaute-tabelle-und-optional-ki) aktiviert, erscheint unter dem Datum der Button **MHD schätzen**, sobald ein Inhalt eingetragen und noch kein MHD gesetzt ist.
+- **Rezeptideen** (oben rechts, Administratoren, nur mit der Integration *AI Task*) öffnet den [Rezept-Dialog](#rezeptideen).
 - **+ Dose hinzufügen** (oben rechts) legt eine Dose an: entweder *Neuen QR-Code erstellen* oder *Zwilling-QR-Code einlesen*, mit optionalem Namen und Bereich. Es ist derselbe Ablauf wie unter Einstellungen → Geräte & Dienste.
 - Unter dem Datum: **+1 Tag** verschiebt das MHD um einen Tag, **Geöffnet** kürzt es auf die in den Einstellungen gesetzte Zahl Tage (Standard 3), und **Aufgetaut** macht dasselbe für Essen, das du gerade aus dem Gefrierfach geholt hast (Standard 2 Tage, nicht wieder einfrieren). Beides verlängert nie ein Datum. Ohne Datum wird eines gesetzt.
 - **Suche, Filter und Sortierung** über den Karten: Suche in Name, Inhalt und Bereich; Filter nach *läuft bald ab*, *abgelaufen*, *befüllt* oder *leer*; Sortierung nach Bereich, MHD (frühestes zuerst) oder Name. Deine Auswahl wird im Browser gemerkt.
-- Eine leere Dose zeigt **Befüllen**, einen schnellen Dialog für Inhalt, Portionen, Vakuum und MHD (siehe [unten](#dose-schnell-befüllen)).
+- Eine leere Dose zeigt **Befüllen**, einen schnellen Dialog für Inhalt, Menge, Vakuum und MHD (siehe [unten](#dose-schnell-befüllen)).
 - Administratoren sehen außerdem den Reiter **Schätzungen** (siehe [unten](#gemerkte-schätzungen-verwalten)).
 - Neue Dosen, geänderte Werte und geänderte Bereiche erscheinen sofort, ohne dass du etwas neu laden musst.
 
@@ -198,7 +201,7 @@ Das Ergebnis enthält `best_before`, `days`, `tip` (ein kurzer Lagertipp), `sour
 
 <p align="center"><img src="docs/images/fill-dialog-de.png" width="560" alt="Dialog Dose befüllen"></p>
 
-Eine leere Dose zeigt den Button **Befüllen**. Er öffnet einen kleinen Dialog: **Inhalt** (mit Vorschlägen aus früheren Eingaben, neueste zuerst, danach deine gemerkten Schätzungen), **Portionen** (optional), **Vakuum**, **Befüllt am** (vorbelegt mit jetzt), optional ein **MHD** und **MHD automatisch schätzen** (nur wenn die Schätzung aktiv und das MHD leer ist). **Speichern** setzt alles und schätzt das MHD.
+Eine leere Dose zeigt den Button **Befüllen**. Er öffnet einen kleinen Dialog: **Inhalt** (mit Vorschlägen aus früheren Eingaben, neueste zuerst, danach deine gemerkten Schätzungen), **Menge und Einheit** (optional), **Vakuum**, **Befüllt am** (vorbelegt mit jetzt), optional ein **MHD** und **MHD automatisch schätzen** (nur wenn die Schätzung aktiv und das MHD leer ist). **Speichern** setzt alles und schätzt das MHD.
 
 Der Dialog öffnet sich auch von selbst nach einem Scan: wenn der Kurzbefehl `app_url` öffnet oder du die NFC-Benachrichtigung antippst und die Dose leer ist. Hat die Dose schon einen Inhalt, wird sie nur hervorgehoben. Das funktioniert für alle Nutzer, nicht nur für Administratoren.
 
@@ -226,7 +229,7 @@ data:
   days: 3               # Dosen, die innerhalb von 3 Tagen ablaufen
   include_expired: true
 response_variable: result
-# result.count, result.expired, result.summary (Text), result.items (name, content, portions, area, best_before, days_left, status)
+# result.count, result.expired, result.summary (Text), result.items (name, content, quantity, unit, area, best_before, days_left, status)
 ```
 
 Am einfachsten geht es mit dem mitgelieferten Blueprint, der einmal täglich eine Benachrichtigung schickt und schweigt, wenn nichts abläuft:
@@ -234,6 +237,31 @@ Am einfachsten geht es mit dem mitgelieferten Blueprint, der einmal täglich ein
 [![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fexpiry_notification.yaml)
 
 Wähle eine Benachrichtigungs-Aktion wie `notify.mobile_app_dein_iphone` (Entwicklerwerkzeuge → Aktionen), die Uhrzeit und wie viele Tage im Voraus geschaut wird. Für eigene Dashboards oder Automationen gibt es außerdem den Sensor **Tage bis MHD** an jeder Dose.
+
+## Rezeptideen
+
+<p align="center"><img src="docs/images/recipes-dialog-de.png" width="560" alt="Dialog Rezeptideen (Demo-Daten)"></p>
+
+Die KI kann Gerichte vorschlagen, die aufbrauchen, was bald abläuft. Dafür braucht es die Home-Assistant-Integration **AI Task** (dieselbe wie für die [KI-Schätzung](#ki-optional)); der Schätzmodus „nur Tabelle“ spielt keine Rolle.
+
+**Im Dashboard:** Administratoren sehen oben rechts den Button **Rezeptideen** (neben *+ Dose hinzufügen*). Wähle, wie viele Tage voraus geschaut wird (Standard 3) und optional für wie viele Personen, und drücke **Vorschlagen**. Du bekommst bis zu drei Rezepte mit den verwendeten Dosen, zusätzlichen Zutaten (nur gängige Vorräte), Dauer und kurzen Schritten. Abgelaufene Dosen werden nie verwendet.
+
+**In Automationen:** Der Service `larder.suggest_recipes` liefert dasselbe.
+
+```yaml
+action: larder.suggest_recipes
+data:
+  days: 3        # Dosen, die innerhalb von 3 Tagen ablaufen
+  servings: 2    # optional, Standard 2 Personen
+  max_recipes: 3 # 1 bis 5
+response_variable: ideas
+# ideas.recipes (title, minutes, uses, extra_ingredients, steps), ideas.summary (Text),
+# ideas.ingredients (die verwendeten Dosen), ideas.count
+```
+
+**In der täglichen Benachrichtigung:** Das [Blueprint](#ablauf-benachrichtigungen) hat den Schalter **Add recipe ideas** („Rezeptideen anhängen“). Die Rezepte werden an die Nachricht angehängt; fällt die KI aus, kommt die normale Nachricht trotzdem. Importiere das Blueprint neu, um den Schalter zu bekommen.
+
+An den gewählten KI-Dienst gehen nur Inhalt, Menge mit Einheit, Resttage und Lagerort (Bereichsname), nie Dosennamen, IDs oder anderes. Je nach Anbieter kann jede Anfrage etwas kosten; ohne Knopfdruck oder Automation wird nichts gesendet. Die Vorschläge sind Ideen eines Sprachmodells, keine getesteten Rezepte: Prüfe, ob das Essen noch bedenkenlos genießbar ist, besonders bei Aufgetautem oder Älterem.
 
 ## MHD im Kalender
 

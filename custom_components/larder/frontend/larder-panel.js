@@ -57,7 +57,22 @@ export const STRINGS = {
     plusOneDay: "+1 Tag",
     opened: "Geöffnet",
     thawed: "Aufgetaut",
-    portions: "Portionen",
+    recipeBtn: "Rezeptideen",
+    recipeTitle: "Rezeptideen aus Dosen, die bald ablaufen",
+    recipeHint: "Die KI schlägt Gerichte vor, die Dosen mit bald ablaufendem MHD aufbrauchen. Gesendet werden nur Inhalt, Menge, Resttage und Lagerort.",
+    recipeDays: "Tage voraus",
+    recipeServings: "Personen (optional)",
+    recipeGo: "Vorschlagen",
+    recipeBusy: "Die KI überlegt …",
+    recipeNone: (n) => `In den nächsten ${n} Tagen läuft nichts ab.`,
+    recipeFailed: "Die Rezeptideen konnten nicht erstellt werden.",
+    recipeUses: "Verwendet",
+    recipeExtra: "Zusätzlich",
+    recipeMinutes: (n) => `${n} Min.`,
+    recipeClose: "Schließen",
+    quantity: "Menge",
+    unit: "Einheit",
+    units: { portions: "Portionen", pieces: "Stück", slices: "Scheiben", grams: "Gramm", milliliters: "Milliliter" },
     searchPlaceholder: "Suchen …",
     filterLabel: "Filter",
     filterAll: "Alle",
@@ -156,7 +171,22 @@ export const STRINGS = {
     plusOneDay: "+1 day",
     opened: "Opened",
     thawed: "Thawed",
-    portions: "Portions",
+    recipeBtn: "Recipe ideas",
+    recipeTitle: "Recipe ideas from containers expiring soon",
+    recipeHint: "The AI suggests dishes that use up containers whose best-before date is near. Only contents, quantity, remaining days and storage place are sent.",
+    recipeDays: "Days ahead",
+    recipeServings: "People (optional)",
+    recipeGo: "Suggest",
+    recipeBusy: "The AI is thinking …",
+    recipeNone: (n) => `Nothing expires in the next ${n} days.`,
+    recipeFailed: "The recipe ideas could not be created.",
+    recipeUses: "Uses",
+    recipeExtra: "Also needed",
+    recipeMinutes: (n) => `${n} min`,
+    recipeClose: "Close",
+    quantity: "Quantity",
+    unit: "Unit",
+    units: { portions: "portions", pieces: "pieces", slices: "slices", grams: "grams", milliliters: "milliliters" },
     searchPlaceholder: "Search …",
     filterLabel: "Filter",
     filterAll: "All",
@@ -409,9 +439,20 @@ const STYLE = `
   .row.arearow { display: none; }
   .row.arearow.visible { display: grid; }
   .arealine.hidden { display: none; }
-  header button.add { font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+  header button.add, header button.ideas { font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
     border: 1px solid currentColor; background: none; color: inherit; display: none; }
-  header button.add.visible { display: inline-block; }
+  header button.add.visible, header button.ideas.visible { display: inline-block; }
+  header button.ideas { margin-right: 8px; }
+  .dialog .hint { margin: 0; font-size: 13px; color: var(--secondary-text-color); }
+  .dialog .recipeopts { display: flex; gap: 12px; }
+  .dialog .recipeopts .field { flex: 1; }
+  .dialog .recipelist { display: flex; flex-direction: column; gap: 12px; max-height: 45vh; overflow-y: auto; }
+  .dialog .recipelist:empty { display: none; }
+  .dialog .recipelist .msg { font-size: 14px; color: var(--secondary-text-color); }
+  .dialog .recipe h3 { margin: 0 0 4px; font-size: 16px; font-weight: 500; }
+  .dialog .recipe h3 .meta { font-size: 12px; font-weight: 400; color: var(--secondary-text-color); margin-left: 6px; }
+  .dialog .recipe .line { font-size: 13px; color: var(--secondary-text-color); }
+  .dialog .recipe ol { margin: 6px 0 0; padding-left: 20px; font-size: 14px; }
   .notice { background: var(--card-background-color, #fff); border-left: 4px solid var(--warning-color, #ffa600);
     padding: 12px 16px; margin: 0 0 16px; border-radius: 6px; }
   .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center;
@@ -444,6 +485,9 @@ const STYLE = `
     border: 1px solid var(--divider-color); border-radius: 8px; padding: 8px 10px; box-sizing: border-box; min-width: 0; }
   .toolbar input { flex: 1 1 180px; }
   .toolbar select { flex: 0 1 auto; }
+  .qty { display: flex; gap: 8px; flex: 1; min-width: 0; }
+  .qty input { flex: 1; min-width: 0; }
+  .qty select { flex: 1; min-width: 0; }
   .quickrow { display: none; gap: 8px; margin-top: -4px; }
   .quickrow.visible { display: flex; }
   .quickrow button { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 6px; cursor: pointer;
@@ -519,6 +563,33 @@ function saveViewOptions(opts) {
   }
 }
 
+const DEFAULT_UNITS = ["portions", "pieces", "slices", "grams", "milliliters"];
+
+/** Menge aus einem Eingabefeld: ganze Zahl von 0 bis 9999 (leer = 0 = nicht angegeben). */
+function parseQuantity(value) {
+  return Math.min(Math.max(parseInt(value, 10) || 0, 0), 9999);
+}
+
+/** Auswahl der Einheit füllen (Optionen und aktueller Wert kommen von der Select-Entität). */
+function fillUnitSelect(select, state, t) {
+  const options = (state && state.attributes && state.attributes.options) || DEFAULT_UNITS;
+  const sig = options.join("|");
+  if (select.dataset.sig !== sig || select.dataset.lang !== t.units.portions) {
+    select.replaceChildren(
+      ...options.map((key) => {
+        const opt = document.createElement("option");
+        opt.value = key;
+        opt.textContent = t.units[key] || key;
+        return opt;
+      }),
+    );
+    select.dataset.sig = sig;
+    select.dataset.lang = t.units.portions;
+  }
+  const value = state && state.state && state.state !== "unavailable" && state.state !== "unknown" ? state.state : options[0];
+  if (select.value !== value) select.value = value;
+}
+
 class DoseCard {
   constructor(panel, deviceId) {
     this._panel = panel;
@@ -533,7 +604,7 @@ class DoseCard {
       <div class="arealine"></div>
       <div class="row arearow"><label data-l="area"></label><select data-f="area"></select></div>
       <div class="row"><label data-l="content"></label><input data-f="content" type="text" maxlength="255"></div>
-      <div class="row portionsrow"><label data-l="portions"></label><input data-f="portions" type="number" min="0" max="99" step="1" inputmode="numeric"></div>
+      <div class="row quantityrow"><label data-l="quantity"></label><span class="qty"><input data-f="quantity" type="number" min="0" max="9999" step="1" inputmode="numeric"><select data-f="unit"></select></span></div>
       <div class="row"><label data-l="bestBefore"></label><input data-f="bestBefore" type="date"><span class="badge"></span></div>
       <div class="quickrow"><button class="plus1" type="button"></button><button class="opened" type="button"></button><button class="thawed" type="button"></button></div>
       <div class="row"><label data-l="filledAt"></label><input data-f="filledAt" type="datetime-local"><button class="now" type="button"></button></div>
@@ -547,7 +618,8 @@ class DoseCard {
       content: this.q('[data-f="content"]'),
       bestBefore: this.q('[data-f="bestBefore"]'),
       filledAt: this.q('[data-f="filledAt"]'),
-      portions: this.q('[data-f="portions"]'),
+      quantity: this.q('[data-f="quantity"]'),
+      unit: this.q('[data-f="unit"]'),
     };
 
     this._areaSig = "";
@@ -593,10 +665,12 @@ class DoseCard {
     this.q("button.thawed").addEventListener("click", () => {
       if (this.ids.date) this._call(DOMAIN, "mark_thawed", { entity_id: this.ids.date });
     });
-    this.inputs.portions.addEventListener("change", () => {
+    this.inputs.quantity.addEventListener("change", () => {
       if (!this.ids.number) return;
-      const n = Math.min(Math.max(parseInt(this.inputs.portions.value, 10) || 0, 0), 99);
-      this._call("number", "set_value", { entity_id: this.ids.number, value: n });
+      this._call("number", "set_value", { entity_id: this.ids.number, value: parseQuantity(this.inputs.quantity.value) });
+    });
+    this.inputs.unit.addEventListener("change", () => {
+      if (this.ids.select) this._call("select", "select_option", { entity_id: this.ids.select, option: this.inputs.unit.value });
     });
     this.q("button.now").addEventListener("click", () => {
       if (this.ids.datetime) this._call("datetime", "set_value", { entity_id: this.ids.datetime, datetime: new Date().toISOString() });
@@ -709,7 +783,7 @@ class DoseCard {
     this.q("button.plus1").textContent = t.plusOneDay;
     this.q("button.opened").textContent = t.opened;
     this.q("button.thawed").textContent = t.thawed;
-    this.q('[data-l="portions"]').textContent = t.portions;
+    this.q('[data-l="quantity"]').textContent = t.quantity;
     this.q("button.empty").textContent = t.emptyContainer;
     this.q("button.fill").textContent = t.fill;
     this.q('[data-l="vacuum"]').textContent = t.vacuum;
@@ -725,11 +799,15 @@ class DoseCard {
     this._setInput(this.inputs.content, isValidState(text) ? text.state : "");
     this._setInput(this.inputs.bestBefore, isValidState(date) ? date.state : "");
     this._setInput(this.inputs.filledAt, isValidState(dt) ? toLocalInputValue(dt.state) : "");
-    const portions = states[dev.entities.number];
-    const nPortions = isValidState(portions) ? Number(portions.state) : 0;
-    this._setInput(this.inputs.portions, nPortions > 0 ? String(nPortions) : "");
-    this.inputs.portions.disabled = !ok(portions);
-    this.q(".portionsrow").style.display = portions ? "" : "none";
+    const quantity = states[dev.entities.number];
+    const nQuantity = isValidState(quantity) ? Number(quantity.state) : 0;
+    this._setInput(this.inputs.quantity, nQuantity > 0 ? String(nQuantity) : "");
+    this.inputs.quantity.disabled = !ok(quantity);
+    const unit = states[dev.entities.select];
+    fillUnitSelect(this.inputs.unit, unit, t);
+    this.inputs.unit.disabled = !ok(unit);
+    this.inputs.unit.style.display = unit ? "" : "none";
+    this.q(".quantityrow").style.display = quantity ? "" : "none";
     this.inputs.content.disabled = !ok(text);
     this.inputs.bestBefore.disabled = !ok(date);
     this.inputs.filledAt.disabled = !ok(dt);
@@ -804,7 +882,7 @@ class LarderPanel extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this.shadowRoot.innerHTML = `
       <style>${STYLE}</style>
-      <header><button id="menu" type="button" aria-label="Menu">☰</button><h1></h1><span class="count"></span><div class="tabs"><button type="button" data-view="containers"></button><button type="button" data-view="estimates"></button></div><button class="add" type="button"></button></header>
+      <header><button id="menu" type="button" aria-label="Menu">☰</button><h1></h1><span class="count"></span><div class="tabs"><button type="button" data-view="containers"></button><button type="button" data-view="estimates"></button></div><button class="ideas" type="button"></button><button class="add" type="button"></button></header>
       <main><div id="notice" class="notice" hidden></div><div class="toolbar" hidden><input type="search" data-f="query" autocomplete="off"><select data-f="filter"></select><select data-f="sort"></select></div><div id="content"></div><div id="estimates" hidden></div></main>
       <div class="overlay" hidden>
         <form class="dialog" novalidate>
@@ -827,12 +905,25 @@ class LarderPanel extends HTMLElement {
         <form class="dialog fillform" novalidate>
           <h2></h2>
           <label class="field"><span data-l="content"></span><input type="text" data-f="content" maxlength="255" list="zs-contents" autocomplete="off"><datalist id="zs-contents"></datalist></label>
-          <label class="field" data-w="portions"><span data-l="portions"></span><input type="number" data-f="portions" min="0" max="99" step="1" inputmode="numeric"></label>
+          <label class="field" data-w="quantity"><span data-l="quantity"></span><span class="qty"><input type="number" data-f="quantity" min="0" max="9999" step="1" inputmode="numeric"><select data-f="unit"></select></span></label>
           <label class="check" data-w="vacuum"><input type="checkbox" data-f="vacuum"><span data-l="vacuum"></span></label>
           <label class="field"><span data-l="filledAt"></span><input type="datetime-local" data-f="filledAt"></label>
           <label class="field"><span data-l="bestBefore"></span><input type="date" data-f="bestBefore"></label>
           <label class="check" data-w="estimate"><input type="checkbox" data-f="estimate" checked><span data-l="fillEstimate"></span></label>
           <div class="error" role="alert"></div>
+          <div class="buttons"><button type="button" class="cancel"></button><button type="submit" class="submit"></button></div>
+        </form>
+      </div>
+      <div class="overlay recipes" hidden>
+        <form class="dialog recipeform" novalidate>
+          <h2 data-l="recipeTitle"></h2>
+          <p class="hint" data-l="recipeHint"></p>
+          <div class="recipeopts">
+            <label class="field"><span data-l="recipeDays"></span><input type="number" data-f="days" min="0" max="30" step="1" value="3" inputmode="numeric"></label>
+            <label class="field"><span data-l="recipeServings"></span><input type="number" data-f="servings" min="1" max="20" step="1" inputmode="numeric"></label>
+          </div>
+          <div class="error" role="alert"></div>
+          <div class="recipelist" role="status"></div>
           <div class="buttons"><button type="button" class="cancel"></button><button type="submit" class="submit"></button></div>
         </form>
       </div>`;
@@ -865,6 +956,18 @@ class LarderPanel extends HTMLElement {
     this._fillForm.addEventListener("submit", (ev) => {
       ev.preventDefault();
       this.submitFill();
+    });
+    this._recipeOverlay = this.shadowRoot.querySelector(".overlay.recipes");
+    this._recipeForm = this.shadowRoot.querySelector("form.recipeform");
+    this._ideasBtn = this.shadowRoot.querySelector("button.ideas");
+    this._ideasBtn.addEventListener("click", () => this.openRecipeDialog());
+    this._recipeOverlay.addEventListener("click", (ev) => {
+      if (ev.target === this._recipeOverlay) this.closeRecipeDialog();
+    });
+    this._recipeForm.querySelector("button.cancel").addEventListener("click", () => this.closeRecipeDialog());
+    this._recipeForm.addEventListener("submit", (ev) => {
+      ev.preventDefault();
+      this.submitRecipes();
     });
     this._view = "containers";
     this._est = null;
@@ -1139,10 +1242,12 @@ class LarderPanel extends HTMLElement {
     this._fillForm.querySelector("h2").textContent = `${t.fillTitle}: ${dev.name}`;
     f("content").value = isValidState(text) ? text.state : "";
     f("content").placeholder = t.fillPlaceholder;
-    const portions = states[dev.entities.number];
-    const nPortions = isValidState(portions) ? Number(portions.state) : 0;
-    f("portions").value = nPortions > 0 ? String(nPortions) : "";
-    this._fillForm.querySelector('[data-w="portions"]').hidden = !portions || portions.state === "unavailable";
+    const quantity = states[dev.entities.number];
+    const nQuantity = isValidState(quantity) ? Number(quantity.state) : 0;
+    f("quantity").value = nQuantity > 0 ? String(nQuantity) : "";
+    fillUnitSelect(f("unit"), states[dev.entities.select], t);
+    f("unit").style.display = states[dev.entities.select] ? "" : "none";
+    this._fillForm.querySelector('[data-w="quantity"]').hidden = !quantity || quantity.state === "unavailable";
     f("vacuum").checked = !!vac && vac.state === "on";
     this._fillForm.querySelector('[data-w="vacuum"]').hidden = !vac || vac.state === "unavailable";
     f("filledAt").value = isValidState(dt) ? toLocalInputValue(dt.state) : toLocalInputValue(new Date().toISOString());
@@ -1209,10 +1314,13 @@ class LarderPanel extends HTMLElement {
       if (vac && vac.state !== "unavailable") {
         await hass.callService("switch", f("vacuum").checked ? "turn_on" : "turn_off", { entity_id: ids.switch });
       }
-      const portionsState = states[ids.number];
-      if (portionsState && portionsState.state !== "unavailable") {
-        const n = Math.min(Math.max(parseInt(f("portions").value, 10) || 0, 0), 99);
-        await hass.callService("number", "set_value", { entity_id: ids.number, value: n });
+      const quantityState = states[ids.number];
+      if (quantityState && quantityState.state !== "unavailable") {
+        await hass.callService("number", "set_value", { entity_id: ids.number, value: parseQuantity(f("quantity").value) });
+        const unitState = states[ids.select];
+        if (unitState && unitState.state !== "unavailable" && f("unit").value) {
+          await hass.callService("select", "select_option", { entity_id: ids.select, option: f("unit").value });
+        }
       }
       if (ids.datetime && !Number.isNaN(filled.getTime())) {
         await hass.callService("datetime", "set_value", { entity_id: ids.datetime, datetime: filled.toISOString() });
@@ -1234,6 +1342,107 @@ class LarderPanel extends HTMLElement {
     }
   }
 
+  /** "Rezeptideen" nur für Administratoren zeigen, wenn die KI-Integration und der Service da sind. */
+  _updateIdeasButton() {
+    const hass = this._hass;
+    const services = (hass && hass.services) || {};
+    const available = !!(services.ai_task && services[DOMAIN] && services[DOMAIN].suggest_recipes);
+    this._ideasBtn.classList.toggle(
+      "visible",
+      !!hass && isAdmin(hass) && this._view === "containers" && available && this._devices.length > 0,
+    );
+  }
+
+  openRecipeDialog() {
+    if (!this._hass || !isAdmin(this._hass)) return;
+    this._recipeForm.querySelector(".error").textContent = "";
+    this._recipeForm.querySelector(".recipelist").replaceChildren();
+    this._recipeOverlay.hidden = false;
+  }
+
+  closeRecipeDialog() {
+    this._recipeOverlay.hidden = true;
+  }
+
+  /** Rezeptideen von der KI holen (Service `larder.suggest_recipes`) und anzeigen. */
+  async submitRecipes() {
+    const hass = this._hass;
+    if (!hass || !hass.callWS || this._recipeBusy) return;
+    const t = strings(hass);
+    const form = this._recipeForm;
+    const list = form.querySelector(".recipelist");
+    const errorEl = form.querySelector(".error");
+    const days = Math.min(Math.max(parseInt(form.querySelector('[data-f="days"]').value, 10) || 0, 0), 30);
+    const servings = parseInt(form.querySelector('[data-f="servings"]').value, 10);
+    const serviceData = { days };
+    if (servings > 0) serviceData.servings = Math.min(servings, 20);
+
+    this._recipeBusy = true;
+    const submit = form.querySelector("button.submit");
+    submit.disabled = true;
+    errorEl.textContent = "";
+    const busy = document.createElement("div");
+    busy.className = "msg";
+    busy.textContent = t.recipeBusy;
+    list.replaceChildren(busy);
+    try {
+      const res = await hass.callWS({
+        type: "call_service",
+        domain: DOMAIN,
+        service: "suggest_recipes",
+        service_data: serviceData,
+        return_response: true,
+      });
+      const out = (res && res.response) || {};
+      const recipes = Array.isArray(out.recipes) ? out.recipes : [];
+      if (!recipes.length) {
+        const none = document.createElement("div");
+        none.className = "msg";
+        none.textContent = t.recipeNone(days);
+        list.replaceChildren(none);
+      } else {
+        list.replaceChildren(...recipes.map((r) => this._recipeNode(r, t)));
+      }
+    } catch (err) {
+      list.replaceChildren();
+      errorEl.textContent = (err && err.message) || t.recipeFailed;
+    } finally {
+      this._recipeBusy = false;
+      submit.disabled = false;
+    }
+  }
+
+  _recipeNode(recipe, t) {
+    const el = document.createElement("article");
+    el.className = "recipe";
+    const h = document.createElement("h3");
+    h.textContent = recipe.title;
+    if (recipe.minutes) {
+      const meta = document.createElement("span");
+      meta.className = "meta";
+      meta.textContent = t.recipeMinutes(recipe.minutes);
+      h.append(meta);
+    }
+    el.append(h);
+    for (const [label, items] of [[t.recipeUses, recipe.uses], [t.recipeExtra, recipe.extra_ingredients]]) {
+      if (!items || !items.length) continue;
+      const line = document.createElement("div");
+      line.className = "line";
+      line.textContent = `${label}: ${items.join(", ")}`;
+      el.append(line);
+    }
+    if (recipe.steps && recipe.steps.length) {
+      const ol = document.createElement("ol");
+      for (const step of recipe.steps) {
+        const li = document.createElement("li");
+        li.textContent = step;
+        ol.append(li);
+      }
+      el.append(ol);
+    }
+    return el;
+  }
+
   /** Zwischen Dosen-Übersicht und Liste der gemerkten Schätzungen wechseln (nur Administratoren). */
   setView(view) {
     if (view === "estimates" && !isAdmin(this._hass)) return;
@@ -1241,6 +1450,7 @@ class LarderPanel extends HTMLElement {
     this._main.hidden = view !== "containers";
     this._estimatesEl.hidden = view !== "estimates";
     this._addBtn.classList.toggle("visible", isAdmin(this._hass) && view === "containers");
+    this._updateIdeasButton();
     for (const btn of this._tabs.querySelectorAll("button")) {
       btn.classList.toggle("active", btn.dataset.view === view);
     }
@@ -1598,6 +1808,11 @@ class LarderPanel extends HTMLElement {
     this._updateToolbar(t);
     this._addBtn.textContent = `+ ${t.addContainer}`;
     this._addBtn.classList.toggle("visible", isAdmin(hass) && this._view === "containers");
+    this._ideasBtn.textContent = t.recipeBtn;
+    this._updateIdeasButton();
+    for (const el of this._recipeForm.querySelectorAll("[data-l]")) el.textContent = t[el.dataset.l];
+    this._recipeForm.querySelector("button.cancel").textContent = t.recipeClose;
+    this._recipeForm.querySelector("button.submit").textContent = t.recipeGo;
     this._tabs.classList.toggle("visible", isAdmin(hass));
     for (const btn of this._tabs.querySelectorAll("button")) {
       btn.textContent = btn.dataset.view === "estimates" ? t.tabEstimates : t.tabContainers;

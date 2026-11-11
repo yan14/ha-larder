@@ -83,7 +83,19 @@
     },
     "number": {
       "portions": {
-        "name": "Portionen"
+        "name": "Menge"
+      }
+    },
+    "select": {
+      "unit": {
+        "name": "Einheit",
+        "state": {
+          "portions": "Portionen",
+          "pieces": "Stück",
+          "slices": "Scheiben",
+          "grams": "Gramm",
+          "milliliters": "Milliliter"
+        }
       }
     }
   },
@@ -129,6 +141,9 @@
     },
     "nfc_tag_in_use": {
       "message": "Dieser Tag ist bereits mit „{name}“ verknüpft. Löse ihn dort zuerst."
+    },
+    "recipes_failed": {
+      "message": "Der KI-Rezeptvorschlag ist fehlgeschlagen: {error}"
     }
   },
   "options": {
@@ -211,6 +226,24 @@
         "days": {
           "name": "Tage",
           "description": "Tage ab heute (leer = Wert aus den Einstellungen)."
+        }
+      }
+    },
+    "suggest_recipes": {
+      "name": "Rezepte vorschlagen",
+      "description": "Fragt die KI nach Rezeptideen, die Dosen mit bald ablaufendem MHD aufbrauchen. Liefert die Rezepte und eine kurze Zusammenfassung. Benötigt die Integration „AI Task“; gesendet werden nur Inhalt, Menge, Resttage und Lagerort. Abgelaufene Dosen bleiben außen vor.",
+      "fields": {
+        "days": {
+          "name": "Tage voraus",
+          "description": "Dosen, die innerhalb dieser Tage ablaufen, werden verwendet."
+        },
+        "servings": {
+          "name": "Personen",
+          "description": "Rezepte für so viele Personen skalieren (leer = 2)."
+        },
+        "max_recipes": {
+          "name": "Anzahl Rezepte",
+          "description": "Wie viele Ideen gewünscht sind (1–5)."
         }
       }
     }
