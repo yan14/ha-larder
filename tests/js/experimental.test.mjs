@@ -581,3 +581,58 @@ test("Neuladen: Eigenschaften, die HA vor dem Laden des Moduls setzt, werden üb
   assert.match($(el, "main").textContent, /Hallo Yan/);
   assert.ok($(el, 'nav button[data-view="containers"]'));
 });
+
+test("Rezept aus Foto: hochladen, Entwurf prüfen und als Foto-Rezept speichern", async () => {
+  globalThis.File = dom.window.File;
+  globalThis.FormData = dom.window.FormData;
+  document.body.innerHTML = "";
+  const hass = makeHass(DOSES);
+  const uploads = [];
+  let answer = {
+    ok: true,
+    body: { recipe: { title: "Omas Apfelkuchen", minutes: 75, ingredients: ["500 g Äpfel"], steps: ["Backen."], source: "photo" } },
+  };
+  hass.fetchWithAuth = async (url, init) => {
+    uploads.push({ url, files: init.body.getAll("file").map((f) => f.type) });
+    return { ok: answer.ok, json: async () => answer.body };
+  };
+  const el = mount(hass);
+  await flush();
+  await go(el, "recipes");
+  assert.ok($(el, '[data-role="photo"]'));
+
+  const file = new File(["%PDF"], "rezept.pdf", { type: "application/pdf" });
+  await el.readRecipePhotos([file]);
+  await flush();
+  assert.deepEqual(uploads, [{ url: "/api/larder/recipe_photo", files: ["application/pdf"] }]);
+  assert.equal($(el, ".overlay").hidden, false);
+  assert.equal($(el, "form.dialog h2").textContent, "Rezept aus Foto prüfen");
+  assert.equal($(el, '[data-f="title"]').value, "Omas Apfelkuchen");
+  assert.equal($(el, '[data-f="ingredients"]').value, "500 g Äpfel");
+  $(el, "form.dialog").dispatchEvent(new Event("submit", { cancelable: true }));
+  await flush();
+  const save = hass.wsCalls.find((m) => m.type === `${D}/recipe_save`);
+  assert.equal(save.source, "photo");
+  assert.equal(save.recipe_id, undefined);
+  assert.equal(save.minutes, 75);
+
+  // Fehler der KI erscheinen auf der Seite
+  answer = { ok: false, body: { error: "recipe_photo_none", message: "Auf dem Foto wurde kein Rezept gefunden." } };
+  await el.readRecipePhotos([file]);
+  await flush();
+  assert.equal($(el, "main .error").textContent, "Auf dem Foto wurde kein Rezept gefunden.");
+
+  // zu viele Fotos
+  await el.readRecipePhotos([file, file, file, file, file]);
+  await flush();
+  assert.equal($(el, "main .error").textContent, "Höchstens 4 Fotos auf einmal.");
+
+  // ohne KI keine Schaltfläche
+  document.body.innerHTML = "";
+  const noAi = makeHass(DOSES, { ai: false });
+  noAi.fetchWithAuth = hass.fetchWithAuth;
+  const el2 = mount(noAi);
+  await flush();
+  await go(el2, "recipes");
+  assert.equal($(el2, '[data-role="photo"]'), null);
+});

@@ -147,6 +147,18 @@
     },
     "recipes_failed": {
       "message": "The AI recipe suggestion failed: {error}"
+    },
+    "recipe_photo_failed": {
+      "message": "The recipe could not be read: {error}"
+    },
+    "recipe_photo_none": {
+      "message": "No recipe was found in the photo."
+    },
+    "recipe_photo_unsupported": {
+      "message": "The selected AI cannot read photos or files. Pick an AI task in the settings that supports attachments."
+    },
+    "recipe_photo_no_media": {
+      "message": "Home Assistant has no media folder; the photos are stored there briefly."
     }
   },
   "options": {

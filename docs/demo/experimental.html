@@ -89,6 +89,9 @@ const hass = {
   services: { ai_task: { generate_data: {} }, larder: { suggest_recipes: {} } },
   auth: { external: { config: { canWriteTag: false }, fireMessage() {} } },
   hassUrl: (p) => p, callService() {}, callApi: async () => ({}),
+  fetchWithAuth: async () => ({ ok: true, json: async () => ({ recipe: de
+    ? { title: "Omas Apfelkuchen", minutes: 75, ingredients: ["Portionen: 12", "500 g Äpfel", "200 g Mehl", "100 g Zucker"], steps: ["Teig kneten.", "Äpfel schneiden.", "45 Minuten backen."], source: "photo" }
+    : { title: "Grandma's apple pie", minutes: 75, ingredients: ["Servings: 12", "500 g apples", "200 g flour", "100 g sugar"], steps: ["Knead the dough.", "Slice the apples.", "Bake for 45 minutes."], source: "photo" } }) }),
   callWS: async (msg) => {
     if (msg.type === "larder/recipes") return { recipes };
     if (msg.type === "larder/settings") return { recipe_days: 3 };

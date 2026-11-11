@@ -90,6 +90,12 @@ export const TEXTS = {
     ingredients: "Zutaten",
     steps: "Zubereitung",
     fromAi: "Von der KI",
+    fromPhoto: "Aus Foto",
+    photoRead: "Rezept aus Foto oder Datei lesen",
+    photoBusy: "Die KI liest das Rezept …",
+    photoFailed: "Das Rezept konnte nicht gelesen werden.",
+    photoCheck: "Rezept aus Foto prüfen",
+    photoTooMany: (n) => `Höchstens ${n} Fotos auf einmal.`,
   },
   en: {
     title: "Larder experimental",
@@ -169,6 +175,12 @@ export const TEXTS = {
     ingredients: "Ingredients",
     steps: "Method",
     fromAi: "From the AI",
+    fromPhoto: "From a photo",
+    photoRead: "Read a recipe from a photo or file",
+    photoBusy: "The AI is reading the recipe …",
+    photoFailed: "The recipe could not be read.",
+    photoCheck: "Check the recipe from the photo",
+    photoTooMany: (n) => `At most ${n} photos at once.`,
   },
 };
 
@@ -275,6 +287,31 @@ export function recipeServiceData(period) {
   if (period === "all") return { all_containers: true };
   if (period === "default" || !RECIPE_PERIODS.includes(period)) return {};
   return { days: Number(period) };
+}
+
+export const PHOTO_MAX_FILES = 4;
+const PHOTO_MAX_SIDE = 2000;
+
+/**
+ * Foto für den Upload vorbereiten: auf höchstens 2000 px verkleinern und als JPEG senden (spart
+ * Datenvolumen und KI-Kosten, iPhone-Fotos werden dabei zu JPEG). PDFs und alles, was der Browser
+ * nicht zeichnen kann, gehen unverändert.
+ */
+export async function preparePhoto(file) {
+  if (!file || !String(file.type).startsWith("image/") || typeof createImageBitmap !== "function") return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, PHOTO_MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(bitmap.width * scale);
+    canvas.height = Math.round(bitmap.height * scale);
+    canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    if (bitmap.close) bitmap.close();
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+    return blob ? new File([blob], "recipe.jpg", { type: "image/jpeg" }) : file;
+  } catch {
+    return file;
+  }
 }
 
 function loadOptions() {
@@ -401,6 +438,7 @@ class LarderExperimental extends HTMLElement {
     this._suggestions = null; // null = nicht angefordert, "busy", Liste oder { error }
     this._savedSuggestions = new Set();
     this._openRecipe = null;
+    this._photo = null; // null, "busy" oder { error }
     this.attachShadow({ mode: "open" });
     this.shadowRoot.innerHTML = `
       <style>${STYLE}</style>
@@ -408,6 +446,7 @@ class LarderExperimental extends HTMLElement {
       <main></main>
       <nav></nav>
       <div class="overlay" hidden><form class="dialog" novalidate></form></div>
+      <input type="file" id="photo" accept="image/*,application/pdf" multiple hidden>
       <larder-panel-embedded embedded></larder-panel-embedded>`;
     this._header = this.shadowRoot.querySelector("header");
     this._title = this.shadowRoot.querySelector("h1");
@@ -417,6 +456,12 @@ class LarderExperimental extends HTMLElement {
     this._form = this.shadowRoot.querySelector("form.dialog");
     this._classic = this.shadowRoot.querySelector("larder-panel-embedded");
     this._settingsBtn = this.shadowRoot.querySelector("#settings");
+    this._photoInput = this.shadowRoot.querySelector("#photo");
+    this._photoInput.addEventListener("change", () => {
+      const files = [...(this._photoInput.files || [])];
+      this._photoInput.value = "";
+      if (files.length) this.readRecipePhotos(files);
+    });
     this.shadowRoot.querySelector("#menu").addEventListener("click", () => {
       this.dispatchEvent(new Event("hass-toggle-menu", { bubbles: true, composed: true }));
     });
@@ -553,6 +598,7 @@ class LarderExperimental extends HTMLElement {
       this._suggestions,
       [...this._savedSuggestions],
       this._openRecipe,
+      this._photo,
     ]);
     if (sig === this._sig) return;
     this._sig = sig;
@@ -957,6 +1003,38 @@ class LarderExperimental extends HTMLElement {
     this._update();
   }
 
+  /** Fotos (oder ein PDF) hochladen, die KI liest das Rezept; der Entwurf öffnet sich zum Prüfen. */
+  async readRecipePhotos(files) {
+    const hass = this._hass;
+    if (!hass || !hass.fetchWithAuth || this._photo === "busy") return;
+    const t = texts(hass);
+    if (files.length > PHOTO_MAX_FILES) {
+      this._photo = { error: t.photoTooMany(PHOTO_MAX_FILES) };
+      this._update();
+      return;
+    }
+    this._photo = "busy";
+    this._update();
+    try {
+      const form = new FormData();
+      for (const file of await Promise.all(files.map(preparePhoto))) form.append("file", file, file.name || "recipe");
+      const res = await hass.fetchWithAuth(`/api/${DOMAIN}/recipe_photo`, { method: "POST", body: form });
+      let body = {};
+      try {
+        body = await res.json();
+      } catch {
+        body = {};
+      }
+      if (!res.ok || !body.recipe) throw new Error(body.message || t.photoFailed);
+      this._photo = null;
+      this._update();
+      this.openRecipeDialog({ ...body.recipe, source: "photo" });
+    } catch (err) {
+      this._photo = { error: (err && err.message) || t.photoFailed };
+      this._update();
+    }
+  }
+
   async _saveRecipe(payload) {
     const res = await this._hass.callWS({ type: `${DOMAIN}/recipe_save`, ...payload });
     const recipe = res && res.recipe;
@@ -1014,6 +1092,7 @@ class LarderExperimental extends HTMLElement {
     const steps = recipe.steps || [];
     const expanded = suggestion !== null || this._openRecipe === recipe.id;
     if (suggestion === null && recipe.source === "ai") node.append(el("div", "tag", t.fromAi));
+    if (suggestion === null && recipe.source === "photo") node.append(el("div", "tag", t.fromPhoto));
     if (suggestion === null) {
       h.addEventListener("click", () => {
         this._openRecipe = this._openRecipe === recipe.id ? null : recipe.id;
@@ -1080,6 +1159,16 @@ class LarderExperimental extends HTMLElement {
       ),
       el("span", "grow"),
     );
+    if (this._canGenerate() && this._hass.fetchWithAuth) {
+      const photo = el("button", "icon", "📷");
+      photo.type = "button";
+      photo.dataset.role = "photo";
+      photo.setAttribute("aria-label", t.photoRead);
+      photo.title = t.photoRead;
+      photo.disabled = this._photo === "busy";
+      photo.addEventListener("click", () => this._photoInput.click());
+      bar.append(photo);
+    }
     if (isAdmin(this._hass)) {
       const add = el("button", "icon", "＋");
       add.type = "button";
@@ -1114,6 +1203,10 @@ class LarderExperimental extends HTMLElement {
     }
     if (ai.childElementCount) frag.append(ai);
 
+    if (this._photo === "busy") frag.append(el("p", "note", t.photoBusy));
+    else if (this._photo && this._photo.error) {
+      frag.append(el("p", "error", typeof this._photo.error === "string" ? this._photo.error : t.photoFailed));
+    }
     const s = this._suggestions;
     if (s === "busy") {
       frag.append(el("p", "note", t.recipesBusy));
@@ -1172,7 +1265,7 @@ class LarderExperimental extends HTMLElement {
     submit.type = "submit";
     buttons.append(cancel, submit);
     form.replaceChildren(
-      el("h2", "", recipe ? t.recipeEdit : t.recipeNew),
+      el("h2", "", recipe && recipe.id ? t.recipeEdit : recipe && recipe.source === "photo" ? t.photoCheck : t.recipeNew),
       field(t.recipeTitle, title),
       field(t.recipeMinutes, minutes),
       field(t.recipeIngredients, ingredients),
@@ -1203,7 +1296,8 @@ class LarderExperimental extends HTMLElement {
     const minutes = parseInt(value("minutes"), 10);
     const payload = { title, ingredients: lines(value("ingredients")), steps: lines(value("steps")) };
     if (minutes > 0) payload.minutes = Math.min(minutes, 1440);
-    if (this._editing) payload.recipe_id = this._editing.id;
+    if (this._editing && this._editing.id) payload.recipe_id = this._editing.id;
+    else if (this._editing && this._editing.source === "photo") payload.source = "photo";
     form.querySelector("button.submit").disabled = true;
     try {
       await this._saveRecipe(payload);

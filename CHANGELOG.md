@@ -3,6 +3,10 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 1.9.0
+
+- **Recipe from a photo or file** (Larder experimental, recipe page, 📷): take or pick up to four photos of a recipe, or a PDF. The AI reads it through *AI Task*, translates it into your language if needed and opens it as a draft for you to check before it is saved to the recipe book (marked *From a photo*). Photos are shrunk on the device before uploading, stored only briefly in Home Assistant's media folder while the AI reads them, and deleted right after. Needs an AI task that supports attachments. Closes #12.
+
 ## 1.8.1
 
 - **Larder experimental:** the page stayed empty after reloading the browser on it. Home Assistant could create the dashboard before its code had finished loading; the values it handed over were then lost. They are now picked up when the dashboard starts.

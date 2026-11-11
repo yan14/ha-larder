@@ -147,6 +147,18 @@
     },
     "recipes_failed": {
       "message": "Der KI-Rezeptvorschlag ist fehlgeschlagen: {error}"
+    },
+    "recipe_photo_failed": {
+      "message": "Das Rezept konnte nicht gelesen werden: {error}"
+    },
+    "recipe_photo_none": {
+      "message": "Auf dem Foto wurde kein Rezept gefunden."
+    },
+    "recipe_photo_unsupported": {
+      "message": "Die gewählte KI kann keine Fotos oder Dateien lesen. Wähle in den Einstellungen eine KI-Aufgabe, die Anhänge unterstützt."
+    },
+    "recipe_photo_no_media": {
+      "message": "Home Assistant hat keinen Medienordner; dort werden die Fotos kurz abgelegt."
     }
   },
   "options": {

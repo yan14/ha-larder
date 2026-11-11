@@ -116,7 +116,7 @@ async def ws_recipes(hass: HomeAssistant, connection: websocket_api.ActiveConnec
         vol.Optional("ingredients", default=list): _LINES,
         vol.Optional("steps", default=list): _LINES,
         vol.Optional("minutes"): vol.Any(None, vol.All(vol.Coerce(int), vol.Range(min=1, max=1440))),
-        vol.Optional("source", default="manual"): vol.In(["manual", "ai"]),
+        vol.Optional("source", default="manual"): vol.In(["manual", "ai", "photo"]),
     }
 )
 @websocket_api.require_admin
