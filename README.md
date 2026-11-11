@@ -362,7 +362,7 @@ This integration tracks the **physical, reusable container** (one device per con
 
 ## Development
 
-Releases are created automatically: when `version` in `manifest.json` is new on `main`, a GitHub workflow creates the tag `v<version>` and a release with generated notes.
+Releases are created automatically: when `version` in `manifest.json` is new on `main`, a GitHub workflow creates the tag `v<version>` and a release. Its text is the section `## <version>` of [CHANGELOG.md](CHANGELOG.md) (write it together with the version bump, a test checks that it exists), followed by the automatically generated comparison link.
 
 ```
 pip install -r requirements_test.txt

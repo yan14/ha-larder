@@ -27,9 +27,16 @@ jobs:
             echo "Release $tag already exists, nothing to do."
             exit 0
           fi
+          # Eigene Notes: der Abschnitt "## <version>" aus CHANGELOG.md. Die automatisch
+          # erzeugten Notes (Vergleichslink) werden darunter angehängt.
+          awk -v v="$version" '/^## /{p = ($2 == v); next} p' CHANGELOG.md > notes.md
+          if [ ! -s notes.md ]; then
+            echo "::warning::No section for $version in CHANGELOG.md, using generated notes only."
+          fi
           gh release create "$tag" \
             --target "$GITHUB_SHA" \
             --title "$tag" \
+            --notes-file notes.md \
             --generate-notes \
             --latest
           echo "Created release $tag"

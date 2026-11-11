@@ -362,7 +362,7 @@ Diese Integration verwaltet den **physischen, wiederverwendbaren Behälter** (ei
 
 ## Entwicklung
 
-Releases entstehen automatisch: Ist `version` in `manifest.json` auf `main` neu, legt ein GitHub-Workflow den Tag `v<Version>` und einen Release mit generierten Notizen an.
+Releases entstehen automatisch: Ist `version` in `manifest.json` auf `main` neu, legt ein GitHub-Workflow den Tag `v<Version>` und einen Release an. Dessen Text ist der Abschnitt `## <Version>` aus [CHANGELOG.md](CHANGELOG.md) (zusammen mit dem Versions-Bump schreiben, ein Test prüft, dass er existiert), gefolgt vom automatisch erzeugten Vergleichslink.
 
 ```
 pip install -r requirements_test.txt
