@@ -215,8 +215,9 @@ There is no menu icon of its own: the ☰ at the top is the Home Assistant sideb
 
 **Serial scan** (administrators): during the selection **📡 Scan** adds every container you scan:
 
-- **NFC tags** linked to a container: hold the phone to one tag after the other.
-- **QR codes** in the Home Assistant app on iOS and Android: the app's own scanner opens and stays open, scan one code after the other; each hit shows the container name and the number selected. Close the scanner when you are done. Own QR codes and the original Zwilling codes both work; a container that has not been added yet is reported.
+- **QR codes** in the Home Assistant app on iOS and Android: the app's own scanner opens and stays open, scan one code after the other; each hit shows the container name and the number selected. Own QR codes and the original Zwilling codes both work; a container that has not been added yet is reported. Closing the scanner does not end the serial scan; **📷 Open QR scanner** opens it again.
+- **NFC tags** linked to a container: close the QR scanner first (while the camera is in use the iPhone does not read NFC tags). Then hold the phone to a tag; the iPhone shows a banner "Open in Home Assistant" at the top, tap it. The container is selected, and you stay on the page. Android reads the tag directly. While a serial scan is running, the phone gets no Larder notification after an NFC scan.
+- **⏹ Stop scanning** ends the serial scan.
 
 Then fill them all at once or ask for recipe ideas, which makes an inventory of a freezer or a shopping trip quick.
 

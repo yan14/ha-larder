@@ -3,6 +3,11 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 1.10.1
+
+- **Serial scan with NFC tags:** closing the QR scanner no longer ends the serial scan, so NFC tags can be scanned afterwards (while the camera is in use the iPhone does not read NFC tags). **📷 Open QR scanner** opens it again, **⏹ Stop scanning** ends the scan. The page explains how NFC works on the iPhone (tap the "Open in Home Assistant" banner).
+- While a serial scan is running, an NFC scan no longer sends the Larder notification to the phone (tapping it would have left the page); the scan goes straight to the dashboard (new WebSocket subscription `larder/scan_session`). The `larder_dose_scanned` event still fires.
+
 ## 1.10.0
 
 - **Select several containers** (Larder experimental, containers page, **☑ Select**): tap containers to select them, then **Fill (n)** fills all selected empty containers at once with the same contents, dates and vacuum (quantity per container, each gets its own estimate), or **✨ Recipe ideas** asks for recipes from exactly the selected containers. Closes #3.

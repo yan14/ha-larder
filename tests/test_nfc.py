@@ -149,3 +149,28 @@ async def test_link_and_unlink_by_device_id(hass: HomeAssistant, hass_ws_client)
     assert not res["success"]
     res = await _ws(hass, hass_ws_client, {"type": f"{DOMAIN}/nfc_unlink", "device_id": device.id})
     assert res["result"]["by_device"] == {}
+
+
+async def test_scan_session_receives_scans_and_suppresses_the_notification(hass: HomeAssistant, hass_ws_client) -> None:
+    await _setup(hass, "34OL")
+    phone = _phone(hass)
+    calls = _notify(hass)
+    client = await hass_ws_client(hass)
+    await client.send_json({"id": 1, "type": f"{DOMAIN}/nfc_link", "tag_id": "abc", "cc": "34OL"})
+    assert (await client.receive_json())["success"]
+    await client.send_json({"id": 2, "type": f"{DOMAIN}/scan_session"})
+    assert (await client.receive_json())["success"]
+    events = async_capture_events(hass, "larder_dose_scanned")
+
+    await _scan(hass, "abc", phone)
+    msg = await client.receive_json()
+    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "34OL")})
+    assert msg["id"] == 2 and msg["type"] == "event"
+    assert msg["event"]["device_id"] == device.id and msg["event"]["name"] == "Dose 34OL"
+    assert len(events) == 1  # Automationen bekommen das Ereignis weiterhin
+    assert calls == []  # keine Benachrichtigung während des Serien-Scans
+
+    await client.send_json({"id": 3, "type": "unsubscribe_events", "subscription": 2})
+    assert (await client.receive_json())["success"]
+    await _scan(hass, "abc", phone)
+    assert len(calls) == 1  # nach dem Ende wieder wie gewohnt

@@ -686,8 +686,8 @@ test("Serien-Scan: NFC-Ereignisse und QR-Scanner der App wählen Dosen aus", asy
   let eventCb = null;
   let unsubscribed = false;
   hass.connection = {
-    subscribeEvents: async (cb, type) => {
-      assert.equal(type, "larder_dose_scanned");
+    subscribeMessage: async (cb, msg) => {
+      assert.deepEqual(msg, { type: "larder/scan_session" });
       eventCb = cb;
       return () => (unsubscribed = true);
     },
@@ -720,11 +720,12 @@ test("Serien-Scan: NFC-Ereignisse und QR-Scanner der App wählen Dosen aus", asy
   $(el, '[data-role="scan"]').click();
   await flush();
   await flush();
-  assert.match($(el, "main .note").textContent, /Serien-Scan/);
+  assert.match($(el, "main .note").textContent, /Serien-Scan läuft/);
+  assert.equal($(el, '[data-role="scan-qr"]'), null); // QR-Scanner ist offen
   assert.equal(sent[0].type, "bar_code/scan");
   assert.notEqual(external._commandHandler, original);
 
-  eventCb({ data: { device_id: "d1" } }); // NFC
+  eventCb({ device_id: "d1", name: "Dose 1" }); // NFC
   assert.ok(external._commandHandler({ command: "bar_code/scan_result", payload: { rawValue: "cc=d2", format: "qr_code" } }));
   external._commandHandler({ command: "bar_code/scan_result", payload: { rawValue: "cc=NEU", format: "qr_code" } });
   external._commandHandler({ command: "bar_code/scan_result", payload: { rawValue: "Hallo", format: "qr_code" } });
@@ -742,12 +743,26 @@ test("Serien-Scan: NFC-Ereignisse und QR-Scanner der App wählen Dosen aus", asy
   assert.equal(external._commandHandler, original);
   assert.equal(sent[sent.length - 1].type, "bar_code/close");
 
-  // Schließen im Scanner der App beendet den Scan ebenfalls
+  // Schließen des QR-Scanners lässt den Serien-Scan (NFC) weiterlaufen
+  unsubscribed = false;
   $(el, '[data-role="scan"]').click();
   await flush();
   await flush();
   external._commandHandler({ command: "bar_code/aborted", payload: { reason: "canceled" } });
   await flush();
   assert.equal(external._commandHandler, original);
-  assert.equal($(el, '[data-role="scan"]').textContent.includes("Scannen"), true);
+  assert.equal(unsubscribed, false);
+  assert.match($(el, "main .note").textContent, /In Home Assistant öffnen/);
+  eventCb({ device_id: "d3" });
+  await flush();
+  assert.ok($(el, 'main .tile[data-id="d3"]').classList.contains("selected"));
+  // QR-Scanner wieder öffnen
+  $(el, '[data-role="scan-qr"]').click();
+  await flush();
+  assert.equal(sent[sent.length - 1].type, "bar_code/scan");
+  assert.notEqual(external._commandHandler, original);
+  $(el, '[data-role="scan"]').click(); // Scan beenden
+  await flush();
+  assert.equal(unsubscribed, true);
+  assert.equal(external._commandHandler, original);
 });

@@ -14,6 +14,7 @@ Unbekannte Tags werden ignoriert, damit andere NFC-Tags im Haus unberührt bleib
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from typing import Any
 
 from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
@@ -53,6 +54,8 @@ class NfcTags:
         self._store: Store[dict[str, str]] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
         self._tags: dict[str, str] = {}  # tag_id -> cc
         self._unsub: CALLBACK_TYPE | None = None
+        # Laufende Serien-Scans im Dashboard: bekommen jeden Scan, das Handy dann keine Benachrichtigung
+        self._sessions: list[Callable[[dict[str, Any]], None]] = []
 
     async def async_load(self) -> None:
         self._tags = (await self._store.async_load()) or {}
@@ -67,6 +70,18 @@ class NfcTags:
         if self._unsub:
             self._unsub()
             self._unsub = None
+
+    @callback
+    def add_session(self, forward: Callable[[dict[str, Any]], None]) -> CALLBACK_TYPE:
+        """Serien-Scan anmelden; liefert die Abmeldung."""
+        self._sessions.append(forward)
+
+        @callback
+        def remove() -> None:
+            if forward in self._sessions:
+                self._sessions.remove(forward)
+
+        return remove
 
     # ----- Verknüpfungen -----
 
@@ -153,10 +168,13 @@ class NfcTags:
         if entry is None or device is None:
             return
         scanner = event.data.get("device_id")
-        self.hass.bus.async_fire(
-            EVENT_DOSE_SCANNED,
-            {"cc": cc, "device_id": device.id, "name": entry.title, "scanned_by": scanner},
-        )
+        data = {"cc": cc, "device_id": device.id, "name": entry.title, "scanned_by": scanner}
+        self.hass.bus.async_fire(EVENT_DOSE_SCANNED, data)
+        if self._sessions:
+            # Serien-Scan im Dashboard läuft: dorthin melden, keine Benachrichtigung aufs Handy
+            for forward in list(self._sessions):
+                forward(data)
+            return
         estimator = await async_get_estimator(self.hass)
         service = self._notify_service(scanner) if estimator.nfc_notify else None
         if service is None:

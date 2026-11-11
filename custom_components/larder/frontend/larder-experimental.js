@@ -101,7 +101,9 @@ export const TEXTS = {
     selectNone: "Keine",
     scanStart: "Scannen",
     scanStop: "Scan beenden",
-    scanHint: "Serien-Scan: Halte NFC-Tags ans Handy oder scanne QR-Codes; jede Dose wird ausgewählt.",
+    scanHint: "Serien-Scan läuft: Jede gescannte Dose wird ausgewählt.",
+    scanNfcHint: "NFC: Handy an den Tag halten und das Banner „In Home Assistant öffnen“ oben antippen. Das geht nur, solange der QR-Scanner geschlossen ist.",
+    scanQr: "QR-Scanner öffnen",
     scanTitle: "Dosen scannen",
     scanDescription: "Scanne die QR-Codes der Dosen nacheinander. Schließen, wenn du fertig bist.",
     scanAdded: (name, n) => `✓ ${name} (${n} ausgewählt)`,
@@ -205,7 +207,9 @@ export const TEXTS = {
     selectNone: "None",
     scanStart: "Scan",
     scanStop: "Stop scanning",
-    scanHint: "Serial scan: hold NFC tags to the phone or scan QR codes; every container gets selected.",
+    scanHint: "Serial scan running: every scanned container gets selected.",
+    scanNfcHint: "NFC: hold the phone to the tag and tap the “Open in Home Assistant” banner at the top. This only works while the QR scanner is closed.",
+    scanQr: "Open QR scanner",
     scanTitle: "Scan containers",
     scanDescription: "Scan the QR codes of the containers one after another. Close when you are done.",
     scanAdded: (name, n) => `✓ ${name} (${n} selected)`,
@@ -430,6 +434,9 @@ const STYLE = `
   .row .sub { font-size: 12px; color: var(--secondary-text-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .row.empty { opacity: .65; }
   .note { color: var(--secondary-text-color); font-size: 14px; margin: 8px 0; }
+  div.note p { margin: 0 0 6px; }
+  div.note button { font: inherit; font-size: 14px; border-radius: 18px; padding: 7px 12px; cursor: pointer; margin-top: 2px;
+    background: var(--card-background-color, #fff); color: var(--primary-text-color); border: 1px solid var(--divider-color); }
   .hello { font-size: 26px; font-weight: 400; margin: 4px 0 14px; }
   .lead { font-size: 16px; margin: 0 0 12px; }
   .tiles + .lead { margin-top: 22px; }
@@ -669,6 +676,7 @@ class LarderExperimental extends HTMLElement {
       this._selecting,
       [...this._selected],
       !!this._scan,
+      !!(this._scan && this._scan.external),
       this._chosenFor,
     ]);
     if (sig === this._sig) return;
@@ -787,18 +795,35 @@ class LarderExperimental extends HTMLElement {
     const scan = { unsub: null, external: null };
     this._scan = scan;
     this._update();
+    const add = (id) => {
+      if (id && this._scan === scan) this.toggleSelected(id, true);
+    };
     try {
-      if (hass.connection && hass.connection.subscribeEvents) {
-        scan.unsub = await hass.connection.subscribeEvents((ev) => {
-          const id = ev && ev.data && ev.data.device_id;
-          if (id && this._scan === scan) this.toggleSelected(id, true);
-        }, `${DOMAIN}_dose_scanned`);
-        if (this._scan !== scan && scan.unsub) scan.unsub();
+      if (hass.connection && hass.connection.subscribeMessage) {
+        // Eigenes Abo: meldet NFC-Scans und unterdrückt solange die Benachrichtigung aufs Handy
+        scan.unsub = await hass.connection.subscribeMessage((data) => add(data && data.device_id), {
+          type: `${DOMAIN}/scan_session`,
+        });
+      } else if (hass.connection && hass.connection.subscribeEvents) {
+        scan.unsub = await hass.connection.subscribeEvents((ev) => add(ev && ev.data && ev.data.device_id), `${DOMAIN}_dose_scanned`);
       }
+      if (this._scan !== scan && scan.unsub) scan.unsub();
     } catch {
-      /* ohne Ereignisse bleibt der QR-Scanner der App */
+      /* ohne Abo bleibt der QR-Scanner der App */
     }
-    if (this._scan === scan) this._startExternalScanner(scan);
+    if (this._scan === scan) this.openQrScanner();
+  }
+
+  /** Kann die App einen QR-Scanner öffnen (Home-Assistant-App mit Kamera)? */
+  _hasQrScanner() {
+    const external = this._hass && this._hass.auth && this._hass.auth.external;
+    return !!(external && external.config && external.config.hasBarCodeScanner && typeof external._commandHandler === "function");
+  }
+
+  openQrScanner() {
+    const scan = this._scan;
+    if (scan && !scan.external) this._startExternalScanner(scan);
+    this._update();
   }
 
   /**
@@ -817,9 +842,10 @@ class LarderExperimental extends HTMLElement {
       if (this._scan === scan && msg && msg.command === "bar_code/scan_result") {
         this._handleScannedCode(String((msg.payload && msg.payload.rawValue) || ""), notify, t);
       } else if (this._scan === scan && msg && msg.command === "bar_code/aborted") {
+        // QR-Scanner geschlossen: der Serien-Scan läuft weiter (z. B. für NFC), bis "Scan beenden"
         scan.external = null;
         external.addCommandHandler(original);
-        this.stopScan();
+        this._update();
       }
       return original(msg);
     };
@@ -1004,7 +1030,19 @@ class LarderExperimental extends HTMLElement {
 
     const frag = document.createDocumentFragment();
     frag.append(bar);
-    if (this._scan) frag.append(el("p", "note", t.scanHint));
+    if (this._scan) {
+      const info = el("div", "note");
+      info.append(el("p", "", t.scanHint));
+      if (!this._scan.external) info.append(el("p", "", t.scanNfcHint));
+      if (!this._scan.external && this._hasQrScanner()) {
+        const qr = el("button", "", `📷 ${t.scanQr}`);
+        qr.type = "button";
+        qr.dataset.role = "scan-qr";
+        qr.addEventListener("click", () => this.openQrScanner());
+        info.append(qr);
+      }
+      frag.append(info);
+    }
     const chips = this._chips(t, allRows);
     if (chips) frag.append(chips);
 

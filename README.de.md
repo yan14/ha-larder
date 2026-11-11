@@ -215,8 +215,9 @@ Ein eigenes Menü-Symbol gibt es nicht: das ☰ oben ist die Seitenleiste von Ho
 
 **Serien-Scan** (Administratoren): Während der Auswahl fügt **📡 Scannen** jede gescannte Dose hinzu:
 
-- **NFC-Tags**, die mit einer Dose verknüpft sind: das Handy nacheinander an die Tags halten.
-- **QR-Codes** in der Home-Assistant-App unter iOS und Android: Der Scanner der App öffnet sich und bleibt offen, du scannst einen Code nach dem anderen; jeder Treffer zeigt den Namen der Dose und wie viele ausgewählt sind. Wenn du fertig bist, schließt du den Scanner. Eigene QR-Codes und die originalen Zwilling-Codes funktionieren beide; eine noch nicht angelegte Dose wird gemeldet.
+- **QR-Codes** in der Home-Assistant-App unter iOS und Android: Der Scanner der App öffnet sich und bleibt offen, du scannst einen Code nach dem anderen; jeder Treffer zeigt den Namen der Dose und wie viele ausgewählt sind. Eigene QR-Codes und die originalen Zwilling-Codes funktionieren beide; eine noch nicht angelegte Dose wird gemeldet. Schließen des Scanners beendet den Serien-Scan nicht; **📷 QR-Scanner öffnen** öffnet ihn wieder.
+- **NFC-Tags**, die mit einer Dose verknüpft sind: zuerst den QR-Scanner schließen (solange die Kamera läuft, liest das iPhone keine NFC-Tags). Dann das Handy an einen Tag halten; das iPhone zeigt oben das Banner „In Home Assistant öffnen“, das antippen. Die Dose wird ausgewählt, und du bleibst auf der Seite. Android liest den Tag direkt. Während ein Serien-Scan läuft, bekommt das Handy nach einem NFC-Scan keine Larder-Benachrichtigung.
+- **⏹ Scan beenden** beendet den Serien-Scan.
 
 Danach alle auf einmal befüllen oder Rezeptideen holen. So geht eine Inventur der Gefriertruhe oder das Einräumen nach dem Einkauf schnell.
 

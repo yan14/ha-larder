@@ -34,6 +34,7 @@ def async_setup_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_contents)
     websocket_api.async_register_command(hass, ws_settings)
     websocket_api.async_register_command(hass, ws_resolve_code)
+    websocket_api.async_register_command(hass, ws_scan_session)
     websocket_api.async_register_command(hass, ws_nfc_tags)
     websocket_api.async_register_command(hass, ws_nfc_link)
     websocket_api.async_register_command(hass, ws_nfc_unlink)
@@ -226,3 +227,24 @@ def ws_resolve_code(
             "name": (device.name_by_user or device.name) if device else None,
         },
     )
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/scan_session"})
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_scan_session(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Serien-Scan: jeden Scan eines verknüpften NFC-Tags melden, solange das Abo läuft.
+
+    Während ein Serien-Scan läuft, bekommt das Handy nach einem NFC-Scan keine Benachrichtigung
+    (sie würde aus dem Dashboard herausführen).
+    """
+    nfc = await async_get_nfc(hass)
+
+    @callback
+    def forward(data: dict[str, Any]) -> None:
+        connection.send_message(websocket_api.event_message(msg["id"], data))
+
+    connection.subscriptions[msg["id"]] = nfc.add_session(forward)
+    connection.send_result(msg["id"])
