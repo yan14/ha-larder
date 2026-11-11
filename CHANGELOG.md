@@ -3,6 +3,10 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 1.6.2
+
+- Dashboard header: the two-row layout on narrow screens now follows the screen width (a plain media query) instead of a container query, which is safer on iOS.
+
 ## 1.6.1
 
 - Dashboard on phones: the header bar now wraps into two rows on narrow screens (title and **Add container** on top, tabs and **Recipe ideas** below), so nothing sticks out of the screen any more.

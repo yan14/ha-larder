@@ -415,7 +415,7 @@ function navigate(path) {
 }
 
 const STYLE = `
-  :host { display: block; container-type: inline-size; min-height: 100%; background: var(--primary-background-color);
+  :host { display: block; min-height: 100%; background: var(--primary-background-color);
     color: var(--primary-text-color); font-family: var(--paper-font-body1_-_font-family, Roboto, sans-serif); }
   header { display: flex; align-items: center; gap: 12px; padding: 0 16px; height: 56px;
     background: var(--app-header-background-color, var(--primary-color)); color: var(--app-header-text-color, #fff);
@@ -527,9 +527,9 @@ const STYLE = `
   .dialog .nfcstatus { font-size: 14px; color: var(--secondary-text-color); }
   .dialog .nfcstatus[hidden] { display: none; }
   header .count { white-space: nowrap; }
-  /* Schmale Fenster (Handy): zweizeilige Kopfleiste statt überstehender Schaltflächen.
+  /* Schmale Fenster (Handy, Tablet hochkant): zweizeilige Kopfleiste statt überstehender Schaltflächen.
      Zeile 1: Menü, Titel, Anzahl, "Dose hinzufügen"; Zeile 2: Reiter und "Rezeptideen". */
-  @container (max-width: 760px) {
+  @media (max-width: 960px) {
     header { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 0 10px;
       height: auto; min-height: 56px; padding: 8px 12px; }
     header #menu { grid-column: 1; grid-row: 1; padding: 4px 6px; }
