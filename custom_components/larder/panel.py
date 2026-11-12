@@ -18,7 +18,7 @@ from homeassistant.loader import async_get_integration
 from .const import DOMAIN, PANEL_EXPERIMENTAL_PATH, PANEL_URL_PATH
 from .estimate import async_get_estimator
 
-PANEL_ELEMENT = "larder-panel"
+PANEL_ELEMENT = "larder-dashboard"  # seit 2.0 die frühere experimentelle Oberfläche
 PANEL_EXPERIMENTAL_ELEMENT = "larder-experimental"
 STATIC_URL = f"/{DOMAIN}_static"
 FRONTEND_DIR = Path(__file__).parent / "frontend"

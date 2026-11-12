@@ -95,6 +95,16 @@ def panel_path(add_code: str | None = None, open_device: str | None = None) -> s
     return f"/{PANEL_URL_PATH}"
 
 
+def scan_path(cc: str) -> str:
+    """Ziel eines eigenen QR-Codes: das Dashboard mit der ID der Dose (unabhängig von der Geräte-ID)."""
+    return f"/{PANEL_URL_PATH}?cc={cc}"
+
+
+def scan_app_url(cc: str) -> str:
+    """Inhalt der eigenen QR-Codes: öffnet in der Home-Assistant-App das Dashboard bei dieser Dose."""
+    return f"{APP_URL_PREFIX}{scan_path(cc)}"
+
+
 def panel_app_url(add_code: str | None = None, open_device: str | None = None) -> str:
     """Link, der das Dosen-Panel direkt in der Home-Assistant-App öffnet."""
     return f"{APP_URL_PREFIX}{panel_path(add_code, open_device)}"

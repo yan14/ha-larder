@@ -10,10 +10,9 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 
 ## Highlights
 
-- 🖥️ **[Eigenes Dashboard](#dashboard-larder)** in der Seitenleiste: alle Dosen auf einen Blick, alles anlegen und bearbeiten, aktualisiert sich selbst
-- 🧪 **[Larder experimental](#larder-experimental)**: ein zweites, kachelbasiertes Dashboard fürs Handy mit Startseite, Bereichen, Kategorien und Rezeptbuch (optional)
+- 🖥️ **[Eigenes Dashboard](#dashboard-larder)** in der Seitenleiste, gemacht fürs Handy: Startseite, Dosen als Kacheln, Liste oder Karten mit allen Details, Bereiche, Kategorien und Rezeptbuch; aktualisiert sich selbst
 - 🔖 **[Zwilling-Fresh-&-Save-QR-Codes](#ios-kurzbefehl-für-die-originalen-zwilling-codes)**: die originalen Codes auf den Deckeln funktionieren weiter
-- 🏷️ **[Eigener QR-Code](#eigene-qr-codes)** und **[NFC-Tags](#nfc-tags)** für jede beliebige Dose
+- 🏷️ **[Eigener QR-Code](#eigene-qr-codes)** und **[NFC-Tags](#nfc-tags)** für jede beliebige Dose: Scannen öffnet die Dose im Dashboard
 - ✏️ **[Schnelles Befüllen](#dosen-befüllen)**: Inhalt, Menge, MHD und Vakuum in wenigen Taps, auch für mehrere Dosen auf einmal und per [Serien-Scan](#mehrere-dosen-auswählen)
 - 🧮 **[MHD-Schätzung](#mhd-schätzung)**: eingebaute Haltbarkeitstabelle, optional mit KI, mit Grenzen pro Lagerort
 - 🍳 **[Rezepte](#rezepte)**: Ideen aus dem, was bald abläuft, oder aus gewählten Dosen, ein Rezeptbuch und Rezepte vom Foto
@@ -22,13 +21,19 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 - 📅 **[Kalendereinträge](#mhd-im-kalender)**: MHDs in deinem Kalender (Lokaler Kalender, Google, CalDAV …)
 - 🌍 In Deutsch und Englisch verfügbar
 
-<p align="center"><img src="docs/images/dashboard-de.png" width="720" alt="Dashboard Larder (Demo-Daten)"></p>
+<p align="center">
+<img src="docs/images/dashboard-start-de.png" width="250" alt="Startseite (Demo-Daten)">
+<img src="docs/images/dashboard-containers-de.png" width="250" alt="Dosen als Kacheln">
+<img src="docs/images/dashboard-cards-de.png" width="250" alt="Karten mit allen Details">
+</p>
+
+> **Neu in 2.0:** Das Dashboard, das bisher *Larder experimental* hieß, ist jetzt das normale **Larder**-Dashboard. Alles aus dem bisherigen Dashboard steckt darin (die Karten mit allen Feldern unter *Behälter → Karten*, die gemerkten Schätzungen unter ⚙). Siehe [Changelog](CHANGELOG.md).
 
 ## Inhalt
 
 - [Warum dieses Projekt?](#warum-dieses-projekt)
 - [Installation](#installation) · [Erste Schritte](#erste-schritte) · [Dose anlegen](#dose-anlegen) · [Bereiche und Labels](#bereiche-und-labels) · [Einstellungen](#einstellungen)
-- [Dashboard „Larder“](#dashboard-larder) · [Dosen befüllen](#dosen-befüllen) · [Larder experimental](#larder-experimental)
+- [Dashboard „Larder“](#dashboard-larder) · [Mehrere Dosen auswählen](#mehrere-dosen-auswählen) · [Dosen befüllen](#dosen-befüllen) · [Larder experimental](#larder-experimental)
 - [MHD-Schätzung](#mhd-schätzung) · [Rezepte](#rezepte) · [Tägliche Zusammenfassung](#tägliche-zusammenfassung) · [Einkaufsliste](#einkaufsliste) · [Kalender](#mhd-im-kalender)
 - [Scannen](#scannen): [eigene QR-Codes](#eigene-qr-codes), [NFC-Tags](#nfc-tags), [Zwilling-Codes (iOS-Kurzbefehl)](#ios-kurzbefehl-für-die-originalen-zwilling-codes)
 - [Referenz](#referenz): [Entitäten](#entitäten), [Dienste und Ereignisse](#dienste-und-ereignisse), [Webhook](#webhook-schnittstelle)
@@ -64,10 +69,10 @@ Seit Home Assistant 2026.11 ist der Community Store HACS als **Marketplace** fes
 
 ## Erste Schritte
 
-1. **Erste Dose anlegen** unter Einstellungen → Geräte & Dienste → Integration hinzufügen → Larder (siehe [Dose anlegen](#dose-anlegen)). Danach steht das Dashboard **Larder** in der Seitenleiste, und weitere Dosen legst du dort schneller an.
+1. **Erste Dose anlegen** unter Einstellungen → Geräte & Dienste → Integration hinzufügen → Larder (siehe [Dose anlegen](#dose-anlegen)). Danach steht das Dashboard **Larder** in der Seitenleiste, und weitere Dosen legst du dort schneller an (**＋** auf der Behälter-Seite).
 2. **Jeder Dose einen Bereich geben**, der sagt, wo sie lagert, z. B. „Kühlschrank“, „Gefrierschrank“ oder „Vorrat“. Die Schätzung braucht ihn. Optional den Bereichen ein `Larder: …`-Label mit der [Vorlage](#vorlage-für-das-bereichs-label) geben.
 3. **Dosen befüllen** im Dashboard: Inhalt, Menge, MHD (oder von Larder schätzen lassen).
-4. **Die [Einstellungen](#einstellungen)** einmal durchgehen: Schätzmodus, Zeiträume, Kalender, Einkaufsliste, experimentelles Dashboard.
+4. **Die [Einstellungen](#einstellungen)** einmal durchgehen: Schätzmodus, Zeiträume, Kalender, Einkaufsliste.
 5. **Das [Blueprint](#tägliche-zusammenfassung) importieren** für eine tägliche Zusammenfassung dessen, was bald abläuft (Push und/oder Ansage).
 6. **Einen Code auf die Boxen bringen:** [eigenen QR-Code](#eigene-qr-codes) drucken, einen [NFC-Tag](#nfc-tags) aufkleben oder den [Kurzbefehl](#ios-kurzbefehl-für-die-originalen-zwilling-codes) für die originalen Zwilling-Codes nutzen.
 
@@ -93,7 +98,7 @@ Home Assistant bietet im Dialog keine Kamera zum Scannen. Den Text liest du unte
 
 ### Im Dashboard
 
-Sobald die erste Dose existiert, ist **+ Dose hinzufügen** im Dashboard der schnellste Weg (dort gibt es auch [NFC-Tags](#nfc-tags)):
+Sobald die erste Dose existiert, ist **＋** auf der Behälter-Seite des Dashboards der schnellste Weg (dort gibt es auch [NFC-Tags](#nfc-tags)):
 
 <p align="center"><img src="docs/images/add-dialog-de.png" width="560" alt="Dialog Dose hinzufügen"></p>
 
@@ -147,67 +152,48 @@ Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** (bei ei
 | NFC: Handy benachrichtigen | an | Benachrichtigung auf dem scannenden Handy nach einem [NFC-Scan](#nfc-tags) |
 | Kalender | keiner | [MHD im Kalender](#mhd-im-kalender) |
 | Einkaufsliste | keine | [Einkaufsliste](#einkaufsliste) für geleerte Dosen |
-| Larder experimental | aus | Zweites Dashboard in der Seitenleiste, siehe [Larder experimental](#larder-experimental) |
+| Larder experimental | aus | Zweiter Eintrag in der Seitenleiste zum Ausprobieren neuer Funktionen, siehe [Larder experimental](#larder-experimental) |
 
 Der Dialog zeigt außerdem die **Webhook-URL** für den [iOS-Kurzbefehl](#ios-kurzbefehl-für-die-originalen-zwilling-codes).
 
 ## Dashboard „Larder“
 
-Sobald mindestens eine Dose angelegt ist, erscheint in der Seitenleiste der Eintrag **Larder**. Er braucht keine Konfiguration und zeigt jede Dose auf einer Karte (Screenshot ganz oben):
+Sobald mindestens eine Dose angelegt ist, erscheint in der Seitenleiste der Eintrag **Larder**. Er braucht keine Konfiguration, passt sich an Theme und Sprache von Home Assistant an (Deutsch und Englisch) und aktualisiert sich selbst. *Die Screenshots zeigen Demo-Daten.*
 
-*Die Screenshots zeigen Demo-Daten. Das Panel passt sich an Theme und Sprache von Home Assistant an (Deutsch und Englisch).*
+Eine Leiste unten wechselt zwischen fünf Seiten:
 
-- Alle Dosen der Integration, gruppiert nach **Bereich** (Area des Geräts) und sortiert nach Name.
-- Pro Dose: Bereich, **Inhalt**, **MHD** (mit Hinweis „abgelaufen“ oder „noch n Tage“, sobald es bald abläuft, standardmäßig 3 Tage), **Eingelagert am** (= „Befüllt am“), der Button **Behälter leeren** und der QR-Code als kleines Bild.
-- Inhalt, Menge und Einheit, MHD und Datum lassen sich direkt im Panel ändern. „Jetzt“ setzt „Eingelagert am“ auf die aktuelle Zeit.
-- Den **Bereich** einer Dose änderst du über das Auswahlfeld auf ihrer Karte, ohne Umweg über die Geräteseite. Welche Bereiche angeboten werden, lässt sich mit einem Label eingrenzen, siehe [Bereiche und Labels](#bereiche-und-labels).
-- Das Häkchen **Vakuum** schaltet die Vakuum-Eigenschaft der Dose um.
-- Das Häkchen **Beim Leeren auf die Einkaufsliste** erscheint erst, wenn eine [Einkaufsliste](#einkaufsliste) gewählt ist. Es ist auch Teil des Befüllen-Dialogs.
-- Ist die [Schätzung](#mhd-schätzung) aktiviert, erscheint unter dem Datum der Button **MHD schätzen**, sobald ein Inhalt eingetragen und noch kein MHD gesetzt ist.
-- **Rezeptideen** (oben rechts, Administratoren, nur mit der Integration *AI Task*) öffnet den [Rezept-Dialog](#rezeptideen).
-- **+ Dose hinzufügen** (oben rechts) legt eine Dose an: entweder *Neuen QR-Code erstellen* oder *Zwilling-QR-Code einlesen*, mit optionalem Namen und Bereich. Es ist derselbe Ablauf wie unter Einstellungen → Geräte & Dienste.
-- Unter dem Datum: **+1 Tag** verschiebt das MHD um einen Tag, **Geöffnet** kürzt es auf die in den Einstellungen gesetzte Zahl Tage (Standard 3), und **Aufgetaut** macht dasselbe für Essen, das du gerade aus dem Gefrierfach geholt hast (Standard 2 Tage, nicht wieder einfrieren). Beides verlängert nie ein Datum. Ohne Datum wird eines gesetzt.
-- **Suche, Filter und Sortierung** über den Karten: Suche in Name, Inhalt und Bereich; Filter nach *läuft bald ab*, *abgelaufen*, *befüllt* oder *leer*; Sortierung nach Bereich, MHD (frühestes zuerst) oder Name. Deine Auswahl wird im Browser gemerkt.
-- Eine leere Dose zeigt **Befüllen**, einen schnellen Dialog für Inhalt, Menge, Vakuum und MHD (siehe [Dosen befüllen](#dosen-befüllen)).
-- Administratoren sehen außerdem den Reiter **Schätzungen** (siehe [Gemerkte Schätzungen verwalten](#gemerkte-schätzungen-verwalten)).
-- Neue Dosen, geänderte Werte und geänderte Bereiche erscheinen sofort, ohne dass du etwas neu laden musst.
+- **Start**: eine Begrüßung mit deinem Home-Assistant-Namen, Kacheln für alles, was bald verbraucht werden sollte (Abgelaufenes zuerst), und Abkürzungen zu den Rezeptvorschlägen und den Behältern.
+- **Behälter**: alle Dosen mit einem Symbol für die Art des Essens, dem Inhalt, dem Namen der Dose und den Resttagen.
+  - **Suche** in Name, Inhalt und Bereich; **Filter** nach *läuft bald ab*, *abgelaufen*, *befüllt* oder *leer*; **Sortierung** nach MHD, Bereich, Alphabet oder Kategorie (Bereich und Kategorie gruppiert). Über der Liste steht, wie viele Dosen angezeigt werden.
+  - Der Knopf rechts wechselt zwischen **Kacheln**, **Liste** und **Karten mit allen Details**. Die Wahl merkt sich das Gerät.
+  - Eine gefüllte Dose öffnet beim Antippen ihre Karte, eine leere lässt sich gleich befüllen (siehe [Dosen befüllen](#dosen-befüllen)).
+  - **＋** legt eine Dose an (siehe [Im Dashboard](#im-dashboard)), **☑** startet die [Auswahl](#mehrere-dosen-auswählen).
+- **Bereiche**: eine Kachel pro Bereich mit der Anzahl der Dosen und wie viele bald ablaufen; Antippen zeigt seine Dosen.
+- **Kategorien**: dasselbe für Arten von Lebensmitteln (Fisch, Fleisch, Milchprodukte, Gerichte und Reste, Trockenware, …). Die Kategorie stammt aus der eingebauten Haltbarkeitstabelle und ist das Attribut `category` der Entität **Inhalt**. Dosen ohne Treffer stehen unter „Sonstiges“, leere unter „Leer“.
+- **Rezepte**: dein [Rezeptbuch](#rezeptbuch) mit [Rezeptideen](#rezeptideen) und Rezepten, die die KI von einem Foto liest.
 
-<p align="center"><img src="docs/images/dashboard-soon-de.png" width="720" alt="Filter: läuft bald ab"></p>
+**Die Karte einer Dose** (in der Kartenansicht oder nach dem Antippen) zeigt alles und lässt es dich ändern:
 
-Das Panel ist für alle Nutzer sichtbar, aber nur **Administratoren** können Dosen hinzufügen und Bereiche ändern (dieselbe Einschränkung wie in den Einstellungen). Andere Nutzer sehen den Bereich als Text. Es ist kein klassisches Lovelace-Dashboard und lässt sich nicht mit dem Karten-Editor bearbeiten. Dafür aktualisiert es sich selbst.
+- Bereich (Auswahlfeld; welche Bereiche angeboten werden, lässt sich mit einem Label eingrenzen, siehe [Bereiche und Labels](#bereiche-und-labels)), **Inhalt**, **Menge und Einheit**, **MHD** (mit Hinweis „abgelaufen“ oder „noch n Tage“, sobald es bald abläuft), **Eingelagert am** („Jetzt“ setzt die aktuelle Zeit),
+- **+1 Tag** verschiebt das MHD um einen Tag, **Geöffnet** kürzt es auf die in den Einstellungen gesetzte Zahl Tage (Standard 3), **Aufgetaut** macht dasselbe für Essen aus dem Gefrierfach (Standard 2 Tage, nicht wieder einfrieren). Beides verlängert nie ein Datum; ohne Datum wird eines gesetzt,
+- **MHD schätzen** (wenn die [Schätzung](#mhd-schätzung) aktiv ist, ein Inhalt eingetragen und das MHD leer ist),
+- **Vakuum**, **Beim Leeren auf die Einkaufsliste** (sobald eine [Einkaufsliste](#einkaufsliste) gewählt ist), der **NFC-Tag** (verknüpfen oder lösen), **Gerät öffnen** und **Behälter leeren**.
 
-## Dosen befüllen
-
-<p align="center"><img src="docs/images/fill-dialog-de.png" width="560" alt="Dialog Dose befüllen"></p>
-
-Eine leere Dose zeigt den Button **Befüllen**. Er öffnet einen kleinen Dialog: **Inhalt** (mit Vorschlägen aus früheren Eingaben, neueste zuerst, danach deine gemerkten Schätzungen), **Menge und Einheit** (optional), **Vakuum**, **Befüllt am** (vorbelegt mit jetzt), optional ein **MHD** und **MHD automatisch schätzen** (nur wenn die Schätzung aktiv und das MHD leer ist). **Speichern** setzt alles und schätzt das MHD.
-
-Der Dialog öffnet sich auch von selbst direkt nach dem Anlegen einer neuen Dose im Dashboard (auch nach dem Beschreiben eines NFC-Tags), sodass du sie gleich befüllen kannst. Ebenso nach einem Scan: wenn der Kurzbefehl `app_url` öffnet oder du die NFC-Benachrichtigung antippst und die Dose leer ist. Hat die Dose schon einen Inhalt, wird sie nur hervorgehoben. Das funktioniert für alle Nutzer, nicht nur für Administratoren.
-
-**Mehrere Dosen auf einmal:** In [Larder experimental](#larder-experimental) die leeren Dosen auswählen (oder nacheinander scannen) und **Befüllen (n)** drücken: Derselbe Dialog befüllt alle, siehe [Mehrere Dosen auswählen](#mehrere-dosen-auswählen).
-
-## Larder experimental
-
-Ein zweites, optionales Dashboard, das du neben dem normalen ausprobieren kannst. Einschalten unter Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** → **„Larder experimental“ in der Seitenleiste anzeigen**. Es erscheint dann als zweiter Eintrag in der Seitenleiste; das normale **Larder**-Dashboard bleibt unverändert. Beide nutzen dieselben Dosen, du kannst also jederzeit hin- und herwechseln. Es heißt experimentell, weil es neu ist und sich noch ändern kann.
+**⚙** oben (Administratoren) öffnet ein Menü mit den [gemerkten Schätzungen](#gemerkte-schätzungen-verwalten) und den Einstellungen der Integration. Das ☰ ist die Seitenleiste von Home Assistant.
 
 <p>
-<img src="docs/images/experimental-start-de.png" width="260" alt="Startseite von Larder experimental">
-<img src="docs/images/experimental-containers-de.png" width="260" alt="Behälter als Kacheln">
+<img src="docs/images/dashboard-areas-de.png" width="250" alt="Bereiche">
+<img src="docs/images/dashboard-recipes-de.png" width="250" alt="Rezepte">
+<img src="docs/images/dashboard-estimates-de.png" width="250" alt="Gemerkte Schätzungen">
 </p>
 
-Eine Leiste unten wechselt zwischen fünf Ansichten:
+Das Dashboard ist für alle Nutzer sichtbar; nur **Administratoren** können Dosen hinzufügen, Bereiche ändern, die Auswahl nutzen und die Schätzungen sehen (dieselbe Einschränkung wie in den Einstellungen). Es ist kein klassisches Lovelace-Dashboard und lässt sich nicht mit dem Karten-Editor bearbeiten.
 
-- **Start**: eine Begrüßung mit deinem Home-Assistant-Namen, Kacheln für alles, was bald verbraucht werden sollte (Abgelaufenes zuerst), und Abkürzungen zu den **Rezeptvorschlägen** (Administratoren mit der Integration *AI Task*) und zu den Behältern.
-- **Behälter**: Kacheln oder Liste (Umschalter rechts) mit einem Symbol für die Art des Essens, dem Inhalt, dem Namen der Dose und den Resttagen. Sortierung nach MHD, Bereich, Alphabet oder Kategorie. Eine gefüllte Dose öffnet beim Antippen ihre Details (dieselbe Karte wie im normalen Dashboard), eine leere lässt sich gleich befüllen. Mit **＋** legst du eine Dose an, **☑ Auswählen** startet die [Auswahl](#mehrere-dosen-auswählen).
-- **Bereiche**: eine Kachel pro Bereich mit der Anzahl der Dosen und wie viele bald ablaufen. Antippen zeigt die Dosen des Bereichs.
-- **Kategorien**: dasselbe für Arten von Lebensmitteln (Fisch, Fleisch, Milchprodukte, Gerichte und Reste, Trockenware, …). Die Kategorie stammt aus der eingebauten Haltbarkeitstabelle und steht als Attribut `category` an der Entität **Inhalt**. Dosen ohne Treffer stehen unter „Sonstiges“, leere unter „Leer“.
-- **Rezepte**: dein [Rezeptbuch](#rezeptbuch) mit Rezeptideen aus Resten oder aus gewählten Dosen und Rezepten, die die KI von einem Foto liest.
-
-Ein eigenes Menü-Symbol gibt es nicht: das ☰ oben ist die Seitenleiste von Home Assistant.
+**Links ins Dashboard** (für Scans und Benachrichtigungen, auch für eigene Automationen): `/larder?open=<Geräte-ID>` öffnet eine Dose (eine leere mit dem Befüll-Dialog), `/larder?cc=<ID der Dose>` macht dasselbe über die ID der Dose und zählt als Scan, `/larder?add=<Code>` öffnet den Hinzufügen-Dialog mit dem Code, `/larder?view=recipes` (oder `start`, `containers`, `areas`, `categories`) öffnet eine Seite.
 
 ### Mehrere Dosen auswählen
 
-**☑ Auswählen** auf der Behälter-Seite (oder **☑** auf der Rezeptseite) schaltet in die Auswahl: Dosen antippen wählt sie aus, **Alle** wählt alles Angezeigte. Die Leiste unten bietet dann
+**☑** auf der Behälter- oder der Rezeptseite schaltet in die Auswahl: Dosen antippen wählt sie aus, **Alle** wählt alles Angezeigte. Die Leiste unten bietet dann
 
 - **Befüllen (n)** (Administratoren): befüllt alle gewählten *leeren* Dosen auf einmal mit demselben Inhalt, Vakuum, Befüllt am und MHD, z. B. nach dem Vorkochen oder dem Einkauf. Die Menge gilt pro Dose. Ist die Schätzung aktiv, bekommt jede Dose ihre eigene.
 - **✨ Rezeptideen**: fragt die KI nach Rezepten mit genau den gewählten *befüllten* Dosen, egal wann sie ablaufen (abgelaufene bleiben trotzdem draußen).
@@ -220,6 +206,25 @@ Ein eigenes Menü-Symbol gibt es nicht: das ☰ oben ist die Seitenleiste von Ho
 - **⏹ Scan beenden** beendet den Serien-Scan.
 
 Danach alle auf einmal befüllen oder Rezeptideen holen. So geht eine Inventur der Gefriertruhe oder das Einräumen nach dem Einkauf schnell.
+
+<p align="center"><img src="docs/images/dashboard-select-de.png" width="250" alt="Dosen auswählen"></p>
+
+
+## Dosen befüllen
+
+<p align="center"><img src="docs/images/fill-dialog-de.png" width="560" alt="Dialog Dose befüllen"></p>
+
+Eine leere Dose zeigt den Button **Befüllen**. Er öffnet einen kleinen Dialog: **Inhalt** (mit Vorschlägen aus früheren Eingaben, neueste zuerst, danach deine gemerkten Schätzungen), **Menge und Einheit** (optional), **Vakuum**, **Befüllt am** (vorbelegt mit jetzt), optional ein **MHD** und **MHD automatisch schätzen** (nur wenn die Schätzung aktiv und das MHD leer ist). **Speichern** setzt alles und schätzt das MHD.
+
+Der Dialog öffnet sich auch von selbst direkt nach dem Anlegen einer neuen Dose im Dashboard (auch nach dem Beschreiben eines NFC-Tags), sodass du sie gleich befüllen kannst. Ebenso nach einem Scan (eigener QR-Code, NFC-Tag, Kurzbefehl), wenn die Dose leer ist; eine Dose mit Inhalt öffnet ihre Karte.
+
+**Mehrere Dosen auf einmal:** Die leeren Dosen auswählen (oder nacheinander scannen) und **Befüllen (n)** drücken: Derselbe Dialog befüllt alle, siehe [Mehrere Dosen auswählen](#mehrere-dosen-auswählen).
+
+## Larder experimental
+
+Ein optionaler zweiter Eintrag in der Seitenleiste, um neue Funktionen auszuprobieren, bevor sie ins normale Dashboard kommen. Einschalten unter Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** → **„Larder experimental“ in der Seitenleiste anzeigen**. Zurzeit entspricht er dem Dashboard **Larder**; was dort ausprobiert wird, ändert am normalen Dashboard nichts.
+
+*Bis Version 1.12 war hier das kachelbasierte Dashboard zu Hause, das jetzt das normale ist.*
 
 ## MHD-Schätzung
 
@@ -284,9 +289,7 @@ Das Ergebnis enthält `best_before`, `days`, `tip` (ein kurzer Lagertipp), `sour
 
 ### Gemerkte Schätzungen verwalten
 
-<p align="center"><img src="docs/images/estimates-de.png" width="720" alt="Reiter Schätzungen"></p>
-
-Administratoren sehen im Dashboard einen zweiten Reiter, **Schätzungen**. Er listet alles, was für eine Kombination aus Inhalt, Bereich und Vakuum gemerkt ist, samt Quelle (Tabelle, KI oder von dir korrigiert mit ursprünglicher Quelle). Dort kannst du
+Administratoren öffnen die Liste im Dashboard über **⚙ → Gemerkte Schätzungen**. Sie listet alles, was für eine Kombination aus Inhalt, Bereich und Vakuum gemerkt ist, samt Quelle (Tabelle, KI oder von dir korrigiert mit ursprünglicher Quelle). Dort kannst du
 
 - **Tage und Tipp** eines Eintrags ändern (er gilt dann als von dir korrigiert),
 - einen Eintrag **löschen**; die nächste Schätzung für diese Kombination wird dann neu berechnet (Tabelle oder KI),
@@ -302,11 +305,9 @@ Alle Rezeptfunktionen nutzen die Home-Assistant-Integration **AI Task** (dieselb
 
 ### Rezeptideen
 
-<p align="center"><img src="docs/images/recipes-dialog-de.png" width="560" alt="Dialog Rezeptideen (Demo-Daten)"></p>
-
 Die KI schlägt Gerichte vor, die aufbrauchen, was bald abläuft.
 
-**Im Dashboard:** Administratoren sehen oben rechts den Button **Rezeptideen** (neben *+ Dose hinzufügen*). Wähle, wie viele Tage voraus geschaut wird (die Vorgabe kommt aus **Konfigurieren** → *Zeitraum für Rezeptideen*, ab Werk 3 Tage) und optional für wie viele Personen, und drücke **Vorschlagen**. Du bekommst bis zu drei Rezepte mit den verwendeten Dosen, zusätzlichen Zutaten (nur gängige Vorräte), Dauer und kurzen Schritten. Abgelaufene Dosen und Dosen ohne Inhalt werden nie verwendet.
+**Im Dashboard** (Administratoren): auf der Seite **Rezepte** auf **✨ Aus Resten** tippen. Darüber wählst du den Zeitraum (die Vorgabe kommt aus **Konfigurieren** → *Zeitraum für Rezeptideen*, ab Werk 3 Tage; eine feste Zahl von Tagen; oder **Alle Dosen**, dann zählen auch Dosen ohne MHD) und optional die Zahl der Personen. Du bekommst bis zu drei Rezepte mit den verwendeten Dosen, zusätzlichen Zutaten (nur gängige Vorräte), Dauer und kurzen Schritten und kannst gelungene ins [Rezeptbuch](#rezeptbuch) **speichern**. Abgelaufene Dosen und Dosen ohne Inhalt werden nie verwendet.
 
 **In Automationen:** Der Service `larder.suggest_recipes` liefert dasselbe.
 
@@ -327,11 +328,11 @@ response_variable: ideas
 
 An den gewählten KI-Dienst gehen nur Inhalt, Menge mit Einheit, Resttage und Lagerort (Bereichsname), nie Dosennamen, IDs oder anderes. Die Vorschläge sind Ideen eines Sprachmodells, keine getesteten Rezepte: Prüfe, ob das Essen noch bedenkenlos genießbar ist, besonders bei Aufgetautem oder Älterem.
 
-**Aus gewählten Dosen:** In [Larder experimental](#larder-experimental) Dosen auswählen und **✨ Rezeptideen** drücken, siehe [Mehrere Dosen auswählen](#mehrere-dosen-auswählen). In Automationen dient dazu `containers` mit den Geräte-IDs.
+**Aus gewählten Dosen:** Dosen auswählen und **✨ Rezeptideen** drücken, siehe [Mehrere Dosen auswählen](#mehrere-dosen-auswählen). In Automationen dient dazu `containers` mit den Geräte-IDs.
 
 ### Rezeptbuch
 
-In [Larder experimental](#larder-experimental) ist die Seite **Rezepte** dein eigenes Rezeptbuch (liegt in Home Assistant unter `.storage/larder.recipes`). Alle dürfen es lesen, Administratoren legen Rezepte an, ändern und löschen sie. **Aus Resten** holt [Rezeptideen](#rezeptideen), daneben wählst du den Zeitraum (die Vorgabe aus den Einstellungen, eine feste Zahl von Tagen oder **Alle Dosen (kein Zeitraum)**, dann zählen auch Dosen ohne MHD). Gelungene Vorschläge lassen sich ins Buch **speichern**.
+Die Seite **Rezepte** ist dein eigenes Rezeptbuch (liegt in Home Assistant unter `.storage/larder.recipes`). Alle dürfen es lesen, Administratoren legen Rezepte an (**＋**), ändern und löschen sie. Sortierung nach neueste oder Name; Antippen zeigt Zutaten und Schritte.
 
 **Rezept aus Foto oder Datei** (📷, Administratoren): Fotografiere ein Rezept aus einem Kochbuch oder von einer Karte, wähle bis zu vier Fotos (z. B. zwei Seiten) oder ein PDF. Die KI liest das Rezept, übersetzt es bei Bedarf in deine Sprache und öffnet es zum **Prüfen**; gespeichert wird erst, wenn du auf *Speichern* tippst. Dafür muss die gewählte KI-Aufgabe Anhänge unterstützen (z. B. Anthropic, OpenAI, Google). Fotos werden vor dem Hochladen verkleinert, liegen nur während des Lesens kurz im Medienordner von Home Assistant (`media/larder/recipe_photos`) und werden danach gelöscht. Gesendet wird nur das Foto bzw. die Datei, an den KI-Dienst, den du gewählt hast.
 
@@ -344,7 +345,7 @@ Das mitgelieferte Blueprint schickt eine **tägliche Zusammenfassung** dessen, w
 | Option | Wirkung |
 |---|---|
 | **Push notification** | Eine oder mehrere notify-Aktionen, durch Komma getrennt (`notify.mobile_app_dein_iphone, notify.mobile_app_partner`), oder eine notify-Gruppe. Leer lassen für nur Sprache. |
-| **Buttons in the push** | **Rezepte** öffnet die Rezeptseite von [Larder experimental](#larder-experimental) (oder den Rezept-Dialog des normalen Dashboards), **Dashboard** öffnet Larder. Antippen der Benachrichtigung selbst öffnet ebenfalls das Dashboard. |
+| **Buttons in the push** | **Rezepte** öffnet die Rezeptseite des Dashboards (oder von [Larder experimental](#larder-experimental), wenn du das wählst), **Dashboard** öffnet Larder. Antippen der Benachrichtigung selbst öffnet ebenfalls das Dashboard. |
 | **Voice output** | notify-Aktionen, die die Zusammenfassung vorlesen, z. B. `notify.alexa_media_kueche` (Alexa Media Player) oder eine Gruppe von Lautsprechern. Der Sprechtext ist zum Zuhören gemacht: „Heute läuft Lachs ab. Morgen läuft Gouda ab. Abgelaufen ist Pizza.“ (höchstens sechs Dosen, der Rest wird gezählt). Mit Rezeptideen kommt „Idee: …“ dazu. |
 | **Voice options** | Zusatzdaten für die Sprachausgabe. Alexa Media Player braucht den Typ, z. B. `type: announce` (mit Gong) oder `type: tts`. |
 | **Speak only when someone is home** | Personen, Gruppen oder Zonen; ist niemand zu Hause, entfällt die Sprachausgabe. Der Push kommt immer. |
@@ -387,16 +388,17 @@ Der Kalender muss Termine anlegen **und** löschen können. Reine Lese-Kalender 
 
 ## Scannen
 
-Es gibt drei Wege, von einer Dose zu ihrem Eintrag in Home Assistant zu kommen. Sie lassen sich beliebig mischen. Für eine Inventur wählt der [Serien-Scan](#mehrere-dosen-auswählen) in Larder experimental viele Dosen nacheinander aus.
+Es gibt drei Wege, von einer Dose zu ihrem Eintrag im Dashboard zu kommen. Sie lassen sich beliebig mischen. Für eine Inventur wählt der [Serien-Scan](#mehrere-dosen-auswählen) viele Dosen nacheinander aus.
 
 ### Eigene QR-Codes
 
-Jede Dose hat die Bild-Entität **QR-Code**. Sie enthält einen Link, der die Home-Assistant-App direkt auf die Geräteseite der Dose springen lässt (`homeassistant://navigate/config/devices/device/<Geräte-ID>`). Dafür brauchst du keinen Kurzbefehl.
+Jede Dose hat die Bild-Entität **QR-Code**. Drucke sie aus und klebe sie auf die Dose (Gerät der Dose oder Entität **QR-Code** öffnen, Bild speichern oder drucken; der Inhalt steht auch im Attribut `qr_content`).
 
-1. Öffne das Gerät der Dose in Home Assistant (oder das Panel „Larder“, dort ist der QR-Code klein zu sehen) und öffne die Entität **QR-Code**. Bild speichern oder ausdrucken und auf die Dose kleben. Der Inhalt des Codes steht auch im Attribut `qr_content` der Entität.
-2. Scanne den Aufkleber mit der Kamera-App. iOS bietet an, den Link in der Home-Assistant-App zu öffnen, und die App zeigt die Dose.
+Scannen mit der Kamera-App funktioniert **wie ein NFC-Tag**: Die Home-Assistant-App öffnet das Dashboard **Larder** bei dieser Dose, eine leere gleich mit dem Befüll-Dialog, und für deine Automationen wird das Ereignis `larder_dose_scanned` ausgelöst (mit `source: qr`). Der Code enthält die ID der Dose (`homeassistant://navigate/larder?cc=<ID>`), nicht die Geräte-ID, und bleibt deshalb gültig, wenn du die Dose löschst und neu anlegst. Hast du mehrere Home-Assistant-Server in der App, fragt sie, welcher gemeint ist.
 
-Der Code verweist auf die Geräte-ID in Home Assistant. Wird die Dose gelöscht und neu angelegt, bekommt sie eine neue Geräte-ID, und der Aufkleber muss neu gedruckt werden. Hast du mehrere Home-Assistant-Server in der App, fragt sie beim Öffnen, welcher gemeint ist.
+Dieselben Codes funktionieren im [Serien-Scan](#mehrere-dosen-auswählen) des Dashboards.
+
+> Vor Version 2.0 gedruckte Codes öffnen weiterhin die Geräteseite der Dose. Druck sie neu aus, um das neue Verhalten zu bekommen.
 
 ### NFC-Tags
 
@@ -404,12 +406,12 @@ Der Code verweist auf die Geräte-ID in Home Assistant. Wird die Dose gelöscht 
 
 Statt einen QR-Code zu drucken, kannst du einen NFC-Tag auf die Dose kleben. Dafür werden die **Tags** von Home Assistant genutzt: Jeder Scan löst ein `tag_scanned`-Ereignis aus, und die Integration merkt sich, welcher Tag zu welcher Dose gehört. Andere Tags im Haus werden ignoriert.
 
-**Der schnellste Weg (in der Home-Assistant-App):** Dashboard öffnen, **+ Dose hinzufügen → Neuen NFC-Tag beschreiben** wählen, einen Namen eingeben und **Hinzufügen** drücken. Larder legt die Dose an, erstellt einen neuen Tag in Home Assistant und verknüpft beides. Danach öffnet die App das Beschreiben: Handy an einen leeren NFC-Tag halten, fertig. Die Option erscheint nur in der Companion-App auf einem Handy, das NFC-Tags beschreiben kann (nicht im Browser am Rechner).
+**Der schnellste Weg (in der Home-Assistant-App):** Dashboard öffnen, **＋** auf der Behälter-Seite **→ Neuen NFC-Tag beschreiben** wählen, einen Namen eingeben und **Hinzufügen** drücken. Larder legt die Dose an, erstellt einen neuen Tag in Home Assistant und verknüpft beides. Danach öffnet die App das Beschreiben: Handy an einen leeren NFC-Tag halten, fertig. Die Option erscheint nur in der Companion-App auf einem Handy, das NFC-Tags beschreiben kann (nicht im Browser am Rechner).
 
 Hast du schon einen mit der Home-Assistant-App beschriebenen Tag (Einstellungen → Companion-App → NFC, oder Einstellungen → Tags), verknüpfst du ihn stattdessen:
 
-1. **Mit einer Dose verknüpfen** im Dashboard (Administratoren): Auf der Karte **NFC-Tag verknüpfen** drücken und das Handy an den Tag halten. Oder **+ Dose hinzufügen → NFC-Tag scannen**: Das legt eine neue Dose an und verknüpft den Tag gleich mit.
-2. **Später scannen.** Ist das Dashboard offen, springt es zur Dose und hebt sie hervor. Sonst bekommt das scannende Handy (Companion-App) eine Benachrichtigung, deren Antippen das Dashboard bei dieser Dose öffnet. Das iPhone zeigt nach dem Lesen eines Tags ein eigenes Banner, das zuerst angetippt wird.
+1. **Mit einer Dose verknüpfen** im Dashboard (Administratoren): Auf der Karte **NFC-Tag verknüpfen** drücken und das Handy an den Tag halten. Oder **＋ → NFC-Tag scannen**: Das legt eine neue Dose an und verknüpft den Tag gleich mit.
+2. **Später scannen.** Ist das Dashboard offen, öffnet es die Dose (eine leere mit dem Befüll-Dialog). Sonst bekommt das scannende Handy (Companion-App) eine Benachrichtigung, deren Antippen das Dashboard bei dieser Dose öffnet. Das iPhone zeigt nach dem Lesen eines Tags ein eigenes Banner, das zuerst angetippt wird.
 
 Für eigene Automationen löst ein verknüpfter Scan das Ereignis `larder_dose_scanned` aus (`cc`, `device_id`, `name`, `scanned_by`). Die Benachrichtigung lässt sich in den Einstellungen abschalten („NFC: Handy benachrichtigen“). Eine Dose hat höchstens einen Tag, und ein Tag gehört zu genau einer Dose.
 
@@ -447,7 +449,7 @@ Namen vergeben, z. B. „Dose scannen“. Über das Teilen-Symbol lässt er sich
 
 Kurzbefehl starten, QR-Code auf der Dose scannen. Die Home-Assistant-App öffnet sich dann:
 
-- **Dose bekannt:** im Dashboard „Larder“, wo die Dose hervorgehoben wird. Eine leere Dose öffnet gleich den Dialog **Befüllen** (siehe [Dosen befüllen](#dosen-befüllen)).
+- **Dose bekannt:** im Dashboard „Larder“ mit der Karte der Dose. Eine leere Dose öffnet gleich den Dialog **Befüllen** (siehe [Dosen befüllen](#dosen-befüllen)).
 - **Dose neu:** im Dashboard „Larder“. Dort öffnet sich der Dialog **Dose hinzufügen** mit bereits eingetragenem Code. Optional Name und Bereich eingeben und **Hinzufügen** tippen. Das geht nur mit einem Administrator-Konto, andere Nutzer sehen einen Hinweis mit dem gescannten Code.
 
 Hast du mehrere Home-Assistant-Server in der App, fragt sie beim Öffnen, welcher gemeint ist.
@@ -469,7 +471,7 @@ Pro Dose entsteht ein Gerät (eindeutig über die ID, den Parameter `cc` eines Z
 | **Vakuum** | `switch` | Ist die Dose vakuumiert? Bei neuen Dosen standardmäßig an; die Vorbelegung änderst du unter **Konfigurieren**, wenn die meisten deiner Boxen nicht vakuumiert sind. Wird für die Schätzung verwendet |
 | **Einkaufsliste** | `switch` | Soll der Inhalt beim Leeren der Dose auf deine Einkaufsliste? Standardmäßig aus, pro Dose einstellbar und bleibt bei **Behälter leeren** erhalten. Wirkt erst, wenn unter **Konfigurieren** eine Liste gewählt ist, siehe [Einkaufsliste](#einkaufsliste) |
 | **Tage bis MHD** | `sensor` | Verbleibende Tage bis zum MHD (negativ = abgelaufen). Das Attribut `status` ist `ok`, `soon` (3 Tage oder weniger, siehe [Einstellungen](#einstellungen)), `expired` oder `none` |
-| **QR-Code** | `image` | QR-Code der Dose als Bild: Scannen mit der Kamera-App öffnet direkt das Gerät in der Home-Assistant-App |
+| **QR-Code** | `image` | QR-Code der Dose als Bild: Scannen mit der Kamera-App öffnet die Dose im Larder-Dashboard, siehe [Eigene QR-Codes](#eigene-qr-codes) |
 
 Die Werte bleiben über Neustarts erhalten. „Behälter leeren“ ist eine normale Button-Entität, lässt sich also auf Dashboards und in Automationen über `button.press` verwenden.
 
@@ -486,7 +488,7 @@ Die Werte bleiben über Neustarts erhalten. „Behälter leeren“ ist eine norm
 | `larder.suggest_recipes` | [Rezeptideen](#rezeptideen) aus dem, was bald abläuft, aus allen oder aus gewählten Dosen |
 | `larder.rebuild_calendar` | [Kalender](#mhd-im-kalender) aufräumen |
 
-Das Ereignis `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) wird ausgelöst, wenn ein verknüpfter [NFC-Tag](#nfc-tags) gescannt wird.
+Das Ereignis `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) wird ausgelöst, wenn ein verknüpfter [NFC-Tag](#nfc-tags) oder einer [deiner QR-Codes](#eigene-qr-codes) gescannt wird (dann mit `source: qr`).
 
 ### Webhook-Schnittstelle
 
@@ -537,4 +539,4 @@ npm install
 npm test        # Tests für das Panel (jsdom)
 ```
 
-Die Screenshots stammen aus dem echten Panel-Code mit Demo-Daten: Repository per `python -m http.server` bereitstellen, `docs/demo/index.html?lang=de` (oder `en`, mit `&dialog=scan` für den Dialog) öffnen und einen Screenshot machen.
+Die Screenshots stammen aus dem echten Code mit Demo-Daten: Repository per `python -m http.server` bereitstellen und `docs/demo/dashboard.html?lang=de&view=containers` öffnen (Optionen in der Datei), für die Dialoge `docs/demo/index.html?lang=de&dialog=scan`.

@@ -174,3 +174,20 @@ async def test_scan_session_receives_scans_and_suppresses_the_notification(hass:
     assert (await client.receive_json())["success"]
     await _scan(hass, "abc", phone)
     assert len(calls) == 1  # nach dem Ende wieder wie gewohnt
+
+
+async def test_qr_scan_reported_by_the_dashboard_fires_the_scan_event(hass: HomeAssistant, hass_ws_client) -> None:
+    from custom_components.larder.qr import parse_qr
+
+    await _setup(hass, "34OL")
+    events = async_capture_events(hass, "larder_dose_scanned")
+    client = await hass_ws_client(hass)
+    await client.send_json({"id": 1, "type": f"{DOMAIN}/report_scan", "cc": "34OL"})
+    res = await client.receive_json()
+    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "34OL")})
+    assert res["result"] == {"device_id": device.id}
+    assert events[0].data["source"] == "qr" and events[0].data["device_id"] == device.id
+    await client.send_json({"id": 2, "type": f"{DOMAIN}/report_scan", "cc": "GIBTSNICHT"})
+    assert (await client.receive_json())["success"] is False
+    # der Inhalt der eigenen QR-Codes lässt sich auch im Serien-Scan auflösen
+    assert parse_qr("homeassistant://navigate/larder?cc=34OL").cc == "34OL"

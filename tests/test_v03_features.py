@@ -111,11 +111,10 @@ async def test_two_containers_are_reset_independently(hass: HomeAssistant) -> No
 # ---------- QR-Bild ----------
 
 
-async def test_qr_image_contains_device_deep_link(hass: HomeAssistant, hass_client) -> None:
+async def test_qr_image_opens_the_dashboard_at_the_container(hass: HomeAssistant, hass_client) -> None:
     await _setup(hass)
     image_id = _entity_id(hass, "image")
-    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "34OL")})
-    expected = f"homeassistant://navigate/config/devices/device/{device.id}"
+    expected = "homeassistant://navigate/larder?cc=34OL"
 
     state = hass.states.get(image_id)
     assert state.attributes["qr_content"] == expected
@@ -223,13 +222,15 @@ async def test_panel_registered_and_static_js_served(hass: HomeAssistant, hass_c
     assert panel.sidebar_title == "Larder"
     assert panel.require_admin is False
     module_url = panel.config["_panel_custom"]["module_url"]
-    assert re.fullmatch(r"/larder_static/larder-panel\.js\?v=\d+\.\d+\.\d+", module_url)
-    assert panel.config["_panel_custom"]["name"] == "larder-panel"
+    # seit 2.0: das neue Dashboard (früher "Larder experimental"); es lädt larder-panel.js für Dialoge und Karten
+    assert re.fullmatch(r"/larder_static/larder-dashboard\.js\?v=\d+\.\d+\.\d+", module_url)
+    assert panel.config["_panel_custom"]["name"] == "larder-dashboard"
 
     client = await hass_client()
-    resp = await client.get("/larder_static/larder-panel.js")
-    assert resp.status == 200
-    assert "customElements.define" in await resp.text()
+    for name in ("larder-dashboard.js", "larder-panel.js", "larder-experimental.js"):
+        resp = await client.get(f"/larder_static/{name}")
+        assert resp.status == 200
+        assert "customElements.define" in await resp.text()
 
     # Zweite Dose: Panel bleibt, nur eine Registrierung
     second = await _setup(hass, "77AB")

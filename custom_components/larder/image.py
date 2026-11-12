@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
-from .const import device_app_url
+from .const import scan_app_url
 from .entity import LarderConfigEntry, LarderEntity
 
 
@@ -32,7 +32,12 @@ async def async_setup_entry(
 
 
 class ZwillingQrCode(ImageEntity, LarderEntity):
-    """QR-Code, der die Home-Assistant-App direkt auf dieses Gerät springen lässt."""
+    """QR-Code, der die Home-Assistant-App direkt im Dashboard bei dieser Dose öffnet.
+
+    Wie bei NFC-Tags: Das Dashboard öffnet die Dose (eine leere gleich zum Befüllen) und löst
+    `larder_dose_scanned` aus. Der Code enthält die ID der Dose (cc), nicht die Geräte-ID, und
+    bleibt deshalb auch gültig, wenn die Dose gelöscht und neu angelegt wird.
+    """
 
     _key = "qr_code"
     _attr_content_type = "image/png"
@@ -45,9 +50,7 @@ class ZwillingQrCode(ImageEntity, LarderEntity):
     @property
     def qr_content(self) -> str | None:
         """Inhalt des QR-Codes (erst bekannt, wenn die Entität am Gerät hängt)."""
-        if self.registry_entry is None or self.registry_entry.device_id is None:
-            return None
-        return device_app_url(self.registry_entry.device_id)
+        return scan_app_url(self._cc)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

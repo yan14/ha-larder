@@ -33,14 +33,14 @@ blueprint:
         boolean:
     recipes_page:
       name: "Recipes button opens"
-      default: experimental
+      default: classic
       selector:
         select:
           options:
+            - label: Larder (recipe page)
+              value: classic
             - label: Larder experimental (recipe page)
               value: experimental
-            - label: Larder (recipe ideas dialog)
-              value: classic
     voice_action:
       name: Voice output (optional)
       description: >
@@ -189,7 +189,7 @@ actions:
       speech: >-
         {{ result.speech }}{% if ideas is defined and ideas.speech %} {{ ideas.speech }}{% endif %}
       recipes_uri: >-
-        {{ '/larder-experimental?view=recipes' if recipes_page == 'experimental' else '/larder?recipes=1' }}
+        {{ '/larder-experimental?view=recipes' if recipes_page == 'experimental' else '/larder?view=recipes' }}
       push_data: >-
         {%- if buttons -%}
         {{ {'url': '/larder', 'clickAction': '/larder',

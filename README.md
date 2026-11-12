@@ -10,10 +10,9 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 ## Highlights
 
-- 🖥️ **[Own dashboard](#dashboard-larder)** in the sidebar: all containers at a glance, add and edit everything, updates itself
-- 🧪 **[Larder experimental](#larder-experimental)**: a second, tile-based dashboard for the phone with a start page, areas, categories and a recipe book (optional)
+- 🖥️ **[Own dashboard](#dashboard-larder)** in the sidebar, made for the phone: start page, containers as tiles, list or cards with every detail, areas, categories and a recipe book; updates itself
 - 🔖 **[Zwilling Fresh & Save QR codes](#ios-shortcut-for-the-original-zwilling-codes)**: the original codes on the lids keep working
-- 🏷️ **[Your own QR code](#your-own-qr-codes)** and **[NFC tags](#nfc-tags)** for any container
+- 🏷️ **[Your own QR code](#your-own-qr-codes)** and **[NFC tags](#nfc-tags)** for any container: scanning opens the container in the dashboard
 - ✏️ **[Quick filling](#filling-containers)**: contents, quantity, best-before date and vacuum in a few taps, also for several containers at once and with a [serial scan](#selecting-several-containers)
 - 🧮 **[Best-before estimate](#best-before-estimate)**: built-in shelf-life table, optionally with AI, with limits per storage place
 - 🍳 **[Recipes](#recipes)**: ideas from what expires soon or from selected containers, a recipe book, and recipes read from a photo
@@ -22,13 +21,19 @@ Home Assistant integration for reusable food storage containers: note what is in
 - 📅 **[Calendar entries](#best-before-dates-in-your-calendar)**: best-before dates in your calendar (Local Calendar, Google, CalDAV …)
 - 🌍 Available in English and German
 
-<p align="center"><img src="docs/images/dashboard-en.png" width="720" alt="Dashboard Larder (demo data)"></p>
+<p align="center">
+<img src="docs/images/dashboard-start-en.png" width="250" alt="Start page (demo data)">
+<img src="docs/images/dashboard-containers-en.png" width="250" alt="Containers as tiles">
+<img src="docs/images/dashboard-cards-en.png" width="250" alt="Cards with all details">
+</p>
+
+> **New in 2.0:** the dashboard formerly known as *Larder experimental* is now the normal **Larder** dashboard. Everything of the old dashboard is in it (the cards with every field under *Containers → cards*, the remembered estimates under ⚙). See the [changelog](CHANGELOG.md).
 
 ## Contents
 
 - [Why this project?](#why-this-project)
 - [Installation](#installation) · [Getting started](#getting-started) · [Adding a container](#adding-a-container) · [Areas and labels](#areas-and-labels) · [Settings](#settings)
-- [Dashboard "Larder"](#dashboard-larder) · [Filling containers](#filling-containers) · [Larder experimental](#larder-experimental)
+- [Dashboard "Larder"](#dashboard-larder) · [Selecting several containers](#selecting-several-containers) · [Filling containers](#filling-containers) · [Larder experimental](#larder-experimental)
 - [Best-before estimate](#best-before-estimate) · [Recipes](#recipes) · [Daily summary](#daily-summary) · [Shopping list](#shopping-list) · [Calendar](#best-before-dates-in-your-calendar)
 - [Scanning](#scanning): [own QR codes](#your-own-qr-codes), [NFC tags](#nfc-tags), [Zwilling codes (iOS Shortcut)](#ios-shortcut-for-the-original-zwilling-codes)
 - [Reference](#reference): [entities](#entities), [services and events](#services-and-events), [webhook](#webhook-interface)
@@ -64,10 +69,10 @@ Since Home Assistant 2026.11 the community store HACS is built in as the **Marke
 
 ## Getting started
 
-1. **Add your first container** under Settings → Devices & services → Add integration → Larder (see [Adding a container](#adding-a-container)). From then on the **Larder** dashboard is in the sidebar and adding more containers is quicker there.
+1. **Add your first container** under Settings → Devices & services → Add integration → Larder (see [Adding a container](#adding-a-container)). From then on the **Larder** dashboard is in the sidebar and adding more containers is quicker there (**＋** on the containers page).
 2. **Give each container an area** that says where it is stored, for example "Fridge", "Freezer" or "Pantry". The estimate needs it. Optionally add a `Larder: …` label with the [template](#template-for-the-area-label) to the areas.
 3. **Fill the containers** in the dashboard: contents, quantity, best-before date (or let Larder estimate it).
-4. **Check the [settings](#settings)** once: estimate mode, notification period, calendar, shopping list, experimental dashboard.
+4. **Check the [settings](#settings)** once: estimate mode, periods, calendar, shopping list.
 5. **Import the [blueprint](#daily-summary)** for a daily summary of what expires soon (push and/or voice).
 6. **Put a code on the boxes:** print [your own QR code](#your-own-qr-codes), stick on an [NFC tag](#nfc-tags), or use the [Shortcut](#ios-shortcut-for-the-original-zwilling-codes) for the original Zwilling codes.
 
@@ -93,7 +98,7 @@ Home Assistant has no camera in this dialog. On iOS you read the text with a [Sh
 
 ### From the dashboard
 
-Once the first container exists, **+ Add container** in the dashboard is the quickest way (it also offers [NFC tags](#nfc-tags)):
+Once the first container exists, **＋** on the containers page of the dashboard is the quickest way (it also offers [NFC tags](#nfc-tags)):
 
 <p align="center"><img src="docs/images/add-dialog-en.png" width="560" alt="Add container dialog"></p>
 
@@ -147,67 +152,48 @@ Settings → Devices & services → **Larder** → **Configure** (on any contain
 | NFC: notify the phone | on | Notification on the scanning phone after an [NFC scan](#nfc-tags) |
 | Calendar | none | [Best-before dates in your calendar](#best-before-dates-in-your-calendar) |
 | Shopping list | none | [Shopping list](#shopping-list) for emptied containers |
-| Larder experimental | off | Second dashboard in the sidebar, see [Larder experimental](#larder-experimental) |
+| Larder experimental | off | A second sidebar entry for trying new features, see [Larder experimental](#larder-experimental) |
 
 The dialog also shows the **webhook URL** for the [iOS Shortcut](#ios-shortcut-for-the-original-zwilling-codes).
 
 ## Dashboard "Larder"
 
-As soon as at least one container exists, a sidebar entry **Larder** appears. It needs no configuration and shows every container on a card (screenshot at the top):
+As soon as at least one container exists, a sidebar entry **Larder** appears. It needs no configuration, adapts to your Home Assistant theme and language (English and German) and updates itself. *The screenshots show demo data.*
 
-*The screenshots show demo data. The panel adapts to your Home Assistant theme and language (English and German).*
+A bar at the bottom switches between five pages:
 
-- All containers of the integration, grouped by **area** (the area of the device) and sorted by name.
-- Per container: area, **contents**, **best before** (with a hint "expired" or "n days left" once it expires soon, 3 days by default), **filled on**, the **Empty container** button and the QR code as a small image.
-- Contents, **quantity and unit**, best-before date and filled-on date can be edited right in the panel. "Now" sets "Filled on" to the current time.
-- The **area** of a container can be changed with the dropdown on its card, no detour through the device page needed. Which areas are offered can be narrowed down with a label, see [Areas and labels](#areas-and-labels).
-- The **Vacuum** checkbox switches the vacuum property of the container.
-- The **Add to shopping list when emptied** checkbox only appears once a [shopping list](#shopping-list) is chosen. It is also part of the fill dialog.
-- With the [estimate](#best-before-estimate) enabled, **Estimate best before** appears under the date as soon as contents are entered and no date is set.
-- **Recipe ideas** (top right, administrators, only with the *AI Task* integration) opens the [recipe dialog](#recipe-ideas).
-- **+ Add container** (top right) adds a container: either *Create new QR code* or *Read Zwilling QR code*, with optional name and area. It uses the same flow as Settings → Devices & services.
-- Under the date: **+1 day** moves the best-before date by a day, **Opened** shortens it to the number of days you set in the settings (default 3), and **Thawed** does the same for food you just took out of the freezer (default 2 days, do not refreeze it). Neither ever extends a date. Without a date, one is set.
-- **Search, filter and sort** above the cards: search in name, contents and area; filter by *expiring soon*, *expired*, *filled* or *empty*; sort by area, best-before date (earliest first) or name. Your choice is remembered in the browser.
-- Administrators also get the **Estimates** tab (see [Managing remembered estimates](#managing-remembered-estimates)).
-- An empty container shows **Fill**, a quick dialog for contents, quantity, vacuum and best-before date (see [Filling containers](#filling-containers)).
-- New containers, changed values and changed areas show up immediately, no reload needed.
+- **Start**: a greeting with your Home Assistant name, tiles for everything that should be used up soon (expired first), and shortcuts to the recipe suggestions and the containers.
+- **Containers**: all containers with a symbol for the kind of food, the contents, the container name and the days left.
+  - **Search** in name, contents and area; **filter** by *expiring soon*, *expired*, *filled* or *empty*; **sort** by best-before date, area, alphabet or category (area and category are grouped). The number of containers shown is above the list.
+  - The button on the right switches between **tiles**, a **list** and **cards with all details**. Your choice is remembered on the device.
+  - Tap a filled container to open its card, tap an empty one to fill it right away (see [Filling containers](#filling-containers)).
+  - **＋** adds a container (see [From the dashboard](#from-the-dashboard)), **☑** starts the [selection](#selecting-several-containers).
+- **Areas**: one tile per area with the number of containers and how many expire soon; tapping shows its containers.
+- **Categories**: the same for kinds of food (fish, meat, dairy, dishes and leftovers, dry goods, …). The category comes from the built-in shelf-life table and is the attribute `category` of the **Contents** entity. Containers without a match are listed under "Other", empty ones under "Empty".
+- **Recipes**: your [recipe book](#recipe-book) with [recipe ideas](#recipe-ideas) and recipes read from a photo.
 
-<p align="center"><img src="docs/images/dashboard-soon-en.png" width="720" alt="Filter: expiring soon"></p>
+**The card of a container** (in the card view, or after tapping a container) shows everything and lets you edit it:
 
-The panel is visible to all users, but only **administrators** can add containers and change areas (the same restriction as in the settings). Other users see the area as text. It is not a classic Lovelace dashboard and cannot be edited with the card editor. In return it updates itself.
+- area (dropdown; which areas are offered can be narrowed down with a label, see [Areas and labels](#areas-and-labels)), **contents**, **quantity and unit**, **best before** (with a hint "expired" or "n days left" once it expires soon), **filled on** ("Now" sets the current time),
+- **+1 day** moves the best-before date by a day, **Opened** shortens it to the days set in the settings (default 3), **Thawed** does the same for food out of the freezer (default 2 days, do not refreeze). Neither ever extends a date; without a date one is set,
+- **Estimate best before** (when [estimating](#best-before-estimate) is on, contents are entered and the date is empty),
+- **Vacuum**, **Add to shopping list when emptied** (once a [shopping list](#shopping-list) is chosen), the **NFC tag** (link or unlink), **Open device** and **Empty container**.
 
-## Filling containers
-
-<p align="center"><img src="docs/images/fill-dialog-en.png" width="560" alt="Fill container dialog"></p>
-
-An empty container shows a **Fill** button. It opens a small dialog: **contents** (with suggestions from what you entered before, newest first, then your remembered estimates), **quantity and unit** (optional), **vacuum**, **filled on** (preset to now), optionally a **best-before date**, and **Estimate best before automatically** (only if estimating is on and the date is empty). **Save** sets everything and estimates the date.
-
-The dialog also opens by itself right after you add a new container in the dashboard (including after writing an NFC tag), so you can fill it straight away. It also opens after a scan: when the Shortcut opens `app_url` or you tap the NFC notification and the container is empty. For a container that already has contents the dashboard only highlights it. This works for all users, not only administrators.
-
-**Several containers at once:** in [Larder experimental](#larder-experimental) select the empty containers (or scan them one after another) and press **Fill (n)**: the same dialog fills all of them, see [Selecting several containers](#selecting-several-containers).
-
-## Larder experimental
-
-A second, optional dashboard that you can try next to the normal one. Turn it on under Settings → Devices & services → **Larder** → **Configure** → **Show "Larder experimental" in the sidebar**. It then appears as a second entry in the sidebar; the normal **Larder** dashboard stays unchanged. Both use the same containers, so you can switch back and forth at any time. It is called experimental because it is new and may still change.
+**⚙** at the top (administrators) opens a menu with the [remembered estimates](#managing-remembered-estimates) and the integration settings. The ☰ is the Home Assistant sidebar.
 
 <p>
-<img src="docs/images/experimental-start-en.png" width="260" alt="Start page of Larder experimental">
-<img src="docs/images/experimental-containers-en.png" width="260" alt="Containers as tiles">
+<img src="docs/images/dashboard-areas-en.png" width="250" alt="Areas">
+<img src="docs/images/dashboard-recipes-en.png" width="250" alt="Recipes">
+<img src="docs/images/dashboard-estimates-en.png" width="250" alt="Remembered estimates">
 </p>
 
-A bar at the bottom switches between five views:
+The dashboard is visible to all users; only **administrators** can add containers, change areas, use the selection and see the estimates (the same restriction as in the settings). It is not a classic Lovelace dashboard and cannot be edited with the card editor.
 
-- **Start**: a greeting with your Home Assistant name, tiles for everything that should be used up soon (expired first), and shortcuts to **Recipe suggestions** (administrators with the *AI Task* integration) and to the containers.
-- **Containers**: tiles or a list (switch with the button on the right), with a symbol for the kind of food, the contents, the container name and the days left. Sort by best-before date, area, alphabet or category. Tap a filled container to open its details (the same card as in the normal dashboard), tap an empty one to fill it right away. **＋** adds a container, **☑ Select** starts the [selection](#selecting-several-containers).
-- **Areas**: one tile per area with the number of containers and how many expire soon. Tapping an area shows its containers.
-- **Categories**: the same for kinds of food (fish, meat, dairy, dishes and leftovers, dry goods, …). The category comes from the built-in shelf-life table and is shown as an attribute `category` of the **Contents** entity. Containers without a match are listed under "Other", empty ones under "Empty".
-- **Recipes**: your [recipe book](#recipe-book) with recipe ideas from leftovers or from selected containers, and recipes read from a photo.
-
-There is no menu icon of its own: the ☰ at the top is the Home Assistant sidebar.
+**Links into the dashboard** (used by scans and notifications, also for your own automations): `/larder?open=<device id>` opens a container (an empty one with the fill dialog), `/larder?cc=<container id>` does the same by container ID and counts as a scan, `/larder?add=<code>` opens the add dialog with the code, `/larder?view=recipes` (or `start`, `containers`, `areas`, `categories`) opens a page.
 
 ### Selecting several containers
 
-**☑ Select** on the containers page (or **☑** on the recipe page) switches to selection: tap containers to select them, **All** selects everything shown. The bar at the bottom then offers
+**☑** on the containers page or on the recipe page switches to selection: tap containers to select them, **All** selects everything shown. The bar at the bottom then offers
 
 - **Fill (n)** (administrators): fills all selected *empty* containers at once with the same contents, vacuum, filled-on date and best-before date, for example after cooking a big batch or after shopping. Quantity counts per container. With the estimate switched on, each container gets its own estimate.
 - **✨ Recipe ideas**: asks the AI for recipes that use exactly the selected *filled* containers, whatever their best-before date (expired ones are still left out).
@@ -220,6 +206,25 @@ There is no menu icon of its own: the ☰ at the top is the Home Assistant sideb
 - **⏹ Stop scanning** ends the serial scan.
 
 Then fill them all at once or ask for recipe ideas, which makes an inventory of a freezer or a shopping trip quick.
+
+<p align="center"><img src="docs/images/dashboard-select-en.png" width="250" alt="Selecting containers"></p>
+
+
+## Filling containers
+
+<p align="center"><img src="docs/images/fill-dialog-en.png" width="560" alt="Fill container dialog"></p>
+
+An empty container shows a **Fill** button. It opens a small dialog: **contents** (with suggestions from what you entered before, newest first, then your remembered estimates), **quantity and unit** (optional), **vacuum**, **filled on** (preset to now), optionally a **best-before date**, and **Estimate best before automatically** (only if estimating is on and the date is empty). **Save** sets everything and estimates the date.
+
+The dialog also opens by itself right after you add a new container in the dashboard (including after writing an NFC tag), so you can fill it straight away. It also opens after a scan (own QR code, NFC tag, Shortcut) when the container is empty; a container that already has contents opens its card.
+
+**Several containers at once:** select the empty containers (or scan them one after another) and press **Fill (n)**: the same dialog fills all of them, see [Selecting several containers](#selecting-several-containers).
+
+## Larder experimental
+
+An optional second sidebar entry for trying new features before they reach the normal dashboard. Turn it on under Settings → Devices & services → **Larder** → **Configure** → **Show "Larder experimental" in the sidebar**. At the moment it is the same as the **Larder** dashboard; the normal dashboard is not affected by anything that is tried out there.
+
+*Up to version 1.12 this was the place of the tile-based dashboard, which is now the normal one.*
 
 ## Best-before estimate
 
@@ -284,9 +289,7 @@ The result contains `best_before`, `days`, `tip` (a short storage tip), `source`
 
 ### Managing remembered estimates
 
-<p align="center"><img src="docs/images/estimates-en.png" width="720" alt="Estimates tab"></p>
-
-Administrators get a second tab, **Estimates**, in the dashboard. It lists everything that is remembered for a combination of contents, area and vacuum, with its source (table, AI, or corrected by you with the original source). There you can
+Administrators open the list with **⚙ → Remembered estimates** in the dashboard. It lists everything that is remembered for a combination of contents, area and vacuum, with its source (table, AI, or corrected by you with the original source). There you can
 
 - **change** the days and the tip of an entry (it then counts as corrected by you),
 - **delete** an entry; the next estimate for that combination is calculated anew (table or AI),
@@ -302,11 +305,9 @@ All recipe features use the Home Assistant **AI Task** integration (the same one
 
 ### Recipe ideas
 
-<p align="center"><img src="docs/images/recipes-dialog-en.png" width="560" alt="Recipe ideas dialog (demo data)"></p>
-
 The AI suggests dishes that use up what expires soon.
 
-**In the dashboard:** administrators get a **Recipe ideas** button (top right, next to *+ Add container*). Choose how many days ahead to look (the default comes from **Configure** → *Period for recipe ideas*, 3 days out of the box) and optionally for how many people, press **Suggest**. You get up to three recipes with the containers they use, extra ingredients (only common staples), time and short steps. Expired containers and containers without contents are never used.
+**In the dashboard** (administrators): on the **Recipes** page press **✨ From leftovers**. Next to it choose the period (the default comes from **Configure** → *Period for recipe ideas*, 3 days out of the box; a fixed number of days; or **All containers**, which also includes containers without a best-before date) and optionally the number of people. You get up to three recipes with the containers they use, extra ingredients (only common staples), time and short steps, and you can **save** the ones you like to the [recipe book](#recipe-book). Expired containers and containers without contents are never used.
 
 **In automations:** the service `larder.suggest_recipes` returns the same.
 
@@ -327,11 +328,11 @@ response_variable: ideas
 
 Only the contents, quantity with unit, remaining days and storage place (area name) are sent to the AI service you chose, never container names, IDs or anything else. The suggestions are ideas from a language model, not tested recipes: check that food is safe to eat, especially thawed or older food.
 
-**From selected containers:** in [Larder experimental](#larder-experimental) select containers and press **✨ Recipe ideas**, see [Selecting several containers](#selecting-several-containers). In automations use `containers` with the device IDs.
+**From selected containers:** select containers and press **✨ Recipe ideas**, see [Selecting several containers](#selecting-several-containers). In automations use `containers` with the device IDs.
 
 ### Recipe book
 
-In [Larder experimental](#larder-experimental) the **Recipes** page is your own recipe book (stored in Home Assistant, `.storage/larder.recipes`). Everyone can read it; administrators add, edit and delete recipes. **From leftovers** asks for [recipe ideas](#recipe-ideas) with a period selector next to it (the default from the settings, a fixed number of days, or **All containers (no period)**, which also includes containers without a best-before date). Suggestions you like can be **saved** to the book.
+The **Recipes** page is your own recipe book (stored in Home Assistant, `.storage/larder.recipes`). Everyone can read it; administrators add (**＋**), edit and delete recipes. Sort by newest or by name; tap a recipe to see ingredients and steps.
 
 **Recipe from a photo or file** (📷, administrators): take a photo of a recipe from a cookbook or a card, pick up to four photos (for example two pages) or a PDF. The AI reads the recipe, translates it into your language if needed and opens it for you to **check**; nothing is saved until you tap *Save*. The selected AI task must support attachments (for example Anthropic, OpenAI, Google). Photos are shrunk before uploading, are kept in Home Assistant's media folder (`media/larder/recipe_photos`) only while they are read and are deleted afterwards. Only the photo or file is sent, to the AI service you chose.
 
@@ -344,7 +345,7 @@ The included blueprint sends a **daily summary** of what expires soon. Nothing i
 | Option | What it does |
 |---|---|
 | **Push notification** | One or more notify actions, separated by commas (`notify.mobile_app_your_iphone, notify.mobile_app_partner`), or a notify group. Empty for voice only. |
-| **Buttons in the push** | **Recipes** opens the recipe page of [Larder experimental](#larder-experimental) (or the recipe dialog of the normal dashboard), **Dashboard** opens Larder. Tapping the notification itself opens the dashboard as well. |
+| **Buttons in the push** | **Recipes** opens the recipe page of the dashboard (or of [Larder experimental](#larder-experimental), if you choose so), **Dashboard** opens Larder. Tapping the notification itself opens the dashboard as well. |
 | **Voice output** | Notify actions that read the summary out loud, for example `notify.alexa_media_kitchen` (Alexa Media Player) or a group of speakers. The spoken text is made for listening: "Salmon expires today. Gouda expires tomorrow. Pizza has expired." (at most six containers, the rest is counted). With recipe ideas it adds "Idea: …". |
 | **Voice options** | Extra data for the voice action. Alexa Media Player needs the type, for example `type: announce` (with chime) or `type: tts`. |
 | **Speak only when someone is home** | Persons, groups or zones; the voice output is skipped when nobody is home. The push is always sent. |
@@ -387,16 +388,17 @@ The calendar must be able to create **and** delete events. Read-only calendars (
 
 ## Scanning
 
-There are three ways to get from a container to its entry in Home Assistant. They can be mixed freely. For an inventory, the [serial scan](#selecting-several-containers) in Larder experimental selects many containers in a row.
+There are three ways to get from a container to its entry in the dashboard. They can be mixed freely. For an inventory, the [serial scan](#selecting-several-containers) selects many containers in a row.
 
 ### Your own QR codes
 
-Every container has the image entity **QR code**. It contains a link that makes the Home Assistant app jump straight to the container's device page (`homeassistant://navigate/config/devices/device/<device-id>`). You do not need a Shortcut for this.
+Every container has the image entity **QR code**. Print it and stick it on the container (open the container's device or the **QR code** entity, save or print the image; the content is also in the attribute `qr_content`).
 
-1. Open the container's device in Home Assistant (or the "Larder" panel, where the QR code is shown small) and open the **QR code** entity. Save or print the image and stick it on the container. The content of the code is also available in the `qr_content` attribute of the entity.
-2. Scan the sticker with the camera app. iOS offers to open the link in the Home Assistant app, and the app shows the container.
+Scanning it with the camera app works **like an NFC tag**: the Home Assistant app opens the **Larder** dashboard on that container, an empty one right with the fill dialog, and the event `larder_dose_scanned` fires (with `source: qr`) for your automations. The code contains the ID of the container (`homeassistant://navigate/larder?cc=<ID>`), not the device ID, so it stays valid if you delete the container and add it again. If you have several Home Assistant servers in the app, it asks which one you mean.
 
-The code points to the device ID in Home Assistant. If you delete the container and add it again, it gets a new device ID and the sticker has to be printed again. If you have several Home Assistant servers in the app, it asks which one you mean when opening.
+The same codes work in the [serial scan](#selecting-several-containers) of the dashboard.
+
+> Codes printed before version 2.0 still open the device page of the container. Print them again to get the new behaviour.
 
 ### NFC tags
 
@@ -404,12 +406,12 @@ The code points to the device ID in Home Assistant. If you delete the container 
 
 Instead of printing a QR code you can stick an NFC tag on the container. This uses Home Assistant's own **tags**: every scan fires a `tag_scanned` event, and the integration remembers which tag belongs to which container. Other tags in your home are ignored.
 
-**Quickest way (in the Home Assistant app):** open the dashboard, press **+ Add container → Write a new NFC tag**, enter a name and press **Add**. Larder creates the container, creates a new tag in Home Assistant, links the two, and the app opens its tag writer: hold the phone to an empty NFC tag, done. The option only appears in the Companion app on a phone that can write NFC tags (not in a desktop browser).
+**Quickest way (in the Home Assistant app):** open the dashboard, press **＋** on the containers page **→ Write a new NFC tag**, enter a name and press **Add**. Larder creates the container, creates a new tag in Home Assistant, links the two, and the app opens its tag writer: hold the phone to an empty NFC tag, done. The option only appears in the Companion app on a phone that can write NFC tags (not in a desktop browser).
 
 If you already have a tag written with the Home Assistant app (Settings → Companion App → NFC, or Settings → Tags), link it instead:
 
-1. **Link it to a container** in the dashboard (administrators): on the card press **Link NFC tag** and hold the phone to the tag. Or use **+ Add container → Scan NFC tag**, which creates a new container and links the tag in one go.
-2. **Scan it later.** If the dashboard is open, it jumps to the container and highlights it. Otherwise the scanning phone (Companion app) gets a notification, and tapping it opens the dashboard on that container. iPhones show their own banner after reading a tag, tap it first.
+1. **Link it to a container** in the dashboard (administrators): on the card press **Link NFC tag** and hold the phone to the tag. Or use **＋ → Scan NFC tag**, which creates a new container and links the tag in one go.
+2. **Scan it later.** If the dashboard is open, it opens the container (an empty one with the fill dialog). Otherwise the scanning phone (Companion app) gets a notification, and tapping it opens the dashboard on that container. iPhones show their own banner after reading a tag, tap it first.
 
 For your own automations a linked scan fires the event `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`). The notification can be switched off in the settings ("NFC: notify the phone"). One container has at most one tag, and a tag belongs to one container.
 
@@ -447,7 +449,7 @@ Give it a name, e.g. "Scan container". Using the share icon you can add it to th
 
 Run the Shortcut and scan the QR code on the container. The Home Assistant app then opens:
 
-- **Container known:** on the dashboard "Larder", where the container is highlighted. An empty container opens the **Fill** dialog straight away (see [Filling containers](#filling-containers)).
+- **Container known:** on the dashboard "Larder" with the card of the container. An empty container opens the **Fill** dialog straight away (see [Filling containers](#filling-containers)).
 - **Container new:** on the dashboard "Larder", where the **Add container** dialog opens with the scanned code already filled in. Optionally enter a name and area and tap **Add**. This needs an administrator account; other users get a note with the scanned code.
 
 If you have several Home Assistant servers in the app, it asks which one you mean when opening.
@@ -469,7 +471,7 @@ Every container becomes a device (identified by its ID, the `cc` parameter of a 
 | **Vacuum** | `switch` | Is the container vacuum-sealed? On by default for new containers; change the preset under **Configure** if most of your boxes are not vacuum-sealed. Used for the estimate |
 | **Shopping list** | `switch` | Should the contents go onto your shopping list when the container is emptied? Off by default, per container, and kept by **Empty container**. Only has an effect once a list is chosen under **Configure**, see [Shopping list](#shopping-list) |
 | **Days until best before** | `sensor` | Days left until the best-before date (negative = expired). The attribute `status` is `ok`, `soon` (3 days or less, see [Settings](#settings)), `expired` or `none` |
-| **QR code** | `image` | The container's QR code as an image: scanning it with the camera app opens the device directly in the Home Assistant app |
+| **QR code** | `image` | The container's QR code as an image: scanning it with the camera app opens the container in the Larder dashboard, see [Your own QR codes](#your-own-qr-codes) |
 
 The values survive restarts. "Empty container" is a regular button entity, so you can use it on dashboards and in automations via `button.press`.
 
@@ -486,7 +488,7 @@ The values survive restarts. "Empty container" is a regular button entity, so yo
 | `larder.suggest_recipes` | [Recipe ideas](#recipe-ideas) from what expires soon, from all or from selected containers |
 | `larder.rebuild_calendar` | Clean up the [calendar](#best-before-dates-in-your-calendar) |
 
-The event `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) fires when a linked [NFC tag](#nfc-tags) is scanned.
+The event `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) fires when a linked [NFC tag](#nfc-tags) or one of [your own QR codes](#your-own-qr-codes) is scanned (then with `source: qr`).
 
 ### Webhook interface
 
@@ -537,4 +539,4 @@ npm install
 npm test        # tests for the panel (jsdom)
 ```
 
-The screenshots come from the real panel code with demo data: serve the repository (`python -m http.server`), open `docs/demo/index.html?lang=en` (or `de`, plus `&dialog=scan` for the dialog) and take a screenshot.
+The screenshots come from the real code with demo data: serve the repository (`python -m http.server`) and open `docs/demo/dashboard.html?lang=en&view=containers` (options in the file) or, for the dialogs, `docs/demo/index.html?lang=en&dialog=scan`.

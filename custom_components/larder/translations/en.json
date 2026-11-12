@@ -188,7 +188,7 @@
           "calendar_entity": "Writes each container's best-before date to this calendar as an all-day event (create, move, delete). The calendar must support creating and deleting events, e.g. Google, CalDAV or “Local Calendar”. Leave empty = off.",
           "nfc_notify": "When someone scans a linked tag, their phone (Companion app) gets a notification. Tapping it opens the container in the dashboard.",
           "todo_entity": "A to-do list of Home Assistant (e.g. “Shopping list”, Todoist, Bring!). When a container is emptied and its “Shopping list” switch is on, its contents are added to this list (not twice). Leave empty = off.",
-          "experimental_panel": "Adds a second, experimental dashboard with a start page, tiles, areas, categories and recipes. The normal Larder dashboard stays as it is. Things may still change.",
+          "experimental_panel": "Second sidebar entry for trying new features before they reach the normal dashboard. At the moment it is the same as the normal Larder dashboard.",
           "recipe_days": "Recipe ideas \"from leftovers\" use containers that expire within this many days (0 = today only). In the dashboard you can change the period for a single request or turn it off.",
           "soon_days": "From this many days left a container counts as \"expiring soon\" (hint in the dashboard, filter, sensor status and the default for the expiry overview)."
         }

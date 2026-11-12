@@ -86,7 +86,7 @@ async def test_push_to_several_targets_with_buttons_and_voice(hass: HomeAssistan
         (push,) = calls[target]
         assert push["title"] == "Larder"
         assert "Lachs" in push["message"] and "Schinken-Omelett" in push["message"]
-        assert push["data"]["actions"][0] == {"action": "URI", "title": "Recipes", "uri": "/larder-experimental?view=recipes"}
+        assert push["data"]["actions"][0] == {"action": "URI", "title": "Recipes", "uri": "/larder?view=recipes"}
         assert push["data"]["actions"][1]["uri"] == "/larder" and push["data"]["url"] == "/larder"
     (voice,) = calls["alexa_media_kueche"]
     assert voice["data"] == {"type": "announce"}

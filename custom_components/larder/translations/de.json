@@ -188,7 +188,7 @@
           "calendar_entity": "Schreibt das MHD jeder Dose als Ganztags-Termin in diesen Kalender (anlegen, verschieben, löschen). Der Kalender muss Termine anlegen und löschen können, z. B. Google, CalDAV oder „Lokaler Kalender“. Leer lassen = aus.",
           "nfc_notify": "Scannt jemand einen verknüpften Tag, bekommt sein Handy (Companion-App) eine Benachrichtigung. Antippen öffnet die Dose im Dashboard.",
           "todo_entity": "Eine To-do-Liste von Home Assistant (z. B. „Einkaufsliste“, Todoist, Bring!). Wird eine Dose geleert und ihr Schalter „Einkaufsliste“ ist an, kommt der Inhalt auf diese Liste (nicht doppelt). Leer = aus.",
-          "experimental_panel": "Fügt ein zweites, experimentelles Dashboard mit Startseite, Kacheln, Bereichen, Kategorien und Rezepten hinzu. Das normale Larder-Dashboard bleibt unverändert. Es kann sich noch ändern.",
+          "experimental_panel": "Zweiter Eintrag in der Seitenleiste zum Ausprobieren neuer Funktionen, bevor sie ins normale Dashboard kommen. Zurzeit entspricht er dem normalen Larder-Dashboard.",
           "recipe_days": "Rezeptideen „aus Resten“ berücksichtigen Dosen, die in so vielen Tagen ablaufen (0 = nur heute). Im Dashboard lässt sich der Zeitraum für einen einzelnen Aufruf ändern oder ganz abschalten.",
           "soon_days": "Ab so vielen Resttagen gilt eine Dose als „läuft bald ab“ (Hinweis im Dashboard, Filter, Status des Sensors und Vorgabe für die Ablauf-Übersicht)."
         }

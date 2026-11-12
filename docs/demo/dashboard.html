@@ -1,9 +1,9 @@
 <!doctype html>
 <!--
-  Demo-Seite für "Larder experimental" mit erfundenen Daten (für Screenshots und zum Ausprobieren).
+  Demo-Seite für das Larder-Dashboard mit erfundenen Daten (für Screenshots und zum Ausprobieren).
   Aufruf: python -m http.server im Repo-Hauptverzeichnis, dann
-  /docs/demo/experimental.html?lang=en|de&width=390&view=start|containers|areas|categories|recipes
-  &mode=list  &sort=date|area|name|category  &suggest=1  &detail=1
+  /docs/demo/dashboard.html?lang=en|de&width=390&view=start|containers|areas|categories|recipes|estimates
+  &mode=grid|list|cards  &sort=date|area|name|category  &suggest=1  &detail=1  &select=1
 -->
 <html>
 <head>
@@ -17,12 +17,12 @@
     --error-color: #db4437; --warning-color: #ffa600;
   }
   html, body { margin: 0; height: 100%; font-family: Roboto, "Helvetica Neue", Arial, sans-serif; }
-  larder-experimental { min-height: 100vh; }
+  larder-dashboard { min-height: 100vh; }
 </style>
 </head>
 <body>
 <script type="module">
-import "/custom_components/larder/frontend/larder-experimental.js";
+import "/custom_components/larder/frontend/larder-dashboard.js";
 
 const q = new URLSearchParams(location.search);
 const lang = q.get("lang") || "en";
@@ -94,7 +94,14 @@ const hass = {
     : { title: "Grandma's apple pie", minutes: 75, ingredients: ["Servings: 12", "500 g apples", "200 g flour", "100 g sugar"], steps: ["Knead the dough.", "Slice the apples.", "Bake for 45 minutes."], source: "photo" } }) }),
   callWS: async (msg) => {
     if (msg.type === "larder/recipes") return { recipes };
-    if (msg.type === "larder/settings") return { recipe_days: 3 };
+    if (msg.type === "larder/settings") return { recipe_days: 3, soon_days: 3, main_panel: "experimental" };
+    if (msg.type === "larder/estimates") return { mode: "table", entries: de ? [
+      { key: "a", content: "Bolognese-Sauce", area: "Gefrierschrank", vacuum: true, days: 135, tip: "", source: "table" },
+      { key: "b", content: "Gekochte Eier", area: "Kühlschrank", vacuum: false, days: 7, tip: "", source: "table" },
+      { key: "c", content: "Lachs", area: "Kühlschrank", vacuum: true, days: 2, tip: "", source: "learned", origin: "ai" } ] : [
+      { key: "a", content: "Bolognese sauce", area: "Freezer", vacuum: true, days: 135, tip: "", source: "table" },
+      { key: "b", content: "Boiled eggs", area: "Fridge", vacuum: false, days: 7, tip: "", source: "table" },
+      { key: "c", content: "Salmon", area: "Fridge", vacuum: true, days: 2, tip: "", source: "learned", origin: "ai" } ] };
     if (msg.type === "call_service") return { response: { recipes: suggestions } };
     if (msg.type === "larder/nfc_tags") return { links: {}, by_device: {} };
     return {};
@@ -106,7 +113,7 @@ const opts = {};
 if (q.get("mode")) opts.mode = q.get("mode");
 if (q.get("sort")) opts.sort = q.get("sort");
 if (Object.keys(opts).length) localStorage.setItem("larder.experimental", JSON.stringify(opts));
-const el = document.createElement("larder-experimental");
+const el = document.createElement("larder-dashboard");
 document.body.appendChild(el);
 el.narrow = true;
 el.hass = hass;
@@ -114,6 +121,10 @@ await new Promise((r) => setTimeout(r, 100));
 if (q.get("view")) el.setView(q.get("view"));
 if (q.get("suggest") === "1") await el.generateRecipes();
 if (q.get("detail") === "1") el.openDetail("demo00");
+if (q.get("select") === "1") {
+  el.startSelecting();
+  for (const row of el._rows().slice(0, 4)) el.toggleSelected(row.id, true);
+}
 </script>
 </body>
 </html>

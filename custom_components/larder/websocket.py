@@ -11,7 +11,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv, device_registry as dr
 from homeassistant.exceptions import HomeAssistantError
 
-from .const import DOMAIN
+from .const import DOMAIN, EVENT_DOSE_SCANNED
 from .estimate import MAX_DAYS, MIN_DAYS, async_get_estimator
 from .nfc import async_get_nfc
 from .qr import parse_qr
@@ -35,6 +35,7 @@ def async_setup_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_settings)
     websocket_api.async_register_command(hass, ws_resolve_code)
     websocket_api.async_register_command(hass, ws_scan_session)
+    websocket_api.async_register_command(hass, ws_report_scan)
     websocket_api.async_register_command(hass, ws_nfc_tags)
     websocket_api.async_register_command(hass, ws_nfc_link)
     websocket_api.async_register_command(hass, ws_nfc_unlink)
@@ -204,7 +205,10 @@ async def ws_settings(
 ) -> None:
     """Einstellungen, die die Dashboards brauchen (für alle Nutzer, nichts Vertrauliches)."""
     estimator = await async_get_estimator(hass)
-    connection.send_result(msg["id"], {"recipe_days": estimator.recipe_days, "soon_days": estimator.soon_days})
+    connection.send_result(
+        msg["id"],
+        {"recipe_days": estimator.recipe_days, "soon_days": estimator.soon_days},
+    )
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/resolve_code", vol.Required("code"): str})
@@ -248,3 +252,29 @@ async def ws_scan_session(
 
     connection.subscriptions[msg["id"]] = nfc.add_session(forward)
     connection.send_result(msg["id"])
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/report_scan", vol.Required("cc"): str})
+@websocket_api.async_response
+async def ws_report_scan(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Eigener QR-Code wurde gescannt (das Dashboard meldet es): wie bei NFC `larder_dose_scanned` auslösen."""
+    nfc = await async_get_nfc(hass)
+    try:
+        cc = nfc.resolve_cc(cc=msg["cc"])
+    except HomeAssistantError as err:
+        _error(connection, msg["id"], err)
+        return
+    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, cc)})
+    entry = nfc._entry(cc)  # noqa: SLF001
+    data = {
+        "cc": cc,
+        "device_id": device.id if device else None,
+        "name": entry.title if entry else cc,
+        "scanned_by": None,
+        "source": "qr",
+        "user_id": connection.user.id if connection.user else None,
+    }
+    hass.bus.async_fire(EVENT_DOSE_SCANNED, data)
+    connection.send_result(msg["id"], {"device_id": data["device_id"]})

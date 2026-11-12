@@ -546,7 +546,8 @@ const STYLE = `
   #back { display: none; background: none; border: 0; color: inherit; font-size: 24px; cursor: pointer; padding: 4px 8px; }
   :host([embedded]) { min-height: 0; background: none; }
   :host([embedded]) header, :host([embedded]) .toolbar { display: none; }
-  :host([embedded]:not([only])) main { display: none; }
+  :host([embedded]:not([only]):not([show])) main { display: none; }
+  :host([embedded][show]) main { padding-top: 4px; }
   :host([embedded][only]) header { display: flex; }
   :host([embedded][only]) #back { display: inline-block; }
   :host([embedded][only]) #menu, :host([embedded][only]) .count, :host([embedded][only]) .tabs,
@@ -1076,12 +1077,24 @@ class LarderPanel extends HTMLElement {
   }
 
   static get observedAttributes() {
-    return ["only"];
+    return ["only", "ids", "show"];
   }
 
-  attributeChangedCallback() {
+  /**
+   * Eingebettet in "Larder experimental": `only` zeigt die Karte einer Dose (mit Zurück-Knopf),
+   * `show="cards"` mit `ids` (kommagetrennt, in dieser Reihenfolge) die Karten mehrerer Dosen,
+   * `show="estimates"` die Liste der gemerkten Schätzungen.
+   */
+  attributeChangedCallback(name) {
     if (!this._opts) return;
     this._layoutSig = "";
+    if (name === "show" && this._hass) {
+      const show = this.getAttribute("show");
+      if (show === null && this._view !== "containers") this.setView("containers");
+      if (show === "estimates" || (show === "cards" && this._view !== "containers")) {
+        this.setView(show === "estimates" ? "estimates" : "containers");
+      }
+    }
     if (this._hass) this._update();
   }
 
@@ -1347,6 +1360,7 @@ class LarderPanel extends HTMLElement {
 
   /** `?add=<ID>` (vom Scan-Webhook): Dialog mit Code öffnen, bzw. Hinweis für Nicht-Administratoren. */
   _handleAddParam() {
+    if (this.hasAttribute("embedded")) return; // in "Larder experimental" übernimmt das die äußere Ansicht
     const hass = this._hass;
     const code = new URLSearchParams(window.location.search).get("add");
     if (!code || !hass || !hass.user) return;
@@ -1866,7 +1880,10 @@ class LarderPanel extends HTMLElement {
     try {
       this._unsubs.push(
         await hass.connection.subscribeEvents((ev) => this._tagScanned(ev.data && ev.data.tag_id), "tag_scanned"),
-        await hass.connection.subscribeEvents((ev) => this.highlight(ev.data && ev.data.device_id), `${DOMAIN}_dose_scanned`),
+        await hass.connection.subscribeEvents((ev) => {
+          // eingebettet öffnet die äußere Ansicht die Dose selbst
+          if (!this.hasAttribute("embedded")) this.highlight(ev.data && ev.data.device_id);
+        }, `${DOMAIN}_dose_scanned`),
       );
     } catch (err) {
       this._subscribed = false;
@@ -1922,6 +1939,7 @@ class LarderPanel extends HTMLElement {
 
   /** `?open=<Geräte-ID>` (aus der Benachrichtigung nach einem NFC-Scan): Dose hervorheben. */
   _handleOpenParam() {
+    if (this.hasAttribute("embedded")) return;
     const id = new URLSearchParams(window.location.search).get("open");
     if (!id || !this._devices.length) return;
     window.history.replaceState(null, "", window.location.pathname);
@@ -1982,10 +2000,18 @@ class LarderPanel extends HTMLElement {
     }
     // Reihenfolge und Sichtbarkeit hängen auch von den Zuständen ab (Filter, Sortierung nach MHD).
     const only = this.getAttribute("only");
-    this._arranged = only
-      ? this._devices.filter((d) => d.deviceId === only)
-      : arrangeDevices(hass, this._devices, this._opts);
-    const sig = JSON.stringify([this._arranged.map((d) => d.deviceId), this._opts.sort, this._devices.length]);
+    const ids = this.hasAttribute("embedded") && this.getAttribute("show") === "cards" && !only ? this.getAttribute("ids") : null;
+    this._flat = false;
+    if (only) {
+      this._arranged = this._devices.filter((d) => d.deviceId === only);
+    } else if (ids !== null) {
+      this._flat = true;
+      const byId = new Map(this._devices.map((d) => [d.deviceId, d]));
+      this._arranged = ids.split(",").map((id) => byId.get(id)).filter(Boolean);
+    } else {
+      this._arranged = arrangeDevices(hass, this._devices, this._opts);
+    }
+    const sig = JSON.stringify([this._arranged.map((d) => d.deviceId), this._opts.sort, this._devices.length, this._flat]);
     if (registriesChanged || sig !== this._layoutSig) {
       this._layoutSig = sig;
       this._rebuild(hass);
@@ -2063,7 +2089,7 @@ class LarderPanel extends HTMLElement {
       frag.appendChild(none(t.noneTitle, t.noneText, t.openSettings));
     } else if (!shown.length) {
       frag.appendChild(none(t.title, t.noMatch, ""));
-    } else if (this._opts.sort !== "area") {
+    } else if (this._opts.sort !== "area" || this._flat) {
       const grid = document.createElement("div");
       grid.className = "grid";
       for (const dev of shown) grid.appendChild(this._cards.get(dev.deviceId).el);

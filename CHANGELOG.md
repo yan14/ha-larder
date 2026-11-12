@@ -3,6 +3,26 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 2.0.0
+
+**The new dashboard.** The tile-based dashboard that was tried out as *Larder experimental* is now the normal **Larder** dashboard in the sidebar. The old dashboard is gone as a page of its own; everything it could do is in the new one:
+
+- **Containers** page: search (name, contents, area), filter (expiring soon, expired, filled, empty), sort (best-before date, area, alphabet, category), the number of containers shown, and three views: tiles, list and **cards with all details**. The cards are the ones of the old dashboard with every field to edit (area, contents, quantity and unit, dates with +1 day / Opened / Thawed, estimate, vacuum, shopping list, NFC tag, open device, empty container).
+- **⚙** (administrators) opens the **remembered estimates** (the old *Estimates* tab) and the integration settings.
+- **Recipes** page: recipe ideas with period and **number of people** (like the old recipe dialog), recipe book, recipes from a photo.
+- Scanning an NFC tag while the dashboard is open opens the container (an empty one with the fill dialog); scans and notifications open the new dashboard with the container, the fill dialog or the add dialog (the links `/larder?open=…`, `?add=…` stay the same; `?view=recipes` opens the recipe page).
+- Start page, areas, categories, selection of several containers, serial scan with QR codes and NFC tags as before.
+
+**Your own QR codes now work like NFC tags:** scanning one with the camera app opens the container in the Larder dashboard (an empty one with the fill dialog) and fires `larder_dose_scanned` (with `source: qr`). The code contains the ID of the container (`homeassistant://navigate/larder?cc=<ID>`) instead of the device ID, so it stays valid if a container is deleted and added again. **Codes printed before 2.0 still open the device page; print them again for the new behaviour.**
+
+**Larder experimental** stays as an optional second sidebar entry for trying new features; at the moment it is the same as the new dashboard.
+
+Also:
+
+- New WebSocket command `larder/report_scan` (the dashboard reports QR scans).
+- Blueprint: the **Recipes** button opens the recipe page of the dashboard by default.
+- README rewritten for the new dashboard, with new screenshots.
+
 ## 1.11.0
 
 - **Better recognition of contents** (table and category icons): the order of the words no longer matters ("Eier gekocht" are boiled eggs, not raw eggs), compound words count by their last part ("Butterkekse" are cookies, "Zwiebelkuchen" is cake), and fish/meat cuts go by the animal ("Lachsfilet" is fish, not raw meat). "Gehackt" no longer means minced meat ("Spinat gehackt" is spinach, "Gehackte Tomaten" are vegetables). New entries: peas, beans, edamame, corn and more vegetables, flour types (Dinkelmehl Typ 630 …), milk rice, semolina pudding, mashed potatoes, pancakes, more fish.

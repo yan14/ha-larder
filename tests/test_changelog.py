@@ -12,4 +12,4 @@ def test_changelog_has_a_section_for_the_current_version() -> None:
     text = (ROOT / "CHANGELOG.md").read_text()
     match = re.search(rf"^## {re.escape(version)}\n(.*?)(?=^## |\Z)", text, re.M | re.S)
     assert match, f"CHANGELOG.md has no section '## {version}'"
-    assert match.group(1).strip().startswith("- "), "the section needs at least one bullet point"
+    assert any(line.startswith("- ") for line in match.group(1).splitlines()), "the section needs at least one bullet point"

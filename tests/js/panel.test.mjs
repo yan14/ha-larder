@@ -561,9 +561,11 @@ test("Netzwerkfehler beim Hinzufügen zeigt allgemeine Meldung", async () => {
   assert.equal($(el, "button.submit").disabled, false);
 });
 
-test("?add=<ID> aus dem Scan-Webhook öffnet den Dialog mit vorbelegtem Code", () => {
+test("?add=<ID> aus dem Scan-Webhook öffnet den Dialog mit vorbelegtem Code", async () => {
   dom.window.history.pushState(null, "", "/larder?add=NEU123");
   const el = mount(adminHass());
+  await flush();
+  await flush();
   assert.equal($(el, ".overlay").hidden, false);
   assert.equal($(el, 'input[name="mode"]:checked').value, "scan");
   assert.equal($(el, '[data-f="code"]').value, "NEU123");
@@ -574,11 +576,13 @@ test("?add=<ID> aus dem Scan-Webhook öffnet den Dialog mit vorbelegtem Code", (
   assert.equal($(el, ".overlay").hidden, true);
 });
 
-test("?add=<ID> für Nutzer ohne Admin-Rechte zeigt einen Hinweis statt des Dialogs", () => {
+test("?add=<ID> für Nutzer ohne Admin-Rechte zeigt einen Hinweis statt des Dialogs", async () => {
   dom.window.history.pushState(null, "", "/larder?add=NEU123");
   const hass = adminHass();
   hass.user = { is_admin: false };
   const el = mount(hass);
+  await flush();
+  await flush();
   assert.equal($(el, ".overlay").hidden, true);
   assert.equal($(el, "#notice").hidden, false);
   assert.match($(el, "#notice").textContent, /Nur Administratoren.*NEU123/);
@@ -1515,12 +1519,16 @@ test("?open=<ID> öffnet bei leerer Dose den Befüll-Dialog, bei gefüllter nur 
   hass.user = { is_admin: false };
   dom.window.history.replaceState(null, "", "/larder?open=d2");
   let el = mount(hass);
+  await flush();
+  await flush();
   assert.equal($(el, ".overlay.fill").hidden, true);
   assert.ok($$(el, ".card")[1].classList.contains("flash"));
 
   document.body.innerHTML = "";
   dom.window.history.replaceState(null, "", "/larder?open=d1");
   el = mount(hass);
+  await flush();
+  await flush();
   assert.equal($(el, ".overlay.fill").hidden, false);
   assert.match($(el, "form.fillform h2").textContent, /Leer/);
   assert.equal(dom.window.location.search, "");
