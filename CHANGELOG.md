@@ -3,6 +3,11 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 2.2.0
+
+- **📷 Scan container** in the dashboard (Home Assistant app on iOS and **Android**): opens the app's QR scanner for a single scan. Your own codes and the original Zwilling codes both work: a known container opens (an empty one with the fill dialog), a Zwilling code that has not been added yet opens **Add container** with the code filled in. The button is on the start page and next to **＋**. Android users can now use the Zwilling codes without the iOS Shortcut, which stays available.
+- README: the section **Adding a container** now lists all four ways, including the NFC ones, and a new section **Scanning in the app**.
+
 ## 2.1.0
 
 - **Flexible storage place** for containers that move around (for example vacuum boxes: fridge one day, 0 °C drawer the next): new switch **Flexible storage place** per container (off by default). When it is on, the fill dialog also asks for the **area** (administrators; also when filling several containers at once), so the estimate uses the right place.

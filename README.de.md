@@ -11,7 +11,7 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 ## Highlights
 
 - 🖥️ **[Eigenes Dashboard](#dashboard-larder)** in der Seitenleiste, gemacht fürs Handy: Startseite, Dosen als Kacheln, Liste oder Karten mit allen Details, Bereiche, Kategorien und Rezeptbuch; aktualisiert sich selbst
-- 🔖 **[Zwilling-Fresh-&-Save-QR-Codes](#ios-kurzbefehl-für-die-originalen-zwilling-codes)**: die originalen Codes auf den Deckeln funktionieren weiter
+- 🔖 **[Zwilling-Fresh-&-Save-QR-Codes](#scannen-in-der-app)**: die originalen Codes auf den Deckeln funktionieren weiter, mit dem 📷-Scanner in der App (iOS und Android) oder einem [iOS-Kurzbefehl](#ios-kurzbefehl-für-die-originalen-zwilling-codes)
 - 🏷️ **[Eigener QR-Code](#eigene-qr-codes)** und **[NFC-Tags](#nfc-tags)** für jede beliebige Dose: Scannen öffnet die Dose im Dashboard
 - ✏️ **[Schnelles Befüllen](#dosen-befüllen)**: Inhalt, Menge, MHD und Vakuum in wenigen Taps, auch für mehrere Dosen auf einmal und per [Serien-Scan](#mehrere-dosen-auswählen)
 - 🧮 **[MHD-Schätzung](#mhd-schätzung)**: eingebaute Haltbarkeitstabelle, optional mit KI, mit Grenzen pro Lagerort
@@ -35,7 +35,7 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 - [Installation](#installation) · [Erste Schritte](#erste-schritte) · [Dose anlegen](#dose-anlegen) · [Bereiche und Labels](#bereiche-und-labels) · [Einstellungen](#einstellungen)
 - [Dashboard „Larder“](#dashboard-larder) · [Mehrere Dosen auswählen](#mehrere-dosen-auswählen) · [Dosen befüllen](#dosen-befüllen) · [Larder experimental](#larder-experimental)
 - [MHD-Schätzung](#mhd-schätzung) · [Rezepte](#rezepte) · [Tägliche Zusammenfassung](#tägliche-zusammenfassung) · [Einkaufsliste](#einkaufsliste) · [Kalender](#mhd-im-kalender)
-- [Scannen](#scannen): [eigene QR-Codes](#eigene-qr-codes), [NFC-Tags](#nfc-tags), [Zwilling-Codes (iOS-Kurzbefehl)](#ios-kurzbefehl-für-die-originalen-zwilling-codes)
+- [Scannen](#scannen): [in der App](#scannen-in-der-app), [eigene QR-Codes](#eigene-qr-codes), [NFC-Tags](#nfc-tags), [Zwilling-Codes (iOS-Kurzbefehl)](#ios-kurzbefehl-für-die-originalen-zwilling-codes)
 - [Referenz](#referenz): [Entitäten](#entitäten), [Dienste und Ereignisse](#dienste-und-ereignisse), [Webhook](#webhook-schnittstelle)
 - [Alternativen](#alternativen) · [Entwicklung](#entwicklung)
 
@@ -74,11 +74,33 @@ Seit Home Assistant 2026.11 ist der Community Store HACS als **Marketplace** fes
 3. **Dosen befüllen** im Dashboard: Inhalt, Menge, MHD (oder von Larder schätzen lassen).
 4. **Die [Einstellungen](#einstellungen)** einmal durchgehen: Schätzmodus, Zeiträume, Kalender, Einkaufsliste.
 5. **Das [Blueprint](#tägliche-zusammenfassung) importieren** für eine tägliche Zusammenfassung dessen, was bald abläuft (Push und/oder Ansage).
-6. **Einen Code auf die Boxen bringen:** [eigenen QR-Code](#eigene-qr-codes) drucken, einen [NFC-Tag](#nfc-tags) aufkleben oder den [Kurzbefehl](#ios-kurzbefehl-für-die-originalen-zwilling-codes) für die originalen Zwilling-Codes nutzen.
+6. **Einen Code auf die Boxen bringen:** [eigenen QR-Code](#eigene-qr-codes) drucken, einen [NFC-Tag](#nfc-tags) aufkleben oder die originalen Zwilling-Codes behalten und mit [📷 in der App](#scannen-in-der-app) oder dem [iOS-Kurzbefehl](#ios-kurzbefehl-für-die-originalen-zwilling-codes) scannen.
 
 ## Dose anlegen
 
-Einstellungen → Geräte & Dienste → **Integration hinzufügen** → „Larder“. Dann gibt es zwei Wege:
+Es gibt vier Wege. Für die beiden NFC-Wege brauchst du die Home Assistant App auf einem Handy mit NFC:
+
+| Weg | Wofür |
+|---|---|
+| **Neuen QR-Code erstellen** | Dosen ohne Code; Larder erzeugt eine ID und einen [QR-Code zum Ausdrucken](#eigene-qr-codes) |
+| **Zwilling-QR-Code einlesen** | Originale Zwilling-Dosen |
+| **Neuen NFC-Tag beschreiben** | Leerer NFC-Sticker; Larder legt Dose und Tag an und beschreibt ihn |
+| **NFC-Tag scannen** | Schon beschriebener Tag; Larder legt die Dose an und verknüpft ihn |
+
+### Im Dashboard (empfohlen)
+
+**＋** auf der Behälter-Seite des Dashboards bietet alle vier Wege:
+
+<p align="center"><img src="docs/images/add-dialog-de.png" width="560" alt="Dialog Dose hinzufügen"></p>
+
+- **Neuen QR-Code erstellen** erzeugt eine neue eindeutige ID. Danach die Karte (oder das Gerät) öffnen und den QR-Code ausdrucken.
+- **Zwilling-QR-Code einlesen** braucht den Inhalt des originalen Codes oder nur die ID. Kommst du von [📷 in der App](#scannen-in-der-app) oder vom iOS-Kurzbefehl, ist das Feld schon ausgefüllt.
+- **Neuen NFC-Tag beschreiben** erscheint nur in der App auf einem Handy, das Tags beschreiben kann. Bei **NFC-Tag scannen** hältst du das Handy an den Tag. Details unter [NFC-Tags](#nfc-tags).
+- Name und Bereich sind optional. Beides lässt sich später ändern (den Bereich direkt auf der Karte).
+
+### Über die Integration
+
+Die allererste Dose legst du so an, denn das Dashboard erscheint erst danach: Einstellungen → Geräte & Dienste → **Integration hinzufügen** → „Larder“. Hier gibt es nur die beiden QR-Wege; einen NFC-Tag verknüpfst du danach im Dashboard.
 
 **Neuen QR Code erstellen**
 
@@ -94,17 +116,7 @@ zwilling://zwillingapp/food-storage/in/?tc=42ML30&s=m&cc=34OL
 
 Es reicht auch nur die ID (`cc`, hier `34OL`). Optional kannst du einen Namen vergeben. Jede Dose lässt sich nur einmal anlegen.
 
-Home Assistant bietet im Dialog keine Kamera zum Scannen. Den Text liest du unter iOS mit dem [Kurzbefehl](#ios-kurzbefehl-für-die-originalen-zwilling-codes) aus und fügst ihn ein.
-
-### Im Dashboard
-
-Sobald die erste Dose existiert, ist **＋** auf der Behälter-Seite des Dashboards der schnellste Weg (dort gibt es auch [NFC-Tags](#nfc-tags)):
-
-<p align="center"><img src="docs/images/add-dialog-de.png" width="560" alt="Dialog Dose hinzufügen"></p>
-
-- **Neuen QR-Code erstellen** erzeugt eine neue eindeutige ID. Danach die Karte (oder das Gerät) öffnen und den QR-Code ausdrucken.
-- **Zwilling-QR-Code einlesen** braucht den Inhalt des originalen Codes oder nur die ID. Kommst du vom iOS-Kurzbefehl, ist das Feld schon ausgefüllt.
-- Name und Bereich sind optional. Beides lässt sich später ändern (den Bereich direkt auf der Karte).
+Home Assistant bietet im Dialog keine Kamera zum Scannen. Einfacher: die erste Dose mit **Neuen QR Code erstellen** anlegen und die Zwilling-Codes danach mit [📷 in der App](#scannen-in-der-app) scannen. Unter iOS geht auch der [Kurzbefehl](#ios-kurzbefehl-für-die-originalen-zwilling-codes).
 
 ## Bereiche und Labels
 
@@ -162,12 +174,12 @@ Sobald mindestens eine Dose angelegt ist, erscheint in der Seitenleiste der Eint
 
 Eine Leiste unten wechselt zwischen fünf Seiten:
 
-- **Start**: eine Begrüßung mit deinem Home-Assistant-Namen, Kacheln für alles, was bald verbraucht werden sollte (Abgelaufenes zuerst), und Abkürzungen zu den Rezeptvorschlägen und den Behältern.
+- **Start**: eine Begrüßung mit deinem Home-Assistant-Namen, Kacheln für alles, was bald verbraucht werden sollte (Abgelaufenes zuerst), und Abkürzungen zu den Rezeptvorschlägen und den Behältern. In der Home Assistant App gibt es dort auch **📷 Dose scannen** (siehe [Scannen in der App](#scannen-in-der-app)).
 - **Behälter**: alle Dosen mit einem Symbol für die Art des Essens, dem Inhalt, dem Namen der Dose und den Resttagen.
   - **Suche** in Name, Inhalt und Bereich; **Filter** nach *läuft bald ab*, *abgelaufen*, *befüllt* oder *leer*; **Sortierung** nach MHD, Bereich, Alphabet oder Kategorie (Bereich und Kategorie gruppiert). Über der Liste steht, wie viele Dosen angezeigt werden.
   - Der Knopf rechts wechselt zwischen **Kacheln**, **Liste** und **Karten mit allen Details**. Die Wahl merkt sich das Gerät.
   - Eine gefüllte Dose öffnet beim Antippen ihre Karte, eine leere lässt sich gleich befüllen (siehe [Dosen befüllen](#dosen-befüllen)).
-  - **＋** legt eine Dose an (siehe [Im Dashboard](#im-dashboard)), **☑** startet die [Auswahl](#mehrere-dosen-auswählen).
+  - **📷** scannt eine Dose (nur in der Home Assistant App, siehe [Scannen in der App](#scannen-in-der-app)), **＋** legt eine an (siehe [Im Dashboard](#im-dashboard-empfohlen)), **☑** startet die [Auswahl](#mehrere-dosen-auswählen).
 - **Bereiche**: eine Kachel pro Bereich mit der Anzahl der Dosen und wie viele bald ablaufen; Antippen zeigt seine Dosen.
 - **Kategorien**: dasselbe für Arten von Lebensmitteln (Fisch, Fleisch, Milchprodukte, Gerichte und Reste, Trockenware, …). Die Kategorie stammt aus der eingebauten Haltbarkeitstabelle und ist das Attribut `category` der Entität **Inhalt**. Dosen ohne Treffer stehen unter „Sonstiges“, leere unter „Leer“.
 - **Rezepte**: dein [Rezeptbuch](#rezeptbuch) mit [Rezeptideen](#rezeptideen) und Rezepten, die die KI von einem Foto liest.
@@ -216,7 +228,7 @@ Danach alle auf einmal befüllen oder Rezeptideen holen. So geht eine Inventur d
 
 Eine leere Dose zeigt den Button **Befüllen**. Er öffnet einen kleinen Dialog: **Inhalt** (mit Vorschlägen aus früheren Eingaben, neueste zuerst, danach deine gemerkten Schätzungen), **Menge und Einheit** (optional), **Vakuum**, **Befüllt am** (vorbelegt mit jetzt), optional ein **MHD** und **MHD automatisch schätzen** (nur wenn die Schätzung aktiv und das MHD leer ist). **Speichern** setzt alles und schätzt das MHD.
 
-Der Dialog öffnet sich auch von selbst direkt nach dem Anlegen einer neuen Dose im Dashboard (auch nach dem Beschreiben eines NFC-Tags), sodass du sie gleich befüllen kannst. Ebenso nach einem Scan (eigener QR-Code, NFC-Tag, Kurzbefehl), wenn die Dose leer ist; eine Dose mit Inhalt öffnet ihre Karte.
+Der Dialog öffnet sich auch von selbst direkt nach dem Anlegen einer neuen Dose im Dashboard (auch nach dem Beschreiben eines NFC-Tags), sodass du sie gleich befüllen kannst. Ebenso nach einem Scan (📷 in der App, eigener QR-Code, NFC-Tag, Kurzbefehl), wenn die Dose leer ist; eine Dose mit Inhalt öffnet ihre Karte.
 
 **Dosen, die umziehen:** Manche Dosen stehen immer am selben Ort, andere (z. B. Vakuumdosen) mal im Kühlschrank, mal im 0-Grad-Fach. Schalte bei solchen Dosen auf der Karte **Variabler Lagerort** ein. Dann fragt der Befüll-Dialog auch nach dem **Bereich** (Administratoren), damit die Schätzung den richtigen Ort nimmt, und **Behälter leeren** stellt die Dose zurück in den Bereich unter **Nach dem Leeren zurück in** (z. B. den Vorratsraum, in dem die leeren Dosen stehen). Dosen ohne den Schalter behalten ihren Bereich, und der Dialog fragt nicht.
 
@@ -390,7 +402,17 @@ Der Kalender muss Termine anlegen **und** löschen können. Reine Lese-Kalender 
 
 ## Scannen
 
-Es gibt drei Wege, von einer Dose zu ihrem Eintrag im Dashboard zu kommen. Sie lassen sich beliebig mischen. Für eine Inventur wählt der [Serien-Scan](#mehrere-dosen-auswählen) viele Dosen nacheinander aus.
+Es gibt vier Wege, von einer Dose zu ihrem Eintrag im Dashboard zu kommen. Sie lassen sich beliebig mischen. Für eine Inventur wählt der [Serien-Scan](#mehrere-dosen-auswählen) viele Dosen nacheinander aus.
+
+### Scannen in der App
+
+In der Home Assistant App (**iOS und Android**) hat das Dashboard einen **📷**-Knopf: auf der Startseite (**📷 Dose scannen**) und neben **＋** auf den Seiten Behälter, Bereiche und Kategorien. Er öffnet den QR-Scanner der App und liest **beide Arten von Codes**, eigene und die originalen Zwilling-Codes:
+
+- **Bekannte Dose:** ihre Karte öffnet sich, eine leere Dose gleich mit dem Befüllen-Dialog. Das Ereignis `larder_dose_scanned` wird wie bei jedem Scan ausgelöst.
+- **Noch nicht angelegter Zwilling-Code** (Administratoren): der Dialog **Dose hinzufügen** öffnet sich, der Code ist schon eingetragen.
+- **Alles andere:** der Scanner meldet „Kein Larder-Code“ und bleibt für den nächsten Versuch offen.
+
+Der Knopf erscheint nur in der App auf einem Gerät mit Kamera, nicht im Browser am PC. Außerhalb der App nimmst du für eigene Codes die Kamera-App und für Zwilling-Codes den [iOS-Kurzbefehl](#ios-kurzbefehl-für-die-originalen-zwilling-codes).
 
 ### Eigene QR-Codes
 
@@ -419,7 +441,9 @@ Für eigene Automationen löst ein verknüpfter Scan das Ereignis `larder_dose_s
 
 ### iOS-Kurzbefehl für die originalen Zwilling-Codes
 
-Dieser Weg ist für die **aufgedruckten Zwilling-QR-Codes** gedacht. Für selbst erstellte Codes brauchst du ihn nicht, dort scannst du einfach mit der Kamera-App.
+Dieser Weg ist für die **aufgedruckten Zwilling-QR-Codes** gedacht, wenn du sie scannen willst, **ohne vorher die Home Assistant App zu öffnen** (z. B. vom Home-Bildschirm oder über die Aktionstaste). In der App macht [📷](#scannen-in-der-app) dasselbe ohne Einrichtung. Für selbst erstellte Codes brauchst du ihn nicht, dort scannst du einfach mit der Kamera-App.
+
+Unter **Android** gibt es dafür keine eingebaute Entsprechung; nimm dort [📷 in der App](#scannen-in-der-app).
 
 Der QR-Code enthält einen Link mit dem Schema `zwilling://`, der zur eingestellten Zwilling-App gehört. Die **Kamera-App ist dafür ungeeignet**: Sie will den Link in der Zwilling-App öffnen und liefert den Text nicht zum Kopieren. Der Kurzbefehl liest dagegen nur den Text aus und öffnet den Link nicht.
 

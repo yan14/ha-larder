@@ -129,6 +129,8 @@ export const TEXTS = {
     scanAdded: (name, n) => `✓ ${name} (${n} ausgewählt)`,
     scanUnknown: "Diese Dose ist noch nicht angelegt.",
     scanInvalid: "Kein Larder-Code.",
+    scanOne: "Dose scannen",
+    scanOneDescription: "Halte die Kamera auf den QR-Code einer Dose: eigener Code oder Zwilling-Code.",
     recipesPick: "Dosen wählen",
     recipesNoneChosen: "Die gewählten Dosen sind leer oder abgelaufen.",
     suggestionsChosen: (n) => `Vorschläge aus ${n === 1 ? "1 gewählten Dose" : `${n} gewählten Dosen`}`,
@@ -254,6 +256,8 @@ export const TEXTS = {
     scanAdded: (name, n) => `✓ ${name} (${n} selected)`,
     scanUnknown: "This container has not been added yet.",
     scanInvalid: "Not a Larder code.",
+    scanOne: "Scan container",
+    scanOneDescription: "Point the camera at the QR code of a container: your own code or a Zwilling code.",
     recipesPick: "Pick containers",
     recipesNoneChosen: "The selected containers are empty or expired.",
     suggestionsChosen: (n) => `Suggestions from ${n === 1 ? "1 selected container" : `${n} selected containers`}`,
@@ -1093,6 +1097,85 @@ export class LarderDashboard extends HTMLElement {
     }
   }
 
+  /**
+   * Einzel-Scan mit dem QR-Scanner der Home-Assistant-App (iOS und Android): eigene Codes und
+   * Zwilling-Codes. Bekannte Dose öffnen (eine leere gleich zum Befüllen), unbekannte hinzufügen.
+   */
+  scanOne() {
+    const external = this._hass && this._hass.auth && this._hass.auth.external;
+    if (this._scan || this._single || !this._hasQrScanner() || typeof external.addCommandHandler !== "function") return;
+    const t = texts(this._hass);
+    const original = external._commandHandler;
+    const single = { busy: false };
+    this._single = single;
+    const finish = () => {
+      if (this._single !== single) return;
+      this._single = null;
+      external.addCommandHandler(original);
+    };
+    const handler = (msg) => {
+      if (this._single === single && msg && msg.command === "bar_code/scan_result") {
+        const code = String((msg.payload && msg.payload.rawValue) || "");
+        if (!single.busy) {
+          single.busy = true;
+          this._resolveSingle(code).then((ok) => {
+            single.busy = false;
+            if (this._single !== single) return;
+            if (ok) {
+              finish();
+              external.fireMessage({ type: "bar_code/close" });
+            } else {
+              // kein Larder-Code: Scanner bleibt offen für den nächsten Versuch
+              external.fireMessage({ type: "bar_code/notify", payload: { message: t.scanInvalid } });
+            }
+          });
+        }
+      } else if (this._single === single && msg && msg.command === "bar_code/aborted") {
+        finish();
+      }
+      return original(msg);
+    };
+    external.addCommandHandler(handler);
+    external.fireMessage({
+      type: "bar_code/scan",
+      payload: { title: t.scanOne, description: t.scanOneDescription, alternative_option_label: t.cancel },
+    });
+  }
+
+  /** Gescannten Code auswerten; false, wenn es kein Larder-Code ist. */
+  async _resolveSingle(code) {
+    const hass = this._hass;
+    let res;
+    try {
+      res = await hass.callWS({ type: `${DOMAIN}/resolve_code`, code });
+    } catch {
+      return false;
+    }
+    if (!res || !res.valid) return false;
+    this.setView("containers");
+    if (!res.device_id) {
+      // unbekannt: hinzufügen, mit dem ganzen Code (Zwilling-Codes enthalten Typ und Größe)
+      if (isAdmin(hass)) this._classic.openAddDialog(code.trim());
+      else this.showNotice(texts(hass).adminOnly(res.cc));
+      return true;
+    }
+    hass.callWS({ type: `${DOMAIN}/report_scan`, cc: res.cc }).catch(() => {});
+    const row = this._rows().find((r) => r.id === res.device_id);
+    if (row) this.openContainer(row);
+    return true;
+  }
+
+  _scanOneButton(t) {
+    if (!this._hasQrScanner() || this._scan) return null;
+    const btn = el("button", "icon", "📷");
+    btn.type = "button";
+    btn.dataset.role = "scan-one";
+    btn.setAttribute("aria-label", t.scanOne);
+    btn.title = t.scanOne;
+    btn.addEventListener("click", () => this.scanOne());
+    return btn;
+  }
+
   stopScan() {
     const scan = this._scan;
     if (!scan) return;
@@ -1326,6 +1409,8 @@ export class LarderDashboard extends HTMLElement {
       ),
       el("span", "grow"),
     );
+    const one = this._scanOneButton(t);
+    if (one && !this._selecting) bar.append(one);
     const add = this._addButton(t);
     if (add && !this._selecting) bar.append(add);
     if (this._selecting && isAdmin(this._hass)) {
@@ -1444,6 +1529,8 @@ export class LarderDashboard extends HTMLElement {
       ),
       el("span", "grow"),
     );
+    const one = this._scanOneButton(t);
+    if (one) bar.append(one);
     const add = this._addButton(t);
     if (add) bar.append(add);
     bar.append(this._modeButton(t));
@@ -1485,6 +1572,8 @@ export class LarderDashboard extends HTMLElement {
     const list = [...groups.values()].sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
     const bar = el("div", "bar");
     bar.append(el("span", "grow"));
+    const one = this._scanOneButton(t);
+    if (one) bar.append(one);
     const add = this._addButton(t);
     if (add) bar.append(add);
     bar.append(this._modeButton(t));
@@ -1546,6 +1635,13 @@ export class LarderDashboard extends HTMLElement {
     show.dataset.role = "containers";
     show.addEventListener("click", () => this.setView("containers", { soon: soon.length > 0 }));
     help.append(show);
+    if (this._hasQrScanner()) {
+      const scan = el("button", "", `📷 ${t.scanOne}`);
+      scan.type = "button";
+      scan.dataset.role = "scan-one";
+      scan.addEventListener("click", () => this.scanOne());
+      help.append(scan);
+    }
     frag.append(help);
     this._main.replaceChildren(frag);
   }

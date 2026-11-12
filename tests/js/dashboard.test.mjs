@@ -706,6 +706,97 @@ test("Auswahl: Dosen antippen, leere gemeinsam befüllen, gefüllte für Rezepti
   assert.equal($(el, ".selbar"), null);
 });
 
+test("Einzel-Scan (📷): öffnet bekannte Dosen, fügt unbekannte Zwilling-Codes hinzu", async () => {
+  document.body.innerHTML = "";
+  const hass = makeHass(DOSES);
+  const sent = [];
+  const reported = [];
+  const original = () => true;
+  const external = {
+    config: { hasBarCodeScanner: 1 },
+    _commandHandler: original,
+    addCommandHandler(h) {
+      this._commandHandler = h;
+    },
+    fireMessage: (m) => sent.push(m),
+  };
+  hass.auth = { external };
+  const base = hass.callWS;
+  const ZW = "zwilling://zwillingapp/food-storage/in/?tc=42ML30&s=m&cc=NEU1";
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/resolve_code`) {
+      if (msg.code === "cc=d2") return { valid: true, cc: "D2", device_id: "d2", name: "Dose 2" };
+      if (msg.code === "cc=d5") return { valid: true, cc: "D5", device_id: "d5", name: "Dose 5" };
+      if (msg.code === ZW) return { valid: true, cc: "NEU1", device_id: null };
+      return { valid: false };
+    }
+    if (msg.type === `${D}/report_scan`) {
+      reported.push(msg.cc);
+      return {};
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  const added = [];
+  const filled = [];
+  el._classic.openAddDialog = (code) => added.push(code);
+  el._classic.openFillDialog = (id) => filled.push(id);
+
+  // Startseite hat den Knopf, ebenso die Behälter-Seite
+  assert.ok($(el, '.help [data-role="scan-one"]'));
+  $(el, '.help [data-role="scan-one"]').click();
+  assert.equal(sent[0].type, "bar_code/scan");
+  assert.equal(sent[0].payload.title, "Dose scannen");
+  assert.notEqual(external._commandHandler, original);
+
+  // kein Larder-Code: Scanner bleibt offen
+  external._commandHandler({ command: "bar_code/scan_result", payload: { rawValue: "Hallo", format: "qr_code" } });
+  await flush();
+  await flush();
+  assert.equal(sent[sent.length - 1].type, "bar_code/notify");
+  assert.notEqual(external._commandHandler, original);
+
+  // bekannte, gefüllte Dose: Detailansicht
+  external._commandHandler({ command: "bar_code/scan_result", payload: { rawValue: "cc=d2", format: "qr_code" } });
+  await flush();
+  await flush();
+  assert.equal(sent[sent.length - 1].type, "bar_code/close");
+  assert.equal(external._commandHandler, original);
+  assert.equal(el._detail, "d2");
+  assert.deepEqual(reported, ["D2"]);
+
+  // leere Dose: Befüllen-Dialog
+  await go(el, "containers");
+  $(el, '.bar [data-role="scan-one"]').click();
+  external._commandHandler({ command: "bar_code/scan_result", payload: { rawValue: "cc=d5", format: "qr_code" } });
+  await flush();
+  await flush();
+  assert.deepEqual(filled, ["d5"]);
+
+  // unbekannter Zwilling-Code: Hinzufügen mit dem ganzen Code
+  $(el, '.bar [data-role="scan-one"]').click();
+  external._commandHandler({ command: "bar_code/scan_result", payload: { rawValue: ZW, format: "qr_code" } });
+  await flush();
+  await flush();
+  assert.deepEqual(added, [ZW]);
+
+  // Abbrechen gibt den Empfänger der App zurück
+  $(el, '.bar [data-role="scan-one"]').click();
+  external._commandHandler({ command: "bar_code/aborted", payload: { reason: "canceled" } });
+  assert.equal(external._commandHandler, original);
+  assert.equal(el._single, null);
+});
+
+test("Einzel-Scan: ohne Scanner der App kein Knopf", async () => {
+  document.body.innerHTML = "";
+  const el = mount(makeHass(DOSES));
+  await flush();
+  assert.equal($(el, '[data-role="scan-one"]'), null);
+  await go(el, "containers");
+  assert.equal($(el, '[data-role="scan-one"]'), null);
+});
+
 test("Serien-Scan: NFC-Ereignisse und QR-Scanner der App wählen Dosen aus", async () => {
   document.body.innerHTML = "";
   const hass = makeHass(DOSES);

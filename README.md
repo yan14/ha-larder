@@ -11,7 +11,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 ## Highlights
 
 - 🖥️ **[Own dashboard](#dashboard-larder)** in the sidebar, made for the phone: start page, containers as tiles, list or cards with every detail, areas, categories and a recipe book; updates itself
-- 🔖 **[Zwilling Fresh & Save QR codes](#ios-shortcut-for-the-original-zwilling-codes)**: the original codes on the lids keep working
+- 🔖 **[Zwilling Fresh & Save QR codes](#scanning-in-the-app)**: the original codes on the lids keep working, with the 📷 scanner in the app (iOS and Android) or an [iOS Shortcut](#ios-shortcut-for-the-original-zwilling-codes)
 - 🏷️ **[Your own QR code](#your-own-qr-codes)** and **[NFC tags](#nfc-tags)** for any container: scanning opens the container in the dashboard
 - ✏️ **[Quick filling](#filling-containers)**: contents, quantity, best-before date and vacuum in a few taps, also for several containers at once and with a [serial scan](#selecting-several-containers)
 - 🧮 **[Best-before estimate](#best-before-estimate)**: built-in shelf-life table, optionally with AI, with limits per storage place
@@ -35,7 +35,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 - [Installation](#installation) · [Getting started](#getting-started) · [Adding a container](#adding-a-container) · [Areas and labels](#areas-and-labels) · [Settings](#settings)
 - [Dashboard "Larder"](#dashboard-larder) · [Selecting several containers](#selecting-several-containers) · [Filling containers](#filling-containers) · [Larder experimental](#larder-experimental)
 - [Best-before estimate](#best-before-estimate) · [Recipes](#recipes) · [Daily summary](#daily-summary) · [Shopping list](#shopping-list) · [Calendar](#best-before-dates-in-your-calendar)
-- [Scanning](#scanning): [own QR codes](#your-own-qr-codes), [NFC tags](#nfc-tags), [Zwilling codes (iOS Shortcut)](#ios-shortcut-for-the-original-zwilling-codes)
+- [Scanning](#scanning): [in the app](#scanning-in-the-app), [own QR codes](#your-own-qr-codes), [NFC tags](#nfc-tags), [Zwilling codes (iOS Shortcut)](#ios-shortcut-for-the-original-zwilling-codes)
 - [Reference](#reference): [entities](#entities), [services and events](#services-and-events), [webhook](#webhook-interface)
 - [Alternatives](#alternatives) · [Development](#development)
 
@@ -74,11 +74,33 @@ Since Home Assistant 2026.11 the community store HACS is built in as the **Marke
 3. **Fill the containers** in the dashboard: contents, quantity, best-before date (or let Larder estimate it).
 4. **Check the [settings](#settings)** once: estimate mode, periods, calendar, shopping list.
 5. **Import the [blueprint](#daily-summary)** for a daily summary of what expires soon (push and/or voice).
-6. **Put a code on the boxes:** print [your own QR code](#your-own-qr-codes), stick on an [NFC tag](#nfc-tags), or use the [Shortcut](#ios-shortcut-for-the-original-zwilling-codes) for the original Zwilling codes.
+6. **Put a code on the boxes:** print [your own QR code](#your-own-qr-codes), stick on an [NFC tag](#nfc-tags), or keep the original Zwilling codes and scan them with [📷 in the app](#scanning-in-the-app) or the [iOS Shortcut](#ios-shortcut-for-the-original-zwilling-codes).
 
 ## Adding a container
 
-Settings → Devices & services → **Add integration** → "Larder". There are two ways:
+There are four ways. The two NFC ways need the Home Assistant app on a phone with NFC:
+
+| Way | For |
+|---|---|
+| **Create new QR code** | Containers without a code; Larder creates an ID and a [QR code to print](#your-own-qr-codes) |
+| **Read Zwilling QR code** | Original Zwilling containers |
+| **Write a new NFC tag** | Blank NFC sticker; Larder creates the container and the tag and writes it |
+| **Scan NFC tag** | Tag that is already written; Larder creates the container and links it |
+
+### From the dashboard (recommended)
+
+**＋** on the containers page of the dashboard offers all four ways:
+
+<p align="center"><img src="docs/images/add-dialog-en.png" width="560" alt="Add container dialog"></p>
+
+- **Create new QR code** generates a new unique ID. Afterwards open the card (or the device) and print the QR code.
+- **Read Zwilling QR code** needs the content of the original code or just the ID. When you come from [📷 in the app](#scanning-in-the-app) or the iOS Shortcut, the field is already filled in.
+- **Write a new NFC tag** only appears in the app on a phone that can write tags. For **Scan NFC tag** you hold the phone to the tag. Details in [NFC tags](#nfc-tags).
+- Name and area are optional. You can change both later (the area right on the card).
+
+### Through the integration
+
+You add the very first container this way, because the dashboard only appears afterwards: Settings → Devices & services → **Add integration** → "Larder". Only the two QR ways are offered here; link an NFC tag afterwards in the dashboard.
 
 **Create new QR code**
 
@@ -94,17 +116,7 @@ zwilling://zwillingapp/food-storage/in/?tc=42ML30&s=m&cc=34OL
 
 The ID alone (`cc`, here `34OL`) is enough as well. You can optionally give the container a name. Each container can only be added once.
 
-Home Assistant has no camera in this dialog. On iOS you read the text with a [Shortcut](#ios-shortcut-for-the-original-zwilling-codes) and paste it.
-
-### From the dashboard
-
-Once the first container exists, **＋** on the containers page of the dashboard is the quickest way (it also offers [NFC tags](#nfc-tags)):
-
-<p align="center"><img src="docs/images/add-dialog-en.png" width="560" alt="Add container dialog"></p>
-
-- **Create new QR code** generates a new unique ID. Afterwards open the card (or the device) and print the QR code.
-- **Read Zwilling QR code** needs the content of the original code or just the ID. When you come from the iOS Shortcut, the field is already filled in.
-- Name and area are optional. You can change both later (the area right on the card).
+Home Assistant has no camera in this dialog. Easier: add the first container with **Create new QR code**, then scan the Zwilling codes with [📷 in the app](#scanning-in-the-app). On iOS the [Shortcut](#ios-shortcut-for-the-original-zwilling-codes) also works.
 
 ## Areas and labels
 
@@ -162,12 +174,12 @@ As soon as at least one container exists, a sidebar entry **Larder** appears. It
 
 A bar at the bottom switches between five pages:
 
-- **Start**: a greeting with your Home Assistant name, tiles for everything that should be used up soon (expired first), and shortcuts to the recipe suggestions and the containers.
+- **Start**: a greeting with your Home Assistant name, tiles for everything that should be used up soon (expired first), and shortcuts to the recipe suggestions and the containers. In the Home Assistant app there is also **📷 Scan container** (see [Scanning in the app](#scanning-in-the-app)).
 - **Containers**: all containers with a symbol for the kind of food, the contents, the container name and the days left.
   - **Search** in name, contents and area; **filter** by *expiring soon*, *expired*, *filled* or *empty*; **sort** by best-before date, area, alphabet or category (area and category are grouped). The number of containers shown is above the list.
   - The button on the right switches between **tiles**, a **list** and **cards with all details**. Your choice is remembered on the device.
   - Tap a filled container to open its card, tap an empty one to fill it right away (see [Filling containers](#filling-containers)).
-  - **＋** adds a container (see [From the dashboard](#from-the-dashboard)), **☑** starts the [selection](#selecting-several-containers).
+  - **📷** scans a container (only in the Home Assistant app, see [Scanning in the app](#scanning-in-the-app)), **＋** adds one (see [From the dashboard](#from-the-dashboard-recommended)), **☑** starts the [selection](#selecting-several-containers).
 - **Areas**: one tile per area with the number of containers and how many expire soon; tapping shows its containers.
 - **Categories**: the same for kinds of food (fish, meat, dairy, dishes and leftovers, dry goods, …). The category comes from the built-in shelf-life table and is the attribute `category` of the **Contents** entity. Containers without a match are listed under "Other", empty ones under "Empty".
 - **Recipes**: your [recipe book](#recipe-book) with [recipe ideas](#recipe-ideas) and recipes read from a photo.
@@ -216,7 +228,7 @@ Then fill them all at once or ask for recipe ideas, which makes an inventory of 
 
 An empty container shows a **Fill** button. It opens a small dialog: **contents** (with suggestions from what you entered before, newest first, then your remembered estimates), **quantity and unit** (optional), **vacuum**, **filled on** (preset to now), optionally a **best-before date**, and **Estimate best before automatically** (only if estimating is on and the date is empty). **Save** sets everything and estimates the date.
 
-The dialog also opens by itself right after you add a new container in the dashboard (including after writing an NFC tag), so you can fill it straight away. It also opens after a scan (own QR code, NFC tag, Shortcut) when the container is empty; a container that already has contents opens its card.
+The dialog also opens by itself right after you add a new container in the dashboard (including after writing an NFC tag), so you can fill it straight away. It also opens after a scan (📷 in the app, own QR code, NFC tag, Shortcut) when the container is empty; a container that already has contents opens its card.
 
 **Containers that move around:** some containers always stand in the same place, others (for example vacuum boxes) are in the fridge one day and in the 0 °C drawer the next. Switch on **Flexible storage place** on the card of such a container. The fill dialog then also asks for the **area** (administrators), so the estimate uses the right place, and **Empty container** puts the container back into the area chosen under **After emptying, back to** (for example the pantry where the empty boxes are kept). Containers without the switch keep their area and the fill dialog does not ask.
 
@@ -390,7 +402,17 @@ The calendar must be able to create **and** delete events. Read-only calendars (
 
 ## Scanning
 
-There are three ways to get from a container to its entry in the dashboard. They can be mixed freely. For an inventory, the [serial scan](#selecting-several-containers) selects many containers in a row.
+There are four ways to get from a container to its entry in the dashboard. They can be mixed freely. For an inventory, the [serial scan](#selecting-several-containers) selects many containers in a row.
+
+### Scanning in the app
+
+In the Home Assistant app (**iOS and Android**) the dashboard has a **📷** button: on the start page (**📷 Scan container**) and next to **＋** on the containers, areas and categories pages. It opens the app's own QR scanner and reads **both kinds of codes**, your own and the original Zwilling codes:
+
+- **Known container:** its card opens; an empty container opens the fill dialog right away. The event `larder_dose_scanned` fires as with any other scan.
+- **Zwilling code that has not been added yet** (administrators): the dialog **Add container** opens with the code already filled in.
+- **Anything else:** the scanner says "Not a Larder code" and stays open for the next try.
+
+The button only appears in the app on a device with a camera, not in a desktop browser. Outside the app, use the camera app for your own codes and the [iOS Shortcut](#ios-shortcut-for-the-original-zwilling-codes) for Zwilling codes.
 
 ### Your own QR codes
 
@@ -419,7 +441,9 @@ For your own automations a linked scan fires the event `larder_dose_scanned` (`c
 
 ### iOS Shortcut for the original Zwilling codes
 
-This way is meant for the **printed Zwilling QR codes**. For codes you created yourself you do not need it, just scan them with the camera app.
+This way is meant for the **printed Zwilling QR codes** when you want to scan them **without opening the Home Assistant app first** (e.g. from the Home Screen or the Action button). Inside the app, [📷](#scanning-in-the-app) does the same without any setup. For codes you created yourself you do not need it, just scan them with the camera app.
+
+On **Android** there is no built-in equivalent; use [📷 in the app](#scanning-in-the-app).
 
 The QR code contains a link with the scheme `zwilling://`, which belongs to the discontinued Zwilling app. The **camera app is not suitable** for it: it wants to open the link in the Zwilling app and does not give you the text to copy. The Shortcut only reads out the text and does not open the link.
 
