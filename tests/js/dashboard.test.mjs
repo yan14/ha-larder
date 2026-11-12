@@ -318,6 +318,102 @@ test("Hinzufügen öffnet den Dialog des normalen Dashboards", async () => {
   assert.equal($(el, "#settings").hidden, false);
 });
 
+test("Bereiche verwalten: anlegen mit Lagerart, leere Lagerorte, bearbeiten", async () => {
+  const hass = makeHass(DOSES);
+  hass.areas = {
+    kitchen: { area_id: "kitchen", name: "Küche", labels: ["larder_fridge", "other"] },
+    cellar: { area_id: "cellar", name: "Keller", labels: [] },
+    garage: { area_id: "garage", name: "Garage", labels: [] },
+    freezer: { area_id: "freezer", name: "Gefriertruhe", labels: ["larder_freezer"] },
+  };
+  const LABELS = [
+    { label_id: "larder_fridge", name: "Larder: Fridge" },
+    { label_id: "larder_freezer", name: "Larder: Freezer" },
+    { label_id: "other", name: "Sonstiges" },
+  ];
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === "config/label_registry/list") return LABELS;
+    if (msg.type === "config/label_registry/create") {
+      hass.wsCalls.push(msg);
+      LABELS.push({ label_id: "larder_0c", name: msg.name });
+      return { label_id: "larder_0c", name: msg.name };
+    }
+    if (msg.type.startsWith("config/area_registry/")) {
+      hass.wsCalls.push(msg);
+      return { area_id: msg.area_id || "new" };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await el._classic.loadAreaLabel();
+  await go(el, "areas");
+  // leerer Lagerort mit Larder-Label erscheint, Garage (ohne Label) nicht
+  assert.deepEqual(names(el), ["Gefriertruhe", "Keller", "Küche", "Ohne Bereich"]);
+
+  // anlegen: erstes Larder-Label ist vorgeschlagen, neues Label möglich
+  $(el, '[data-role="area-add"]').click();
+  await flush();
+  const form = $(el, "form.dialog");
+  assert.equal($(el, ".overlay").hidden, false);
+  assert.equal(form.querySelector('[data-f="kind"]').value, "larder_fridge");
+  form.querySelector('[data-f="name"]').value = "0-Grad-Fach";
+  const kind = form.querySelector('[data-f="kind"]');
+  kind.value = "__new";
+  kind.dispatchEvent(new Event("change"));
+  assert.equal(form.querySelector('[data-w="newkind"]').hidden, false);
+  form.querySelector('[data-f="newkind"]').value = "0 °C";
+  form.querySelector("button.submit").click();
+  await flush();
+  await flush();
+  assert.deepEqual(hass.wsCalls.filter((m) => m.type.startsWith("config/")).map((m) => [m.type, m.name, m.labels]), [
+    ["config/label_registry/create", "Larder: 0 °C", undefined],
+    ["config/area_registry/create", "0-Grad-Fach", ["larder_0c"]],
+  ]);
+  assert.equal($(el, ".overlay").hidden, true);
+
+  // bearbeiten: alle Bereiche, Lagerart als Untertitel, fremde Labels bleiben
+  $(el, '[data-role="area-edit"]').click();
+  await flush();
+  await flush();
+  assert.deepEqual(names(el), ["Garage", "Gefriertruhe", "Keller", "Küche"]);
+  const kueche = $$(el, "main [data-area]").find((n) => n.dataset.area === "kitchen");
+  assert.match(kueche.textContent, /Fridge/);
+  kueche.click();
+  await flush();
+  assert.equal(form.querySelector('[data-f="kind"]').value, "larder_fridge");
+  assert.ok(form.querySelector('[data-role="area-open-ha"]'));
+  form.querySelector('[data-f="name"]').value = "Kühlschrank";
+  form.querySelector('[data-f="kind"]').value = "larder_freezer";
+  form.querySelector("button.submit").click();
+  await flush();
+  await flush();
+  const update = hass.wsCalls.find((m) => m.type === "config/area_registry/update");
+  assert.deepEqual(update, { type: "config/area_registry/update", area_id: "kitchen", name: "Kühlschrank", labels: ["other", "larder_freezer"] });
+
+  // leerer Name wird abgelehnt
+  $$(el, "main [data-area]").find((n) => n.dataset.area === "garage").click();
+  await flush();
+  form.querySelector('[data-f="name"]').value = " ";
+  form.querySelector("button.submit").click();
+  await flush();
+  assert.equal(form.querySelector(".error").textContent, "Bitte einen Namen eingeben.");
+  $(el, ".overlay").click();
+
+  // Fertig beendet den Bearbeiten-Modus, Nicht-Admins sehen weder ＋ noch ✏️
+  $(el, '[data-role="area-edit"]').click();
+  await flush();
+  assert.ok($(el, '[data-role="area-edit"]').textContent.includes("✏️"));
+});
+
+test("Bereiche verwalten: nur für Administratoren", async () => {
+  const el = mount(makeHass(DOSES, { admin: false }));
+  await go(el, "areas");
+  assert.equal($(el, '[data-role="area-add"]'), null);
+  assert.equal($(el, '[data-role="area-edit"]'), null);
+});
+
 test("Bereiche: Kacheln mit Anzahl, Antippen filtert die Behälter", async () => {
   const el = mount(makeHass(DOSES));
   await go(el, "areas");

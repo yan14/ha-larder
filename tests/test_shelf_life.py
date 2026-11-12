@@ -427,11 +427,11 @@ def test_build_summary_in_both_languages() -> None:
     ]
     de = build_summary(items, "de")
     assert de.splitlines()[0] == "1 abgelaufen, 2 laufen bald ab:"
-    assert "• Pizza (Kühlschrank): seit 2 Tagen abgelaufen" in de
+    assert "• Pizza (Dose A, Kühlschrank): seit 2 Tagen abgelaufen, sollte geleert werden" in de
     assert "• Dose B: heute" in de and "• Suppe (Keller): morgen" in de
     en = build_summary(items, "en-GB")
     assert en.splitlines()[0] == "1 expired, 2 expiring soon:"
-    assert "expired 2 days ago" in en and "tomorrow" in en
+    assert "• Pizza (Dose A, Kühlschrank): expired 2 days ago, should be emptied" in en and "tomorrow" in en
     assert build_summary([], "de") == "Nichts läuft bald ab."
 
 

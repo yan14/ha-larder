@@ -3,6 +3,12 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 2.3.0
+
+- **Daily summary:** expired containers are named with their container and the note *should be emptied*, in the push ("Pizza (Box 3, Fridge): expired 2 days ago, should be emptied") and in the voice output ("Pizza in Box 3 has expired and should be emptied."). Replaces the planned "remind again tomorrow".
+- **Manage areas in the dashboard** (administrators): on the **Areas** page **＋** adds an area and **✏️** switches to editing, where you rename areas and set their storage kind (`Larder: …` label, other labels are kept). **New label …** creates a `Larder: …` label right away. Areas with a Larder label are listed even without containers.
+- **Repairs:** hints under Settings → System → Repairs for containers without an area, filled containers without a best-before date and containers expired more than 7 days ago. They disappear by themselves; new setting **Repair hints** (on by default) to switch them off.
+
 ## 2.2.0
 
 - **📷 Scan container** in the dashboard (Home Assistant app on iOS and **Android**): opens the app's QR scanner for a single scan. Your own codes and the original Zwilling codes both work: a known container opens (an empty one with the fill dialog), a Zwilling code that has not been added yet opens **Add container** with the code filled in. The button is on the start page and next to **＋**. Android users can now use the Zwilling codes without the iOS Shortcut, which stays available.

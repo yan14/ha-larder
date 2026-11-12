@@ -48,6 +48,7 @@ CONF_CALENDAR_ENTITY = "calendar_entity"
 CONF_NFC_NOTIFY = "nfc_notify"
 CONF_EXPERIMENTAL = "experimental_panel"  # zweites Panel "Larder experimental" in der Seitenleiste
 CONF_TODO_ENTITY = "todo_entity"  # To-do-Liste für "Beim Leeren auf die Einkaufsliste"
+CONF_REPAIR_HINTS = "repair_hints"  # Reparaturhinweise für Dosen ohne Bereich, ohne MHD, lange abgelaufen
 CONF_VACUUM_DEFAULT = "vacuum_default"  # Vorbelegung des Schalters "Vakuum" bei neuen Dosen
 EVENT_DOSE_SCANNED = f"{DOMAIN}_dose_scanned"  # verknüpfter NFC-Tag wurde gescannt
 CONF_RECIPE_DAYS = "recipe_days"  # Zeitraum für Rezeptideen: Dosen, die in so vielen Tagen ablaufen

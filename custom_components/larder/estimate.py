@@ -36,6 +36,7 @@ from .const import (
     CONF_CALENDAR_ENTITY,
     CONF_ESTIMATE_MODE,
     CONF_NFC_NOTIFY,
+    CONF_REPAIR_HINTS,
     CONF_SOON_DAYS,
     MAX_SOON_DAYS,
     SOON_DAYS,
@@ -262,6 +263,7 @@ SETTINGS: dict[str, tuple[str, Any, Any]] = {
     CONF_TODO_ENTITY: ("todo_entity", None, _entity),
     CONF_EXPERIMENTAL: ("experimental", False, _flag),
     CONF_NFC_NOTIFY: ("nfc_notify", True, _flag),
+    CONF_REPAIR_HINTS: ("repair_hints", True, _flag),
     CONF_VACUUM_DEFAULT: ("vacuum_default", True, _flag),
     CONF_AI_TASK_ENTITY: ("ai_task_entity", None, _entity),
 }

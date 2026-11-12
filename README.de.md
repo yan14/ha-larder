@@ -34,7 +34,7 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 - [Warum dieses Projekt?](#warum-dieses-projekt)
 - [Installation](#installation) · [Erste Schritte](#erste-schritte) · [Dose anlegen](#dose-anlegen) · [Bereiche und Labels](#bereiche-und-labels) · [Einstellungen](#einstellungen)
 - [Dashboard „Larder“](#dashboard-larder) · [Mehrere Dosen auswählen](#mehrere-dosen-auswählen) · [Dosen befüllen](#dosen-befüllen) · [Larder experimental](#larder-experimental)
-- [MHD-Schätzung](#mhd-schätzung) · [Rezepte](#rezepte) · [Tägliche Zusammenfassung](#tägliche-zusammenfassung) · [Einkaufsliste](#einkaufsliste) · [Kalender](#mhd-im-kalender)
+- [MHD-Schätzung](#mhd-schätzung) · [Rezepte](#rezepte) · [Tägliche Zusammenfassung](#tägliche-zusammenfassung) · [Einkaufsliste](#einkaufsliste) · [Kalender](#mhd-im-kalender) · [Reparaturhinweise](#reparaturhinweise)
 - [Scannen](#scannen): [in der App](#scannen-in-der-app), [eigene QR-Codes](#eigene-qr-codes), [NFC-Tags](#nfc-tags), [Zwilling-Codes (iOS-Kurzbefehl)](#ios-kurzbefehl-für-die-originalen-zwilling-codes)
 - [Referenz](#referenz): [Entitäten](#entitäten), [Dienste und Ereignisse](#dienste-und-ereignisse), [Webhook](#webhook-schnittstelle)
 - [Alternativen](#alternativen) · [Entwicklung](#entwicklung)
@@ -122,6 +122,8 @@ Home Assistant bietet im Dialog keine Kamera zum Scannen. Einfacher: die erste D
 
 Jede Dose gehört zu einem **Bereich** von Home Assistant (dem Bereich ihres Geräts). Der Bereich sagt der Schätzung, wo das Essen lagert, und gruppiert das Dashboard. Ändern kannst du ihn direkt auf der Karte der Dose im Dashboard.
 
+**Bereiche im Dashboard verwalten** (Administratoren): auf der Seite **Bereiche** legt **＋** einen neuen Bereich an, **✏️** schaltet ins Bearbeiten. Dann stehen dort alle Bereiche von Home Assistant; antippen, um einen umzubenennen oder seine **Lagerart** zu ändern, also sein Label `Larder: …` (andere Labels des Bereichs bleiben). **Neues Label …** legt gleich ein Label `Larder: <Name>` an; die Grenzen aus der Vorlage unten trägst du in Home Assistant in seine Beschreibung ein. **In Home Assistant öffnen** führt zur Seite des Bereichs (Bild, Etage, Löschen). Bereiche mit Larder-Label erscheinen auch, solange noch keine Dose darin steht.
+
 **Welche Bereiche das Dashboard anbietet.** Bei vielen Bereichen wird die Auswahl lang. Gib den Bereichen, die du für Vorräte nutzt, eine **Beschriftung** (ein Label), deren Name `Larder` ist oder mit `Larder:` beginnt (Einstellungen → Bereiche, Beschriftungen & Zonen → Bereich öffnen → Beschriftungen). Das Dashboard bietet dann nur diese Bereiche an, im Auswahlfeld und im Hinzufügen-Dialog. Der aktuelle Bereich einer Dose bleibt immer in ihrer Liste. Hat kein Bereich ein solches Label, werden alle Bereiche gezeigt.
 
 **Empfohlen:** ein Label pro Art von Lagerort, benannt `Larder: Freezer`, `Larder: Fridge`, `Larder: 0 °C`, `Larder: Pantry` …, mit der Vorlage unten in der Beschreibung. Ein Label pro Bereich reicht. In ein einfaches Label `Larder` gehören keine Grenzen: Das teilen sich alle Vorrats-Bereiche.
@@ -162,6 +164,7 @@ Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** (bei ei
 | „Läuft bald ab“ ab | 3 Tage | Ab wann eine Dose als „läuft bald ab“ gilt: Hinweis und Filter in den Dashboards, `status` des Sensors, Vorgabe von `larder.get_expiring` |
 | Vakuum-Vorbelegung | an | Vorbelegung des Schalters **Vakuum** bei neuen Dosen |
 | NFC: Handy benachrichtigen | an | Benachrichtigung auf dem scannenden Handy nach einem [NFC-Scan](#nfc-tags) |
+| Reparaturhinweise | an | Hinweise unter Einstellungen → System → Reparaturen, siehe [Reparaturhinweise](#reparaturhinweise) |
 | Kalender | keiner | [MHD im Kalender](#mhd-im-kalender) |
 | Einkaufsliste | keine | [Einkaufsliste](#einkaufsliste) für geleerte Dosen |
 | Larder experimental | aus | Zweiter Eintrag in der Seitenleiste zum Ausprobieren neuer Funktionen, siehe [Larder experimental](#larder-experimental) |
@@ -180,7 +183,7 @@ Eine Leiste unten wechselt zwischen fünf Seiten:
   - Der Knopf rechts wechselt zwischen **Kacheln**, **Liste** und **Karten mit allen Details**. Die Wahl merkt sich das Gerät.
   - Eine gefüllte Dose öffnet beim Antippen ihre Karte, eine leere lässt sich gleich befüllen (siehe [Dosen befüllen](#dosen-befüllen)).
   - **📷** scannt eine Dose (nur in der Home Assistant App, siehe [Scannen in der App](#scannen-in-der-app)), **＋** legt eine an (siehe [Im Dashboard](#im-dashboard-empfohlen)), **☑** startet die [Auswahl](#mehrere-dosen-auswählen).
-- **Bereiche**: eine Kachel pro Bereich mit der Anzahl der Dosen und wie viele bald ablaufen; Antippen zeigt seine Dosen.
+- **Bereiche**: eine Kachel pro Bereich mit der Anzahl der Dosen und wie viele bald ablaufen; Antippen zeigt seine Dosen. Administratoren legen mit **＋** Bereiche an und benennen sie mit **✏️** um oder ändern ihre Lagerart (siehe [Bereiche und Labels](#bereiche-und-labels)).
 - **Kategorien**: dasselbe für Arten von Lebensmitteln (Fisch, Fleisch, Milchprodukte, Gerichte und Reste, Trockenware, …). Die Kategorie stammt aus der eingebauten Haltbarkeitstabelle und ist das Attribut `category` der Entität **Inhalt**. Dosen ohne Treffer stehen unter „Sonstiges“, leere unter „Leer“.
 - **Rezepte**: dein [Rezeptbuch](#rezeptbuch) mit [Rezeptideen](#rezeptideen) und Rezepten, die die KI von einem Foto liest.
 
@@ -352,7 +355,7 @@ Die Seite **Rezepte** ist dein eigenes Rezeptbuch (liegt in Home Assistant unter
 
 ## Tägliche Zusammenfassung
 
-Das mitgelieferte Blueprint schickt eine **tägliche Zusammenfassung** dessen, was bald abläuft. Läuft nichts ab, kommt nichts.
+Das mitgelieferte Blueprint schickt eine **tägliche Zusammenfassung** dessen, was bald abläuft. Läuft nichts ab, kommt nichts. Abgelaufene Dosen werden mit ihrem Dosennamen und dem Hinweis **sollte geleert werden** genannt, damit du weißt, welche du ausräumen musst.
 
 [![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fexpiry_notification.yaml)
 
@@ -360,7 +363,7 @@ Das mitgelieferte Blueprint schickt eine **tägliche Zusammenfassung** dessen, w
 |---|---|
 | **Push notification** | Eine oder mehrere notify-Aktionen, durch Komma getrennt (`notify.mobile_app_dein_iphone, notify.mobile_app_partner`), oder eine notify-Gruppe. Leer lassen für nur Sprache. |
 | **Buttons in the push** | **Rezepte** öffnet die Rezeptseite des Dashboards (oder von [Larder experimental](#larder-experimental), wenn du das wählst), **Dashboard** öffnet Larder. Antippen der Benachrichtigung selbst öffnet ebenfalls das Dashboard. |
-| **Voice output** | notify-Aktionen, die die Zusammenfassung vorlesen, z. B. `notify.alexa_media_kueche` (Alexa Media Player) oder eine Gruppe von Lautsprechern. Der Sprechtext ist zum Zuhören gemacht: „Heute läuft Lachs ab. Morgen läuft Gouda ab. Abgelaufen ist Pizza.“ (höchstens sechs Dosen, der Rest wird gezählt). Mit Rezeptideen kommt „Idee: …“ dazu. |
+| **Voice output** | notify-Aktionen, die die Zusammenfassung vorlesen, z. B. `notify.alexa_media_kueche` (Alexa Media Player) oder eine Gruppe von Lautsprechern. Der Sprechtext ist zum Zuhören gemacht: „Heute läuft Lachs ab. Morgen läuft Gouda ab. Pizza in Dose 3 ist abgelaufen und sollte geleert werden.“ (höchstens sechs Dosen, der Rest wird gezählt). Mit Rezeptideen kommt „Idee: …“ dazu. |
 | **Voice options** | Zusatzdaten für die Sprachausgabe. Alexa Media Player braucht den Typ, z. B. `type: announce` (mit Gong) oder `type: tts`. |
 | **Speak only when someone is home** | Personen, Gruppen oder Zonen; ist niemand zu Hause, entfällt die Sprachausgabe. Der Push kommt immer. |
 | **Time** und **Motion sensors** | Ohne Bewegungsmelder kommt die Zusammenfassung zur Uhrzeit. Mit Bewegungsmeldern (z. B. Küche) kommt sie bei der **ersten Bewegung nach dieser Uhrzeit**, einmal am Tag, und spätestens zur **Latest time**, falls niemand vorbeikam. |
@@ -399,6 +402,18 @@ Unter Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** k
 **Aufräumen.** Bei jedem Start und beim Speichern der Einstellungen prüft Larder den ganzen Kalender, behält pro Dose genau einen Termin und entfernt Doppelte. Der Dienst `larder.rebuild_calendar` macht das auf Knopfdruck und entfernt zusätzlich Termine von Dosen, die es nicht mehr gibt. Mit `include_unmarked: true` werden außerdem Termine „MHD: …“ / „Best before: …“ ohne Larder-Kennung entfernt (für Kalender, die die Beschreibung verwerfen) und neu angelegt.
 
 Der Kalender muss Termine anlegen **und** löschen können. Reine Lese-Kalender (z. B. ein iCal-Link) gehen nicht und werden beim Speichern der Einstellungen abgelehnt; die Integration *Lokaler Kalender* ist eine gute Wahl, wenn du keinen anderen hast. **CalDAV** (iCloud, Nextcloud …) funktioniert: Der CalDAV-Kalender von Home Assistant kann von sich aus nur Termine anlegen, deshalb liest und löscht Larder seine eigenen Termine direkt über die CalDAV-Verbindung.
+
+## Reparaturhinweise
+
+Larder zeigt unter **Einstellungen → System → Reparaturen** Hinweise, wenn Dosen Aufmerksamkeit brauchen. Es gibt einen Hinweis pro Art (mit bis zu zehn Dosen), nicht einen pro Dose:
+
+| Hinweis | Wann |
+|---|---|
+| **Dosen ohne Bereich** | Eine Dose hat keinen Bereich, die Schätzung weiß also nicht, wo das Essen lagert. |
+| **Gefüllte Dosen ohne MHD** | Eine Dose hat einen Inhalt, aber kein MHD. Sie taucht dann weder in der täglichen Zusammenfassung noch im Kalender auf. |
+| **Dosen seit über 7 Tagen abgelaufen** | Zeit, sie zu leeren. |
+
+Ein Hinweis verschwindet von selbst, sobald keine Dose mehr betroffen ist (geprüft bei jeder Änderung und einmal täglich). In den [Einstellungen](#einstellungen) lassen sich die Hinweise abschalten („Reparaturhinweise“).
 
 ## Scannen
 

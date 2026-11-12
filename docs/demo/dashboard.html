@@ -30,6 +30,12 @@ const de = lang === "de";
 const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n);
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
 
+const demoLabels = [
+  { label_id: "larder_fridge", name: "Larder: Fridge" },
+  { label_id: "larder_freezer", name: "Larder: Freezer" },
+  { label_id: "larder_pantry", name: "Larder: Pantry" },
+];
+const areaLabels = { kitchen: ["larder_fridge"], freezer: ["larder_freezer"], pantry: ["larder_pantry"], cellar: ["larder_pantry"] };
 const areas = de ? { kitchen: "Küche", cellar: "Keller", pantry: "Vorratskammer", freezer: "Gefrierschrank" }
                  : { kitchen: "Kitchen", cellar: "Basement", pantry: "Pantry", freezer: "Freezer" };
 // [Name, Bereich, Inhalt, Tage, Kategorie]
@@ -92,7 +98,7 @@ const suggestions = de ? [
 ];
 const hass = {
   entities, devices, states, language: lang, user: { is_admin: true, name: "Yan" },
-  areas: Object.fromEntries(Object.entries(areas).map(([k, v]) => [k, { area_id: k, name: v }])),
+  areas: Object.fromEntries(Object.entries(areas).map(([k, v]) => [k, { area_id: k, name: v, labels: areaLabels[k] || [] }])),
   services: { ai_task: { generate_data: {} }, larder: { suggest_recipes: {} } },
   auth: { external: { config: { canWriteTag: false }, fireMessage() {} } },
   hassUrl: (p) => p, callService() {}, callApi: async () => ({}),
@@ -100,6 +106,7 @@ const hass = {
     ? { title: "Omas Apfelkuchen", minutes: 75, ingredients: ["Portionen: 12", "500 g Äpfel", "200 g Mehl", "100 g Zucker"], steps: ["Teig kneten.", "Äpfel schneiden.", "45 Minuten backen."], source: "photo" }
     : { title: "Grandma's apple pie", minutes: 75, ingredients: ["Servings: 12", "500 g apples", "200 g flour", "100 g sugar"], steps: ["Knead the dough.", "Slice the apples.", "Bake for 45 minutes."], source: "photo" } }) }),
   callWS: async (msg) => {
+    if (msg.type === "config/label_registry/list") return demoLabels;
     if (msg.type === "larder/recipes") return { recipes };
     if (msg.type === "larder/settings") return { recipe_days: 3, soon_days: 3, main_panel: "experimental" };
     if (msg.type === "larder/estimates") return { mode: "table", entries: de ? [

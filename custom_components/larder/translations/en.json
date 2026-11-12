@@ -183,6 +183,7 @@
           "calendar_entity": "Calendar for best-before dates (optional)",
           "vacuum_default": "Vacuum preset for new containers",
           "nfc_notify": "NFC: notify the phone",
+          "repair_hints": "Repair hints",
           "todo_entity": "Shopping list for emptied containers (optional)",
           "experimental_panel": "Show “Larder experimental” in the sidebar",
           "recipe_days": "Period for recipe ideas (days)",
@@ -196,6 +197,7 @@
           "thawed_days": "The “Thawed” button on the dashboard shortens the best-before date to at most this many days from today. Do not refreeze thawed food.",
           "calendar_entity": "Writes each container's best-before date to this calendar as an all-day event (create, move, delete). The calendar must support creating and deleting events, e.g. Google, CalDAV or “Local Calendar”. Leave empty = off.",
           "nfc_notify": "When someone scans a linked tag, their phone (Companion app) gets a notification. Tapping it opens the container in the dashboard.",
+          "repair_hints": "Shows hints under Settings → System → Repairs for containers without an area, filled containers without a best-before date and containers that expired at least 7 days ago.",
           "todo_entity": "A to-do list of Home Assistant (e.g. “Shopping list”, Todoist, Bring!). When a container is emptied and its “Shopping list” switch is on, its contents are added to this list (not twice). Leave empty = off.",
           "experimental_panel": "Second sidebar entry for trying new features before they reach the normal dashboard. At the moment it is the same as the normal Larder dashboard.",
           "recipe_days": "Recipe ideas \"from leftovers\" use containers that expire within this many days (0 = today only). In the dashboard you can change the period for a single request or turn it off.",
@@ -309,6 +311,20 @@
         "table_ai": "Table, otherwise AI",
         "ai": "AI only"
       }
+    }
+  },
+  "issues": {
+    "containers_without_area": {
+      "title": "Larder: containers without an area",
+      "description": "These containers have no area. Without one, the best-before estimate does not know where the food is stored (fridge, freezer …):\n\n{containers}\n\nAssign an area on the container's card in the Larder dashboard. The hint then disappears by itself."
+    },
+    "filled_without_best_before": {
+      "title": "Larder: filled containers without a best-before date",
+      "description": "These containers have contents but no best-before date, so they appear neither in the daily summary nor in the calendar:\n\n{containers}\n\nEnter a date in the Larder dashboard or use “Estimate best before”. The hint then disappears by itself."
+    },
+    "long_expired": {
+      "title": "Larder: containers expired more than {days} days ago",
+      "description": "These containers expired at least {days} days ago and should be emptied:\n\n{containers}\n\nEmpty them in the Larder dashboard (or set a new best-before date if the food is still good). The hint then disappears by itself."
     }
   }
 }

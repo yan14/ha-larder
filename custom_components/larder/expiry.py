@@ -56,6 +56,7 @@ _TEXT = {
             if part
         ),
         "expired": lambda d: "abgelaufen" if d == -1 else f"seit {-d} Tagen abgelaufen",
+        "empty_it": "sollte geleert werden",
         "today": "heute",
         "tomorrow": "morgen",
         "in_days": lambda d: f"in {d} Tagen",
@@ -80,6 +81,7 @@ _TEXT = {
             if part
         ),
         "expired": lambda d: "expired yesterday" if d == -1 else f"expired {-d} days ago",
+        "empty_it": "should be emptied",
         "today": "today",
         "tomorrow": "tomorrow",
         "in_days": lambda d: f"in {d} days",
@@ -120,11 +122,19 @@ def build_summary(items: list[dict[str, Any]], language: str) -> str:
     lines = [text["head"](soon, expired) + ":"]
     for item in items:
         label = item["content"] or item["name"] or text["unnamed"]
-        extras = [quantity_text(text, item)] if item.get("quantity") else []
+        expired_item = item["days_left"] is not None and item["days_left"] < 0
+        extras = []
+        if expired_item and item["content"] and item["name"]:
+            extras.append(item["name"])  # welche Dose geleert werden muss
+        if item.get("quantity"):
+            extras.append(quantity_text(text, item))
         if item["area"]:
             extras.append(item["area"])
         place = f" ({', '.join(extras)})" if extras else ""
-        lines.append(f"• {label}{place}: {_when(text, item['days_left'])}")
+        when = _when(text, item["days_left"])
+        if expired_item:
+            when = f"{when}, {text['empty_it']}"
+        lines.append(f"• {label}{place}: {when}")
     return "\n".join(lines)
 
 
@@ -138,7 +148,12 @@ _SPEECH = {
         "today": lambda names, n: f"Heute {'läuft' if n == 1 else 'laufen'} {names} ab.",
         "tomorrow": lambda names, n: f"Morgen {'läuft' if n == 1 else 'laufen'} {names} ab.",
         "in_days": lambda d, names, n: f"In {d} Tagen {'läuft' if n == 1 else 'laufen'} {names} ab.",
-        "expired": lambda names, n: f"{'Abgelaufen ist' if n == 1 else 'Abgelaufen sind'} {names}.",
+        "expired": lambda names, n: (
+            f"{names} ist abgelaufen und sollte geleert werden."
+            if n == 1
+            else f"{names} sind abgelaufen und sollten geleert werden."
+        ),
+        "in": "in",
     },
     "en": {
         "none": "Nothing expires soon.",
@@ -147,7 +162,8 @@ _SPEECH = {
         "today": lambda names, n: f"{names} {'expires' if n == 1 else 'expire'} today.",
         "tomorrow": lambda names, n: f"{names} {'expires' if n == 1 else 'expire'} tomorrow.",
         "in_days": lambda d, names, n: f"{names} {'expires' if n == 1 else 'expire'} in {d} days.",
-        "expired": lambda names, n: f"{names} {'has' if n == 1 else 'have'} expired.",
+        "expired": lambda names, n: f"{names} {'has' if n == 1 else 'have'} expired and should be emptied.",
+        "in": "in",
     },
 }
 
@@ -179,7 +195,9 @@ def build_speech(items: list[dict[str, Any]], language: str, limit: int = MAX_SP
         if item["days_left"] is None:
             continue
         if item["days_left"] < 0:
-            expired.append(name)
+            # beim Abgelaufenen auch die Dose nennen, damit man weiß, welche zu leeren ist
+            box = (item.get("name") or "").strip()
+            expired.append(f"{name} {text['in']} {box}" if item["content"] and box and box != name else name)
         else:
             groups.setdefault(item["days_left"], []).append(name)
     ordered = [(d, groups[d]) for d in sorted(groups)] + ([(-1, expired)] if expired else [])

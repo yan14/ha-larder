@@ -34,7 +34,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 - [Why this project?](#why-this-project)
 - [Installation](#installation) · [Getting started](#getting-started) · [Adding a container](#adding-a-container) · [Areas and labels](#areas-and-labels) · [Settings](#settings)
 - [Dashboard "Larder"](#dashboard-larder) · [Selecting several containers](#selecting-several-containers) · [Filling containers](#filling-containers) · [Larder experimental](#larder-experimental)
-- [Best-before estimate](#best-before-estimate) · [Recipes](#recipes) · [Daily summary](#daily-summary) · [Shopping list](#shopping-list) · [Calendar](#best-before-dates-in-your-calendar)
+- [Best-before estimate](#best-before-estimate) · [Recipes](#recipes) · [Daily summary](#daily-summary) · [Shopping list](#shopping-list) · [Calendar](#best-before-dates-in-your-calendar) · [Repairs](#repairs)
 - [Scanning](#scanning): [in the app](#scanning-in-the-app), [own QR codes](#your-own-qr-codes), [NFC tags](#nfc-tags), [Zwilling codes (iOS Shortcut)](#ios-shortcut-for-the-original-zwilling-codes)
 - [Reference](#reference): [entities](#entities), [services and events](#services-and-events), [webhook](#webhook-interface)
 - [Alternatives](#alternatives) · [Development](#development)
@@ -122,6 +122,8 @@ Home Assistant has no camera in this dialog. Easier: add the first container wit
 
 Every container belongs to an **area** of Home Assistant (the area of its device). The area tells the estimate where the food is stored and groups the dashboard. Change it right on the container's card in the dashboard.
 
+**Managing areas in the dashboard** (administrators): on the **Areas** page, **＋** adds a new area and **✏️** switches to editing. While editing, all areas of Home Assistant are listed; tap one to rename it or change its **storage kind**, which is its `Larder: …` label (other labels of the area are kept). **New label …** creates a label `Larder: <name>` right away; add the limits from the template below to its description in Home Assistant. **Open in Home Assistant** leads to the area's own page (picture, floor, deleting). Areas with a Larder label are listed even when they hold no container yet.
+
 **Which areas the dashboard offers.** With many areas the dropdown gets long. Give the areas you use for food storage a **label** whose name is `Larder` or starts with `Larder:` (Settings → Areas, labels & zones → open an area → Labels). The dashboard then offers only these areas, in the dropdown and in the add dialog. The current area of a container always stays in its list. If no area has such a label, all areas are shown.
 
 **Recommended:** one label per kind of storage place, named `Larder: Freezer`, `Larder: Fridge`, `Larder: 0 °C`, `Larder: Pantry` …, with the template below in its description. One label per area is enough. Do not put limits into a plain `Larder` label: it is shared by all your storage areas.
@@ -162,6 +164,7 @@ Settings → Devices & services → **Larder** → **Configure** (on any contain
 | "Expiring soon" from | 3 days | When a container counts as expiring soon: hint and filter in the dashboards, sensor `status`, default of `larder.get_expiring` |
 | Vacuum preset | on | Preset of the **Vacuum** switch for new containers |
 | NFC: notify the phone | on | Notification on the scanning phone after an [NFC scan](#nfc-tags) |
+| Repair hints | on | Hints under Settings → System → Repairs, see [Repairs](#repairs) |
 | Calendar | none | [Best-before dates in your calendar](#best-before-dates-in-your-calendar) |
 | Shopping list | none | [Shopping list](#shopping-list) for emptied containers |
 | Larder experimental | off | A second sidebar entry for trying new features, see [Larder experimental](#larder-experimental) |
@@ -180,7 +183,7 @@ A bar at the bottom switches between five pages:
   - The button on the right switches between **tiles**, a **list** and **cards with all details**. Your choice is remembered on the device.
   - Tap a filled container to open its card, tap an empty one to fill it right away (see [Filling containers](#filling-containers)).
   - **📷** scans a container (only in the Home Assistant app, see [Scanning in the app](#scanning-in-the-app)), **＋** adds one (see [From the dashboard](#from-the-dashboard-recommended)), **☑** starts the [selection](#selecting-several-containers).
-- **Areas**: one tile per area with the number of containers and how many expire soon; tapping shows its containers.
+- **Areas**: one tile per area with the number of containers and how many expire soon; tapping shows its containers. Administrators add areas with **＋** and rename them or set their storage kind with **✏️** (see [Areas and labels](#areas-and-labels)).
 - **Categories**: the same for kinds of food (fish, meat, dairy, dishes and leftovers, dry goods, …). The category comes from the built-in shelf-life table and is the attribute `category` of the **Contents** entity. Containers without a match are listed under "Other", empty ones under "Empty".
 - **Recipes**: your [recipe book](#recipe-book) with [recipe ideas](#recipe-ideas) and recipes read from a photo.
 
@@ -352,7 +355,7 @@ The **Recipes** page is your own recipe book (stored in Home Assistant, `.storag
 
 ## Daily summary
 
-The included blueprint sends a **daily summary** of what expires soon. Nothing is sent when nothing expires.
+The included blueprint sends a **daily summary** of what expires soon. Nothing is sent when nothing expires. Expired containers are named with their container and the note **should be emptied**, so you know which one to clear out.
 
 [![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fexpiry_notification.yaml)
 
@@ -360,7 +363,7 @@ The included blueprint sends a **daily summary** of what expires soon. Nothing i
 |---|---|
 | **Push notification** | One or more notify actions, separated by commas (`notify.mobile_app_your_iphone, notify.mobile_app_partner`), or a notify group. Empty for voice only. |
 | **Buttons in the push** | **Recipes** opens the recipe page of the dashboard (or of [Larder experimental](#larder-experimental), if you choose so), **Dashboard** opens Larder. Tapping the notification itself opens the dashboard as well. |
-| **Voice output** | Notify actions that read the summary out loud, for example `notify.alexa_media_kitchen` (Alexa Media Player) or a group of speakers. The spoken text is made for listening: "Salmon expires today. Gouda expires tomorrow. Pizza has expired." (at most six containers, the rest is counted). With recipe ideas it adds "Idea: …". |
+| **Voice output** | Notify actions that read the summary out loud, for example `notify.alexa_media_kitchen` (Alexa Media Player) or a group of speakers. The spoken text is made for listening: "Salmon expires today. Gouda expires tomorrow. Pizza in Box 3 has expired and should be emptied." (at most six containers, the rest is counted). With recipe ideas it adds "Idea: …". |
 | **Voice options** | Extra data for the voice action. Alexa Media Player needs the type, for example `type: announce` (with chime) or `type: tts`. |
 | **Speak only when someone is home** | Persons, groups or zones; the voice output is skipped when nobody is home. The push is always sent. |
 | **Time** and **motion sensors** | Without motion sensors the summary is sent at the time. With motion sensors (for example the kitchen) it is sent at the **first motion after that time**, once per day, and at the **latest time** at the latest if nobody came by. |
@@ -399,6 +402,18 @@ Under Settings → Devices & services → **Larder** → **Configure** you can p
 **Clean-up.** On every start and whenever you save the settings, Larder checks the whole calendar, keeps exactly one event per container and removes duplicates. The service `larder.rebuild_calendar` does the same on demand and also removes events of containers that no longer exist. With `include_unmarked: true` it additionally removes events titled "Best before: …" / "MHD: …" that carry no Larder tag (for calendars that drop the description) and creates them anew.
 
 The calendar must be able to create **and** delete events. Read-only calendars (for example an iCal link) cannot be used and are rejected when you save the settings; the *Local Calendar* integration is a good choice if you have no other one. **CalDAV** (iCloud, Nextcloud …) works: Home Assistant's CalDAV calendar can only create events by itself, so Larder reads and deletes its own events directly through the CalDAV connection.
+
+## Repairs
+
+Larder shows hints under **Settings → System → Repairs** when containers need attention. There is one hint per kind (listing up to ten containers), not one per container:
+
+| Hint | When |
+|---|---|
+| **Containers without an area** | A container has no area, so the estimate does not know where the food is stored. |
+| **Filled containers without a best-before date** | A container has contents but no date. It then appears neither in the daily summary nor in the calendar. |
+| **Containers expired more than 7 days ago** | Time to empty them. |
+
+A hint disappears by itself as soon as no container is affected any more (checked on every change and once a day). You can switch the hints off in the [settings](#settings) ("Repair hints").
 
 ## Scanning
 

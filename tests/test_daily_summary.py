@@ -161,8 +161,10 @@ async def test_nothing_expiring_sends_nothing(hass: HomeAssistant, blueprint, fr
 def test_speech_text() -> None:
     item = lambda content, days: {"content": content, "name": "Dose", "days_left": days}  # noqa: E731
     items = [item("Lachs", 0), item("Gouda", 1), item("Chili", 3), item("Reis", 3), item("Pizza", -2)]
-    assert build_speech(items, "de") == "Heute läuft Lachs ab. Morgen läuft Gouda ab. In 3 Tagen laufen Chili und Reis ab. Abgelaufen ist Pizza."
-    assert build_speech(items, "en") == "Lachs expires today. Gouda expires tomorrow. Chili and Reis expire in 3 days. Pizza has expired."
+    assert build_speech(items, "de") == "Heute läuft Lachs ab. Morgen läuft Gouda ab. In 3 Tagen laufen Chili und Reis ab. Pizza in Dose ist abgelaufen und sollte geleert werden."
+    assert build_speech(items, "en") == "Lachs expires today. Gouda expires tomorrow. Chili and Reis expire in 3 days. Pizza in Dose has expired and should be emptied."
     many = [item(f"X{i}", i % 2) for i in range(8)]
     assert build_speech(many, "de") == "Heute laufen X0, X2, X4 und X6 ab. Morgen laufen X1 und X3 ab. Dazu 2 weitere."
     assert build_speech([], "de") == "Nichts läuft bald ab."
+    two = [item("Pizza", -1), {"content": "", "name": "Dose 7", "days_left": -3}]
+    assert build_speech(two, "de") == "Pizza in Dose und Dose 7 sind abgelaufen und sollten geleert werden."

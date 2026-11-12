@@ -183,6 +183,7 @@
           "calendar_entity": "Kalender für das MHD (optional)",
           "vacuum_default": "Vakuum-Vorbelegung für neue Dosen",
           "nfc_notify": "NFC: Handy benachrichtigen",
+          "repair_hints": "Reparaturhinweise",
           "todo_entity": "Einkaufsliste für geleerte Dosen (optional)",
           "experimental_panel": "„Larder experimental“ in der Seitenleiste anzeigen",
           "recipe_days": "Zeitraum für Rezeptideen (Tage)",
@@ -196,6 +197,7 @@
           "thawed_days": "Der Button „Aufgetaut“ im Dashboard kürzt das MHD auf höchstens so viele Tage ab heute. Aufgetautes nicht wieder einfrieren.",
           "calendar_entity": "Schreibt das MHD jeder Dose als Ganztags-Termin in diesen Kalender (anlegen, verschieben, löschen). Der Kalender muss Termine anlegen und löschen können, z. B. Google, CalDAV oder „Lokaler Kalender“. Leer lassen = aus.",
           "nfc_notify": "Scannt jemand einen verknüpften Tag, bekommt sein Handy (Companion-App) eine Benachrichtigung. Antippen öffnet die Dose im Dashboard.",
+          "repair_hints": "Zeigt unter Einstellungen → System → Reparaturen Hinweise zu Dosen ohne Bereich, gefüllten Dosen ohne MHD und Dosen, die seit mindestens 7 Tagen abgelaufen sind.",
           "todo_entity": "Eine To-do-Liste von Home Assistant (z. B. „Einkaufsliste“, Todoist, Bring!). Wird eine Dose geleert und ihr Schalter „Einkaufsliste“ ist an, kommt der Inhalt auf diese Liste (nicht doppelt). Leer = aus.",
           "experimental_panel": "Zweiter Eintrag in der Seitenleiste zum Ausprobieren neuer Funktionen, bevor sie ins normale Dashboard kommen. Zurzeit entspricht er dem normalen Larder-Dashboard.",
           "recipe_days": "Rezeptideen „aus Resten“ berücksichtigen Dosen, die in so vielen Tagen ablaufen (0 = nur heute). Im Dashboard lässt sich der Zeitraum für einen einzelnen Aufruf ändern oder ganz abschalten.",
@@ -309,6 +311,20 @@
         "table_ai": "Tabelle, sonst KI",
         "ai": "Nur KI"
       }
+    }
+  },
+  "issues": {
+    "containers_without_area": {
+      "title": "Larder: Dosen ohne Bereich",
+      "description": "Diese Dosen haben keinen Bereich. Ohne Bereich weiß die MHD-Schätzung nicht, wo das Essen lagert (Kühlschrank, Gefrierschrank …):\n\n{containers}\n\nWeise im Larder-Dashboard auf der Karte der Dose einen Bereich zu. Der Hinweis verschwindet dann von selbst."
+    },
+    "filled_without_best_before": {
+      "title": "Larder: Gefüllte Dosen ohne MHD",
+      "description": "Diese Dosen haben einen Inhalt, aber kein MHD. Sie tauchen deshalb weder in der täglichen Zusammenfassung noch im Kalender auf:\n\n{containers}\n\nTrage im Larder-Dashboard ein MHD ein oder nutze „MHD schätzen“. Der Hinweis verschwindet dann von selbst."
+    },
+    "long_expired": {
+      "title": "Larder: Dosen seit über {days} Tagen abgelaufen",
+      "description": "Diese Dosen sind seit mindestens {days} Tagen abgelaufen und sollten geleert werden:\n\n{containers}\n\nLeere sie im Larder-Dashboard (oder trage ein neues MHD ein, falls es noch gut ist). Der Hinweis verschwindet dann von selbst."
     }
   }
 }

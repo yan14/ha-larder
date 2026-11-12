@@ -7,7 +7,7 @@
  * "Larder experimental" (larder-experimental.js) erbt von dieser Klasse und ist der Platz für neue Ideen.
  */
 // Mit derselben Versionsangabe laden wie dieses Modul, damit nie eine ältere Kopie aus dem Cache benutzt wird.
-const { collectDevices, daysUntil, soonDaysOf, SOON_DAYS } = await import(`./larder-panel.js${new URL(import.meta.url).search}`);
+const { collectDevices, daysUntil, isLarderLabel, soonDaysOf, SOON_DAYS } = await import(`./larder-panel.js${new URL(import.meta.url).search}`);
 
 const DOMAIN = "larder";
 const STORAGE_KEY = `${DOMAIN}.experimental`;
@@ -88,6 +88,20 @@ export const TEXTS = {
     recipesFailed: "Die Rezeptideen konnten nicht erstellt werden.",
     suggestions: "Vorschläge aus deinen Resten",
     save: "Speichern",
+    areaAdd: "Bereich anlegen",
+    areaEdit: "Bereiche bearbeiten",
+    areaEditDone: "Fertig",
+    areaEditHint: "Tippe auf einen Bereich, um ihn umzubenennen oder seine Lagerart zu ändern. Hier stehen alle Bereiche von Home Assistant.",
+    areaEditTitle: "Bereich bearbeiten",
+    areaName: "Name",
+    areaKind: "Lagerart (Label)",
+    areaKindNone: "kein Larder-Label",
+    areaKindNew: "Neues Label …",
+    areaKindNewName: "Name der Lagerart, z. B. Gefrierschrank",
+    areaKindHint: "Gibt es Larder-Labels, bieten die Auswahllisten nur Bereiche mit einem davon an. Grenzen wie die max. Lagerzeit stehen in der Beschreibung des Labels.",
+    areaOpenHa: "In Home Assistant öffnen",
+    areaNeedName: "Bitte einen Namen eingeben.",
+    areaSaveFailed: (msg) => `Speichern fehlgeschlagen: ${msg}`,
     saved: "Gespeichert",
     cancel: "Abbrechen",
     close: "Schließen",
@@ -215,6 +229,20 @@ export const TEXTS = {
     recipesFailed: "The recipe ideas could not be created.",
     suggestions: "Suggestions from your leftovers",
     save: "Save",
+    areaAdd: "Add area",
+    areaEdit: "Edit areas",
+    areaEditDone: "Done",
+    areaEditHint: "Tap an area to rename it or change its storage kind. All areas of Home Assistant are listed here.",
+    areaEditTitle: "Edit area",
+    areaName: "Name",
+    areaKind: "Storage kind (label)",
+    areaKindNone: "no Larder label",
+    areaKindNew: "New label …",
+    areaKindNewName: "Name of the storage kind, e.g. Freezer",
+    areaKindHint: "Once Larder labels exist, the dropdowns only offer areas with one of them. Limits like the max. storage time go into the label's description.",
+    areaOpenHa: "Open in Home Assistant",
+    areaNeedName: "Please enter a name.",
+    areaSaveFailed: (msg) => `Saving failed: ${msg}`,
     saved: "Saved",
     cancel: "Cancel",
     close: "Close",
@@ -538,6 +566,11 @@ const STYLE = `
   .dialog input, .dialog textarea { font: inherit; color: var(--primary-text-color); background: var(--card-background-color, #fff);
     border: 1px solid var(--divider-color); border-radius: 8px; padding: 8px 10px; box-sizing: border-box; color-scheme: light dark; }
   .dialog textarea { min-height: 96px; resize: vertical; }
+  .dialog select { font: inherit; color: var(--primary-text-color); background: var(--card-background-color, #fff);
+    border: 1px solid var(--divider-color); border-radius: 8px; padding: 8px 10px; }
+  .dialog .hint { margin: 0; font-size: 12px; color: var(--secondary-text-color); }
+  .dialog button.link { align-self: flex-start; font: inherit; font-size: 14px; background: none; border: 0; padding: 0;
+    color: var(--primary-color); cursor: pointer; }
   .dialog .buttons { display: flex; justify-content: flex-end; gap: 8px; }
   .dialog .buttons button { font: inherit; padding: 8px 16px; border-radius: 8px; cursor: pointer; background: none; border: 0; color: var(--primary-color); }
   .dialog .buttons button.submit { background: var(--primary-color); color: var(--text-primary-color, #fff); }
@@ -621,7 +654,7 @@ export class LarderDashboard extends HTMLElement {
     });
     this._form.addEventListener("submit", (ev) => {
       ev.preventDefault();
-      this._submitRecipe();
+      if (this._submit) this._submit();
     });
     this._overlay.addEventListener("click", (ev) => {
       if (ev.target === this._overlay) this._closeDialog();
@@ -761,6 +794,7 @@ export class LarderDashboard extends HTMLElement {
   setView(view, filter = null) {
     if (!ALL_VIEWS.includes(view)) return;
     if (view === "estimates" && !isAdmin(this._hass)) return;
+    if (view !== "areas") this._areaEdit = false;
     if (view !== "containers") {
       this.stopScan();
       this._selecting = false;
@@ -860,6 +894,8 @@ export class LarderDashboard extends HTMLElement {
       !!(this._scan && this._scan.external),
       this._scan && this._scan.mode,
       this._chosenFor,
+      this._areaEdit,
+      this._view === "areas" ? this._areaSig() : null,
     ]);
     if (sig === this._sig) return;
     this._sig = sig;
@@ -1498,6 +1534,17 @@ export class LarderDashboard extends HTMLElement {
     return tile;
   }
 
+  /** IDs der Larder-Labels, sobald die eingebettete Ansicht sie geladen hat (sonst null). */
+  _larderLabelIds() {
+    const ids = this._classic && this._classic.larderLabel;
+    return Array.isArray(ids) && ids.length ? ids : null;
+  }
+
+  _areaSig() {
+    const areas = Object.values((this._hass && this._hass.areas) || {}).map((a) => [a.area_id, a.name, a.labels || []]);
+    return [areas, this._larderLabelIds(), this._labelNames || null];
+  }
+
   _renderAreas(t, rows) {
     const groups = new Map();
     for (const row of rows) {
@@ -1507,6 +1554,17 @@ export class LarderDashboard extends HTMLElement {
       if (isSoon(row)) g.soon += 1;
       groups.set(key, g);
     }
+    // Lagerorte ohne Dosen zeigen: mit Larder-Label, beim Bearbeiten alle Bereiche von Home Assistant
+    const labelIds = this._larderLabelIds();
+    const admin = isAdmin(this._hass);
+    const editing = admin && this._areaEdit;
+    for (const area of Object.values(this._hass.areas || {})) {
+      const tagged = labelIds && (area.labels || []).some((l) => labelIds.includes(l));
+      if ((editing || tagged) && !groups.has(area.area_id)) {
+        groups.set(area.area_id, { key: area.area_id, name: area.name, count: 0, soon: 0 });
+      }
+    }
+    if (editing) groups.delete("");
     const lang = this._lang();
     const list = [...groups.values()];
     const byName = (a, b) => a.name.localeCompare(b.name, lang, { numeric: true, sensitivity: "base" });
@@ -1529,28 +1587,57 @@ export class LarderDashboard extends HTMLElement {
       ),
       el("span", "grow"),
     );
-    const one = this._scanOneButton(t);
-    if (one) bar.append(one);
-    const add = this._addButton(t);
-    if (add) bar.append(add);
+    if (editing) {
+      const done = el("button", "on", `✓ ${t.areaEditDone}`);
+      done.type = "button";
+      done.dataset.role = "area-edit";
+      done.addEventListener("click", () => this.setAreaEdit(false));
+      bar.append(done);
+    } else {
+      const one = this._scanOneButton(t);
+      if (one) bar.append(one);
+    }
+    if (admin) {
+      const add = el("button", "icon", "＋");
+      add.type = "button";
+      add.dataset.role = "area-add";
+      add.setAttribute("aria-label", t.areaAdd);
+      add.title = t.areaAdd;
+      add.addEventListener("click", () => this.openAreaDialog());
+      bar.append(add);
+      if (!editing) {
+        const edit = el("button", "icon", "✏️");
+        edit.type = "button";
+        edit.dataset.role = "area-edit";
+        edit.setAttribute("aria-label", t.areaEdit);
+        edit.title = t.areaEdit;
+        edit.addEventListener("click", () => this.setAreaEdit(true));
+        bar.append(edit);
+      }
+    }
     bar.append(this._modeButton(t));
     const frag = document.createDocumentFragment();
     frag.append(bar);
+    if (editing) frag.append(el("p", "note", t.areaEditHint));
     if (!list.length) {
       frag.append(el("p", "note", t.noneYet));
     } else {
       const box = el("div", this._opts.mode === "grid" ? "tiles" : "list");
       for (const g of list) {
-        const open = () => this.setView("containers", { area: g.key });
+        const open = editing ? () => this.openAreaDialog(g.key) : () => this.setView("containers", { area: g.key });
+        const sub = editing ? this._areaKindText(g.key, t) : t.containersCount(g.count);
         if (this._opts.mode === "grid") {
-          box.append(this._groupTile("📍", g.name, t.containersCount(g.count), g.soon ? t.soonCount(g.soon) : "", open));
+          const tile = this._groupTile(editing ? "✏️" : "📍", g.name, sub, !editing && g.soon ? t.soonCount(g.soon) : "", open);
+          tile.dataset.area = g.key;
+          box.append(tile);
         } else {
           const btn = el("button", "row");
           btn.type = "button";
+          btn.dataset.area = g.key;
           const text = el("span", "text");
-          text.append(el("span", "name", g.name), el("span", "sub", t.containersCount(g.count)));
-          btn.append(el("span", "ico", "📍"), text);
-          if (g.soon) btn.append(el("span", "badge soon", t.soonCount(g.soon)));
+          text.append(el("span", "name", g.name), el("span", "sub", sub));
+          btn.append(el("span", "ico", editing ? "✏️" : "📍"), text);
+          if (g.soon && !editing) btn.append(el("span", "badge soon", t.soonCount(g.soon)));
           btn.addEventListener("click", open);
           box.append(btn);
         }
@@ -1558,6 +1645,163 @@ export class LarderDashboard extends HTMLElement {
       frag.append(box);
     }
     this._main.replaceChildren(frag);
+  }
+
+  // ----- Bereiche verwalten -----
+
+  setAreaEdit(on) {
+    this._areaEdit = !!on && isAdmin(this._hass);
+    if (this._areaEdit) this._loadLabels();
+    this._update();
+  }
+
+  /** Alle Labels von Home Assistant laden (für Lagerart und Anzeige beim Bearbeiten). */
+  async _loadLabels() {
+    const hass = this._hass;
+    try {
+      const labels = await hass.callWS({ type: "config/label_registry/list" });
+      this._labels = Array.isArray(labels) ? labels : [];
+    } catch {
+      this._labels = [];
+    }
+    this._labelNames = this._labels.filter(isLarderLabel).map((l) => [l.label_id, l.name]);
+    this._update();
+    return this._labels;
+  }
+
+  /** "Larder: Freezer" → "Freezer"; das schlichte "Larder" bleibt. */
+  _kindName(label) {
+    const name = String((label && label.name) || "").trim();
+    const short = name.replace(/^larder\s*:\s*/i, "");
+    return short || name;
+  }
+
+  _areaKindText(areaId, t) {
+    const area = (this._hass.areas || {})[areaId];
+    const larder = (this._labels || []).filter(isLarderLabel);
+    const kinds = larder.filter((l) => area && (area.labels || []).includes(l.label_id)).map((l) => this._kindName(l));
+    return kinds.length ? kinds.join(", ") : t.areaKindNone;
+  }
+
+  /** Bereich anlegen (ohne ID) oder bearbeiten: Name und Lagerart (Larder-Label). */
+  async openAreaDialog(areaId = null) {
+    const hass = this._hass;
+    if (!isAdmin(hass)) return;
+    const t = texts(hass);
+    const area = areaId ? (hass.areas || {})[areaId] : null;
+    const labels = this._labels || (await this._loadLabels());
+    const larder = labels.filter(isLarderLabel);
+    const form = this._form;
+    this._editing = null;
+    const field = (label, control) => {
+      const wrap = el("label", "", label);
+      wrap.append(control);
+      return wrap;
+    };
+    const name = el("input");
+    name.type = "text";
+    name.maxLength = 100;
+    name.dataset.f = "name";
+    name.value = area ? area.name : "";
+    const kind = el("select");
+    kind.dataset.f = "kind";
+    const option = (value, text) => {
+      const o = el("option", "", text);
+      o.value = value;
+      return o;
+    };
+    kind.append(option("", t.areaKindNone), ...larder.map((l) => option(l.label_id, this._kindName(l))), option("__new", t.areaKindNew));
+    const current = area ? larder.find((l) => (area.labels || []).includes(l.label_id)) : null;
+    // neuer Bereich: gibt es Larder-Labels, gleich das erste vorschlagen (sonst taucht er in den Listen nicht auf)
+    kind.value = current ? current.label_id : !area && larder.length ? larder[0].label_id : "";
+    const newName = el("input");
+    newName.type = "text";
+    newName.maxLength = 60;
+    newName.dataset.f = "newkind";
+    newName.placeholder = t.areaKindNewName;
+    const newWrap = field(t.areaKindNewName, newName);
+    newWrap.dataset.w = "newkind";
+    newWrap.hidden = true;
+    kind.addEventListener("change", () => (newWrap.hidden = kind.value !== "__new"));
+    const error = el("div", "error");
+    error.setAttribute("role", "alert");
+    const buttons = el("div", "buttons");
+    let link = null;
+    if (area) {
+      const ha = el("button", "link", `${t.areaOpenHa} ›`);
+      ha.type = "button";
+      ha.dataset.role = "area-open-ha";
+      ha.addEventListener("click", () => {
+        this._closeDialog();
+        window.history.pushState(null, "", `/config/areas/area/${area.area_id}`);
+        window.dispatchEvent(new Event("location-changed"));
+      });
+      link = ha;
+    }
+    const cancel = el("button", "cancel", t.cancel);
+    cancel.type = "button";
+    cancel.addEventListener("click", () => this._closeDialog());
+    const submit = el("button", "submit", t.save);
+    submit.type = "submit";
+    buttons.append(cancel, submit);
+    form.replaceChildren(
+      el("h2", "", area ? t.areaEditTitle : t.areaAdd),
+      field(t.areaName, name),
+      field(t.areaKind, kind),
+      newWrap,
+      el("p", "hint", t.areaKindHint),
+      ...(link ? [link] : []),
+      error,
+      buttons,
+    );
+    this._submit = () => this._submitArea(area, larder);
+    this._overlay.hidden = false;
+    name.focus();
+  }
+
+  async _submitArea(area, larder) {
+    const hass = this._hass;
+    const t = texts(hass);
+    const form = this._form;
+    const error = form.querySelector(".error");
+    const name = form.querySelector('[data-f="name"]').value.trim();
+    const kind = form.querySelector('[data-f="kind"]').value;
+    if (!name) {
+      error.textContent = t.areaNeedName;
+      return;
+    }
+    const submit = form.querySelector("button.submit");
+    submit.disabled = true;
+    try {
+      let labelId = kind;
+      if (kind === "__new") {
+        const kindName = form.querySelector('[data-f="newkind"]').value.trim();
+        if (!kindName) {
+          error.textContent = t.areaNeedName;
+          return;
+        }
+        const created = await hass.callWS({ type: "config/label_registry/create", name: `Larder: ${kindName}`, icon: "mdi:fridge-outline" });
+        labelId = created.label_id;
+      }
+      // fremde Labels bleiben, nur die Larder-Labels werden ersetzt
+      const larderIds = larder.map((l) => l.label_id);
+      const labels = [...((area && area.labels) || []).filter((l) => !larderIds.includes(l)), ...(labelId ? [labelId] : [])];
+      if (area) {
+        await hass.callWS({ type: "config/area_registry/update", area_id: area.area_id, name, labels });
+      } else {
+        await hass.callWS({ type: "config/area_registry/create", name, labels });
+      }
+      this._closeDialog();
+      this._labels = null;
+      await this._loadLabels();
+      if (this._classic.loadAreaLabel) await this._classic.loadAreaLabel();
+    } catch (err) {
+      error.textContent = t.areaSaveFailed((err && err.message) || String(err));
+    } finally {
+      submit.disabled = false;
+    }
+    this._sig = "";
+    this._update();
   }
 
   _renderCategories(t, rows) {
@@ -1958,6 +2202,7 @@ export class LarderDashboard extends HTMLElement {
   openRecipeDialog(recipe = null) {
     const t = texts(this._hass);
     this._editing = recipe;
+    this._submit = () => this._submitRecipe();
     const form = this._form;
     const field = (label, control) => {
       const wrap = el("label", "", label);

@@ -33,6 +33,7 @@ from .const import (
     CONF_CALENDAR_ENTITY,
     CONF_ESTIMATE_MODE,
     CONF_NFC_NOTIFY,
+    CONF_REPAIR_HINTS,
     CONF_VACUUM_DEFAULT,
     CONF_OPENED_DAYS,
     CONF_RECIPE_DAYS,
@@ -209,6 +210,7 @@ class LarderOptionsFlow(OptionsFlow):
                 ),
                 vol.Optional(CONF_VACUUM_DEFAULT, default=True): BooleanSelector(),
                 vol.Optional(CONF_NFC_NOTIFY, default=True): BooleanSelector(),
+                vol.Optional(CONF_REPAIR_HINTS, default=True): BooleanSelector(),
                 vol.Optional(CONF_CALENDAR_ENTITY): EntitySelector(
                     EntitySelectorConfig(domain="calendar")
                 ),
