@@ -66,6 +66,9 @@
       },
       "shopping": {
         "name": "Einkaufsliste"
+      },
+      "flexible": {
+        "name": "Variabler Lagerort"
       }
     },
     "sensor": {
@@ -98,6 +101,12 @@
           "slices": "Scheiben",
           "grams": "Gramm",
           "milliliters": "Milliliter"
+        }
+      },
+      "home_area": {
+        "name": "Lagerort nach dem Leeren",
+        "state": {
+          "none": "Bleibt, wo sie ist"
         }
       }
     }

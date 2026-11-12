@@ -36,10 +36,18 @@ function makeHass(doses, { areas = {}, language = "de", stateOverrides = {} } = 
       number: `number.${d.id}_portionen`,
       select: `select.${d.id}_einheit`,
       shopping: `switch.${d.id}_einkaufsliste`,
+      flexible: `switch.${d.id}_variabler_lagerort`,
+      homeArea: `select.${d.id}_lagerort_nach_dem_leeren`,
     };
     for (const eid of Object.values(ids)) {
       entities[eid] = { entity_id: eid, device_id: d.id, platform: D, area_id: d.entityArea || null };
     }
+    states[ids.flexible] = { entity_id: ids.flexible, state: d.flexible ?? "off", attributes: {} };
+    states[ids.homeArea] = {
+      entity_id: ids.homeArea,
+      state: d.home ?? "none",
+      attributes: { options: ["none", "Keller", "Küche"], area_id: null },
+    };
     states[ids.text] = { entity_id: ids.text, state: d.content ?? "unknown", attributes: {} };
     states[ids.date] = { entity_id: ids.date, state: d.mhd ?? "unknown", attributes: { estimates: !!d.ai } };
     states[ids.switch] = { entity_id: ids.switch, state: d.vacuum ?? "on", attributes: {} };
@@ -130,7 +138,7 @@ test("collectDevices: nur Zwilling-Geräte, sortiert nach Bereich, dann Name; oh
     ],
   );
   assert.ok(out.every((d) => d.deviceId !== "foreign"));
-  assert.deepEqual(Object.keys(out[0].entities).sort(), ["button", "date", "datetime", "image", "number", "select", "shopping", "switch", "text"]);
+  assert.deepEqual(Object.keys(out[0].entities).sort(), ["button", "date", "datetime", "flexible", "homeArea", "image", "number", "select", "shopping", "switch", "text"]);
 });
 
 test("collectDevices: Anzeigename des Nutzers und Bereich der Entität als Rückfall", () => {
@@ -1642,4 +1650,52 @@ test("Mehrere Dosen auf einmal befüllen: gleiche Angaben für alle, Schätzung 
   assert.deepEqual(estimates, ["date.d1_mhd", "date.d2_mhd"]);
   assert.deepEqual(filled, ["d1", "d2"]);
   assert.equal($(el, ".overlay.fill").hidden, true);
+});
+
+
+test("Variabler Lagerort: Schalter und „nach dem Leeren zurück in“ auf der Karte, Bereich im Befüll-Dialog", async () => {
+  const hass = fillHass([
+    { id: "d1", name: "Vakuumdose", content: "unknown", area: "kitchen", flexible: "on", home: "Keller" },
+    { id: "d2", name: "Vorratsdose", content: "unknown", area: "cellar" },
+  ]);
+  hass.user = { is_admin: true };
+  const el = mount(hass);
+  await flush();
+  const card = (name) => $$(el, ".card").find((c) => c.querySelector(".name").textContent === name);
+  const flexCard = card("Vakuumdose");
+  const fixedCard = card("Vorratsdose");
+  assert.equal(flexCard.querySelector('[data-f="flexible"]').checked, true);
+  assert.notEqual(flexCard.querySelector(".homerow").style.display, "none");
+  assert.deepEqual([...flexCard.querySelectorAll('[data-f="homeArea"] option')].map((o) => o.textContent), ["bleibt, wo sie ist", "Keller", "Küche"]);
+  assert.equal(flexCard.querySelector('[data-f="homeArea"]').value, "Keller");
+  assert.equal(fixedCard.querySelector(".homerow").style.display, "none");
+
+  const home = flexCard.querySelector('[data-f="homeArea"]');
+  home.value = "Küche";
+  home.dispatchEvent(new dom.window.Event("change"));
+  fixedCard.querySelector('[data-f="flexible"]').click();
+  assert.deepEqual(hass.calls.slice(-2).map((c) => [c.domain, c.service, c.data.entity_id]), [
+    ["select", "select_option", "select.d1_lagerort_nach_dem_leeren"],
+    ["switch", "turn_on", "switch.d2_variabler_lagerort"],
+  ]);
+
+  // Befüll-Dialog: Bereich nur bei variablem Lagerort, Speichern stellt die Dose um
+  el.openFillDialog("d2");
+  assert.equal($(el, 'form.fillform [data-w="area"]').hidden, true);
+  el.closeFillDialog();
+  el.openFillDialog("d1");
+  const area = $(el, 'form.fillform [data-f="area"]');
+  assert.equal($(el, 'form.fillform [data-w="area"]').hidden, false);
+  assert.equal(area.value, "kitchen");
+  area.value = "cellar";
+  $(el, 'form.fillform [data-f="content"]').value = "Lachs";
+  $(el, "form.fillform").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  await flush();
+  assert.ok(hass.wsCalls.some((m) => m.type === "config/device_registry/update" && m.device_id === "d1" && m.area_id === "cellar"));
+
+  // ohne Administratorrechte kein Bereichsfeld
+  hass.user = { is_admin: false };
+  el.hass = { ...hass };
+  el.openFillDialog("d1");
+  assert.equal($(el, 'form.fillform [data-w="area"]').hidden, true);
 });

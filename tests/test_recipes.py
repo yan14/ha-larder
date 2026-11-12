@@ -29,7 +29,7 @@ async def _setup(hass: HomeAssistant, cc: str) -> MockConfigEntry:
 
 def _eid(hass: HomeAssistant, domain: str, cc: str) -> str:
     device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, cc)})
-    return next(e.entity_id for e in er.async_entries_for_device(er.async_get(hass), device.id) if e.domain == domain and (domain != "switch" or e.unique_id.endswith("_vacuum")))
+    return next(e.entity_id for e in er.async_entries_for_device(er.async_get(hass), device.id) if e.domain == domain and (domain != "switch" or e.unique_id.endswith("_vacuum")) and (domain != "select" or e.unique_id.endswith("_unit")))
 
 
 async def _fill(hass, cc, content, days, quantity=None, unit=None):

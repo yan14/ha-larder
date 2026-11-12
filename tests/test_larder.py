@@ -99,6 +99,8 @@ async def test_flow_creates_device_with_entities(hass: HomeAssistant) -> None:
         "34OL_shopping",
         "34OL_portions",
         "34OL_unit",
+        "34OL_flexible",
+        "34OL_home_area",
         "34OL_days_left",
     }
 
@@ -285,3 +287,45 @@ async def test_empty_button_resets_only_available_entities_and_raises_if_none(
         await hass.services.async_call(
             "button", "press", {"entity_id": button_id}, blocking=True
         )
+
+
+async def test_flexible_container_returns_to_its_home_area_when_emptied(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import area_registry as ar, entity_registry as er
+
+    entry = MockConfigEntry(domain=DOMAIN, unique_id="34OL", title="Dose 34OL", data={"cc": "34OL", "tc": None, "size": None})
+    entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    areas = ar.async_get(hass)
+    pantry = areas.async_create("Vorratsraum")
+    fridge = areas.async_create("Kühlschrank")
+    await hass.async_block_till_done()
+    devices = dr.async_get(hass)
+    device = devices.async_get_device(identifiers={(DOMAIN, "34OL")})
+    ents = {e.unique_id: e.entity_id for e in er.async_entries_for_device(er.async_get(hass), device.id)}
+    home, flexible, button = ents["34OL_home_area"], ents["34OL_flexible"], ents["34OL_empty_container"]
+
+    state = hass.states.get(home)
+    assert state.state == "none" and state.attributes["options"] == ["none", "Kühlschrank", "Vorratsraum"]
+    assert hass.states.get(flexible).state == "off"
+    await hass.services.async_call("select", "select_option", {"entity_id": home, "option": "Vorratsraum"}, blocking=True)
+    assert hass.states.get(home).attributes["area_id"] == pantry.id
+
+    # in den Kühlschrank gestellt, geleert: ohne "variabel" bleibt sie dort
+    devices.async_update_device(device.id, area_id=fridge.id)
+    await hass.services.async_call("button", "press", {"entity_id": button}, blocking=True)
+    assert devices.async_get(device.id).area_id == fridge.id
+
+    # mit "variabel": zurück in den Vorratsraum; Schalter und Lagerort bleiben erhalten
+    await hass.services.async_call("switch", "turn_on", {"entity_id": flexible}, blocking=True)
+    await hass.services.async_call("button", "press", {"entity_id": button}, blocking=True)
+    assert devices.async_get(device.id).area_id == pantry.id
+    assert hass.states.get(flexible).state == "on" and hass.states.get(home).state == "Vorratsraum"
+
+    # Bereich umbenannt: die Auswahl folgt; gelöscht: zurück auf "bleibt, wo sie ist"
+    areas.async_update(pantry.id, name="Speisekammer")
+    await hass.async_block_till_done()
+    assert hass.states.get(home).state == "Speisekammer"
+    areas.async_delete(pantry.id)
+    await hass.async_block_till_done()
+    assert hass.states.get(home).state == "none" and hass.states.get(home).attributes["area_id"] is None

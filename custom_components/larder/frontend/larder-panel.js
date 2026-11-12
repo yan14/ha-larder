@@ -43,6 +43,9 @@ export const STRINGS = {
       `Nur Administratoren können Dosen hinzufügen. Gescannter Code: ${code}`,
     areaChangeFailed: "Der Bereich konnte nicht geändert werden.",
     vacuum: "Vakuum",
+    flexible: "Variabler Lagerort (steht mal hier, mal dort)",
+    homeArea: "Nach dem Leeren zurück in",
+    homeNone: "bleibt, wo sie ist",
     shopping: "Beim Leeren auf die Einkaufsliste",
     estimate: "MHD schätzen",
     estimating: "Schätze …",
@@ -159,6 +162,9 @@ export const STRINGS = {
     adminOnly: (code) => `Only administrators can add containers. Scanned code: ${code}`,
     areaChangeFailed: "The area could not be changed.",
     vacuum: "Vacuum",
+    flexible: "Flexible storage place (moves around)",
+    homeArea: "After emptying, back to",
+    homeNone: "stays where it is",
     shopping: "Add to shopping list when emptied",
     estimate: "Estimate best before",
     estimating: "Estimating…",
@@ -276,12 +282,19 @@ export function collectDevices(hass) {
       dev = { deviceId: ent.device_id, entities: {}, entityAreaId: null };
       byDevice.set(ent.device_id, dev);
     }
-    // Pro Gerät gibt es je Domain eine Entität (text, date, datetime, button, image, number, select),
-    // nur "switch" gibt es zweimal: Vakuum (switch) und Einkaufsliste (shopping).
+    // Pro Gerät gibt es je Domain eine Entität (text, date, datetime, button, image, number), mehrere nur bei
+    // "switch" (Vakuum = switch, Einkaufsliste = shopping, variabler Lagerort = flexible) und "select"
+    // (Einheit = select, Lagerort nach dem Leeren = homeArea).
     const domain = ent.entity_id.split(".")[0];
-    const isShopping =
-      domain === "switch" && (ent.translation_key === "shopping" || /shopping|einkaufsliste/i.test(ent.entity_id));
-    dev.entities[isShopping ? "shopping" : domain] = ent.entity_id;
+    const key = ent.translation_key;
+    let slot = domain;
+    if (domain === "switch") {
+      if (key === "shopping" || (!key && /shopping|einkaufsliste/i.test(ent.entity_id))) slot = "shopping";
+      else if (key === "flexible" || (!key && /flexible|variabler_lagerort/i.test(ent.entity_id))) slot = "flexible";
+    } else if (domain === "select") {
+      if (key === "home_area" || (!key && /after_emptying|nach_dem_leeren/i.test(ent.entity_id))) slot = "homeArea";
+    }
+    dev.entities[slot] = ent.entity_id;
     if (!dev.entityAreaId && ent.area_id) dev.entityAreaId = ent.area_id;
   }
 
@@ -505,7 +518,7 @@ const STYLE = `
   .dialog .buttons button { font: inherit; padding: 8px 14px; border-radius: 8px; cursor: pointer; border: 0; }
   .dialog .buttons button.cancel { background: none; color: var(--primary-color); }
   .dialog .buttons button.submit { background: var(--primary-color); color: var(--text-primary-color, #fff); }
-  .row.vacrow label.check, .row.shoprow label.check { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 14px;
+  .row.vacrow label.check, .row.shoprow label.check, .row.flexrow label.check { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 14px;
     color: var(--primary-text-color); cursor: pointer; }
   .estimaterow { display: none; flex-direction: column; gap: 4px; margin-top: -4px; }
   .estimaterow.visible { display: flex; }
@@ -669,6 +682,8 @@ class DoseCard {
       <div class="estimaterow"><button class="estimate" type="button"></button><span class="tip" role="status"></span></div>
       <div class="row vacrow"><label class="check"><input type="checkbox" data-f="vacuum"><span data-l="vacuum"></span></label></div>
       <div class="row shoprow"><label class="check"><input type="checkbox" data-f="shopping"><span data-l="shopping"></span></label></div>
+      <div class="row flexrow"><label class="check"><input type="checkbox" data-f="flexible"><span data-l="flexible"></span></label></div>
+      <div class="row homerow"><label data-l="homeArea"></label><select data-f="homeArea"></select></div>
       <div class="nfcrow"><span class="nfcstate"></span><button class="nfcbtn" type="button"></button></div>
       <div class="actions"><button class="fill" type="button"></button><button class="empty" type="button"></button><span class="spacer"></span><img class="qr" alt=""></div>`;
     this.el = el;
@@ -744,6 +759,12 @@ class DoseCard {
     });
     this.q('[data-f="shopping"]').addEventListener("change", (ev) => {
       if (this.ids.shopping) this._call("switch", ev.target.checked ? "turn_on" : "turn_off", { entity_id: this.ids.shopping });
+    });
+    this.q('[data-f="flexible"]').addEventListener("change", (ev) => {
+      if (this.ids.flexible) this._call("switch", ev.target.checked ? "turn_on" : "turn_off", { entity_id: this.ids.flexible });
+    });
+    this.q('[data-f="homeArea"]').addEventListener("change", (ev) => {
+      if (this.ids.homeArea) this._call("select", "select_option", { entity_id: this.ids.homeArea, option: ev.target.value });
     });
     this.q("button.estimate").addEventListener("click", () => this._estimate());
     this.q("button.fill").addEventListener("click", () => this._panel.openFillDialog(this.deviceId));
@@ -850,6 +871,8 @@ class DoseCard {
     this.q("button.fill").textContent = t.fill;
     this.q('[data-l="vacuum"]').textContent = t.vacuum;
     this.q('[data-l="shopping"]').textContent = t.shopping;
+    this.q('[data-l="flexible"]').textContent = t.flexible;
+    this.q('[data-l="homeArea"]').textContent = t.homeArea;
     if (!this._estimating) this.q("button.estimate").textContent = t.estimate;
 
     const text = states[dev.entities.text];
@@ -902,6 +925,34 @@ class DoseCard {
     this.q(".shoprow").style.display = hasShoppingList(shop) ? "" : "none";
     shopInput.disabled = !ok(shop);
     shopInput.checked = !!shop && shop.state === "on";
+
+    // Variabler Lagerort: Schalter, und nur wenn er an ist, der Lagerort nach dem Leeren
+    const flex = states[dev.entities.flexible];
+    const flexInput = this.q('[data-f="flexible"]');
+    this.q(".flexrow").style.display = flex ? "" : "none";
+    flexInput.disabled = !ok(flex);
+    flexInput.checked = !!flex && flex.state === "on";
+    const home = states[dev.entities.homeArea];
+    const homeSelect = this.q('[data-f="homeArea"]');
+    const showHome = !!home && !!flex && flex.state === "on";
+    this.q(".homerow").style.display = showHome ? "" : "none";
+    if (showHome) {
+      const options = (home.attributes && home.attributes.options) || ["none"];
+      const sig = JSON.stringify([options, t.homeNone]);
+      if (homeSelect.dataset.sig !== sig) {
+        homeSelect.dataset.sig = sig;
+        homeSelect.replaceChildren(
+          ...options.map((o) => {
+            const opt = document.createElement("option");
+            opt.value = o;
+            opt.textContent = o === "none" ? t.homeNone : o;
+            return opt;
+          }),
+        );
+      }
+      this._setInput(homeSelect, home.state);
+      homeSelect.disabled = !ok(home);
+    }
 
     // "MHD schätzen": nur sichtbar, wenn die Schätzung nicht ausgeschaltet ist, Inhalt da und MHD noch leer.
     const aiOn = !!(date && date.attributes && date.attributes.estimates);
@@ -977,6 +1028,7 @@ class LarderPanel extends HTMLElement {
         <form class="dialog fillform" novalidate>
           <h2></h2>
           <label class="field"><span data-l="content"></span><input type="text" data-f="content" maxlength="255" list="zs-contents" autocomplete="off"><datalist id="zs-contents"></datalist></label>
+          <label class="field" data-w="area" hidden><span data-l="area"></span><select data-f="area"></select></label>
           <label class="field" data-w="quantity"><span data-l="quantity"></span><span class="qty"><input type="number" data-f="quantity" min="0" max="9999" step="1" inputmode="numeric"><select data-f="unit"></select></span></label>
           <label class="check" data-w="vacuum"><input type="checkbox" data-f="vacuum"><span data-l="vacuum"></span></label>
           <label class="check" data-w="shopping"><input type="checkbox" data-f="shopping"><span data-l="shopping"></span></label>
@@ -1403,6 +1455,26 @@ class LarderPanel extends HTMLElement {
     this._fillForm.querySelector('[data-w="quantity"]').hidden = !quantity || quantity.state === "unavailable";
     f("vacuum").checked = !!vac && vac.state === "on";
     this._fillForm.querySelector('[data-w="vacuum"]').hidden = !vac || vac.state === "unavailable";
+    // Bereich nur bei Dosen mit variablem Lagerort (und nur für Administratoren, die Bereiche ändern dürfen)
+    const flexible = devs.filter((d) => {
+      const st = states[d.entities.flexible];
+      return !!st && st.state === "on";
+    });
+    const areaWrap = this._fillForm.querySelector('[data-w="area"]');
+    areaWrap.hidden = !(isAdmin(hass) && flexible.length);
+    if (!areaWrap.hidden) {
+      const current = flexible[0].areaId || "";
+      const areas = listAreas(hass, this.larderLabel, current);
+      f("area").replaceChildren(
+        ...[{ id: "", name: t.noArea }, ...areas].map((a) => {
+          const opt = document.createElement("option");
+          opt.value = a.id;
+          opt.textContent = a.name;
+          return opt;
+        }),
+      );
+      f("area").value = current;
+    }
     const shop = states[dev.entities.shopping];
     f("shopping").checked = !!shop && shop.state === "on";
     this._fillForm.querySelector('[data-w="shopping"]').hidden = !hasShoppingList(shop) || shop.state === "unavailable";
@@ -1463,6 +1535,7 @@ class LarderPanel extends HTMLElement {
       unit: f("unit").value,
       filled: new Date(f("filledAt").value),
       bestBefore: f("bestBefore").value,
+      area: this._fillForm.querySelector('[data-w="area"]').hidden ? undefined : f("area").value,
     };
     const wantEstimate =
       f("estimate").checked && !this._fillForm.querySelector('[data-w="estimate"]').hidden && !values.bestBefore;
@@ -1514,6 +1587,11 @@ class LarderPanel extends HTMLElement {
     }
     if (ids.date && values.bestBefore) {
       await hass.callService("date", "set_value", { entity_id: ids.date, date: values.bestBefore });
+    }
+    // Variabler Lagerort: die Dose in den gewählten Bereich stellen
+    const flex = states[ids.flexible];
+    if (values.area !== undefined && flex && flex.state === "on" && (dev.areaId || "") !== values.area && hass.callWS) {
+      await hass.callWS({ type: "config/device_registry/update", device_id: dev.deviceId, area_id: values.area || null });
     }
   }
 

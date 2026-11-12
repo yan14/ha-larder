@@ -177,7 +177,7 @@ Eine Leiste unten wechselt zwischen fünf Seiten:
 - Bereich (Auswahlfeld; welche Bereiche angeboten werden, lässt sich mit einem Label eingrenzen, siehe [Bereiche und Labels](#bereiche-und-labels)), **Inhalt**, **Menge und Einheit**, **MHD** (mit Hinweis „abgelaufen“ oder „noch n Tage“, sobald es bald abläuft), **Eingelagert am** („Jetzt“ setzt die aktuelle Zeit),
 - **+1 Tag** verschiebt das MHD um einen Tag, **Geöffnet** kürzt es auf die in den Einstellungen gesetzte Zahl Tage (Standard 3), **Aufgetaut** macht dasselbe für Essen aus dem Gefrierfach (Standard 2 Tage, nicht wieder einfrieren). Beides verlängert nie ein Datum; ohne Datum wird eines gesetzt,
 - **MHD schätzen** (wenn die [Schätzung](#mhd-schätzung) aktiv ist, ein Inhalt eingetragen und das MHD leer ist),
-- **Vakuum**, **Beim Leeren auf die Einkaufsliste** (sobald eine [Einkaufsliste](#einkaufsliste) gewählt ist), der **NFC-Tag** (verknüpfen oder lösen), **Gerät öffnen** und **Behälter leeren**.
+- **Vakuum**, **Beim Leeren auf die Einkaufsliste** (sobald eine [Einkaufsliste](#einkaufsliste) gewählt ist), **Variabler Lagerort** mit **Nach dem Leeren zurück in** (siehe [Dosen befüllen](#dosen-befüllen)), der **NFC-Tag** (verknüpfen oder lösen), **Gerät öffnen** und **Behälter leeren**.
 
 **⚙** oben (Administratoren) öffnet ein Menü mit den [gemerkten Schätzungen](#gemerkte-schätzungen-verwalten) und den Einstellungen der Integration. Das ☰ ist die Seitenleiste von Home Assistant.
 
@@ -217,6 +217,8 @@ Danach alle auf einmal befüllen oder Rezeptideen holen. So geht eine Inventur d
 Eine leere Dose zeigt den Button **Befüllen**. Er öffnet einen kleinen Dialog: **Inhalt** (mit Vorschlägen aus früheren Eingaben, neueste zuerst, danach deine gemerkten Schätzungen), **Menge und Einheit** (optional), **Vakuum**, **Befüllt am** (vorbelegt mit jetzt), optional ein **MHD** und **MHD automatisch schätzen** (nur wenn die Schätzung aktiv und das MHD leer ist). **Speichern** setzt alles und schätzt das MHD.
 
 Der Dialog öffnet sich auch von selbst direkt nach dem Anlegen einer neuen Dose im Dashboard (auch nach dem Beschreiben eines NFC-Tags), sodass du sie gleich befüllen kannst. Ebenso nach einem Scan (eigener QR-Code, NFC-Tag, Kurzbefehl), wenn die Dose leer ist; eine Dose mit Inhalt öffnet ihre Karte.
+
+**Dosen, die umziehen:** Manche Dosen stehen immer am selben Ort, andere (z. B. Vakuumdosen) mal im Kühlschrank, mal im 0-Grad-Fach. Schalte bei solchen Dosen auf der Karte **Variabler Lagerort** ein. Dann fragt der Befüll-Dialog auch nach dem **Bereich** (Administratoren), damit die Schätzung den richtigen Ort nimmt, und **Behälter leeren** stellt die Dose zurück in den Bereich unter **Nach dem Leeren zurück in** (z. B. den Vorratsraum, in dem die leeren Dosen stehen). Dosen ohne den Schalter behalten ihren Bereich, und der Dialog fragt nicht.
 
 **Mehrere Dosen auf einmal:** Die leeren Dosen auswählen (oder nacheinander scannen) und **Befüllen (n)** drücken: Derselbe Dialog befüllt alle, siehe [Mehrere Dosen auswählen](#mehrere-dosen-auswählen).
 
@@ -470,6 +472,8 @@ Pro Dose entsteht ein Gerät (eindeutig über die ID, den Parameter `cc` eines Z
 | **Einheit** | `select` | Einheit der Menge: Portionen (Standard), Stück, Scheiben, Gramm oder Milliliter. Wird von **Behälter leeren** auf Portionen zurückgesetzt. Beides steht im Dashboard, im Befüll-Dialog, im Ergebnis von `get_expiring` und fließt in die Rezeptideen ein. Tipp: *Portionen* für fertige Gerichte (Chili, Suppe), *Stück* oder *Scheiben* für Zählbares (Eier, Schinken) |
 | **Vakuum** | `switch` | Ist die Dose vakuumiert? Bei neuen Dosen standardmäßig an; die Vorbelegung änderst du unter **Konfigurieren**, wenn die meisten deiner Boxen nicht vakuumiert sind. Wird für die Schätzung verwendet |
 | **Einkaufsliste** | `switch` | Soll der Inhalt beim Leeren der Dose auf deine Einkaufsliste? Standardmäßig aus, pro Dose einstellbar und bleibt bei **Behälter leeren** erhalten. Wirkt erst, wenn unter **Konfigurieren** eine Liste gewählt ist, siehe [Einkaufsliste](#einkaufsliste) |
+| **Variabler Lagerort** | `switch` | Für Dosen, die mal hier, mal dort stehen (heute Kühlschrank, morgen 0-Grad-Fach). Standardmäßig aus. Ist er an, fragt der Befüll-Dialog nach dem Bereich, und **Behälter leeren** stellt die Dose zurück in den **Lagerort nach dem Leeren**. Bleibt bei **Behälter leeren** erhalten |
+| **Lagerort nach dem Leeren** | `select` | Bereich, in den eine variable Dose beim Leeren zurückkommt (oder *bleibt, wo sie ist*). Wirkt nur, wenn **Variabler Lagerort** an ist. Die Bereichs-ID steht im Attribut `area_id`, Umbenennen des Bereichs schadet also nicht |
 | **Tage bis MHD** | `sensor` | Verbleibende Tage bis zum MHD (negativ = abgelaufen). Das Attribut `status` ist `ok`, `soon` (3 Tage oder weniger, siehe [Einstellungen](#einstellungen)), `expired` oder `none` |
 | **QR-Code** | `image` | QR-Code der Dose als Bild: Scannen mit der Kamera-App öffnet die Dose im Larder-Dashboard, siehe [Eigene QR-Codes](#eigene-qr-codes) |
 

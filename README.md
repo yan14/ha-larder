@@ -177,7 +177,7 @@ A bar at the bottom switches between five pages:
 - area (dropdown; which areas are offered can be narrowed down with a label, see [Areas and labels](#areas-and-labels)), **contents**, **quantity and unit**, **best before** (with a hint "expired" or "n days left" once it expires soon), **filled on** ("Now" sets the current time),
 - **+1 day** moves the best-before date by a day, **Opened** shortens it to the days set in the settings (default 3), **Thawed** does the same for food out of the freezer (default 2 days, do not refreeze). Neither ever extends a date; without a date one is set,
 - **Estimate best before** (when [estimating](#best-before-estimate) is on, contents are entered and the date is empty),
-- **Vacuum**, **Add to shopping list when emptied** (once a [shopping list](#shopping-list) is chosen), the **NFC tag** (link or unlink), **Open device** and **Empty container**.
+- **Vacuum**, **Add to shopping list when emptied** (once a [shopping list](#shopping-list) is chosen), **Flexible storage place** with **After emptying, back to** (see [Filling containers](#filling-containers)), the **NFC tag** (link or unlink), **Open device** and **Empty container**.
 
 **⚙** at the top (administrators) opens a menu with the [remembered estimates](#managing-remembered-estimates) and the integration settings. The ☰ is the Home Assistant sidebar.
 
@@ -217,6 +217,8 @@ Then fill them all at once or ask for recipe ideas, which makes an inventory of 
 An empty container shows a **Fill** button. It opens a small dialog: **contents** (with suggestions from what you entered before, newest first, then your remembered estimates), **quantity and unit** (optional), **vacuum**, **filled on** (preset to now), optionally a **best-before date**, and **Estimate best before automatically** (only if estimating is on and the date is empty). **Save** sets everything and estimates the date.
 
 The dialog also opens by itself right after you add a new container in the dashboard (including after writing an NFC tag), so you can fill it straight away. It also opens after a scan (own QR code, NFC tag, Shortcut) when the container is empty; a container that already has contents opens its card.
+
+**Containers that move around:** some containers always stand in the same place, others (for example vacuum boxes) are in the fridge one day and in the 0 °C drawer the next. Switch on **Flexible storage place** on the card of such a container. The fill dialog then also asks for the **area** (administrators), so the estimate uses the right place, and **Empty container** puts the container back into the area chosen under **After emptying, back to** (for example the pantry where the empty boxes are kept). Containers without the switch keep their area and the fill dialog does not ask.
 
 **Several containers at once:** select the empty containers (or scan them one after another) and press **Fill (n)**: the same dialog fills all of them, see [Selecting several containers](#selecting-several-containers).
 
@@ -470,6 +472,8 @@ Every container becomes a device (identified by its ID, the `cc` parameter of a 
 | **Unit** | `select` | Unit of the quantity: portions (default), pieces, slices, grams or milliliters. Reset to portions by **Empty container**. Both show up in the dashboard, the fill dialog, the `get_expiring` result and the recipe ideas. Tip: use *portions* for finished dishes (chili, soup) and *pieces* or *slices* for countable food (eggs, ham) |
 | **Vacuum** | `switch` | Is the container vacuum-sealed? On by default for new containers; change the preset under **Configure** if most of your boxes are not vacuum-sealed. Used for the estimate |
 | **Shopping list** | `switch` | Should the contents go onto your shopping list when the container is emptied? Off by default, per container, and kept by **Empty container**. Only has an effect once a list is chosen under **Configure**, see [Shopping list](#shopping-list) |
+| **Flexible storage place** | `switch` | For containers that move around (fridge one day, 0 °C drawer the next). Off by default. When on, the fill dialog asks for the area, and **Empty container** puts the container back into the **storage place after emptying**. Kept by **Empty container** |
+| **Storage place after emptying** | `select` | The area a flexible container goes back to when it is emptied (or *stays where it is*). Only used when **Flexible storage place** is on. The area ID is in the attribute `area_id`, so renaming the area does no harm |
 | **Days until best before** | `sensor` | Days left until the best-before date (negative = expired). The attribute `status` is `ok`, `soon` (3 days or less, see [Settings](#settings)), `expired` or `none` |
 | **QR code** | `image` | The container's QR code as an image: scanning it with the camera app opens the container in the Larder dashboard, see [Your own QR codes](#your-own-qr-codes) |
 

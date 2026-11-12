@@ -37,6 +37,9 @@
         "state": {
           "off": "mdi:cart-off"
         }
+      },
+      "flexible": {
+        "default": "mdi:map-marker-path"
       }
     },
     "sensor": {
@@ -52,6 +55,9 @@
     "select": {
       "unit": {
         "default": "mdi:scale"
+      },
+      "home_area": {
+        "default": "mdi:home-import-outline"
       }
     }
   },

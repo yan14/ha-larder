@@ -17,7 +17,7 @@ async def async_setup_entry(
     entry: LarderConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    async_add_entities([LarderVacuumSwitch(entry), LarderShoppingSwitch(entry)])
+    async_add_entities([LarderVacuumSwitch(entry), LarderShoppingSwitch(entry), LarderFlexibleSwitch(entry)])
 
 
 class LarderVacuumSwitch(SwitchEntity, LarderEntity):
@@ -71,6 +71,31 @@ class LarderShoppingSwitch(SwitchEntity, LarderEntity):
     def extra_state_attributes(self) -> dict[str, str | None]:
         estimator = self.hass.data.get(DOMAIN, {}).get("estimator")
         return {"list": getattr(estimator, "todo_entity", None)}
+
+    async def async_turn_on(self, **kwargs) -> None:
+        self._attr_is_on = True
+        self.async_write_ha_state()
+
+    async def async_turn_off(self, **kwargs) -> None:
+        self._attr_is_on = False
+        self.async_write_ha_state()
+
+
+class LarderFlexibleSwitch(SwitchEntity, LarderEntity):
+    """Variabler Lagerort: die Dose steht mal hier, mal dort (z. B. Vakuumdosen). Standard: aus.
+
+    Ist er an, fragt der Befüll-Dialog nach dem Bereich, und "Behälter leeren" stellt die Dose zurück
+    in den "Lagerort nach dem Leeren" (falls einer gewählt ist). Der Wert gehört zur Dose und bleibt
+    beim Leeren erhalten.
+    """
+
+    _key = "flexible"
+    _attr_is_on = False
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        if (last := await self._async_last_state()) is not None:
+            self._attr_is_on = last.state == "on"
 
     async def async_turn_on(self, **kwargs) -> None:
         self._attr_is_on = True

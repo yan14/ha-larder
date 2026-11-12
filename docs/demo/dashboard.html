@@ -70,6 +70,13 @@ doses.forEach(([name, area, content, days, category], i) => {
   states[ids.select] = { entity_id: ids.select, state: "portions", attributes: { options: ["portions"] } };
   states[ids.button] = { entity_id: ids.button, state: "unknown", attributes: {} };
   states[ids.image] = { entity_id: ids.image, state: "x", attributes: {} };
+  // variabler Lagerort (Vakuumdosen im Kühlschrank) mit "nach dem Leeren zurück in"
+  const flex = `switch.${id}_flexible`, home = `select.${id}_home_area`;
+  entities[flex] = { entity_id: flex, device_id: id, platform: "larder", translation_key: "flexible" };
+  entities[home] = { entity_id: home, device_id: id, platform: "larder", translation_key: "home_area" };
+  const areaNames = Object.values(areas);
+  states[flex] = { entity_id: flex, state: area === "kitchen" ? "on" : "off", attributes: {} };
+  states[home] = { entity_id: home, state: area === "kitchen" ? areas.pantry : "none", attributes: { options: ["none", ...areaNames] } };
 });
 const recipes = de ? [
   { id: "r1", title: "Mac'n Cheese", minutes: 30, ingredients: ["250 g Makkaroni", "200 g Käse", "Milch"], steps: ["Nudeln kochen.", "Käsesauce rühren und alles überbacken."], source: "manual", created: "2" },

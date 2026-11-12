@@ -3,6 +3,12 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 2.1.0
+
+- **Flexible storage place** for containers that move around (for example vacuum boxes: fridge one day, 0 °C drawer the next): new switch **Flexible storage place** per container (off by default). When it is on, the fill dialog also asks for the **area** (administrators; also when filling several containers at once), so the estimate uses the right place.
+- New selection **Storage place after emptying**: the area a flexible container goes back to when it is emptied (or *stays where it is*). The area is remembered by its ID, renaming it does no harm; if the area is deleted the selection goes back to *stays where it is*.
+- Both are on the card of the container (the selection only appears while the switch is on) and are kept when the container is emptied.
+
 ## 2.0.0
 
 **The new dashboard.** The tile-based dashboard that was tried out as *Larder experimental* is now the normal **Larder** dashboard in the sidebar. The old dashboard is gone as a page of its own; everything it could do is in the new one:

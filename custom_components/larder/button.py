@@ -6,6 +6,7 @@ from homeassistant.components.button import ButtonEntity
 from homeassistant.const import STATE_ON, STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import area_registry as ar, device_registry as dr
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
@@ -40,8 +41,23 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
         item = self._shopping_item()
         for entity in entities:
             await entity.async_reset()
+        self._return_home()
         if item:
             await async_add_to_shopping_list(self.hass, item[0], item[1])
+
+    def _return_home(self) -> None:
+        """Variabler Lagerort mit festem "Lagerort nach dem Leeren": Dose dorthin zurückstellen."""
+        flexible = self._sibling_state("switch", "flexible")
+        home = self._sibling_state("select", "home_area")
+        if flexible is None or flexible.state != STATE_ON or home is None:
+            return
+        area_id = home.attributes.get("area_id")
+        if not area_id or ar.async_get(self.hass).async_get_area(area_id) is None:
+            return
+        registry = dr.async_get(self.hass)
+        device = registry.async_get_device(identifiers={(DOMAIN, self._cc)})
+        if device is not None and device.area_id != area_id:
+            registry.async_update_device(device.id, area_id=area_id)
 
     def _shopping_item(self) -> tuple[str, str] | None:
         """(To-do-Liste, Eintrag), wenn die Dose beim Leeren etwas auf die Liste setzen soll."""

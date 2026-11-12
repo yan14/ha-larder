@@ -66,6 +66,9 @@
       },
       "shopping": {
         "name": "Shopping list"
+      },
+      "flexible": {
+        "name": "Flexible storage place"
       }
     },
     "sensor": {
@@ -98,6 +101,12 @@
           "slices": "Slices",
           "grams": "Grams",
           "milliliters": "Milliliters"
+        }
+      },
+      "home_area": {
+        "name": "Storage place after emptying",
+        "state": {
+          "none": "Stays where it is"
         }
       }
     }
