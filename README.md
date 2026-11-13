@@ -34,7 +34,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 - [Why this project?](#why-this-project)
 - [Installation](#installation) · [Getting started](#getting-started) · [Adding a container](#adding-a-container) · [Areas and labels](#areas-and-labels) · [Settings](#settings)
 - [Dashboard "Larder"](#dashboard-larder) · [Selecting several containers](#selecting-several-containers) · [Filling containers](#filling-containers) · [Larder experimental](#larder-experimental)
-- [Best-before estimate](#best-before-estimate) · [Recipes](#recipes) · [Daily summary](#daily-summary) · [Shopping list](#shopping-list) · [Calendar](#best-before-dates-in-your-calendar) · [Repairs](#repairs)
+- [Best-before estimate](#best-before-estimate) · [Recipes](#recipes) · [Daily summary](#daily-summary) · [Shopping list](#shopping-list) · [Calendar](#best-before-dates-in-your-calendar) · [Export and import](#export-and-import) · [Repairs](#repairs)
 - [Scanning](#scanning): [in the app](#scanning-in-the-app), [own QR codes](#your-own-qr-codes), [NFC tags](#nfc-tags), [Zwilling codes (iOS Shortcut)](#ios-shortcut-for-the-original-zwilling-codes)
 - [Reference](#reference): [entities](#entities), [services and events](#services-and-events), [webhook](#webhook-interface)
 - [Alternatives](#alternatives) · [Development](#development)
@@ -117,6 +117,10 @@ zwilling://zwillingapp/food-storage/in/?tc=42ML30&s=m&cc=34OL
 The ID alone (`cc`, here `34OL`) is enough as well. You can optionally give the container a name. Each container can only be added once.
 
 Home Assistant has no camera in this dialog. Easier: add the first container with **Create new QR code**, then scan the Zwilling codes with [📷 in the app](#scanning-in-the-app). On iOS the [Shortcut](#ios-shortcut-for-the-original-zwilling-codes) also works.
+
+### Renaming a container
+
+Settings → Devices & services → **Larder** → the container's entry → ⋮ → **Reconfigure**. The ID stays, so printed QR codes and NFC tags keep working.
 
 ## Areas and labels
 
@@ -413,6 +417,18 @@ Under Settings → Devices & services → **Larder** → **Configure** you can p
 **Clean-up.** On every start and whenever you save the settings, Larder checks the whole calendar, keeps exactly one event per container and removes duplicates. The service `larder.rebuild_calendar` does the same on demand and also removes events of containers that no longer exist. With `include_unmarked: true` it additionally removes events titled "Best before: …" / "MHD: …" that carry no Larder tag (for calendars that drop the description) and creates them anew.
 
 The calendar must be able to create **and** delete events. Read-only calendars (for example an iCal link) cannot be used and are rejected when you save the settings; the *Local Calendar* integration is a good choice if you have no other one. **CalDAV** (iCloud, Nextcloud …) works: Home Assistant's CalDAV calendar can only create events by itself, so Larder reads and deletes its own events directly through the CalDAV connection.
+
+## Export and import
+
+In the dashboard **☰ → 📦 Export and import** (administrators):
+
+- **📄 Inventory as a table (CSV)**: all containers with name, ID, area, contents, quantity, unit, filled on, best before, days left, status and vacuum. In German with semicolons, so Excel opens it directly.
+- **💾 Remembered estimates (backup)**: all [remembered best-before values](#managing-remembered-estimates) as a JSON file.
+- **Import estimates**: reads such a file back, for example after a reinstall or on a second Home Assistant. Your own corrections are kept when the file only has a table or AI value for the same combination; with **Delete existing estimates first** the file replaces everything. Invalid entries are skipped and counted.
+
+The downloads open via a link that is valid for five minutes, also in the Home Assistant app.
+
+For bug reports, **Download diagnostics** (⋮ on a container's entry under Settings → Devices & services → Larder) collects the settings, the container and its entities. The secret webhook ID and the remembered estimates themselves are not included.
 
 ## Repairs
 

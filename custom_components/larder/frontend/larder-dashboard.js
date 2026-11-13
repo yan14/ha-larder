@@ -38,6 +38,19 @@ export const TEXTS = {
     estimates: "Schätzungen",
     menuEstimates: "Gemerkte Schätzungen",
     menuLabels: "QR-Etiketten drucken",
+    menuData: "Export und Import",
+    dataTitle: "Export und Import",
+    dataExport: "Herunterladen",
+    dataInventory: "📄 Bestand als Tabelle (CSV)",
+    dataInventoryHint: "Alle Dosen mit Inhalt, Menge, MHD und Bereich, z. B. für Excel.",
+    dataEstimates: "💾 Gemerkte Schätzungen (Sicherung)",
+    dataEstimatesHint: "Alle gemerkten MHD-Werte als Datei, zum Sichern oder für ein anderes Home Assistant.",
+    dataImport: "Schätzungen einlesen",
+    dataImportHint: "Datei aus „Gemerkte Schätzungen“ wählen. Eigene Korrekturen bleiben erhalten.",
+    dataReplace: "Vorhandene Schätzungen vorher löschen",
+    dataImported: (r) => `Eingelesen: ${r.added} neu, ${r.updated} aktualisiert` + (r.kept ? `, ${r.kept} eigene behalten` : "") + (r.skipped ? `, ${r.skipped} ungültig` : "") + ".",
+    dataImportFailed: "Das ist keine Datei mit Larder-Schätzungen.",
+    dataLinkFailed: "Der Link konnte nicht erstellt werden.",
     labelsTitle: "QR-Etiketten drucken",
     labelsFor: (n) => (n === null ? "Alle Dosen" : n === 1 ? "1 ausgewählte Dose" : `${n} ausgewählte Dosen`),
     labelsLayout: "Etikettenbogen (A4)",
@@ -193,6 +206,19 @@ export const TEXTS = {
     estimates: "Estimates",
     menuEstimates: "Remembered estimates",
     menuLabels: "Print QR labels",
+    menuData: "Export and import",
+    dataTitle: "Export and import",
+    dataExport: "Download",
+    dataInventory: "📄 Inventory as a table (CSV)",
+    dataInventoryHint: "All containers with contents, quantity, best-before date and area, e.g. for Excel.",
+    dataEstimates: "💾 Remembered estimates (backup)",
+    dataEstimatesHint: "All remembered best-before values as a file, to back them up or use them in another Home Assistant.",
+    dataImport: "Import estimates",
+    dataImportHint: "Choose a file from “Remembered estimates”. Your own corrections are kept.",
+    dataReplace: "Delete existing estimates first",
+    dataImported: (r) => `Imported: ${r.added} new, ${r.updated} updated` + (r.kept ? `, ${r.kept} own kept` : "") + (r.skipped ? `, ${r.skipped} invalid` : "") + ".",
+    dataImportFailed: "This is not a file with Larder estimates.",
+    dataLinkFailed: "The link could not be created.",
     labelsTitle: "Print QR labels",
     labelsFor: (n) => (n === null ? "All containers" : n === 1 ? "1 selected container" : `${n} selected containers`),
     labelsLayout: "Label sheet (A4)",
@@ -604,6 +630,9 @@ const STYLE = `
   .dialog .hint { margin: 0; font-size: 12px; color: var(--secondary-text-color); }
   .dialog a.pdf { align-self: stretch; text-align: center; padding: 12px; border-radius: 10px; font-size: 16px; text-decoration: none;
     background: var(--primary-color); color: var(--text-primary-color, #fff); }
+  .dialog .download { display: flex; flex-direction: column; gap: 4px; }
+  .dialog .download a.pdf { text-align: left; font-size: 15px; }
+  .dialog input[type="file"] { font: inherit; font-size: 13px; }
   .dialog label.check { flex-direction: row; align-items: center; gap: 8px; font-size: 14px; color: var(--primary-text-color); }
   .dialog button.link { align-self: flex-start; font: inherit; font-size: 14px; background: none; border: 0; padding: 0;
     color: var(--primary-color); cursor: pointer; }
@@ -640,7 +669,7 @@ export class LarderDashboard extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>${STYLE}</style>
       <header><button id="menu" type="button" aria-label="Menu">☰</button><h1></h1><button id="settings" type="button" hidden>⚙</button></header>
-      <div class="menu" hidden><button type="button" data-role="menu-estimates"></button><button type="button" data-role="menu-labels"></button><button type="button" data-role="menu-settings"></button></div>
+      <div class="menu" hidden><button type="button" data-role="menu-estimates"></button><button type="button" data-role="menu-labels"></button><button type="button" data-role="menu-data"></button><button type="button" data-role="menu-settings"></button></div>
       <div class="notice" role="alert" hidden></div>
       <main></main>
       <nav></nav>
@@ -678,6 +707,10 @@ export class LarderDashboard extends HTMLElement {
     this._menu.querySelector('[data-role="menu-labels"]').addEventListener("click", () => {
       this._menu.hidden = true;
       this.openLabelDialog();
+    });
+    this._menu.querySelector('[data-role="menu-data"]').addEventListener("click", () => {
+      this._menu.hidden = true;
+      this.openDataDialog();
     });
     this._menu.querySelector('[data-role="menu-settings"]').addEventListener("click", () => {
       this._menu.hidden = true;
@@ -913,6 +946,7 @@ export class LarderDashboard extends HTMLElement {
     this._menu.querySelector('[data-role="menu-estimates"]').textContent = `📋 ${t.menuEstimates}`;
     this._menu.querySelector('[data-role="menu-settings"]').textContent = `⚙ ${t.menuSettings}`;
     this._menu.querySelector('[data-role="menu-labels"]').textContent = `🖨 ${t.menuLabels}`;
+    this._menu.querySelector('[data-role="menu-data"]').textContent = `📦 ${t.menuData}`;
 
     const rows = this._rows();
     const sig = JSON.stringify([
@@ -2289,6 +2323,83 @@ export class LarderDashboard extends HTMLElement {
     );
     this._overlay.hidden = false;
     title.focus();
+  }
+
+  // ----- Export und Import -----
+
+  /** Signierte Download-Adresse (gilt fünf Minuten, funktioniert auch im Browser der App). */
+  async _signedUrl(path) {
+    const signed = await this._hass.callWS({ type: "auth/sign_path", path, expires: 300 });
+    return this._hass.hassUrl ? this._hass.hassUrl(signed.path) : signed.path;
+  }
+
+  async openDataDialog() {
+    const hass = this._hass;
+    if (!isAdmin(hass)) return;
+    const t = texts(hass);
+    const form = this._form;
+    this._editing = null;
+    const download = (role, text, hint) => {
+      const box = el("div", "download");
+      const link = el("a", "pdf", text);
+      link.dataset.role = role;
+      link.target = "_blank";
+      link.rel = "noopener";
+      box.append(link, el("p", "hint", hint));
+      return box;
+    };
+    const inventory = download("export-inventory", t.dataInventory, t.dataInventoryHint);
+    const estimates = download("export-estimates", t.dataEstimates, t.dataEstimatesHint);
+    const file = el("input");
+    file.type = "file";
+    file.accept = ".json,application/json";
+    file.dataset.f = "file";
+    const pick = el("label", "", t.dataImport);
+    pick.append(file);
+    const replaceWrap = el("label", "check");
+    const replace = el("input");
+    replace.type = "checkbox";
+    replace.dataset.f = "replace";
+    replaceWrap.append(replace, el("span", "", t.dataReplace));
+    const status = el("p", "hint");
+    status.dataset.role = "import-status";
+    status.setAttribute("role", "status");
+    const error = el("div", "error");
+    error.setAttribute("role", "alert");
+    const buttons = el("div", "buttons");
+    const close = el("button", "cancel", t.close);
+    close.type = "button";
+    close.addEventListener("click", () => this._closeDialog());
+    buttons.append(close);
+    form.replaceChildren(el("h2", "", t.dataTitle), inventory, estimates, pick, el("p", "hint", t.dataImportHint), replaceWrap, status, error, buttons);
+    file.addEventListener("change", () => this._importEstimates(file, replace.checked));
+    this._submit = null;
+    this._overlay.hidden = false;
+    try {
+      inventory.querySelector("a").href = await this._signedUrl(`/api/${DOMAIN}/export/containers.csv`);
+      estimates.querySelector("a").href = await this._signedUrl(`/api/${DOMAIN}/export/estimates.json`);
+    } catch {
+      error.textContent = t.dataLinkFailed;
+    }
+  }
+
+  async _importEstimates(input, replace) {
+    const t = texts(this._hass);
+    const form = this._form;
+    const status = form.querySelector('[data-role="import-status"]');
+    const error = form.querySelector(".error");
+    status.textContent = "";
+    error.textContent = "";
+    const fileObj = input.files && input.files[0];
+    if (!fileObj) return;
+    try {
+      const data = JSON.parse(await fileObj.text());
+      const result = await this._hass.callWS({ type: `${DOMAIN}/estimates_import`, data, replace });
+      status.textContent = t.dataImported(result);
+    } catch {
+      error.textContent = t.dataImportFailed;
+    }
+    input.value = "";
   }
 
   // ----- QR-Etiketten -----

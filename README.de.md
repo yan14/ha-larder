@@ -34,7 +34,7 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 - [Warum dieses Projekt?](#warum-dieses-projekt)
 - [Installation](#installation) · [Erste Schritte](#erste-schritte) · [Dose anlegen](#dose-anlegen) · [Bereiche und Labels](#bereiche-und-labels) · [Einstellungen](#einstellungen)
 - [Dashboard „Larder“](#dashboard-larder) · [Mehrere Dosen auswählen](#mehrere-dosen-auswählen) · [Dosen befüllen](#dosen-befüllen) · [Larder experimental](#larder-experimental)
-- [MHD-Schätzung](#mhd-schätzung) · [Rezepte](#rezepte) · [Tägliche Zusammenfassung](#tägliche-zusammenfassung) · [Einkaufsliste](#einkaufsliste) · [Kalender](#mhd-im-kalender) · [Reparaturhinweise](#reparaturhinweise)
+- [MHD-Schätzung](#mhd-schätzung) · [Rezepte](#rezepte) · [Tägliche Zusammenfassung](#tägliche-zusammenfassung) · [Einkaufsliste](#einkaufsliste) · [Kalender](#mhd-im-kalender) · [Export und Import](#export-und-import) · [Reparaturhinweise](#reparaturhinweise)
 - [Scannen](#scannen): [in der App](#scannen-in-der-app), [eigene QR-Codes](#eigene-qr-codes), [NFC-Tags](#nfc-tags), [Zwilling-Codes (iOS-Kurzbefehl)](#ios-kurzbefehl-für-die-originalen-zwilling-codes)
 - [Referenz](#referenz): [Entitäten](#entitäten), [Dienste und Ereignisse](#dienste-und-ereignisse), [Webhook](#webhook-schnittstelle)
 - [Alternativen](#alternativen) · [Entwicklung](#entwicklung)
@@ -117,6 +117,10 @@ zwilling://zwillingapp/food-storage/in/?tc=42ML30&s=m&cc=34OL
 Es reicht auch nur die ID (`cc`, hier `34OL`). Optional kannst du einen Namen vergeben. Jede Dose lässt sich nur einmal anlegen.
 
 Home Assistant bietet im Dialog keine Kamera zum Scannen. Einfacher: die erste Dose mit **Neuen QR Code erstellen** anlegen und die Zwilling-Codes danach mit [📷 in der App](#scannen-in-der-app) scannen. Unter iOS geht auch der [Kurzbefehl](#ios-kurzbefehl-für-die-originalen-zwilling-codes).
+
+### Dose umbenennen
+
+Einstellungen → Geräte & Dienste → **Larder** → Eintrag der Dose → ⋮ → **Neu konfigurieren**. Die ID bleibt, gedruckte QR-Codes und NFC-Tags gelten weiter.
 
 ## Bereiche und Labels
 
@@ -413,6 +417,18 @@ Unter Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** k
 **Aufräumen.** Bei jedem Start und beim Speichern der Einstellungen prüft Larder den ganzen Kalender, behält pro Dose genau einen Termin und entfernt Doppelte. Der Dienst `larder.rebuild_calendar` macht das auf Knopfdruck und entfernt zusätzlich Termine von Dosen, die es nicht mehr gibt. Mit `include_unmarked: true` werden außerdem Termine „MHD: …“ / „Best before: …“ ohne Larder-Kennung entfernt (für Kalender, die die Beschreibung verwerfen) und neu angelegt.
 
 Der Kalender muss Termine anlegen **und** löschen können. Reine Lese-Kalender (z. B. ein iCal-Link) gehen nicht und werden beim Speichern der Einstellungen abgelehnt; die Integration *Lokaler Kalender* ist eine gute Wahl, wenn du keinen anderen hast. **CalDAV** (iCloud, Nextcloud …) funktioniert: Der CalDAV-Kalender von Home Assistant kann von sich aus nur Termine anlegen, deshalb liest und löscht Larder seine eigenen Termine direkt über die CalDAV-Verbindung.
+
+## Export und Import
+
+Im Dashboard **☰ → 📦 Export und Import** (Administratoren):
+
+- **📄 Bestand als Tabelle (CSV)**: alle Dosen mit Name, ID, Bereich, Inhalt, Menge, Einheit, Eingelagert am, MHD, Tage übrig, Status und Vakuum. Auf Deutsch mit Semikolon, damit Excel sie direkt öffnet.
+- **💾 Gemerkte Schätzungen (Sicherung)**: alle [gemerkten MHD-Werte](#gemerkte-schätzungen-verwalten) als JSON-Datei.
+- **Schätzungen einlesen**: liest so eine Datei wieder ein, z. B. nach einer Neuinstallation oder auf einem zweiten Home Assistant. Eigene Korrekturen bleiben, wenn die Datei für dieselbe Kombination nur einen Tabellen- oder KI-Wert hat; mit **Vorhandene Schätzungen vorher löschen** ersetzt die Datei alles. Ungültige Einträge werden übersprungen und gezählt.
+
+Die Downloads öffnen sich über einen Link, der fünf Minuten gilt, auch in der Home Assistant App.
+
+Für Fehlerberichte sammelt **Diagnose herunterladen** (⋮ am Eintrag einer Dose unter Einstellungen → Geräte & Dienste → Larder) die Einstellungen, die Dose und ihre Entitäten. Die geheime Webhook-ID und die gemerkten Schätzungen selbst sind nicht enthalten.
 
 ## Reparaturhinweise
 

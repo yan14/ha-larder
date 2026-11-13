@@ -437,6 +437,26 @@ class Estimator:
         await self._store.async_save(self._data())
         return key
 
+    def import_entries(self, entries: dict[str, dict[str, Any]], replace: bool = False) -> dict[str, int]:
+        """Eingelesene Einträge übernehmen (Schlüssel wie `cache_key`); siehe export.async_import_estimates."""
+        added = updated = kept = 0
+        if replace:
+            self._cache = {}
+        for key, entry in entries.items():
+            previous = self._cache.get(key)
+            if previous is None:
+                added += 1
+            elif previous.get("source") == "learned" and entry.get("source") != "learned":
+                kept += 1  # eigene Korrektur schlägt Tabellen-/KI-Wert aus der Datei
+                continue
+            else:
+                updated += 1
+            if entry.get("source") == "table":
+                entry = {**entry, "table_version": shelf_life.TABLE_VERSION}
+            self._cache[key] = entry
+        self._schedule_save()
+        return {"added": added, "updated": updated, "kept": kept}
+
     async def async_delete_entry(self, key: str) -> None:
         """Eintrag vergessen: beim nächsten Schätzen wird neu berechnet."""
         if self._cache.pop(key, None) is None:

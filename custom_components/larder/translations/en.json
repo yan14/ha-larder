@@ -25,13 +25,22 @@
           "name": "Name (optional)",
           "area_id": "Area (optional)"
         }
+      },
+      "reconfigure": {
+        "title": "Rename container",
+        "description": "Container ID: {cc}. The ID stays, printed QR codes and NFC tags keep working.",
+        "data": {
+          "name": "Name"
+        }
       }
     },
     "error": {
-      "invalid_code": "No valid ID (cc) found in the QR code."
+      "invalid_code": "No valid ID (cc) found in the QR code.",
+      "name_required": "Please enter a name."
     },
     "abort": {
-      "already_configured": "This container has already been added."
+      "already_configured": "This container has already been added.",
+      "reconfigure_successful": "The container was renamed."
     }
   },
   "entity": {

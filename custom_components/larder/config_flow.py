@@ -161,6 +161,28 @@ class LarderConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
 
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Dose umbenennen (die ID bleibt, damit gedruckte Codes und NFC-Tags gültig bleiben)."""
+        entry = self._get_reconfigure_entry()
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            name = (user_input.get(CONF_NAME) or "").strip()
+            if not name:
+                errors[CONF_NAME] = "name_required"
+            else:
+                return self.async_update_reload_and_abort(entry, title=name)
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=self.add_suggested_values_to_schema(
+                vol.Schema({vol.Required(CONF_NAME): TextSelector()}), {CONF_NAME: entry.title}
+            ),
+            description_placeholders={"cc": entry.data.get(CONF_CC, "")},
+            errors=errors,
+        )
+
+
 class LarderOptionsFlow(OptionsFlow):
     """Globale Einstellungen: Webhook-URL (nur Anzeige) und Schätzung des MHD (Tabelle/KI)."""
 

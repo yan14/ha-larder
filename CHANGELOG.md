@@ -3,6 +3,12 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 2.6.0
+
+- **Export and import** (dashboard **☰ → 📦 Export and import**, administrators): the inventory as a CSV table (semicolons in German, for Excel), the remembered estimates as a JSON backup, and importing such a file (own corrections are kept; optionally replace everything).
+- **Diagnostics:** "Download diagnostics" on a container's entry (without the webhook ID and without the estimates themselves).
+- **Rename a container** with **Reconfigure**; the ID, printed QR codes and NFC tags stay valid.
+
 ## 2.5.0
 
 - **Several contents in one container:** separate them with commas, e.g. `Salami, Kochschinken, Leberwurst`. The table estimate looks up each item and takes the shortest best-before date (the tip names the item that decides it); the AI is told to answer for the item that spoils first. The shopping list gets one entry per item, and containers with items of different kinds get the new category **Mixed** 🍱. Remembered table estimates are recalculated once.

@@ -901,6 +901,46 @@ test("Einzel-Scan: ohne Scanner der App kein Knopf", async () => {
   assert.equal($(el, '[data-role="scan-one"]'), null);
 });
 
+test("Export und Import: signierte Downloads und Einlesen der Schätzungen", async () => {
+  const hass = makeHass(DOSES);
+  const base = hass.callWS;
+  const imports = [];
+  hass.callWS = async (msg) => {
+    if (msg.type === "auth/sign_path") return { path: `${msg.path}?authSig=x` };
+    if (msg.type === `${D}/estimates_import`) {
+      imports.push(msg);
+      if (!msg.data.entries) throw new Error("invalid");
+      return { added: 2, updated: 1, kept: 1, skipped: 0, entries: [] };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  $(el, "#settings").click();
+  $(el, '[data-role="menu-data"]').click();
+  await flush();
+  await flush();
+  const form = $(el, "form.dialog");
+  assert.equal($(el, '[data-role="export-inventory"]').getAttribute("href"), "/api/larder/export/containers.csv?authSig=x");
+  assert.equal($(el, '[data-role="export-estimates"]').getAttribute("href"), "/api/larder/export/estimates.json?authSig=x");
+
+  const file = form.querySelector('[data-f="file"]');
+  const pickFile = (text) => {
+    Object.defineProperty(file, "files", { configurable: true, value: [{ text: async () => text }] });
+    file.dispatchEvent(new Event("change"));
+  };
+  form.querySelector('[data-f="replace"]').checked = true;
+  pickFile(JSON.stringify({ domain: "larder", entries: [{ content: "Lachs", area: "Küche", days: 2 }] }));
+  await flush();
+  await flush();
+  assert.equal(imports[0].replace, true);
+  assert.equal($(el, '[data-role="import-status"]').textContent, "Eingelesen: 2 neu, 1 aktualisiert, 1 eigene behalten.");
+  pickFile("kein json");
+  await flush();
+  await flush();
+  assert.equal(form.querySelector(".error").textContent, "Das ist keine Datei mit Larder-Schätzungen.");
+});
+
 test("QR-Etiketten: Dialog aus Menü und Auswahl, signierter Link zum PDF", async () => {
   const hass = makeHass(DOSES);
   const signed = [];

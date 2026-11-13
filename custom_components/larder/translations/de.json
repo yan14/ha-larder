@@ -25,13 +25,22 @@
           "name": "Name (optional)",
           "area_id": "Bereich (optional)"
         }
+      },
+      "reconfigure": {
+        "title": "Dose umbenennen",
+        "description": "ID der Dose: {cc}. Die ID bleibt, gedruckte QR-Codes und NFC-Tags gelten weiter.",
+        "data": {
+          "name": "Name"
+        }
       }
     },
     "error": {
-      "invalid_code": "Im QR-Code wurde keine gültige ID (cc) gefunden."
+      "invalid_code": "Im QR-Code wurde keine gültige ID (cc) gefunden.",
+      "name_required": "Bitte einen Namen eingeben."
     },
     "abort": {
-      "already_configured": "Diese Dose ist bereits angelegt."
+      "already_configured": "Diese Dose ist bereits angelegt.",
+      "reconfigure_successful": "Die Dose wurde umbenannt."
     }
   },
   "entity": {
