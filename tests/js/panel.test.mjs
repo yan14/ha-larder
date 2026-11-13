@@ -281,7 +281,7 @@ test("Zustandsänderungen werden live übernommen, Eingabefeld im Fokus bleibt u
   assert.equal(input.value, "Fremdwert");
 });
 
-test("Eingaben und Buttons rufen die richtigen Dienste auf", () => {
+test("Eingaben und Buttons rufen die richtigen Dienste auf", async () => {
   const hass = makeHass([{ id: "d1", name: "Dose 1", content: "Suppe" }], { areas: AREAS });
   const el = mount(hass);
 
@@ -299,6 +299,12 @@ test("Eingaben und Buttons rufen die richtigen Dienste auf", () => {
 
   $(el, "button.now").click();
   $(el, "button.empty").click();
+  // erst die Frage, dann leeren; ohne WebSocket wird einfach der Button gedrückt
+  assert.equal($(el, ".outcomerow").hidden, false);
+  assert.equal(hass.calls.length, 4);
+  $(el, "button.eaten").click();
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal($(el, ".outcomerow").hidden, true);
 
   assert.deepEqual(hass.calls[0], {
     domain: "text",
@@ -807,9 +813,17 @@ test("'Behälter leeren' löscht den Schätz-Hinweis, der Vakuum-Schalter bleibt
   const el = mount(hass);
   $(el, "button.estimate").click();
   await flush();
+  const ws = [];
+  hass.callWS = async (msg) => {
+    ws.push(msg);
+    return {};
+  };
   $(el, "button.empty").click();
   assert.equal($(el, ".tip").textContent, "");
-  assert.deepEqual(hass.calls, [{ domain: "button", service: "press", data: { entity_id: "button.d1_leeren" } }]);
+  $(el, "button.thrown").click();
+  await flush();
+  assert.deepEqual(hass.calls, []);
+  assert.deepEqual(ws, [{ type: "larder/empty", device_id: "d1", outcome: "thrown" }]);
 });
 
 test("Leeren von MHD und 'Eingelagert am' im Panel ruft die Löschen-Services auf", () => {
@@ -1075,7 +1089,7 @@ test("Menge: Eingabe und Einheit auf der Karte setzen die Entitäten, leer wird 
   assert.equal($(none, '.card [data-f="unit"]').value, "portions");
 });
 
-test("Portion entnehmen: −1 zieht ab, bei der letzten Frage nach Leeren", () => {
+test("Portion entnehmen: −1 zieht ab, bei der letzten Frage nach Leeren", async () => {
   const hass = adminHass([{ id: "d1", name: "A", content: "Bolognese", portions: 2, unit: "portions" }]);
   const el = mount(hass);
   const take = $(el, ".card button.take");
@@ -1097,9 +1111,9 @@ test("Portion entnehmen: −1 zieht ab, bei der letzten Frage nach Leeren", () =
   hass.calls.length = 0;
   $(el, ".card button.take").click();
   $(el, ".card button.lastempty").click();
-  assert.equal(hass.calls.length, 1);
-  assert.equal(hass.calls[0].domain, "button");
-  assert.equal(hass.calls[0].service, "press");
+  await flush();
+  assert.deepEqual(hass.calls, []);
+  assert.deepEqual(hass.wsCalls.filter((m) => m.type === "larder/empty"), [{ type: "larder/empty", device_id: "d1", outcome: "eaten" }]);
 
   // Gramm oder ohne Menge: kein −1
   document.body.innerHTML = "";
@@ -1108,6 +1122,33 @@ test("Portion entnehmen: −1 zieht ab, bei der letzten Frage nach Leeren", () =
   document.body.innerHTML = "";
   const none = mount(adminHass([{ id: "d1", name: "A", content: "Reis" }]));
   assert.equal($(none, ".card button.take").hidden, true);
+});
+
+test("Verlauf: aufklappen lädt die letzten Einträge der Dose", async () => {
+  const hass = adminHass([{ id: "d1", name: "A", content: "Suppe" }]);
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === "larder/history") {
+      assert.deepEqual(msg, { type: "larder/history", device_id: "d1", limit: 10 });
+      return {
+        records: [
+          { content: "Bolognese", filled_at: "2026-10-01T10:00:00+00:00", emptied: "2026-10-20T10:00:00+00:00", outcome: "eaten" },
+          { content: "Käse", filled_at: null, emptied: "2026-09-01T10:00:00+00:00", outcome: null, expired: true },
+        ],
+      };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  const details = $(el, ".card details.history");
+  assert.equal(details.querySelector("summary").textContent, "Verlauf");
+  details.open = true;
+  details.dispatchEvent(new dom.window.Event("toggle"));
+  await flush();
+  const items = [...details.querySelectorAll("li")].map((li) => li.textContent);
+  assert.equal(items.length, 2);
+  assert.match(items[0], /01\.10\.2026 – 20\.10\.2026 · Bolognese · gegessen/);
+  assert.match(items[1], /01\.09\.2026 · Käse · abgelaufen/);
 });
 
 test("Schnellaktionen: ohne Inhalt versteckt, ohne MHD ist +1 Tag gesperrt", () => {

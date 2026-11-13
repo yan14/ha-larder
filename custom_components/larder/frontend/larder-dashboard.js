@@ -43,6 +43,8 @@ export const TEXTS = {
     dataExport: "Herunterladen",
     dataInventory: "📄 Bestand als Tabelle (CSV)",
     dataInventoryHint: "Alle Dosen mit Inhalt, Menge, MHD und Bereich, z. B. für Excel.",
+    dataHistory: "🕘 Verlauf (CSV)",
+    dataHistoryHint: "Was wann in welcher Dose war und ob es gegessen oder weggeworfen wurde.",
     dataEstimates: "💾 Gemerkte Schätzungen (Sicherung)",
     dataEstimatesHint: "Alle gemerkten MHD-Werte als Datei, zum Sichern oder für ein anderes Home Assistant.",
     dataImport: "Schätzungen einlesen",
@@ -211,6 +213,8 @@ export const TEXTS = {
     dataExport: "Download",
     dataInventory: "📄 Inventory as a table (CSV)",
     dataInventoryHint: "All containers with contents, quantity, best-before date and area, e.g. for Excel.",
+    dataHistory: "🕘 History (CSV)",
+    dataHistoryHint: "What was in which container when, and whether it was eaten or thrown away.",
     dataEstimates: "💾 Remembered estimates (backup)",
     dataEstimatesHint: "All remembered best-before values as a file, to back them up or use them in another Home Assistant.",
     dataImport: "Import estimates",
@@ -2349,6 +2353,7 @@ export class LarderDashboard extends HTMLElement {
       return box;
     };
     const inventory = download("export-inventory", t.dataInventory, t.dataInventoryHint);
+    const historyLink = download("export-history", t.dataHistory, t.dataHistoryHint);
     const estimates = download("export-estimates", t.dataEstimates, t.dataEstimatesHint);
     const file = el("input");
     file.type = "file";
@@ -2371,12 +2376,13 @@ export class LarderDashboard extends HTMLElement {
     close.type = "button";
     close.addEventListener("click", () => this._closeDialog());
     buttons.append(close);
-    form.replaceChildren(el("h2", "", t.dataTitle), inventory, estimates, pick, el("p", "hint", t.dataImportHint), replaceWrap, status, error, buttons);
+    form.replaceChildren(el("h2", "", t.dataTitle), inventory, historyLink, estimates, pick, el("p", "hint", t.dataImportHint), replaceWrap, status, error, buttons);
     file.addEventListener("change", () => this._importEstimates(file, replace.checked));
     this._submit = null;
     this._overlay.hidden = false;
     try {
       inventory.querySelector("a").href = await this._signedUrl(`/api/${DOMAIN}/export/containers.csv`);
+      historyLink.querySelector("a").href = await this._signedUrl(`/api/${DOMAIN}/export/history.csv`);
       estimates.querySelector("a").href = await this._signedUrl(`/api/${DOMAIN}/export/estimates.json`);
     } catch {
       error.textContent = t.dataLinkFailed;

@@ -3,6 +3,10 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 2.7.0
+
+- **History per container:** every emptying is recorded (contents, quantity, area, filled on, best before, emptied on, days stored, expired or not). The card asks **😋 Eaten / 🗑 Thrown away** before emptying (after **−1** on the last portion it counts as eaten) and shows the last ten fillings under **History**. The whole history can be downloaded as CSV under **☰ → 📦 Export and import**. Groundwork for statistics.
+
 ## 2.6.0
 
 - **Export and import** (dashboard **☰ → 📦 Export and import**, administrators): the inventory as a CSV table (semicolons in German, for Excel), the remembered estimates as a JSON backup, and importing such a file (own corrections are kept; optionally replace everything).

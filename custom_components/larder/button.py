@@ -11,6 +11,8 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .entity import LarderConfigEntry, LarderEntity, LarderRuntime
+from .estimate import storage_context
+from .history import async_get_history, build_record
 from .shelf_life import split_items
 from .shopping import async_add_to_shopping_list
 
@@ -40,12 +42,50 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
                 translation_key="nothing_to_reset",
             )
         item = self._shopping_item()
+        history = await async_get_history(self.hass)
+        record = self._history_record(history.pop_pending(self._cc))
         for entity in entities:
             await entity.async_reset()
         self._return_home()
+        if record is not None:
+            history.add(record)
         if item:
             for part in split_items(item[1]):  # "Salami, Leberwurst" → zwei Einträge
                 await async_add_to_shopping_list(self.hass, item[0], part)
+
+    def _history_record(self, outcome: str | None) -> dict | None:
+        """Was gerade drin ist, für den Verlauf (None bei leerer Dose)."""
+
+        def value(platform: str, key: str) -> str | None:
+            state = self._sibling_state(platform, key)
+            if state is None or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+                return None
+            return state.state
+
+        content = (value("text", "content") or "").strip()
+        if not content:
+            return None
+        try:
+            quantity = int(float(value("number", "portions") or 0))
+        except ValueError:
+            quantity = 0
+        return build_record(
+            cc=self._cc,
+            name=self._entry_title(),
+            content=content,
+            quantity=quantity,
+            unit=value("select", "unit"),
+            area=storage_context(self.hass, self._cc).area_name,
+            filled_at=value("datetime", "filled_at"),
+            best_before=value("date", "best_before"),
+            outcome=outcome,
+        )
+
+    def _entry_title(self) -> str:
+        device = dr.async_get(self.hass).async_get_device(identifiers={(DOMAIN, self._cc)})
+        if device is not None:
+            return device.name_by_user or device.name or self._cc
+        return self._cc
 
     def _return_home(self) -> None:
         """Variabler Lagerort mit festem "Lagerort nach dem Leeren": Dose dorthin zurückstellen."""

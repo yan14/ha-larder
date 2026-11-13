@@ -35,6 +35,13 @@ export const STRINGS = {
     codeLabel: "QR-Code-Inhalt oder ID",
     nameLabel: "Name (optional)",
     cancel: "Abbrechen",
+    outcomeQuestion: "Was ist mit dem Inhalt passiert?",
+    eaten: "😋 Gegessen",
+    thrown: "🗑 Weggeworfen",
+    history: "Verlauf",
+    historyEmpty: "Noch nichts geleert.",
+    historyOutcome: { eaten: "gegessen", thrown: "weggeworfen" },
+    historyExpired: "abgelaufen",
     submit: "Hinzufügen",
     invalidCode: "Im QR-Code wurde keine gültige ID (cc) gefunden.",
     alreadyConfigured: "Diese Dose wurde bereits hinzugefügt.",
@@ -158,6 +165,13 @@ export const STRINGS = {
     codeLabel: "QR code content or ID",
     nameLabel: "Name (optional)",
     cancel: "Cancel",
+    outcomeQuestion: "What happened to the contents?",
+    eaten: "😋 Eaten",
+    thrown: "🗑 Thrown away",
+    history: "History",
+    historyEmpty: "Nothing emptied yet.",
+    historyOutcome: { eaten: "eaten", thrown: "thrown away" },
+    historyExpired: "expired",
     submit: "Add",
     invalidCode: "No valid ID (cc) found in the QR code.",
     alreadyConfigured: "This container has already been added.",
@@ -546,6 +560,14 @@ const STYLE = `
   .lastrow { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-top: -4px; }
   .lastrow[hidden] { display: none; }
   .lastrow .lasttext { flex: 1; }
+  .outcomerow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; }
+  .outcomerow[hidden] { display: none; }
+  .outcomerow .otext { flex: 1 1 100%; }
+  .outcomerow button { font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
+  details.history { font-size: 13px; color: var(--secondary-text-color); }
+  details.history summary { cursor: pointer; color: var(--primary-color); }
+  details.history ul { margin: 6px 0 0; padding-left: 18px; }
   .lastrow button { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 6px; cursor: pointer;
     border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
   .lastrow button.lastempty { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: var(--primary-color); }
@@ -700,7 +722,9 @@ class DoseCard {
       <div class="row flexrow"><label class="check"><input type="checkbox" data-f="flexible"><span data-l="flexible"></span></label></div>
       <div class="row homerow"><label data-l="homeArea"></label><select data-f="homeArea"></select></div>
       <div class="nfcrow"><span class="nfcstate"></span><button class="nfcbtn" type="button"></button></div>
-      <div class="actions"><button class="fill" type="button"></button><button class="empty" type="button"></button><span class="spacer"></span><img class="qr" alt=""></div>`;
+      <div class="actions"><button class="fill" type="button"></button><button class="empty" type="button"></button><span class="spacer"></span><img class="qr" alt=""></div>
+      <div class="outcomerow" hidden><span class="otext"></span><button class="eaten" type="button"></button><button class="thrown" type="button"></button><button class="ocancel" type="button"></button></div>
+      <details class="history"><summary></summary><ul></ul></details>`;
     this.el = el;
     this.q = (sel) => el.querySelector(sel);
     this.inputs = {
@@ -773,8 +797,7 @@ class DoseCard {
     });
     this.q("button.lastempty").addEventListener("click", () => {
       this.q(".lastrow").hidden = true;
-      this._setTip("");
-      if (this.ids.button) this._call("button", "press", { entity_id: this.ids.button });
+      this._empty("eaten"); // die letzte Portion wurde ja gerade entnommen
     });
     this.q("button.lastkeep").addEventListener("click", () => {
       this.q(".lastrow").hidden = true;
@@ -783,9 +806,16 @@ class DoseCard {
     this.q("button.now").addEventListener("click", () => {
       if (this.ids.datetime) this._call("datetime", "set_value", { entity_id: this.ids.datetime, datetime: new Date().toISOString() });
     });
+    // Leeren: erst fragen, ob gegessen oder weggeworfen (für den Verlauf)
     this.q("button.empty").addEventListener("click", () => {
       this._setTip("");
-      if (this.ids.button) this._call("button", "press", { entity_id: this.ids.button });
+      this.q(".outcomerow").hidden = false;
+    });
+    this.q("button.eaten").addEventListener("click", () => this._empty("eaten"));
+    this.q("button.thrown").addEventListener("click", () => this._empty("thrown"));
+    this.q("button.ocancel").addEventListener("click", () => (this.q(".outcomerow").hidden = true));
+    this.q("details.history").addEventListener("toggle", () => {
+      if (this.q("details.history").open) this.loadHistory();
     });
     this.inputs.content.addEventListener("input", () => this._setTip(""));
     this.q('[data-f="vacuum"]').addEventListener("change", (ev) => {
@@ -851,6 +881,49 @@ class DoseCard {
     if (hass) hass.callService(domain, service, data);
   }
 
+  /** Dose leeren und festhalten, was mit dem Inhalt passiert ist (ohne Verlauf: einfach den Button drücken). */
+  async _empty(outcome) {
+    this.q(".outcomerow").hidden = true;
+    const hass = this._panel.hass;
+    if (!hass || !this.ids.button) return;
+    try {
+      await hass.callWS({ type: `${DOMAIN}/empty`, device_id: this.deviceId, outcome });
+    } catch {
+      this._call("button", "press", { entity_id: this.ids.button });
+    }
+    if (this.q("details.history").open) this.loadHistory();
+  }
+
+  async loadHistory() {
+    const hass = this._panel.hass;
+    const t = strings(hass);
+    const list = this.q("details.history ul");
+    let records = [];
+    try {
+      const res = await hass.callWS({ type: `${DOMAIN}/history`, device_id: this.deviceId, limit: 10 });
+      records = (res && res.records) || [];
+    } catch {
+      records = [];
+    }
+    const lang = (hass.language || "en").toLowerCase();
+    const day = (iso) => {
+      const d = iso ? new Date(iso) : null;
+      return d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString(lang, { day: "2-digit", month: "2-digit", year: "numeric" }) : "";
+    };
+    list.replaceChildren(
+      ...(records.length
+        ? records.map((r) => {
+            const li = document.createElement("li");
+            const span = [day(r.filled_at), day(r.emptied)].filter(Boolean).join(" – ");
+            const result = r.outcome ? t.historyOutcome[r.outcome] : r.expired ? t.historyExpired : "";
+            li.textContent = [span, r.content, result].filter(Boolean).join(" · ");
+            if (r.outcome) li.dataset.outcome = r.outcome;
+            return li;
+          })
+        : [Object.assign(document.createElement("li"), { textContent: t.historyEmpty })]),
+    );
+  }
+
   _isFocused(input) {
     const root = this._panel.shadowRoot;
     return !!root && root.activeElement === input;
@@ -902,6 +975,11 @@ class DoseCard {
     this.q("button.thawed").textContent = t.thawed;
     this.q('[data-l="quantity"]').textContent = t.quantity;
     this.q("button.empty").textContent = t.emptyContainer;
+    this.q(".otext").textContent = t.outcomeQuestion;
+    this.q("button.eaten").textContent = t.eaten;
+    this.q("button.thrown").textContent = t.thrown;
+    this.q("button.ocancel").textContent = t.cancel;
+    this.q("details.history summary").textContent = t.history;
     this.q("button.fill").textContent = t.fill;
     this.q('[data-l="vacuum"]').textContent = t.vacuum;
     this.q('[data-l="shopping"]').textContent = t.shopping;

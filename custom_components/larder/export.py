@@ -26,6 +26,7 @@ from homeassistant.util import dt as dt_util
 from .const import DOMAIN, UNITS
 from .estimate import MAX_DAYS, MIN_DAYS, async_get_estimator, cache_key, storage_context
 from .expiry import days_left, soon_days, status_for
+from .history import async_get_history
 
 EXPORT_URL = f"/api/{DOMAIN}/export/{{kind}}"
 DATA_EXPORT = "export_registered"
@@ -44,6 +45,11 @@ _UNITS = {
     "en": {"portions": "portions", "pieces": "pieces", "slices": "slices", "grams": "g", "milliliters": "ml"},
 }
 _YES = {"de": ("ja", "nein"), "en": ("yes", "no")}
+_HISTORY_COLUMNS = {
+    "de": ["Name", "ID", "Bereich", "Inhalt", "Menge", "Einheit", "Eingelagert am", "MHD", "Geleert am", "Tage gelagert", "Abgelaufen", "Ergebnis"],
+    "en": ["Name", "ID", "Area", "Contents", "Quantity", "Unit", "Filled on", "Best before", "Emptied on", "Days stored", "Expired", "Outcome"],
+}
+_OUTCOME = {"de": {"eaten": "gegessen", "thrown": "weggeworfen"}, "en": {"eaten": "eaten", "thrown": "thrown away"}}
 
 
 def _lang(hass: HomeAssistant) -> str:
@@ -115,6 +121,38 @@ def inventory_csv(hass: HomeAssistant) -> bytes:
     return ("﻿" + out.getvalue()).encode("utf-8")
 
 
+def _local(value: str | None) -> str:
+    parsed = dt_util.parse_datetime(value) if value else None
+    return dt_util.as_local(parsed).strftime("%Y-%m-%d %H:%M") if parsed else ""
+
+
+async def history_csv(hass: HomeAssistant) -> bytes:
+    """Verlauf aller Dosen (neueste zuerst) als CSV."""
+    lang = _lang(hass)
+    history = await async_get_history(hass)
+    out = io.StringIO()
+    writer = csv.writer(out, delimiter=";" if lang == "de" else ",", lineterminator="\r\n")
+    writer.writerow(_HISTORY_COLUMNS[lang])
+    for r in history.list():
+        writer.writerow(
+            [
+                r.get("name") or "",
+                r.get("cc") or "",
+                r.get("area") or "",
+                r.get("content") or "",
+                r.get("quantity") or "",
+                _UNITS[lang].get(r.get("unit") or "", "") if r.get("quantity") else "",
+                _local(r.get("filled_at")),
+                r.get("best_before") or "",
+                _local(r.get("emptied")),
+                "" if r.get("days_stored") is None else r["days_stored"],
+                _YES[lang][0] if r.get("expired") else _YES[lang][1],
+                _OUTCOME[lang].get(r.get("outcome") or "", ""),
+            ]
+        )
+    return ("\ufeff" + out.getvalue()).encode("utf-8")
+
+
 async def estimates_json(hass: HomeAssistant) -> bytes:
     estimator = await async_get_estimator(hass)
     entries = [
@@ -181,6 +219,8 @@ class ExportView(HomeAssistantView):
         stamp = datetime.now().strftime("%Y-%m-%d")
         if kind == "containers.csv":
             body, ctype, name = inventory_csv(hass), "text/csv", f"larder-containers-{stamp}.csv"
+        elif kind == "history.csv":
+            body, ctype, name = await history_csv(hass), "text/csv", f"larder-history-{stamp}.csv"
         elif kind == "estimates.json":
             user = request.get("hass_user")
             if user is None or not user.is_admin:

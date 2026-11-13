@@ -196,7 +196,7 @@ A bar at the bottom switches between five pages:
 - area (dropdown; which areas are offered can be narrowed down with a label, see [Areas and labels](#areas-and-labels)), **contents**, **quantity and unit** (**−1** takes one portion, piece or slice; at the last one it asks whether to empty the container), **best before** (with a hint "expired" or "n days left" once it expires soon), **filled on** ("Now" sets the current time),
 - **+1 day** moves the best-before date by a day, **Opened** shortens it to the days set in the settings (default 3), **Thawed** does the same for food out of the freezer (default 2 days, do not refreeze). Neither ever extends a date; without a date one is set,
 - **Estimate best before** (when [estimating](#best-before-estimate) is on, contents are entered and the date is empty),
-- **Vacuum**, **Add to shopping list when emptied** (once a [shopping list](#shopping-list) is chosen), **Flexible storage place** with **After emptying, back to** (see [Filling containers](#filling-containers)), the **NFC tag** (link or unlink), **Open device** and **Empty container**.
+- **Vacuum**, **Add to shopping list when emptied** (once a [shopping list](#shopping-list) is chosen), **Flexible storage place** with **After emptying, back to** (see [Filling containers](#filling-containers)), the **NFC tag** (link or unlink), **Open device** and **Empty container**. Before emptying, the card asks **😋 Eaten** or **🗑 Thrown away**; the answer goes into the container's **History** (fold-out list at the bottom of the card, the last ten fillings).
 
 **⚙** at the top (administrators) opens a menu with the [remembered estimates](#managing-remembered-estimates) and the integration settings. The ☰ is the Home Assistant sidebar.
 
@@ -423,6 +423,7 @@ The calendar must be able to create **and** delete events. Read-only calendars (
 In the dashboard **☰ → 📦 Export and import** (administrators):
 
 - **📄 Inventory as a table (CSV)**: all containers with name, ID, area, contents, quantity, unit, filled on, best before, days left, status and vacuum. In German with semicolons, so Excel opens it directly.
+- **🕘 History (CSV)**: every emptied filling with container, contents, quantity, filled on, best before, emptied on, days stored, whether it was expired and whether it was eaten or thrown away. Containers emptied without the question (automation, device page) have no outcome.
 - **💾 Remembered estimates (backup)**: all [remembered best-before values](#managing-remembered-estimates) as a JSON file.
 - **Import estimates**: reads such a file back, for example after a reinstall or on a second Home Assistant. Your own corrections are kept when the file only has a table or AI value for the same combination; with **Delete existing estimates first** the file replaces everything. Invalid entries are skipped and counted.
 
