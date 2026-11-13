@@ -72,7 +72,7 @@ doses.forEach(([name, area, content, days, category], i) => {
   states[ids.date] = { entity_id: ids.date, state: days === null ? "unknown" : day(days), attributes: { estimates: true } };
   states[ids.datetime] = { entity_id: ids.datetime, state: "unknown", attributes: {} };
   states[ids.switch] = { entity_id: ids.switch, state: "on", attributes: {} };
-  states[ids.number] = { entity_id: ids.number, state: "0", attributes: {} };
+  states[ids.number] = { entity_id: ids.number, state: content && area === "freezer" ? "3" : "0", attributes: {} };
   states[ids.select] = { entity_id: ids.select, state: "portions", attributes: { options: ["portions"] } };
   states[ids.button] = { entity_id: ids.button, state: "unknown", attributes: {} };
   states[ids.image] = { entity_id: ids.image, state: "x", attributes: {} };

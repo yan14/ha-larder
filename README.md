@@ -12,7 +12,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 - 🖥️ **[Own dashboard](#dashboard-larder)** in the sidebar, made for the phone: start page, containers as tiles, list or cards with every detail, areas, categories and a recipe book; updates itself
 - 🔖 **[Zwilling Fresh & Save QR codes](#scanning-in-the-app)**: the original codes on the lids keep working, with the 📷 scanner in the app (iOS and Android) or an [iOS Shortcut](#ios-shortcut-for-the-original-zwilling-codes)
-- 🏷️ **[Your own QR code](#your-own-qr-codes)** and **[NFC tags](#nfc-tags)** for any container: scanning opens the container in the dashboard
+- 🏷️ **[Your own QR code](#your-own-qr-codes)** and **[NFC tags](#nfc-tags)** for any container: scanning opens the container in the dashboard; QR codes print as an [A4 label sheet](#label-sheet)
 - ✏️ **[Quick filling](#filling-containers)**: contents, quantity, best-before date and vacuum in a few taps, also for several containers at once and with a [serial scan](#selecting-several-containers)
 - 🧮 **[Best-before estimate](#best-before-estimate)**: built-in shelf-life table, optionally with AI, with limits per storage place
 - 🍳 **[Recipes](#recipes)**: ideas from what expires soon or from selected containers, a recipe book, and recipes read from a photo
@@ -189,7 +189,7 @@ A bar at the bottom switches between five pages:
 
 **The card of a container** (in the card view, or after tapping a container) shows everything and lets you edit it:
 
-- area (dropdown; which areas are offered can be narrowed down with a label, see [Areas and labels](#areas-and-labels)), **contents**, **quantity and unit**, **best before** (with a hint "expired" or "n days left" once it expires soon), **filled on** ("Now" sets the current time),
+- area (dropdown; which areas are offered can be narrowed down with a label, see [Areas and labels](#areas-and-labels)), **contents**, **quantity and unit** (**−1** takes one portion, piece or slice; at the last one it asks whether to empty the container), **best before** (with a hint "expired" or "n days left" once it expires soon), **filled on** ("Now" sets the current time),
 - **+1 day** moves the best-before date by a day, **Opened** shortens it to the days set in the settings (default 3), **Thawed** does the same for food out of the freezer (default 2 days, do not refreeze). Neither ever extends a date; without a date one is set,
 - **Estimate best before** (when [estimating](#best-before-estimate) is on, contents are entered and the date is empty),
 - **Vacuum**, **Add to shopping list when emptied** (once a [shopping list](#shopping-list) is chosen), **Flexible storage place** with **After emptying, back to** (see [Filling containers](#filling-containers)), the **NFC tag** (link or unlink), **Open device** and **Empty container**.
@@ -212,6 +212,7 @@ The dashboard is visible to all users; only **administrators** can add container
 
 - **Fill (n)** (administrators): fills all selected *empty* containers at once with the same contents, vacuum, filled-on date and best-before date, for example after cooking a big batch or after shopping. Quantity counts per container. With the estimate switched on, each container gets its own estimate.
 - **✨ Recipe ideas**: asks the AI for recipes that use exactly the selected *filled* containers, whatever their best-before date (expired ones are still left out).
+- **🖨 Labels**: an [A4 label sheet](#label-sheet) with the QR codes of the selected containers.
 - **Done** ends the selection.
 
 **Serial scan** (administrators): during the selection **📡 Scan** adds every container you scan. In the Home Assistant app a switch **📷 QR code | 📶 NFC** appears at the top; tap or swipe it to change the method at any time:
@@ -438,6 +439,17 @@ Scanning it with the camera app works **like an NFC tag**: the Home Assistant ap
 The same codes work in the [serial scan](#selecting-several-containers) of the dashboard.
 
 > Codes printed before version 2.0 still open the device page of the container. Print them again to get the new behaviour.
+
+#### Label sheet
+
+To print many codes at once: **☰ → 🖨 Print QR labels** in the dashboard (all containers), or select containers and press **🖨 Labels**. Then choose
+
+- the **label sheet**: A4 with 3 × 8 (70 × 36 mm), 3 × 7 (70 × 42.3 mm) or 2 × 4 (105 × 74 mm) labels, as sold by Avery Zweckform, Herma and others,
+- **Skip labels already used**, to continue on a partly used sheet,
+- **Print contents and best-before date**, for labels that will not stay on the container (by default only the name is printed, so the label stays valid when the contents change),
+- **Cutting lines**, for plain paper.
+
+**Create PDF** makes a link; tap **Open PDF**. In the Home Assistant app it opens in the browser, from where you print or share it. Print at **100 %** (not "fit to page") so the codes hit the labels. The link is valid for five minutes.
 
 ### NFC tags
 

@@ -893,6 +893,60 @@ test("Einzel-Scan: ohne Scanner der App kein Knopf", async () => {
   assert.equal($(el, '[data-role="scan-one"]'), null);
 });
 
+test("QR-Etiketten: Dialog aus Menü und Auswahl, signierter Link zum PDF", async () => {
+  const hass = makeHass(DOSES);
+  const signed = [];
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === "auth/sign_path") {
+      signed.push(msg);
+      return { path: `${msg.path}&authSig=x` };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  // Menü: alle Dosen
+  $(el, "#settings").click();
+  $(el, '[data-role="menu-labels"]').click();
+  const form = $(el, "form.dialog");
+  assert.equal($(el, ".overlay").hidden, false);
+  assert.match(form.textContent, /Alle Dosen/);
+  assert.equal(form.querySelector('[data-f="layout"]').value, "3x8");
+  form.querySelector('[data-f="layout"]').value = "2x4";
+  form.querySelector('[data-f="layout"]').dispatchEvent(new Event("change"));
+  form.querySelector('[data-f="skip"]').value = "20"; // mehr als ein 2×4-Bogen hat: wird begrenzt
+  form.querySelector('[data-f="border"]').checked = true;
+  form.querySelector("button.submit").click();
+  await flush();
+  await flush();
+  assert.equal(signed[0].path, "/api/larder/labels.pdf?layout=2x4&skip=7&border=1");
+  assert.equal(signed[0].expires, 300);
+  const link = form.querySelector("a.pdf");
+  assert.equal(link.getAttribute("href"), "/api/larder/labels.pdf?layout=2x4&skip=7&border=1&authSig=x");
+  assert.equal(link.target, "_blank");
+  // Option ändern verwirft den Link
+  form.querySelector('[data-f="content"]').checked = true;
+  form.querySelector('[data-f="content"]').dispatchEvent(new Event("change"));
+  assert.equal(form.querySelector("a.pdf"), null);
+  $(el, ".overlay").click();
+
+  // Auswahl: nur die gewählten Dosen, das Format wird gemerkt
+  await go(el, "containers");
+  $(el, '[data-role="select"]').click();
+  await flush();
+  $(el, 'main .tile[data-id="d1"]').click();
+  $(el, 'main .tile[data-id="d3"]').click();
+  await flush();
+  $(el, '[data-role="labels-selected"]').click();
+  assert.match(form.textContent, /2 ausgewählte Dosen/);
+  assert.equal(form.querySelector('[data-f="layout"]').value, "2x4");
+  form.querySelector("button.submit").click();
+  await flush();
+  await flush();
+  assert.equal(signed[1].path, "/api/larder/labels.pdf?device=d1%2Cd3&layout=2x4&skip=0");
+});
+
 test("Serien-Scan: NFC-Ereignisse und QR-Scanner der App wählen Dosen aus", async () => {
   document.body.innerHTML = "";
   const hass = makeHass(DOSES);

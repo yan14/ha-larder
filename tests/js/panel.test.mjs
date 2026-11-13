@@ -1075,6 +1075,41 @@ test("Menge: Eingabe und Einheit auf der Karte setzen die Entitäten, leer wird 
   assert.equal($(none, '.card [data-f="unit"]').value, "portions");
 });
 
+test("Portion entnehmen: −1 zieht ab, bei der letzten Frage nach Leeren", () => {
+  const hass = adminHass([{ id: "d1", name: "A", content: "Bolognese", portions: 2, unit: "portions" }]);
+  const el = mount(hass);
+  const take = $(el, ".card button.take");
+  assert.equal(take.hidden, false);
+  take.click();
+  assert.deepEqual(hass.calls, [{ domain: "number", service: "set_value", data: { entity_id: "number.d1_portionen", value: 1 } }]);
+
+  // letzte Portion: erst fragen
+  hass.calls.length = 0;
+  hass.states["number.d1_portionen"] = { ...hass.states["number.d1_portionen"], state: "1" };
+  el.hass = { ...hass };
+  $(el, ".card button.take").click();
+  assert.deepEqual(hass.calls, []);
+  assert.equal($(el, ".card .lastrow").hidden, false);
+  assert.equal($(el, ".card .lasttext").textContent, "Letzte entnommen. Dose leeren?");
+  $(el, ".card button.lastkeep").click();
+  assert.deepEqual(hass.calls, [{ domain: "number", service: "set_value", data: { entity_id: "number.d1_portionen", value: 0 } }]);
+  assert.equal($(el, ".card .lastrow").hidden, true);
+  hass.calls.length = 0;
+  $(el, ".card button.take").click();
+  $(el, ".card button.lastempty").click();
+  assert.equal(hass.calls.length, 1);
+  assert.equal(hass.calls[0].domain, "button");
+  assert.equal(hass.calls[0].service, "press");
+
+  // Gramm oder ohne Menge: kein −1
+  document.body.innerHTML = "";
+  const grams = mount(adminHass([{ id: "d1", name: "A", content: "Reis", portions: 500, unit: "grams" }]));
+  assert.equal($(grams, ".card button.take").hidden, true);
+  document.body.innerHTML = "";
+  const none = mount(adminHass([{ id: "d1", name: "A", content: "Reis" }]));
+  assert.equal($(none, ".card button.take").hidden, true);
+});
+
 test("Schnellaktionen: ohne Inhalt versteckt, ohne MHD ist +1 Tag gesperrt", () => {
   const empty = mount(adminHass([{ id: "d1", name: "A" }]));
   assert.equal($(empty, ".quickrow").classList.contains("visible"), false);

@@ -60,6 +60,9 @@ export const STRINGS = {
     fillNoContent: "Bitte einen Inhalt eingeben.",
     fillFailed: "Das Speichern ist fehlgeschlagen.",
     plusOneDay: "+1 Tag",
+    takeOne: "Eine entnehmen",
+    lastOne: "Letzte entnommen. Dose leeren?",
+    keep: "Nein",
     opened: "Geöffnet",
     thawed: "Aufgetaut",
     recipeBtn: "Rezeptideen",
@@ -179,6 +182,9 @@ export const STRINGS = {
     fillNoContent: "Please enter the contents.",
     fillFailed: "Saving failed.",
     plusOneDay: "+1 day",
+    takeOne: "Take one",
+    lastOne: "That was the last one. Empty the container?",
+    keep: "No",
     opened: "Opened",
     thawed: "Thawed",
     recipeBtn: "Recipe ideas",
@@ -535,6 +541,14 @@ const STYLE = `
   .qty { display: flex; gap: 8px; flex: 1; min-width: 0; }
   .qty input { flex: 1; min-width: 0; }
   .qty select { flex: 1; min-width: 0; }
+  .qty button.take { flex: 0 0 auto; font: inherit; font-size: 15px; padding: 4px 12px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
+  .lastrow { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-top: -4px; }
+  .lastrow[hidden] { display: none; }
+  .lastrow .lasttext { flex: 1; }
+  .lastrow button { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 6px; cursor: pointer;
+    border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
+  .lastrow button.lastempty { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: var(--primary-color); }
   .quickrow { display: none; gap: 8px; margin-top: -4px; }
   .quickrow.visible { display: flex; }
   .quickrow button { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 6px; cursor: pointer;
@@ -675,7 +689,8 @@ class DoseCard {
       <div class="arealine"></div>
       <div class="row arearow"><label data-l="area"></label><select data-f="area"></select></div>
       <div class="row"><label data-l="content"></label><input data-f="content" type="text" maxlength="255"></div>
-      <div class="row quantityrow"><label data-l="quantity"></label><span class="qty"><input data-f="quantity" type="number" min="0" max="9999" step="1" inputmode="numeric"><select data-f="unit"></select></span></div>
+      <div class="row quantityrow"><label data-l="quantity"></label><span class="qty"><input data-f="quantity" type="number" min="0" max="9999" step="1" inputmode="numeric"><select data-f="unit"></select><button class="take" type="button">−1</button></span></div>
+      <div class="lastrow" hidden><span class="lasttext"></span><button class="lastempty" type="button"></button><button class="lastkeep" type="button"></button></div>
       <div class="row"><label data-l="bestBefore"></label><input data-f="bestBefore" type="date"><span class="badge"></span></div>
       <div class="quickrow"><button class="plus1" type="button"></button><button class="opened" type="button"></button><button class="thawed" type="button"></button></div>
       <div class="row"><label data-l="filledAt"></label><input data-f="filledAt" type="datetime-local"><button class="now" type="button"></button></div>
@@ -745,6 +760,25 @@ class DoseCard {
     });
     this.inputs.unit.addEventListener("change", () => {
       if (this.ids.select) this._call("select", "select_option", { entity_id: this.ids.select, option: this.inputs.unit.value });
+    });
+    // Portion entnehmen: −1; bei der letzten fragen, ob die Dose geleert werden soll
+    this.q("button.take").addEventListener("click", () => {
+      const n = parseQuantity(this.inputs.quantity.value);
+      if (!this.ids.number || !(n > 0)) return;
+      if (n > 1) {
+        this._call("number", "set_value", { entity_id: this.ids.number, value: n - 1 });
+        return;
+      }
+      this.q(".lastrow").hidden = false;
+    });
+    this.q("button.lastempty").addEventListener("click", () => {
+      this.q(".lastrow").hidden = true;
+      this._setTip("");
+      if (this.ids.button) this._call("button", "press", { entity_id: this.ids.button });
+    });
+    this.q("button.lastkeep").addEventListener("click", () => {
+      this.q(".lastrow").hidden = true;
+      if (this.ids.number) this._call("number", "set_value", { entity_id: this.ids.number, value: 0 });
     });
     this.q("button.now").addEventListener("click", () => {
       if (this.ids.datetime) this._call("datetime", "set_value", { entity_id: this.ids.datetime, datetime: new Date().toISOString() });
@@ -894,6 +928,16 @@ class DoseCard {
     this.inputs.unit.disabled = !ok(unit);
     this.inputs.unit.style.display = unit ? "" : "none";
     this.q(".quantityrow").style.display = quantity ? "" : "none";
+    // −1 nur für zählbare Einheiten (nicht Gramm/Milliliter) und solange etwas da ist
+    const countable = !unit || ["portions", "pieces", "slices"].includes(unit.state);
+    const take = this.q("button.take");
+    take.hidden = !(countable && nQuantity > 0 && ok(quantity));
+    take.title = t.takeOne;
+    take.setAttribute("aria-label", t.takeOne);
+    if (take.hidden) this.q(".lastrow").hidden = true;
+    this.q(".lasttext").textContent = t.lastOne;
+    this.q("button.lastempty").textContent = t.emptyContainer;
+    this.q("button.lastkeep").textContent = t.keep;
     this.inputs.content.disabled = !ok(text);
     this.inputs.bestBefore.disabled = !ok(date);
     this.inputs.filledAt.disabled = !ok(dt);

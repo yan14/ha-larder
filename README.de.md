@@ -12,7 +12,7 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 
 - 🖥️ **[Eigenes Dashboard](#dashboard-larder)** in der Seitenleiste, gemacht fürs Handy: Startseite, Dosen als Kacheln, Liste oder Karten mit allen Details, Bereiche, Kategorien und Rezeptbuch; aktualisiert sich selbst
 - 🔖 **[Zwilling-Fresh-&-Save-QR-Codes](#scannen-in-der-app)**: die originalen Codes auf den Deckeln funktionieren weiter, mit dem 📷-Scanner in der App (iOS und Android) oder einem [iOS-Kurzbefehl](#ios-kurzbefehl-für-die-originalen-zwilling-codes)
-- 🏷️ **[Eigener QR-Code](#eigene-qr-codes)** und **[NFC-Tags](#nfc-tags)** für jede beliebige Dose: Scannen öffnet die Dose im Dashboard
+- 🏷️ **[Eigener QR-Code](#eigene-qr-codes)** und **[NFC-Tags](#nfc-tags)** für jede beliebige Dose: Scannen öffnet die Dose im Dashboard; QR-Codes lassen sich als [A4-Etikettenbogen](#etikettenbogen) drucken
 - ✏️ **[Schnelles Befüllen](#dosen-befüllen)**: Inhalt, Menge, MHD und Vakuum in wenigen Taps, auch für mehrere Dosen auf einmal und per [Serien-Scan](#mehrere-dosen-auswählen)
 - 🧮 **[MHD-Schätzung](#mhd-schätzung)**: eingebaute Haltbarkeitstabelle, optional mit KI, mit Grenzen pro Lagerort
 - 🍳 **[Rezepte](#rezepte)**: Ideen aus dem, was bald abläuft, oder aus gewählten Dosen, ein Rezeptbuch und Rezepte vom Foto
@@ -189,7 +189,7 @@ Eine Leiste unten wechselt zwischen fünf Seiten:
 
 **Die Karte einer Dose** (in der Kartenansicht oder nach dem Antippen) zeigt alles und lässt es dich ändern:
 
-- Bereich (Auswahlfeld; welche Bereiche angeboten werden, lässt sich mit einem Label eingrenzen, siehe [Bereiche und Labels](#bereiche-und-labels)), **Inhalt**, **Menge und Einheit**, **MHD** (mit Hinweis „abgelaufen“ oder „noch n Tage“, sobald es bald abläuft), **Eingelagert am** („Jetzt“ setzt die aktuelle Zeit),
+- Bereich (Auswahlfeld; welche Bereiche angeboten werden, lässt sich mit einem Label eingrenzen, siehe [Bereiche und Labels](#bereiche-und-labels)), **Inhalt**, **Menge und Einheit** (**−1** entnimmt eine Portion, ein Stück oder eine Scheibe; bei der letzten fragt es, ob die Dose geleert werden soll), **MHD** (mit Hinweis „abgelaufen“ oder „noch n Tage“, sobald es bald abläuft), **Eingelagert am** („Jetzt“ setzt die aktuelle Zeit),
 - **+1 Tag** verschiebt das MHD um einen Tag, **Geöffnet** kürzt es auf die in den Einstellungen gesetzte Zahl Tage (Standard 3), **Aufgetaut** macht dasselbe für Essen aus dem Gefrierfach (Standard 2 Tage, nicht wieder einfrieren). Beides verlängert nie ein Datum; ohne Datum wird eines gesetzt,
 - **MHD schätzen** (wenn die [Schätzung](#mhd-schätzung) aktiv ist, ein Inhalt eingetragen und das MHD leer ist),
 - **Vakuum**, **Beim Leeren auf die Einkaufsliste** (sobald eine [Einkaufsliste](#einkaufsliste) gewählt ist), **Variabler Lagerort** mit **Nach dem Leeren zurück in** (siehe [Dosen befüllen](#dosen-befüllen)), der **NFC-Tag** (verknüpfen oder lösen), **Gerät öffnen** und **Behälter leeren**.
@@ -212,6 +212,7 @@ Das Dashboard ist für alle Nutzer sichtbar; nur **Administratoren** können Dos
 
 - **Befüllen (n)** (Administratoren): befüllt alle gewählten *leeren* Dosen auf einmal mit demselben Inhalt, Vakuum, Befüllt am und MHD, z. B. nach dem Vorkochen oder dem Einkauf. Die Menge gilt pro Dose. Ist die Schätzung aktiv, bekommt jede Dose ihre eigene.
 - **✨ Rezeptideen**: fragt die KI nach Rezepten mit genau den gewählten *befüllten* Dosen, egal wann sie ablaufen (abgelaufene bleiben trotzdem draußen).
+- **🖨 Etiketten**: ein [A4-Etikettenbogen](#etikettenbogen) mit den QR-Codes der gewählten Dosen.
 - **Fertig** beendet die Auswahl.
 
 **Serien-Scan** (Administratoren): Während der Auswahl fügt **📡 Scannen** jede gescannte Dose hinzu. In der Home-Assistant-App erscheint oben ein Umschalter **📷 QR-Code | 📶 NFC**; antippen oder wischen wechselt jederzeit die Methode:
@@ -438,6 +439,17 @@ Scannen mit der Kamera-App funktioniert **wie ein NFC-Tag**: Die Home-Assistant-
 Dieselben Codes funktionieren im [Serien-Scan](#mehrere-dosen-auswählen) des Dashboards.
 
 > Vor Version 2.0 gedruckte Codes öffnen weiterhin die Geräteseite der Dose. Druck sie neu aus, um das neue Verhalten zu bekommen.
+
+#### Etikettenbogen
+
+Viele Codes auf einmal drucken: im Dashboard **☰ → 🖨 QR-Etiketten drucken** (alle Dosen) oder Dosen auswählen und **🖨 Etiketten**. Dann wählst du
+
+- den **Etikettenbogen**: A4 mit 3 × 8 (70 × 36 mm), 3 × 7 (70 × 42,3 mm) oder 2 × 4 (105 × 74 mm) Etiketten, wie es sie von Avery Zweckform, Herma und anderen gibt,
+- **Schon benutzte Etiketten überspringen**, um auf einem angebrochenen Bogen weiterzumachen,
+- **Inhalt und MHD mitdrucken**, für Etiketten, die nicht dauerhaft auf der Dose bleiben (sonst steht nur der Name drauf, so bleibt das Etikett gültig, wenn sich der Inhalt ändert),
+- **Schnittlinien**, für normales Papier.
+
+**PDF erstellen** erzeugt einen Link, dann **PDF öffnen** antippen. In der Home Assistant App öffnet es sich im Browser, von dort druckst oder teilst du es. Mit **100 %** drucken (nicht „an Seite anpassen“), damit die Codes auf die Etiketten treffen. Der Link gilt fünf Minuten.
 
 ### NFC-Tags
 

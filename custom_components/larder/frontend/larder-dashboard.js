@@ -37,6 +37,19 @@ export const TEXTS = {
     viewCards: "Karten mit allen Details",
     estimates: "Schätzungen",
     menuEstimates: "Gemerkte Schätzungen",
+    menuLabels: "QR-Etiketten drucken",
+    labelsTitle: "QR-Etiketten drucken",
+    labelsFor: (n) => (n === null ? "Alle Dosen" : n === 1 ? "1 ausgewählte Dose" : `${n} ausgewählte Dosen`),
+    labelsLayout: "Etikettenbogen (A4)",
+    labelsSkip: "Schon benutzte Etiketten überspringen",
+    labelsContent: "Inhalt und MHD mitdrucken (für Etiketten, die nicht dauerhaft bleiben)",
+    labelsBorder: "Schnittlinien (für normales Papier)",
+    labelsOpen: "PDF öffnen",
+    labelsCreate: "PDF erstellen",
+    labelsUpdate: "Neu erstellen",
+    labelsFailed: "Das PDF konnte nicht geöffnet werden.",
+    labelsHint: "Mit 100 % drucken (nicht „an Seite anpassen“), damit die Codes auf die Etiketten treffen.",
+    selectLabels: "Etiketten",
     menuSettings: "Einstellungen der Integration",
     empty: "Leer",
     noArea: "Ohne Bereich",
@@ -178,6 +191,19 @@ export const TEXTS = {
     viewCards: "Cards with all details",
     estimates: "Estimates",
     menuEstimates: "Remembered estimates",
+    menuLabels: "Print QR labels",
+    labelsTitle: "Print QR labels",
+    labelsFor: (n) => (n === null ? "All containers" : n === 1 ? "1 selected container" : `${n} selected containers`),
+    labelsLayout: "Label sheet (A4)",
+    labelsSkip: "Skip labels already used",
+    labelsContent: "Print contents and best-before date (for labels that will not stay)",
+    labelsBorder: "Cutting lines (for plain paper)",
+    labelsOpen: "Open PDF",
+    labelsCreate: "Create PDF",
+    labelsUpdate: "Create again",
+    labelsFailed: "The PDF could not be opened.",
+    labelsHint: "Print at 100 % (not “fit to page”) so the codes hit the labels.",
+    selectLabels: "Labels",
     menuSettings: "Integration settings",
     empty: "Empty",
     noArea: "No area",
@@ -429,6 +455,9 @@ export async function preparePhoto(file) {
   }
 }
 
+/** Etikettenbögen wie in labels.py (Felder pro Bogen für "überspringen"). */
+const LABEL_LAYOUTS = { "3x8": { per: 24, size: "70 × 36 mm" }, "3x7": { per: 21, size: "70 × 42,3 mm" }, "2x4": { per: 8, size: "105 × 74 mm" } };
+
 function loadOptions() {
   try {
     const raw = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "{}");
@@ -439,6 +468,7 @@ function loadOptions() {
       recipeSort: ["newest", "name"].includes(raw.recipeSort) ? raw.recipeSort : "newest",
       recipePeriod: RECIPE_PERIODS.includes(raw.recipePeriod) ? raw.recipePeriod : "default",
       recipeServings: Number.isInteger(raw.recipeServings) && raw.recipeServings >= 0 && raw.recipeServings <= 12 ? raw.recipeServings : 0,
+      labelLayout: LABEL_LAYOUTS[raw.labelLayout] ? raw.labelLayout : "3x8",
     };
   } catch {
     return { mode: "grid", sort: "date", areaSort: "name", recipeSort: "newest", recipePeriod: "default" };
@@ -569,6 +599,9 @@ const STYLE = `
   .dialog select { font: inherit; color: var(--primary-text-color); background: var(--card-background-color, #fff);
     border: 1px solid var(--divider-color); border-radius: 8px; padding: 8px 10px; }
   .dialog .hint { margin: 0; font-size: 12px; color: var(--secondary-text-color); }
+  .dialog a.pdf { align-self: stretch; text-align: center; padding: 12px; border-radius: 10px; font-size: 16px; text-decoration: none;
+    background: var(--primary-color); color: var(--text-primary-color, #fff); }
+  .dialog label.check { flex-direction: row; align-items: center; gap: 8px; font-size: 14px; color: var(--primary-text-color); }
   .dialog button.link { align-self: flex-start; font: inherit; font-size: 14px; background: none; border: 0; padding: 0;
     color: var(--primary-color); cursor: pointer; }
   .dialog .buttons { display: flex; justify-content: flex-end; gap: 8px; }
@@ -604,7 +637,7 @@ export class LarderDashboard extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>${STYLE}</style>
       <header><button id="menu" type="button" aria-label="Menu">☰</button><h1></h1><button id="settings" type="button" hidden>⚙</button></header>
-      <div class="menu" hidden><button type="button" data-role="menu-estimates"></button><button type="button" data-role="menu-settings"></button></div>
+      <div class="menu" hidden><button type="button" data-role="menu-estimates"></button><button type="button" data-role="menu-labels"></button><button type="button" data-role="menu-settings"></button></div>
       <div class="notice" role="alert" hidden></div>
       <main></main>
       <nav></nav>
@@ -638,6 +671,10 @@ export class LarderDashboard extends HTMLElement {
     this._menu.querySelector('[data-role="menu-estimates"]').addEventListener("click", () => {
       this._menu.hidden = true;
       this.setView("estimates");
+    });
+    this._menu.querySelector('[data-role="menu-labels"]').addEventListener("click", () => {
+      this._menu.hidden = true;
+      this.openLabelDialog();
     });
     this._menu.querySelector('[data-role="menu-settings"]').addEventListener("click", () => {
       this._menu.hidden = true;
@@ -872,6 +909,7 @@ export class LarderDashboard extends HTMLElement {
     this._settingsBtn.setAttribute("aria-label", t.settings);
     this._menu.querySelector('[data-role="menu-estimates"]').textContent = `📋 ${t.menuEstimates}`;
     this._menu.querySelector('[data-role="menu-settings"]').textContent = `⚙ ${t.menuSettings}`;
+    this._menu.querySelector('[data-role="menu-labels"]').textContent = `🖨 ${t.menuLabels}`;
 
     const rows = this._rows();
     const sig = JSON.stringify([
@@ -1290,6 +1328,7 @@ export class LarderDashboard extends HTMLElement {
       const filled = chosen.filter((r) => r.content !== "").length;
       button("recipes-selected", `✨ ${t.selectRecipes}`, () => this.recipesFromSelected(), { disabled: !filled });
     }
+    button("labels-selected", `🖨 ${t.selectLabels}`, () => this.openLabelDialog([...this._selected]), { disabled: !chosen.length });
     button("select-done", t.selectDone, () => this.stopSelecting(), { primary: true });
     return bar;
   }
@@ -2247,6 +2286,123 @@ export class LarderDashboard extends HTMLElement {
     );
     this._overlay.hidden = false;
     title.focus();
+  }
+
+  // ----- QR-Etiketten -----
+
+  /** Dialog für den Etikettenbogen; ohne IDs für alle Dosen. */
+  openLabelDialog(deviceIds = null) {
+    const hass = this._hass;
+    const t = texts(hass);
+    const form = this._form;
+    this._editing = null;
+    const field = (label, control) => {
+      const wrap = el("label", "", label);
+      wrap.append(control);
+      return wrap;
+    };
+    const check = (label, name) => {
+      const wrap = el("label", "check");
+      const box = el("input");
+      box.type = "checkbox";
+      box.dataset.f = name;
+      wrap.append(box, el("span", "", label));
+      return wrap;
+    };
+    const layout = el("select");
+    layout.dataset.f = "layout";
+    for (const [key, info] of Object.entries(LABEL_LAYOUTS)) {
+      const o = el("option", "", `${key.replace("x", " × ")} (${info.size})`);
+      o.value = key;
+      layout.append(o);
+    }
+    layout.value = this._opts.labelLayout;
+    const skip = el("input");
+    skip.type = "number";
+    skip.min = "0";
+    skip.inputMode = "numeric";
+    skip.dataset.f = "skip";
+    skip.value = "0";
+    const syncMax = () => (skip.max = String(LABEL_LAYOUTS[layout.value].per - 1));
+    syncMax();
+    layout.addEventListener("change", syncMax);
+    const error = el("div", "error");
+    error.setAttribute("role", "alert");
+    const buttons = el("div", "buttons");
+    const cancel = el("button", "cancel", t.cancel);
+    cancel.type = "button";
+    cancel.addEventListener("click", () => this._closeDialog());
+    const submit = el("button", "submit", t.labelsCreate);
+    submit.type = "submit";
+    buttons.append(cancel, submit);
+    form.replaceChildren(
+      el("h2", "", t.labelsTitle),
+      el("p", "hint", t.labelsFor(deviceIds ? deviceIds.length : null)),
+      field(t.labelsLayout, layout),
+      field(t.labelsSkip, skip),
+      check(t.labelsContent, "content"),
+      check(t.labelsBorder, "border"),
+      el("p", "hint", t.labelsHint),
+      error,
+      buttons,
+    );
+    // geänderte Optionen: alten Link verwerfen
+    for (const control of form.querySelectorAll("[data-f]")) {
+      control.addEventListener("change", () => {
+        const link = form.querySelector("a.pdf");
+        if (link) link.remove();
+        submit.textContent = t.labelsCreate;
+      });
+    }
+    this._submit = () => this._openLabels(deviceIds);
+    this._overlay.hidden = false;
+  }
+
+  /** URL des PDFs (signiert, damit sie sich ohne Anmeldung im Browser der App öffnen lässt). */
+  async labelUrl(deviceIds, { layout, skip, content, border }) {
+    const params = new URLSearchParams();
+    if (deviceIds && deviceIds.length) params.set("device", deviceIds.join(","));
+    params.set("layout", layout);
+    params.set("skip", String(skip));
+    if (content) params.set("content", "1");
+    if (border) params.set("border", "1");
+    const path = `/api/${DOMAIN}/labels.pdf?${params}`;
+    const signed = await this._hass.callWS({ type: "auth/sign_path", path, expires: 300 });
+    return this._hass.hassUrl ? this._hass.hassUrl(signed.path) : signed.path;
+  }
+
+  /**
+   * Link zum PDF erzeugen und im Dialog zeigen. Antippen öffnet es (ein echter Link funktioniert auch
+   * in der App und ohne Pop-up-Sperre; in der App öffnet es sich im Browser zum Teilen und Drucken).
+   */
+  async _openLabels(deviceIds) {
+    const t = texts(this._hass);
+    const form = this._form;
+    const value = (name) => form.querySelector(`[data-f="${name}"]`);
+    const layout = value("layout").value;
+    const per = LABEL_LAYOUTS[layout].per;
+    const skip = Math.min(Math.max(parseInt(value("skip").value, 10) || 0, 0), per - 1);
+    this._opts.labelLayout = layout;
+    saveOptions(this._opts);
+    const error = form.querySelector(".error");
+    error.textContent = "";
+    let url;
+    try {
+      url = await this.labelUrl(deviceIds, { layout, skip, content: value("content").checked, border: value("border").checked });
+    } catch {
+      error.textContent = t.labelsFailed;
+      return;
+    }
+    let link = form.querySelector("a.pdf");
+    if (!link) {
+      link = el("a", "pdf", `📄 ${t.labelsOpen}`);
+      link.target = "_blank";
+      link.rel = "noopener";
+      link.addEventListener("click", () => setTimeout(() => this._closeDialog(), 0));
+      form.querySelector(".buttons").before(link);
+    }
+    link.href = url;
+    form.querySelector("button.submit").textContent = t.labelsUpdate;
   }
 
   _closeDialog() {

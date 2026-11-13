@@ -11,6 +11,7 @@ from .nfc import async_get_nfc
 from .entity import LarderConfigEntry, LarderRuntime
 from .estimate import async_get_estimator
 from .expiry import async_setup_services
+from .labels import async_setup_labels
 from .panel import async_setup_panel, async_sync_experimental_panel, async_teardown_panel
 from .recipe_book import async_setup_recipe_book_websocket
 from .recipe_photo import async_setup_recipe_photo
@@ -30,6 +31,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_calendar_service(hass)
     async_setup_recipe_book_websocket(hass)
     async_setup_recipe_photo(hass)
+    async_setup_labels(hass)
     (await async_get_calendar_sync(hass)).async_start()
     (await async_get_nfc(hass)).async_start()
     (await async_get_repairs(hass)).async_start()

@@ -3,6 +3,11 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 2.4.0
+
+- **QR label sheet (A4):** **☰ → 🖨 Print QR labels** (all containers) or **🖨 Labels** in the selection creates a PDF with the QR codes: 3 × 8, 3 × 7 or 2 × 4 labels per sheet, skip labels already used, optionally contents and best-before date, optionally cutting lines for plain paper. The PDF opens via a signed link (valid for five minutes), also in the Home Assistant app.
+- **Take one (−1):** on the card of a container, **−1** next to the quantity takes one portion, piece or slice. At the last one it asks whether to empty the container. Not shown for grams and milliliters.
+
 ## 2.3.0
 
 - **Daily summary:** expired containers are named with their container and the note *should be emptied*, in the push ("Pizza (Box 3, Fridge): expired 2 days ago, should be emptied") and in the voice output ("Pizza in Box 3 has expired and should be emptied."). Replaces the planned "remind again tomorrow".
