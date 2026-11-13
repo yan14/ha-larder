@@ -6,10 +6,9 @@ from pathlib import Path
 import aiohttp
 import pytest
 
+from custom_components.larder.recipe_photo import URL, build_instructions, parse_recipe
 from homeassistant.core import HomeAssistant, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError
-
-from custom_components.larder.recipe_photo import URL, build_instructions, parse_recipe
 
 from .test_recipes import _setup, auto_enable_custom_integrations  # noqa: F401
 

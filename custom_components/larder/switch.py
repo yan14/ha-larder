@@ -7,8 +7,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, SIGNAL_SETTINGS_CHANGED
-from .entity import LarderConfigEntry, LarderEntity
+from .const import DOMAIN, KIND_BAG, KIND_PACK, SIGNAL_SETTINGS_CHANGED
+from .entity import LarderConfigEntry, LarderEntity, kind_of
 from .estimate import async_get_estimator
 
 
@@ -17,6 +17,12 @@ async def async_setup_entry(
     entry: LarderConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
+    kind = kind_of(entry)
+    if kind == KIND_PACK:
+        return  # Packungen haben keine Schalter
+    if kind == KIND_BAG:
+        async_add_entities([LarderVacuumSwitch(entry)])  # Einweg: keine Einkaufsliste, kein fester Platz
+        return
     async_add_entities([LarderVacuumSwitch(entry), LarderShoppingSwitch(entry), LarderFlexibleSwitch(entry)])
 
 

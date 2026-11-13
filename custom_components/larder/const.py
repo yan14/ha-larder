@@ -27,6 +27,12 @@ CONF_TC = "tc"  # Typ-/Produktcode (Parameter "tc")
 CONF_SIZE = "size"  # Größe (Parameter "s")
 CONF_INITIAL = "initial"  # Vorgaben beim Anlegen: vacuum, shopping, flexible, home_area (einmalig)
 CONF_AREA = "area_id"  # Bereich, der beim Anlegen vorgewählt wurde (wird einmalig angewendet)
+CONF_KIND = "kind"  # Art: Dose (wiederverwendbar), Beutel (Einweg, mit Code) oder Packung (ohne Code)
+KIND_CONTAINER = "container"
+KIND_BAG = "bag"
+KIND_PACK = "pack"
+KINDS = (KIND_CONTAINER, KIND_BAG, KIND_PACK)
+DISPOSABLE_KINDS = (KIND_BAG, KIND_PACK)  # verschwinden nach dem Leeren
 CONF_SOURCE = "source"  # "zwilling" (QR eingelesen) oder "generated" (neu erzeugt)
 
 SOURCE_ZWILLING = "zwilling"
@@ -47,7 +53,6 @@ CONF_OPENED_DAYS = "opened_days"
 CONF_THAWED_DAYS = "thawed_days"
 CONF_CALENDAR_ENTITY = "calendar_entity"
 CONF_NFC_NOTIFY = "nfc_notify"
-CONF_EXPERIMENTAL = "experimental_panel"  # zweites Panel "Larder experimental" in der Seitenleiste
 CONF_TODO_ENTITY = "todo_entity"  # To-do-Liste für "Beim Leeren auf die Einkaufsliste"
 CONF_MEAL_CALENDAR = "meal_calendar"  # Kalender für den Wochenplan (optional)
 CONF_THAW_DAYS = "thaw_days"  # Auftau-Erinnerung so viele Tage vor dem geplanten Tag
@@ -78,7 +83,6 @@ SIGNAL_SETTINGS_CHANGED = f"{DOMAIN}_settings_changed"
 
 # Seitenleisten-Panel "Larder"
 PANEL_URL_PATH = "larder"
-PANEL_EXPERIMENTAL_PATH = "larder-experimental"
 
 # Deep Link, den die Home-Assistant-App (iOS/Android) öffnen kann, z. B. per Kamera-App.
 APP_URL_PREFIX = "homeassistant://navigate"

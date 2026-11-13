@@ -10,7 +10,6 @@ import voluptuous as vol
 
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError
-
 from homeassistant.helpers import config_validation as cv, device_registry as dr, entity_registry as er
 
 from .const import DOMAIN, MAX_RECIPE_DAYS, SERVICE_SUGGEST_RECIPES

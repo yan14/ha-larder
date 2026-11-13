@@ -50,6 +50,10 @@ const doses = de ? [
   ["Dose 8", "cellar", "Bolognese-Sauce", -1, "dish"],
   ["Dose 9", "kitchen", "Gekochte Eier", 4, "egg"],
   ["Dose 10", "kitchen", "", null, null],
+  ["Beutel 1", "freezer", "Rehgulasch", 150, "raw_meat", "bag"],
+  ["Beutel 2", "freezer", "Hackfleisch", 80, "raw_meat", "bag"],
+  ["Packung 1", "cellar", "Tomaten gehackt", 400, "produce", "pack"],
+  ["Packung 2", "cellar", "Haselnusscreme", 90, "sweet", "pack"],
 ] : [
   ["Box 1", "kitchen", "Salmon", 1, "fish"],
   ["Box 2", "kitchen", "Chicken curry", 2, "dish"],
@@ -61,21 +65,27 @@ const doses = de ? [
   ["Box 8", "cellar", "Bolognese sauce", -1, "dish"],
   ["Box 9", "kitchen", "Boiled eggs", 4, "egg"],
   ["Box 10", "kitchen", "", null, null],
+  ["Bag 1", "freezer", "Venison goulash", 150, "raw_meat", "bag"],
+  ["Bag 2", "freezer", "Minced meat", 80, "raw_meat", "bag"],
+  ["Pack 1", "cellar", "Chopped tomatoes", 400, "produce", "pack"],
+  ["Pack 2", "cellar", "Hazelnut spread", 90, "sweet", "pack"],
 ];
 const entities = {}, devices = {}, states = {};
-doses.forEach(([name, area, content, days, category], i) => {
+doses.forEach(([name, area, content, days, category, kind = "container"], i) => {
   const id = `demo${String(i).padStart(2, "0")}`;
   devices[id] = { id, name, name_by_user: null, area_id: area };
   const ids = { text: `text.${id}_c`, date: `date.${id}_b`, datetime: `datetime.${id}_f`, button: `button.${id}_e`, image: `image.${id}_q`, switch: `switch.${id}_v`, number: `number.${id}_p`, select: `select.${id}_u` };
+  if (kind === "pack") for (const k of ["datetime", "image", "switch"]) delete ids[k]; // Packungen: nur Inhalt, Menge, MHD
   for (const e of Object.values(ids)) entities[e] = { entity_id: e, device_id: id, platform: "larder" };
-  states[ids.text] = { entity_id: ids.text, state: content, attributes: { category, ...(/Penne/.test(content) ? { brand: "Barilla", package: "500 g", ean: "8076800195057", kcal_100g: 359, kcal_portion: 449, nutri_score: "A", allergens: de ? "Gluten" : "Gluten", nutrients: de ? "Fett 2 g, Kohlenhydrate 71 g, davon Zucker 3,5 g, Eiweiß 13 g, Salz 0,01 g (pro 100 g)" : "Fat 2 g, carbohydrates 71 g, of which sugars 3.5 g, protein 13 g, salt 0.01 g (per 100 g)", source: "openfoodfacts" } : {}) } };
+  states[ids.text] = { entity_id: ids.text, state: content, attributes: { category, kind, ...(/Hazelnut|Haselnuss/.test(content) ? { brand: "Nutella", package: "450 g", kcal_100g: 539, nutri_score: "E", allergen_warning: [de ? "Schalenfrüchte" : "Nuts"] } : {}), ...(/Penne/.test(content) ? { brand: "Barilla", package: "500 g", ean: "8076800195057", kcal_100g: 359, kcal_portion: 449, nutri_score: "A", allergens: de ? "Gluten" : "Gluten", nutrients: de ? "Fett 2 g, Kohlenhydrate 71 g, davon Zucker 3,5 g, Eiweiß 13 g, Salz 0,01 g (pro 100 g)" : "Fat 2 g, carbohydrates 71 g, of which sugars 3.5 g, protein 13 g, salt 0.01 g (per 100 g)", source: "openfoodfacts" } : {}) } };
   states[ids.date] = { entity_id: ids.date, state: days === null ? "unknown" : day(days), attributes: { estimates: true } };
-  states[ids.datetime] = { entity_id: ids.datetime, state: "unknown", attributes: {} };
-  states[ids.switch] = { entity_id: ids.switch, state: "on", attributes: {} };
-  states[ids.number] = { entity_id: ids.number, state: content && area === "freezer" ? "3" : "0", attributes: {} };
-  states[ids.select] = { entity_id: ids.select, state: "portions", attributes: { options: ["portions"] } };
+  if (ids.datetime) states[ids.datetime] = { entity_id: ids.datetime, state: "unknown", attributes: {} };
+  if (ids.switch) states[ids.switch] = { entity_id: ids.switch, state: "on", attributes: {} };
+  states[ids.number] = { entity_id: ids.number, state: kind === "pack" ? "3" : content && area === "freezer" ? "3" : "0", attributes: {} };
+  states[ids.select] = { entity_id: ids.select, state: kind === "pack" ? "pieces" : "portions", attributes: { options: ["portions", "pieces", "slices", "grams", "milliliters"] } };
   states[ids.button] = { entity_id: ids.button, state: "unknown", attributes: {} };
-  states[ids.image] = { entity_id: ids.image, state: "x", attributes: {} };
+  if (ids.image) states[ids.image] = { entity_id: ids.image, state: "x", attributes: {} };
+  if (kind !== "container") return; // Beutel und Packungen haben keinen festen Platz
   // variabler Lagerort (Vakuumdosen im Kühlschrank) mit "nach dem Leeren zurück in"
   const flex = `switch.${id}_flexible`, home = `select.${id}_home_area`;
   entities[flex] = { entity_id: flex, device_id: id, platform: "larder", translation_key: "flexible" };
@@ -135,7 +145,7 @@ const hass = {
       months: [["2026-06", 2, 1], ["2026-07", 4, 0], ["2026-08", 3, 1], ["2026-09", 5, 1], ["2026-10", 6, 1], ["2026-11", 3, 0]].map(([month, eaten, thrown]) => ({ month, eaten, thrown })),
       containers: { total: 10, filled: 9, empty: 1, expired: 1, soon: 3, undated: 0 } };
     if (msg.type === "larder/recipes") return { recipes };
-    if (msg.type === "larder/settings") return { recipe_days: 3, soon_days: 3, main_panel: "experimental" };
+    if (msg.type === "larder/settings") return { recipe_days: 3, soon_days: 3 };
     if (msg.type === "larder/estimates") return { mode: "table", entries: de ? [
       { key: "a", content: "Bolognese-Sauce", area: "Gefrierschrank", vacuum: true, days: 135, tip: "", source: "table" },
       { key: "b", content: "Gekochte Eier", area: "Kühlschrank", vacuum: false, days: 7, tip: "", source: "table" },
@@ -161,7 +171,26 @@ el.hass = hass;
 await new Promise((r) => setTimeout(r, 100));
 if (q.get("view")) el.setView(q.get("view"));
 if (q.get("suggest") === "1") await el.generateRecipes();
-if (q.get("detail") === "1") el.openDetail("demo00");
+if (q.get("detail")) el.openDetail(q.get("detail") === "1" ? "demo00" : q.get("detail"));
+if (q.get("dialog") === "add") el.openAddMenu();
+if (q.get("dialog") === "bag" || q.get("dialog") === "pack") {
+  el.openItemsDialog(q.get("dialog"));
+  const form = el.shadowRoot.querySelector("form.dialog");
+  const fill = (row, values) => { for (const [k, v] of Object.entries(values)) row.querySelector(`[data-i="${k}"]`).value = v; };
+  if (q.get("dialog") === "bag") {
+    form.querySelector('[data-f="area"]').value = "freezer";
+    fill(form.querySelector(".itemrow"), { content: de ? "Hackfleisch" : "Minced meat", count: 4, quantity: 500 });
+    form.querySelector('[data-role="item-more"]').click();
+    fill(form.querySelectorAll(".itemrow")[1], { content: de ? "Rehrücken" : "Saddle of venison", count: 2 });
+  } else {
+    form.querySelector('[data-f="area"]').value = "cellar";
+    fill(form.querySelector(".itemrow"), { content: de ? "Kichererbsen" : "Chickpeas", quantity: 4, date: day(500) });
+  }
+  document.activeElement && document.activeElement.blur();
+}
+if (q.get("dialog") === "labels") el.openLabelDialog();
+if (q.get("dialog") === "transfer") el.openTransferDialog("demo12");
+if (q.get("dialog") === "plan") el.openPlanDialog(recipes[1]);
 if (q.get("select") === "1") {
   el.startSelecting();
   for (const row of el._rows().slice(0, 4)) el.toggleSelected(row.id, true);

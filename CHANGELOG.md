@@ -3,6 +3,27 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 3.0.0
+
+**Breaking changes**
+
+- **Larder experimental is gone:** the optional second sidebar entry and its setting were removed (it had been identical to the normal dashboard since 2.0). The blueprint option "Recipes button opens" has only one choice left; existing automations keep working.
+
+**New**
+
+- **Single-use bags** (e.g. vacuum bags): **＋ → Bag** adds several at once (× per content), vacuum preset, best-before date estimated. Mark them with **NFC stickers** one after another (write blank stickers or scan written ones) or print **labels**. After emptying, the bag, its entities and its NFC tag (also in Settings → Tags) are removed; it stays in the history. Scanning an old sticker or label says when the bag was emptied. Codes are never reused.
+- **Packs** (stock without a container, e.g. cans): **＋ → Pack** by barcode (Open Food Facts) or by hand, with count and printed best-before date. No code, only six entities. They appear in expiring soon, daily summary, recipes and statistics; **−1** takes one, **Move into a container** opens a pack into an empty container (contents and nutrition move, best-before estimated again, at most the printed date).
+- **Label right after filling:** a notice with **🖨 Label** for exactly the containers just filled.
+- Filters **Bags** and **Packs**, 🛍 / 📦 on the tiles; attribute `kind` on the **Contents** entity and in `larder.get_expiring`.
+- Bags and packs can be added by all users (containers still by administrators only).
+
+**Housekeeping**
+
+- **Docs:** the README is now an overview; the details moved to pages under `docs/en/` and `docs/de/`. New screenshots (bags, packs, statistics, labels, nutrition).
+- **Code:** frontend texts and stylesheets split into their own modules, import order unified, linter (ruff) in CI.
+- Repair hints "no area" and "no best-before date" skip packs.
+- Devices of containers without a Zwilling code now show the manufacturer "Larder" instead of "ZWILLING".
+
 ## 2.13.0
 
 - **Allergens in the household** (setting): containers whose allergens or contents match get a ⚠ on tile, list, card and Lovelace card; recipe ideas leave them out (unless picked) and avoid these allergens; attribute `allergen_warning`.

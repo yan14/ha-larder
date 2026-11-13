@@ -6,14 +6,13 @@ import re
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.larder.const import DOMAIN
+from custom_components.larder.qr import generate_code, parse_qr
 from homeassistant.components import frontend
 from homeassistant.config_entries import SOURCE_USER
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import device_registry as dr, entity_registry as er
-
-from custom_components.larder.const import DOMAIN
-from custom_components.larder.qr import generate_code, parse_qr
 
 
 @pytest.fixture(autouse=True)
@@ -49,6 +48,7 @@ def _entity_id(hass: HomeAssistant, domain: str, cc: str = "34OL") -> str:
 
 async def test_best_before_set_and_restore(hass: HomeAssistant) -> None:
     from pytest_homeassistant_custom_component.common import mock_restore_cache
+
     from homeassistant.core import State
 
     entry = await _setup(hass)
@@ -232,7 +232,7 @@ async def test_panel_registered_and_static_js_served(hass: HomeAssistant, hass_c
     assert len(card_urls) == 1
     assert re.fullmatch(r"/larder_static/larder-card\.js\?v=\d+\.\d+\.\d+", card_urls[0])
 
-    for name in ("larder-dashboard.js", "larder-panel.js", "larder-experimental.js", "larder-card.js"):
+    for name in ("larder-dashboard.js", "larder-panel.js", "larder-card.js"):
         resp = await client.get(f"/larder_static/{name}")
         assert resp.status == 200
         assert "customElements.define" in await resp.text()

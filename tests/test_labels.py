@@ -2,11 +2,10 @@
 
 import re
 
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
-
 from custom_components.larder.const import DOMAIN, scan_app_url
 from custom_components.larder.labels import Label, build_pdf, collect_labels
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 
 from .test_recipes import _fill, _setup, auto_enable_custom_integrations  # noqa: F401
 
@@ -67,7 +66,7 @@ async def test_collect_labels_and_http_view(hass: HomeAssistant, hass_client) ->
     await _setup(hass, "AAAA")
     await _fill(hass, "AAAA", "Lachs", 2)
     labels = collect_labels(hass, None, with_content=False)
-    assert [(l.name, l.qr, l.content) for l in labels] == [
+    assert [(label.name, label.qr, label.content) for label in labels] == [
         ("Dose AAAA", scan_app_url("AAAA"), ""),
         ("Dose BBBB", scan_app_url("BBBB"), ""),
     ]

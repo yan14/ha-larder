@@ -9,7 +9,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import area_registry as ar, device_registry as dr
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import DISPOSABLE_KINDS, DOMAIN
 from .entity import LarderConfigEntry, LarderEntity, LarderRuntime
 from .estimate import storage_context
 from .history import async_get_history, build_record
@@ -56,6 +56,14 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
                 # Marke/Packung nur bei einem Inhalt, bei "Salami, Leberwurst" gehören sie zu keinem bestimmt
                 text = f"{part} ({details})" if details and len(parts) == 1 else part
                 await async_add_to_shopping_list(self.hass, item[0], text)
+        if self._kind in DISPOSABLE_KINDS:
+            # Beutel und Packungen sind nach dem Leeren weg (als eigene Aufgabe: die Entität entfernt sich selbst)
+            from .disposable import async_dispose  # noqa: PLC0415 - vermeidet einen Import-Kreis
+
+            self.hass.async_create_task(
+                async_dispose(self.hass, self._entry_id, record["content"] if record else ""),
+                f"{DOMAIN}_dispose_{self._cc}",
+            )
 
     def _history_record(self, outcome: str | None) -> dict | None:
         """Was gerade drin ist, für den Verlauf (None bei leerer Dose)."""

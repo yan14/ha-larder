@@ -107,6 +107,20 @@ async def _async_handle_webhook(
 
     device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, parsed.cc)})
     if device is None:
+        from .disposable import async_get_retired, retired_text  # noqa: PLC0415 - vermeidet einen Import-Kreis
+
+        if info := (await async_get_retired(hass)).by_code(parsed.cc):
+            # Code eines schon geleerten Beutels: nichts öffnen, nur Bescheid sagen
+            return web.json_response(
+                {
+                    "known": False,
+                    "retired": True,
+                    "cc": parsed.cc,
+                    "message": retired_text(info, hass.config.language or "en"),
+                    "path": panel_path(),
+                    "app_url": panel_app_url(),
+                }
+            )
         # Dose noch nicht angelegt: ins Panel "Larder" führen, dort öffnet sich
         # der Dialog "Dose hinzufügen" mit bereits eingetragenem Code.
         return web.json_response(

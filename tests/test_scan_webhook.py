@@ -3,11 +3,10 @@
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.larder.const import DOMAIN
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.helpers import device_registry as dr
-
-from custom_components.larder.const import DOMAIN
 
 QR = "zwilling://zwillingapp/food-storage/in/?tc=42ML30&s=m&cc=34OL"
 

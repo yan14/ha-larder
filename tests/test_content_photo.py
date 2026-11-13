@@ -2,9 +2,8 @@
 
 from http import HTTPStatus
 
-from homeassistant.core import HomeAssistant
-
 from custom_components.larder.content_photo import URL
+from homeassistant.core import HomeAssistant
 
 from .test_recipe_photo import _fake_ai, _form, ready  # noqa: F401
 from .test_recipes import auto_enable_custom_integrations  # noqa: F401

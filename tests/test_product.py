@@ -1,8 +1,7 @@
 """Tests: Barcode → Produktname über Open Food Facts."""
 
-from homeassistant.core import HomeAssistant
-
 from custom_components.larder.product import API, async_lookup
+from homeassistant.core import HomeAssistant
 
 from .test_recipes import _setup, auto_enable_custom_integrations  # noqa: F401
 
@@ -65,9 +64,8 @@ def test_nutrition_from_open_food_facts() -> None:
 
 
 async def test_product_data_on_the_container(hass: HomeAssistant, hass_ws_client) -> None:
-    from homeassistant.helpers import device_registry as dr
-
     from custom_components.larder.const import DOMAIN
+    from homeassistant.helpers import device_registry as dr
 
     from .test_recipes import _eid, _fill
 

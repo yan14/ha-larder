@@ -4,500 +4,17 @@
  *
  * Für Dialoge (Hinzufügen, Befüllen, NFC), die Karten mit allen Details und die Schätzungen bettet sie die
  * Komponente <larder-panel-embedded embedded> aus larder-panel.js ein (die frühere Oberfläche).
- * "Larder experimental" (larder-experimental.js) erbt von dieser Klasse und ist der Platz für neue Ideen.
  */
 // Mit derselben Versionsangabe laden wie dieses Modul, damit nie eine ältere Kopie aus dem Cache benutzt wird.
-const { collectDevices, daysUntil, isLarderLabel, soonDaysOf, SOON_DAYS } = await import(`./larder-panel.js${new URL(import.meta.url).search}`);
+const VERSION_QUERY = new URL(import.meta.url).search;
+const { collectDevices, daysUntil, isLarderLabel, listAreas, soonDaysOf, SOON_DAYS } = await import(`./larder-panel.js${VERSION_QUERY}`);
+const { installItems } = await import(`./larder-dashboard-items.js${VERSION_QUERY}`);
 
 const DOMAIN = "larder";
-const STORAGE_KEY = `${DOMAIN}.experimental`;
+const STORAGE_KEY = `${DOMAIN}.experimental`; // historischer Name, bleibt, damit gespeicherte Ansichten erhalten bleiben
 
-export const TEXTS = {
-  de: {
-    title: "Larder",
-    views: { start: "Start", containers: "Behälter", recipes: "Rezepte", areas: "Bereiche", categories: "Kategorien" },
-    hello: (name) => (name ? `Hallo ${name}` : "Hallo"),
-    soonTitle: "Dieser Vorrat sollte bald verbraucht werden:",
-    soonNone: (n) => (n === 0 ? "Heute läuft nichts ab." : `In den nächsten ${n} Tagen läuft nichts ab.`),
-    help: "Wie kann ich helfen?",
-    helpRecipes: "Rezeptvorschläge",
-    helpContainers: "Behälter anzeigen",
-    settings: "Einstellungen",
-    moreActions: "Weitere Aktionen",
-    add: "Hinzufügen",
-    sort: "Sortieren nach",
-    sortDate: "Ablaufdatum / MHD",
-    sortArea: "Bereich",
-    sortName: "Alphabetisch",
-    sortCategory: "Kategorie",
-    sortCount: "Anzahl",
-    sortSoon: "Läuft bald ab",
-    sortNewest: "Neueste zuerst",
-    viewGrid: "Kacheln",
-    viewList: "Liste",
-    viewCards: "Karten mit allen Details",
-    estimates: "Schätzungen",
-    menuEstimates: "Gemerkte Schätzungen",
-    menuLabels: "Etiketten drucken",
-    menuData: "Export und Import",
-    menuStats: "Statistik",
-    statsPeriod: "Zeitraum",
-    statsPeriods: { 30: "30 Tage", 90: "90 Tage", 365: "1 Jahr", all: "Alles" },
-    statsNow: "Jetzt im Vorrat",
-    statsFilled: "gefüllt",
-    statsEmpty: "leer",
-    statsExpired: "abgelaufen",
-    statsSoon: "läuft bald ab",
-    statsUndated: "ohne MHD",
-    statsEmptied: "Geleert",
-    statsEaten: "gegessen",
-    statsThrown: "weggeworfen",
-    statsUnknown: "ohne Angabe",
-    statsWaste: (p) => `${p} % weggeworfen`,
-    statsAvg: (d) => `Ø ${String(d).replace(".", ",")} Tage gelagert, bis es gegessen wurde`,
-    statsTopThrown: "Am häufigsten weggeworfen",
-    statsTopEaten: "Am häufigsten gegessen",
-    statsByArea: "Weggeworfen nach Bereich",
-    statsMonths: "Letzte Monate",
-    statsNone: "Noch kein Verlauf. Die Statistik füllt sich, sobald du Dosen leerst (mit „Gegessen“ oder „Weggeworfen“).",
-    statsHint: "Ohne Angabe geleerte Dosen, die abgelaufen waren, zählen als weggeworfen.",
-    dataTitle: "Export und Import",
-    dataExport: "Herunterladen",
-    dataInventory: "📄 Bestand als Tabelle (CSV)",
-    dataInventoryHint: "Alle Dosen mit Inhalt, Menge, MHD und Bereich, z. B. für Excel.",
-    dataHistory: "🕘 Verlauf (CSV)",
-    dataHistoryHint: "Was wann in welcher Dose war und ob es gegessen oder weggeworfen wurde.",
-    dataEstimates: "💾 Gemerkte Schätzungen (Sicherung)",
-    dataEstimatesHint: "Alle gemerkten MHD-Werte als Datei, zum Sichern oder für ein anderes Home Assistant.",
-    dataImport: "Schätzungen einlesen",
-    dataImportHint: "Datei aus „Gemerkte Schätzungen“ wählen. Eigene Korrekturen bleiben erhalten.",
-    dataReplace: "Vorhandene Schätzungen vorher löschen",
-    dataImported: (r) => `Eingelesen: ${r.added} neu, ${r.updated} aktualisiert` + (r.kept ? `, ${r.kept} eigene behalten` : "") + (r.skipped ? `, ${r.skipped} ungültig` : "") + ".",
-    dataImportFailed: "Das ist keine Datei mit Larder-Schätzungen.",
-    dataLinkFailed: "Der Link konnte nicht erstellt werden.",
-    labelsTitle: "Etiketten drucken",
-    labelsFor: (n) => (n === null ? "Alle Dosen" : n === 1 ? "1 ausgewählte Dose" : `${n} ausgewählte Dosen`),
-    labelsLayout: "Format",
-    labelsSkip: "Schon benutzte Etiketten überspringen",
-    labelsContent: "Inhalt",
-    labelsBestBefore: "MHD (für Etiketten, die nicht dauerhaft bleiben)",
-    labelsWhat: "Was aufs Etikett kommt (mindestens eins):",
-    labelsQr: "QR-Code",
-    labelsName: "Name der Dose",
-    labelsDesign: "Design",
-    labelsDesigns: { plain: "Schlicht", frame: "Rahmen", notched: "Eingekerbte Ecken", handwritten: "Handschrift (Glas-Etikett)" },
-    labelsNutrition: "Nährwerte (kcal, Nutri-Score, Allergene)",
-    labelsSheets: "A4-Bögen",
-    labelsPrinters: "Etikettendrucker",
-    labelsBorder: "Schnittlinien (für normales Papier)",
-    labelsOpen: "PDF öffnen",
-    labelsCreate: "PDF erstellen",
-    labelsUpdate: "Neu erstellen",
-    labelsFailed: "Das PDF konnte nicht geöffnet werden.",
-    labelsHint: "Mit 100 % drucken (nicht „an Seite anpassen“), damit die Codes auf die Etiketten treffen.",
-    selectLabels: "Etiketten",
-    selectEmpty: (n) => `Leeren (${n})`,
-    kcal: (k, lang) => `${String(k.value).replace(".", ",")} kcal${k.per === "portion" ? "/Portion" : "/100 g"}`,
-    plan: "Einplanen",
-    planTitle: "Gericht einplanen",
-    planDish: "Gericht",
-    planDate: "Tag",
-    planContainers: "Dafür gebrauchte Dosen",
-    planNoContainers: "Keine gefüllten Dosen.",
-    planNeedTitle: "Bitte ein Gericht eingeben.",
-    planSaveFailed: "Konnte nicht eingeplant werden.",
-    planned: "📅 Geplant",
-    planDelete: "Aus dem Plan nehmen",
-    planCooked: "Gekocht",
-    planCookedDone: (r) => `Gekocht: ${r.emptied || 0} Dose(n) geleert, ${r.taken || 0}× eine Portion entnommen.`,
-    planShopping: (n) => `${n} fehlen → Einkaufsliste`,
-    planShoppingDone: (n) => (n ? `${n} Zutat(en) auf die Einkaufsliste gesetzt.` : "Steht schon alles auf der Einkaufsliste."),
-    planNoList: "Bitte zuerst in den Einstellungen eine Einkaufsliste wählen.",
-    planFailed: "Das hat nicht geklappt.",
-    planDay: (iso, lang) => {
-      const d = new Date(`${iso}T12:00:00`);
-      const today = new Date();
-      today.setHours(12, 0, 0, 0);
-      const diff = Math.round((d - today) / 86400000);
-      if (diff === 0) return "Heute";
-      if (diff === 1) return "Morgen";
-      return d.toLocaleDateString(lang, { weekday: "short", day: "2-digit", month: "2-digit" });
-    },
-    thawTitle: "🧊 Zum Auftauen in den Kühlschrank",
-    thawItem: (i) => `${i.content} (${i.name}) für ${i.plan}`,
-    thawDone: "Aufgetaut",
-    emptyTitle: (n) => (n === 1 ? "1 Dose leeren" : `${n} Dosen leeren`),
-    emptyQuestion: "Was ist mit dem Inhalt passiert?",
-    eaten: "😋 Gegessen",
-    thrown: "🗑 Weggeworfen",
-    emptyFailed: (n) => `${n} Dose(n) konnten nicht geleert werden.`,
-    inventoryTitle: (n) => `Inventur: ${n} gescannt`,
-    inventoryAll: "Alle gefüllten Dosen wurden gescannt. ✓",
-    inventoryMissing: (n) => (n === 1 ? "1 gefüllte Dose wurde nicht gescannt, vielleicht schon gegessen:" : `${n} gefüllte Dosen wurden nicht gescannt, vielleicht schon gegessen:`),
-    inventorySelect: "Diese auswählen",
-    inventoryClose: "Schließen",
-    menuSettings: "Einstellungen der Integration",
-    empty: "Leer",
-    noArea: "Ohne Bereich",
-    noneYet: "Noch keine Behälter. Füge den ersten über „Hinzufügen“ hinzu.",
-    noMatch: "Keine passenden Behälter.",
-    filterArea: (name) => `Bereich: ${name}`,
-    filterCategory: (name) => `Kategorie: ${name}`,
-    problems: { noarea: "Ohne Bereich", nodate: "Gefüllt ohne MHD", longexpired: "Seit über 7 Tagen abgelaufen" },
-    filterSoon: "Läuft bald ab",
-    filterAll: "Alle",
-    filterExpired: "Abgelaufen",
-    filterFilled: "Befüllt",
-    filterEmpty: "Leer",
-    filterLabel: "Filter",
-    search: "Suchen …",
-    count: (shown, all) => (shown === all ? (all === 1 ? "1 Dose" : `${all} Dosen`) : `${shown} von ${all} Dosen`),
-    servings: "Personen",
-    servingsDefault: "Personen: Standard",
-    servingsN: (n) => (n === 1 ? "1 Person" : `${n} Personen`),
-    adminOnly: (code) => `Nur Administratoren können Dosen hinzufügen. Gescannter Code: ${code}`,
-    containersCount: (n) => (n === 1 ? "1 Behälter" : `${n} Behälter`),
-    expired: "abgelaufen",
-    today: "heute",
-    daysShort: (n) => `${n} T`,
-    soonCount: (n) => `${n} bald`,
-    categories: {
-      fish: "Fisch",
-      raw_meat: "Fleisch",
-      deli: "Wurst & Aufschnitt",
-      dairy: "Milchprodukte",
-      egg: "Eier",
-      produce: "Obst & Gemüse",
-      bread: "Brot & Gebäck",
-      dish: "Gerichte & Reste",
-      dry: "Trockenware",
-      sweet: "Süßes",
-      coffee: "Kaffee & Tee",
-      mixed: "Gemischt",
-      other: "Sonstiges",
-      empty: "Leer",
-    },
-    recipesEmpty: "Noch keine Rezepte gespeichert.",
-    recipesGenerate: "Aus Resten",
-    recipesBusy: "Die KI überlegt …",
-    recipesNone: (n) => (n === 0 ? "Heute läuft nichts ab." : `In den nächsten ${n} Tagen läuft nichts ab.`),
-    recipesNoneAll: "Keine befüllte Dose gefunden.",
-    period: "Zeitraum für Rezeptideen",
-    periodDefault: (n) => `Standard (${n === 0 ? "nur heute" : n === 1 ? "1 Tag" : `${n} Tage`})`,
-    periodDays: (n) => (n === 1 ? "Läuft morgen ab" : `Läuft in ${n} Tagen ab`),
-    periodAll: "Alle Dosen (kein Zeitraum)",
-    recipesFailed: "Die Rezeptideen konnten nicht erstellt werden.",
-    suggestions: "Vorschläge aus deinen Resten",
-    save: "Speichern",
-    areaAdd: "Bereich anlegen",
-    areaEdit: "Bereiche bearbeiten",
-    areaEditDone: "Fertig",
-    areaEditHint: "Tippe auf einen Bereich, um ihn umzubenennen oder seine Lagerart zu ändern. Hier stehen alle Bereiche von Home Assistant.",
-    areaEditTitle: "Bereich bearbeiten",
-    areaName: "Name",
-    areaKind: "Lagerart (Label)",
-    areaKindNone: "kein Larder-Label",
-    areaKindNew: "Neues Label …",
-    areaKindNewName: "Name der Lagerart, z. B. Gefrierschrank",
-    areaKindHint: "Gibt es Larder-Labels, bieten die Auswahllisten nur Bereiche mit einem davon an. Grenzen wie die max. Lagerzeit stehen in der Beschreibung des Labels.",
-    areaOpenHa: "In Home Assistant öffnen",
-    areaNeedName: "Bitte einen Namen eingeben.",
-    areaSaveFailed: (msg) => `Speichern fehlgeschlagen: ${msg}`,
-    saved: "Gespeichert",
-    cancel: "Abbrechen",
-    close: "Schließen",
-    edit: "Bearbeiten",
-    delete: "Löschen",
-    confirmDelete: (title) => `„${title}“ löschen?`,
-    recipeNew: "Neues Rezept",
-    recipeEdit: "Rezept bearbeiten",
-    recipeTitle: "Name",
-    recipeMinutes: "Dauer (Minuten, optional)",
-    recipeIngredients: "Zutaten (eine pro Zeile)",
-    recipeSteps: "Zubereitung (ein Schritt pro Zeile)",
-    recipeNeedTitle: "Bitte gib dem Rezept einen Namen.",
-    recipeSaveFailed: "Das Rezept konnte nicht gespeichert werden.",
-    minutes: (n) => `${n} Min.`,
-    ingredients: "Zutaten",
-    steps: "Zubereitung",
-    fromAi: "Von der KI",
-    fromPhoto: "Aus Foto",
-    selectStart: "Auswählen",
-    selectDone: "Fertig",
-    selected: (n) => (n === 1 ? "1 ausgewählt" : `${n} ausgewählt`),
-    selectHint: "Tippe Dosen an, um sie auszuwählen.",
-    selectFill: (n) => `Befüllen (${n})`,
-    selectRecipes: "Rezeptideen",
-    selectAll: "Alle",
-    selectNone: "Keine",
-    scanStart: "Scannen",
-    scanStop: "Scan beenden",
-    scanHint: "Serien-Scan läuft: Jede gescannte Dose wird ausgewählt.",
-    scanNfcHint: "Handy an den Tag halten und das Banner „In Home Assistant öffnen“ oben antippen.",
-    scanQr: "QR-Code",
-    scanNfc: "NFC",
-    scanModeLabel: "Scannen mit",
-    scanQrHint: "Der QR-Scanner der App ist offen. Über „NFC“ im Scanner oder hier wechselst du zu NFC.",
-    scanToNfc: "Zu NFC wechseln",
-    scanTitle: "Dosen scannen",
-    scanDescription: "Scanne die QR-Codes der Dosen nacheinander. Schließen, wenn du fertig bist.",
-    scanAdded: (name, n) => `✓ ${name} (${n} ausgewählt)`,
-    scanUnknown: "Diese Dose ist noch nicht angelegt.",
-    scanInvalid: "Kein Larder-Code.",
-    scanOne: "Dose scannen",
-    scanOneDescription: "Halte die Kamera auf den QR-Code einer Dose: eigener Code oder Zwilling-Code.",
-    recipesPick: "Dosen wählen",
-    recipesNoneChosen: "Die gewählten Dosen sind leer oder abgelaufen.",
-    suggestionsChosen: (n) => `Vorschläge aus ${n === 1 ? "1 gewählten Dose" : `${n} gewählten Dosen`}`,
-    photoRead: "Rezept aus Foto oder Datei lesen",
-    photoBusy: "Die KI liest das Rezept …",
-    photoFailed: "Das Rezept konnte nicht gelesen werden.",
-    photoCheck: "Rezept aus Foto prüfen",
-    photoTooMany: (n) => `Höchstens ${n} Fotos auf einmal.`,
-  },
-  en: {
-    title: "Larder",
-    views: { start: "Start", containers: "Containers", recipes: "Recipes", areas: "Areas", categories: "Categories" },
-    hello: (name) => (name ? `Hello ${name}` : "Hello"),
-    soonTitle: "This food should be used up soon:",
-    soonNone: (n) => (n === 0 ? "Nothing expires today." : `Nothing expires in the next ${n} days.`),
-    help: "How can I help?",
-    helpRecipes: "Recipe suggestions",
-    helpContainers: "Show containers",
-    settings: "Settings",
-    moreActions: "More actions",
-    add: "Add",
-    sort: "Sort by",
-    sortDate: "Best-before date",
-    sortArea: "Area",
-    sortName: "Alphabetical",
-    sortCategory: "Category",
-    sortCount: "Count",
-    sortSoon: "Expiring soon",
-    sortNewest: "Newest first",
-    viewGrid: "Tiles",
-    viewList: "List",
-    viewCards: "Cards with all details",
-    estimates: "Estimates",
-    menuEstimates: "Remembered estimates",
-    menuLabels: "Print labels",
-    menuData: "Export and import",
-    menuStats: "Statistics",
-    statsPeriod: "Period",
-    statsPeriods: { 30: "30 days", 90: "90 days", 365: "1 year", all: "All" },
-    statsNow: "In stock now",
-    statsFilled: "filled",
-    statsEmpty: "empty",
-    statsExpired: "expired",
-    statsSoon: "expiring soon",
-    statsUndated: "without date",
-    statsEmptied: "Emptied",
-    statsEaten: "eaten",
-    statsThrown: "thrown away",
-    statsUnknown: "not answered",
-    statsWaste: (p) => `${p} % thrown away`,
-    statsAvg: (d) => `⌀ ${d} days stored until eaten`,
-    statsTopThrown: "Thrown away most often",
-    statsTopEaten: "Eaten most often",
-    statsByArea: "Thrown away by area",
-    statsMonths: "Last months",
-    statsNone: "No history yet. The statistics fill up as you empty containers (with “Eaten” or “Thrown away”).",
-    statsHint: "Containers emptied without an answer that had expired count as thrown away.",
-    dataTitle: "Export and import",
-    dataExport: "Download",
-    dataInventory: "📄 Inventory as a table (CSV)",
-    dataInventoryHint: "All containers with contents, quantity, best-before date and area, e.g. for Excel.",
-    dataHistory: "🕘 History (CSV)",
-    dataHistoryHint: "What was in which container when, and whether it was eaten or thrown away.",
-    dataEstimates: "💾 Remembered estimates (backup)",
-    dataEstimatesHint: "All remembered best-before values as a file, to back them up or use them in another Home Assistant.",
-    dataImport: "Import estimates",
-    dataImportHint: "Choose a file from “Remembered estimates”. Your own corrections are kept.",
-    dataReplace: "Delete existing estimates first",
-    dataImported: (r) => `Imported: ${r.added} new, ${r.updated} updated` + (r.kept ? `, ${r.kept} own kept` : "") + (r.skipped ? `, ${r.skipped} invalid` : "") + ".",
-    dataImportFailed: "This is not a file with Larder estimates.",
-    dataLinkFailed: "The link could not be created.",
-    labelsTitle: "Print labels",
-    labelsFor: (n) => (n === null ? "All containers" : n === 1 ? "1 selected container" : `${n} selected containers`),
-    labelsLayout: "Format",
-    labelsSkip: "Skip labels already used",
-    labelsContent: "Contents",
-    labelsBestBefore: "Best-before date (for labels that will not stay)",
-    labelsWhat: "What goes on the label (at least one):",
-    labelsQr: "QR code",
-    labelsName: "Container name",
-    labelsDesign: "Design",
-    labelsDesigns: { plain: "Plain", frame: "Frame", notched: "Notched corners", handwritten: "Handwritten (jar label)" },
-    labelsNutrition: "Nutrition (kcal, Nutri-Score, allergens)",
-    labelsSheets: "A4 sheets",
-    labelsPrinters: "Label printers",
-    labelsBorder: "Cutting lines (for plain paper)",
-    labelsOpen: "Open PDF",
-    labelsCreate: "Create PDF",
-    labelsUpdate: "Create again",
-    labelsFailed: "The PDF could not be opened.",
-    labelsHint: "Print at 100 % (not “fit to page”) so the codes hit the labels.",
-    selectLabels: "Labels",
-    selectEmpty: (n) => `Empty (${n})`,
-    kcal: (k) => `${k.value} kcal${k.per === "portion" ? "/portion" : "/100 g"}`,
-    plan: "Plan",
-    planTitle: "Plan a dish",
-    planDish: "Dish",
-    planDate: "Day",
-    planContainers: "Containers needed for it",
-    planNoContainers: "No filled containers.",
-    planNeedTitle: "Please enter a dish.",
-    planSaveFailed: "Could not be planned.",
-    planned: "📅 Planned",
-    planDelete: "Remove from the plan",
-    planCooked: "Cooked",
-    planCookedDone: (r) => `Cooked: ${r.emptied || 0} container(s) emptied, ${r.taken || 0}× one portion taken.`,
-    planShopping: (n) => `${n} missing → shopping list`,
-    planShoppingDone: (n) => (n ? `${n} ingredient(s) added to the shopping list.` : "Everything is already on the shopping list."),
-    planNoList: "Please choose a shopping list in the settings first.",
-    planFailed: "That did not work.",
-    planDay: (iso, lang) => {
-      const d = new Date(`${iso}T12:00:00`);
-      const today = new Date();
-      today.setHours(12, 0, 0, 0);
-      const diff = Math.round((d - today) / 86400000);
-      if (diff === 0) return "Today";
-      if (diff === 1) return "Tomorrow";
-      return d.toLocaleDateString(lang, { weekday: "short", day: "2-digit", month: "2-digit" });
-    },
-    thawTitle: "🧊 Move to the fridge to thaw",
-    thawItem: (i) => `${i.content} (${i.name}) for ${i.plan}`,
-    thawDone: "Thawed",
-    emptyTitle: (n) => (n === 1 ? "Empty 1 container" : `Empty ${n} containers`),
-    emptyQuestion: "What happened to the contents?",
-    eaten: "😋 Eaten",
-    thrown: "🗑 Thrown away",
-    emptyFailed: (n) => `${n} container(s) could not be emptied.`,
-    inventoryTitle: (n) => `Inventory: ${n} scanned`,
-    inventoryAll: "All filled containers were scanned. ✓",
-    inventoryMissing: (n) => (n === 1 ? "1 filled container was not scanned, maybe already eaten:" : `${n} filled containers were not scanned, maybe already eaten:`),
-    inventorySelect: "Select these",
-    inventoryClose: "Close",
-    menuSettings: "Integration settings",
-    empty: "Empty",
-    noArea: "No area",
-    noneYet: "No containers yet. Add the first one with “Add”.",
-    noMatch: "No matching containers.",
-    filterArea: (name) => `Area: ${name}`,
-    filterCategory: (name) => `Category: ${name}`,
-    problems: { noarea: "Without an area", nodate: "Filled without a date", longexpired: "Expired more than 7 days ago" },
-    filterSoon: "Expiring soon",
-    filterAll: "All",
-    filterExpired: "Expired",
-    filterFilled: "Filled",
-    filterEmpty: "Empty",
-    filterLabel: "Filter",
-    search: "Search …",
-    count: (shown, all) => (shown === all ? (all === 1 ? "1 container" : `${all} containers`) : `${shown} of ${all} containers`),
-    servings: "People",
-    servingsDefault: "People: default",
-    servingsN: (n) => (n === 1 ? "1 person" : `${n} people`),
-    adminOnly: (code) => `Only administrators can add containers. Scanned code: ${code}`,
-    containersCount: (n) => (n === 1 ? "1 container" : `${n} containers`),
-    expired: "expired",
-    today: "today",
-    daysShort: (n) => `${n} d`,
-    soonCount: (n) => `${n} soon`,
-    categories: {
-      fish: "Fish",
-      raw_meat: "Meat",
-      deli: "Cold cuts",
-      dairy: "Dairy",
-      egg: "Eggs",
-      produce: "Fruit & vegetables",
-      bread: "Bread & pastry",
-      dish: "Dishes & leftovers",
-      dry: "Dry goods",
-      sweet: "Sweets",
-      coffee: "Coffee & tea",
-      mixed: "Mixed",
-      other: "Other",
-      empty: "Empty",
-    },
-    recipesEmpty: "No recipes saved yet.",
-    recipesGenerate: "From leftovers",
-    recipesBusy: "The AI is thinking …",
-    recipesNone: (n) => (n === 0 ? "Nothing expires today." : `Nothing expires in the next ${n} days.`),
-    recipesNoneAll: "No filled container found.",
-    period: "Period for recipe ideas",
-    periodDefault: (n) => `Default (${n === 0 ? "today only" : n === 1 ? "1 day" : `${n} days`})`,
-    periodDays: (n) => (n === 1 ? "Expires by tomorrow" : `Expires within ${n} days`),
-    periodAll: "All containers (no period)",
-    recipesFailed: "The recipe ideas could not be created.",
-    suggestions: "Suggestions from your leftovers",
-    save: "Save",
-    areaAdd: "Add area",
-    areaEdit: "Edit areas",
-    areaEditDone: "Done",
-    areaEditHint: "Tap an area to rename it or change its storage kind. All areas of Home Assistant are listed here.",
-    areaEditTitle: "Edit area",
-    areaName: "Name",
-    areaKind: "Storage kind (label)",
-    areaKindNone: "no Larder label",
-    areaKindNew: "New label …",
-    areaKindNewName: "Name of the storage kind, e.g. Freezer",
-    areaKindHint: "Once Larder labels exist, the dropdowns only offer areas with one of them. Limits like the max. storage time go into the label's description.",
-    areaOpenHa: "Open in Home Assistant",
-    areaNeedName: "Please enter a name.",
-    areaSaveFailed: (msg) => `Saving failed: ${msg}`,
-    saved: "Saved",
-    cancel: "Cancel",
-    close: "Close",
-    edit: "Edit",
-    delete: "Delete",
-    confirmDelete: (title) => `Delete “${title}”?`,
-    recipeNew: "New recipe",
-    recipeEdit: "Edit recipe",
-    recipeTitle: "Name",
-    recipeMinutes: "Duration (minutes, optional)",
-    recipeIngredients: "Ingredients (one per line)",
-    recipeSteps: "Method (one step per line)",
-    recipeNeedTitle: "Please give the recipe a name.",
-    recipeSaveFailed: "The recipe could not be saved.",
-    minutes: (n) => `${n} min`,
-    ingredients: "Ingredients",
-    steps: "Method",
-    fromAi: "From the AI",
-    fromPhoto: "From a photo",
-    selectStart: "Select",
-    selectDone: "Done",
-    selected: (n) => `${n} selected`,
-    selectHint: "Tap containers to select them.",
-    selectFill: (n) => `Fill (${n})`,
-    selectRecipes: "Recipe ideas",
-    selectAll: "All",
-    selectNone: "None",
-    scanStart: "Scan",
-    scanStop: "Stop scanning",
-    scanHint: "Serial scan running: every scanned container gets selected.",
-    scanNfcHint: "Hold the phone to the tag and tap the “Open in Home Assistant” banner at the top.",
-    scanQr: "QR code",
-    scanNfc: "NFC",
-    scanModeLabel: "Scan with",
-    scanQrHint: "The app's QR scanner is open. Switch to NFC with “NFC” in the scanner or here.",
-    scanToNfc: "Switch to NFC",
-    scanTitle: "Scan containers",
-    scanDescription: "Scan the QR codes of the containers one after another. Close when you are done.",
-    scanAdded: (name, n) => `✓ ${name} (${n} selected)`,
-    scanUnknown: "This container has not been added yet.",
-    scanInvalid: "Not a Larder code.",
-    scanOne: "Scan container",
-    scanOneDescription: "Point the camera at the QR code of a container: your own code or a Zwilling code.",
-    recipesPick: "Pick containers",
-    recipesNoneChosen: "The selected containers are empty or expired.",
-    suggestionsChosen: (n) => `Suggestions from ${n === 1 ? "1 selected container" : `${n} selected containers`}`,
-    photoRead: "Read a recipe from a photo or file",
-    photoBusy: "The AI is reading the recipe …",
-    photoFailed: "The recipe could not be read.",
-    photoCheck: "Check the recipe from the photo",
-    photoTooMany: (n) => `At most ${n} photos at once.`,
-  },
-};
+const { TEXTS } = await import(`./larder-dashboard-strings.js${VERSION_QUERY}`);
+export { TEXTS };
 
 export const CATEGORY_ICONS = {
   fish: "🐟",
@@ -546,8 +63,9 @@ export function describeDevices(hass, devices, now = new Date()) {
     const comp = states[dev.entities.compartment];
     const compartment = isValid(comp) ? comp.state.trim() : "";
     const attrs = (content && text.attributes) || {};
+    const kind = (text && text.attributes && text.attributes.kind) || "container"; // Dose, Beutel (bag) oder Packung (pack)
     const kcal = attrs.kcal_portion !== undefined ? { value: attrs.kcal_portion, per: "portion" } : attrs.kcal_100g !== undefined ? { value: attrs.kcal_100g, per: "100g" } : null;
-    return { dev, id: dev.deviceId, name: dev.name, content, days, soon: soonDaysOf(date), category, areaId: dev.areaId, areaName: dev.areaName, compartment, kcal, nutriScore: attrs.nutri_score || null, allergens: Array.isArray(attrs.allergen_warning) ? attrs.allergen_warning : [] };
+    return { dev, id: dev.deviceId, name: dev.name, content, days, soon: soonDaysOf(date), category, areaId: dev.areaId, areaName: dev.areaName, compartment, kcal, nutriScore: attrs.nutri_score || null, allergens: Array.isArray(attrs.allergen_warning) ? attrs.allergen_warning : [], kind };
   });
 }
 
@@ -661,6 +179,7 @@ function loadOptions() {
       labelLayout: LABEL_LAYOUTS[raw.labelLayout] ? raw.labelLayout : "3x8",
       labelDesign: raw.labelDesign === "vintage" ? "handwritten" : LABEL_DESIGNS.includes(raw.labelDesign) ? raw.labelDesign : "plain",
       labelParts: raw.labelParts && typeof raw.labelParts === "object" ? raw.labelParts : { qr: true, name: true, content: false },
+      itemArea: raw.itemArea && typeof raw.itemArea === "object" ? raw.itemArea : {},
     };
   } catch {
     return { mode: "grid", sort: "date", areaSort: "name", recipeSort: "newest", recipePeriod: "default" };
@@ -675,181 +194,10 @@ function saveOptions(opts) {
   }
 }
 
-const STYLE = `
-  :host { position: relative; display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; background: var(--primary-background-color);
-    color: var(--primary-text-color); font-family: var(--paper-font-body1_-_font-family, Roboto, sans-serif); }
-  [hidden] { display: none !important; }
-  header { display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 56px; box-sizing: border-box;
-    background: var(--app-header-background-color, var(--primary-color)); color: var(--app-header-text-color, #fff);
-    position: sticky; top: 0; z-index: 2; }
-  header h1 { flex: 1; font-size: 20px; font-weight: 400; margin: 0; }
-  header button { background: none; border: 0; color: inherit; font-size: 22px; cursor: pointer; padding: 4px 8px; }
-  #menu { display: none; }
-  :host([narrow]) #menu { display: inline-block; }
-  main { flex: 1; padding: 12px 16px 16px; box-sizing: border-box; display: flex; flex-direction: column; }
-  main > * { flex: 0 0 auto; }
-  main > .selbar { margin-top: auto; }
-  :host([classic-view]) main { flex: none; padding-bottom: 0; }
-  :host([classic-view]) larder-panel-embedded { flex: 1; }
-  .menu { position: absolute; top: 52px; right: 8px; z-index: 5; display: flex; flex-direction: column; min-width: 220px;
-    background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 12px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, .2); overflow: hidden; }
-  .menu button { font: inherit; font-size: 15px; text-align: left; padding: 12px 16px; border: 0; background: none;
-    color: var(--primary-text-color); cursor: pointer; }
-  .menu button + button { border-top: 1px solid var(--divider-color); }
-  .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
-  .bar .grow { flex: 1; }
-  .bar.ai select { flex: 1 1 40%; min-width: 0; }
-  .bar.ai button { flex: 1 1 100%; }
-  .bar.search input { flex: 1; min-width: 0; font: inherit; font-size: 15px; padding: 8px 14px; border-radius: 18px;
-    border: 1px solid var(--divider-color); background: var(--card-background-color, #fff); color: var(--primary-text-color); }
-  .notice { margin: 12px 16px 0; padding: 10px 14px; border-radius: 12px; font-size: 14px; cursor: pointer;
-    background: var(--warning-color, #ffa600); color: #000; }
-  p.count { margin: -4px 0 10px; font-size: 13px; color: var(--secondary-text-color); }
-  .bar select, .bar button { font: inherit; font-size: 14px; color: var(--primary-text-color);
-    background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 18px; padding: 7px 12px; cursor: pointer; }
-  .bar button.icon { padding: 6px 12px; font-size: 16px; line-height: 1.2; }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
-  .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 5px 6px 5px 12px; border-radius: 16px;
-    background: var(--primary-color); color: var(--text-primary-color, #fff); }
-  .chip button { background: none; border: 0; color: inherit; font-size: 15px; cursor: pointer; padding: 0 6px; }
-  h2 { font-size: 15px; font-weight: 500; margin: 18px 0 8px; color: var(--secondary-text-color); text-transform: uppercase; letter-spacing: .04em; }
-  h2:first-child { margin-top: 0; }
-  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
-  .tile { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px; text-align: center;
-    font: inherit; color: var(--primary-text-color); background: var(--card-background-color, #fff); border: 1px solid var(--divider-color);
-    border-radius: 14px; padding: 12px 6px 10px; min-height: 104px; cursor: pointer; box-sizing: border-box; min-width: 0; }
-  .tile .ico { font-size: 30px; line-height: 1.1; }
-  .tile .name { font-size: 14px; font-weight: 500; max-width: 100%; line-height: 1.2; overflow: hidden; overflow-wrap: anywhere; hyphens: auto;
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-  .tile .sub { font-size: 11px; color: var(--secondary-text-color); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .tile .kcal { font-size: 10px; color: var(--secondary-text-color); margin-top: 2px; }
-  .tile .allergen { font-size: 10px; color: var(--error-color, #c62828); font-weight: 600; margin-top: 2px; }
-  .tile.empty { opacity: .65; border-style: dashed; }
-  .tile.selected, .row.selected { outline: 3px solid var(--primary-color); outline-offset: -3px; opacity: 1; }
-  .tile .check, .row .check { position: absolute; top: 6px; right: 8px; font-size: 16px; color: var(--primary-color); }
-  .row { position: relative; }
-  .selbar { position: sticky; bottom: calc(57px + env(safe-area-inset-bottom, 0px)); z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
-    margin: 12px -16px -16px; padding: 10px 16px; background: var(--card-background-color, #fff); border-top: 1px solid var(--divider-color); }
-  .selbar .count { flex: 1; font-size: 14px; color: var(--secondary-text-color); min-width: 90px; }
-  .selbar button { font: inherit; font-size: 14px; border-radius: 18px; padding: 7px 12px; cursor: pointer;
-    background: var(--card-background-color, #fff); color: var(--primary-text-color); border: 1px solid var(--divider-color); }
-  .selbar button.primary { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: var(--primary-color); }
-  .bar button.on { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: var(--primary-color); }
-  .badge { font-size: 11px; padding: 1px 8px; border-radius: 10px; color: #fff; white-space: nowrap; background: var(--secondary-text-color); }
-  .badge.soon { background: var(--warning-color, #ffa600); }
-  .badge.expired { background: var(--error-color, #db4437); }
-  .list { display: flex; flex-direction: column; gap: 8px; }
-  .row { display: flex; align-items: center; gap: 12px; text-align: left; font: inherit; color: var(--primary-text-color);
-    background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 12px; padding: 10px 12px; cursor: pointer; width: 100%; box-sizing: border-box; }
-  .row .ico { font-size: 24px; }
-  .row .text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-  .row .name { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .row .sub { font-size: 12px; color: var(--secondary-text-color); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .row.empty { opacity: .65; }
-  .note { color: var(--secondary-text-color); font-size: 14px; margin: 8px 0; }
-  .scanpanel { margin: 0 0 12px; }
-  .inventory { background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 12px; padding: 10px 14px; }
-  .inventory .lead { margin: 0 0 4px; }
-  .inventory button { font: inherit; font-size: 14px; border-radius: 18px; padding: 6px 12px; cursor: pointer; margin: 6px 8px 0 0;
-    border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
-  ul.missing { margin: 4px 0; padding-left: 20px; font-size: 14px; }
-  .dialog .buttons.outcome { flex-wrap: wrap; }
-  .scanpanel .note { margin: 6px 0 0; }
-  .segment { display: flex; border: 1px solid var(--divider-color); border-radius: 20px; padding: 3px; background: var(--card-background-color, #fff); touch-action: pan-y; }
-  .segment button { flex: 1; font: inherit; font-size: 14px; border: 0; border-radius: 16px; padding: 8px 10px; cursor: pointer;
-    background: transparent; color: var(--primary-text-color); transition: background .15s; }
-  .segment button.on { background: var(--primary-color); color: var(--text-primary-color, #fff); }
-  div.note p { margin: 0 0 6px; }
-  div.note button { font: inherit; font-size: 14px; border-radius: 18px; padding: 7px 12px; cursor: pointer; margin-top: 2px;
-    background: var(--card-background-color, #fff); color: var(--primary-text-color); border: 1px solid var(--divider-color); }
-  .hello { font-size: 26px; font-weight: 400; margin: 4px 0 14px; }
-  .lead { font-size: 16px; margin: 0 0 12px; }
-  .tiles + .lead { margin-top: 22px; }
-  .help { display: flex; flex-direction: column; gap: 10px; margin-top: 22px; max-width: 420px; }
-  .help button, button.primary { font: inherit; font-size: 15px; padding: 11px 14px; border-radius: 10px; cursor: pointer; text-align: left;
-    background: var(--card-background-color, #fff); color: var(--primary-text-color); border: 1px solid var(--divider-color); }
-  button.primary { background: var(--primary-color); color: var(--text-primary-color, #fff); border: 0; text-align: center; }
-  button:disabled { opacity: .5; cursor: default; }
-  nav { position: sticky; bottom: 0; z-index: 2; display: flex; background: var(--card-background-color, #fff);
-    border-top: 1px solid var(--divider-color); padding-bottom: env(safe-area-inset-bottom, 0); }
-  nav button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px 7px; font: inherit; font-size: 11px;
-    background: none; border: 0; color: var(--secondary-text-color); cursor: pointer; min-width: 0; }
-  nav button .ico { font-size: 20px; line-height: 1.1; }
-  nav button.active { color: var(--primary-color); font-weight: 500; }
-  nav button span:last-child { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .recipe { background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; }
-  .recipe h3 { margin: 0; font-size: 16px; font-weight: 500; display: flex; align-items: baseline; gap: 8px; cursor: pointer; }
-  .recipe h3 .meta { font-size: 12px; font-weight: 400; color: var(--secondary-text-color); }
-  .recipe .tag { font-size: 11px; color: var(--secondary-text-color); }
-  .recipe .body { margin-top: 8px; font-size: 14px; }
-  .recipe .body h4 { margin: 10px 0 4px; font-size: 13px; color: var(--secondary-text-color); text-transform: uppercase; letter-spacing: .04em; }
-  .recipe ul, .recipe ol { margin: 0; padding-left: 20px; }
-  .recipe .actions { display: flex; gap: 8px; margin-top: 12px; }
-  .recipe .actions button { font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 8px; cursor: pointer; background: none;
-    color: var(--primary-color); border: 1px solid var(--primary-color); }
-  .recipe .actions button.danger { color: var(--error-color, #db4437); border-color: var(--error-color, #db4437); }
-  .error { color: var(--error-color, #db4437); font-size: 14px; margin: 8px 0; }
-  .overlay { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, .5); padding: 16px; }
-  .dialog { background: var(--card-background-color, #fff); color: var(--primary-text-color); border-radius: 14px; padding: 18px;
-    width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; }
-  .dialog h2 { margin: 0; font-size: 18px; text-transform: none; letter-spacing: 0; color: var(--primary-text-color); }
-  .dialog label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--secondary-text-color); }
-  .dialog input, .dialog textarea { font: inherit; color: var(--primary-text-color); background: var(--card-background-color, #fff);
-    border: 1px solid var(--divider-color); border-radius: 8px; padding: 8px 10px; box-sizing: border-box; color-scheme: light dark; }
-  .dialog textarea { min-height: 96px; resize: vertical; }
-  .dialog select { font: inherit; color: var(--primary-text-color); background: var(--card-background-color, #fff);
-    border: 1px solid var(--divider-color); border-radius: 8px; padding: 8px 10px; }
-  .dialog .hint { margin: 0; font-size: 12px; color: var(--secondary-text-color); }
-  .dialog a.pdf { align-self: stretch; text-align: center; padding: 12px; border-radius: 10px; font-size: 16px; text-decoration: none;
-    background: var(--primary-color); color: var(--text-primary-color, #fff); }
-  .stat { background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; }
-  .stat h3 { margin: 0 0 8px; font-size: 14px; font-weight: 500; color: var(--secondary-text-color); }
-  .stat .figs { display: flex; flex-wrap: wrap; gap: 8px 18px; }
-  .stat .fig { display: flex; flex-direction: column; min-width: 64px; }
-  .stat .fig .num { font-size: 26px; font-weight: 500; line-height: 1.1; }
-  .stat .fig .lbl { font-size: 12px; color: var(--secondary-text-color); }
-  .stat .fig.eaten .num { color: var(--success-color, #2e7d32); }
-  .stat .fig.soon .num { color: var(--warning-color, #f57c00); }
-  .stat .fig.expired .num { color: var(--error-color, #c62828); }
-  .stat .lead { margin: 10px 0 0; }
-  .stat .note { margin: 4px 0 0; }
-  .stat ol.rank { margin: 0; padding-left: 20px; }
-  .stat ol.rank li { margin: 2px 0; }
-  .stat ol.rank .count { color: var(--secondary-text-color); margin-left: 8px; font-size: 13px; }
-  .months { display: flex; align-items: flex-end; gap: 10px; height: 120px; }
-  .month { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; }
-  .month .stack { flex: 1; width: 100%; max-width: 34px; display: flex; flex-direction: column; justify-content: flex-end; }
-  .month .seg.eaten { background: var(--success-color, #43a047); border-radius: 0 0 4px 4px; }
-  .month .seg.thrown { background: var(--error-color, #e53935); border-radius: 4px 4px 0 0; }
-  .month .lbl { font-size: 11px; color: var(--secondary-text-color); margin-top: 4px; }
-  .dialog .checks { display: flex; flex-direction: column; gap: 6px; max-height: 40vh; overflow: auto; }
-  .tiles + .stat, .lead + .stat { margin-top: 16px; }
-  ul.plans { list-style: none; margin: 0; padding: 0; }
-  ul.plans li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 4px 0; border-top: 1px solid var(--divider-color); }
-  ul.plans li:first-child { border-top: 0; }
-  ul.plans .day { font-size: 13px; color: var(--secondary-text-color); min-width: 64px; }
-  ul.plans .title { font-weight: 500; flex: 1; }
-  ul.plans .used { flex-basis: 100%; font-size: 13px; color: var(--secondary-text-color); padding-left: 74px; }
-  ul.plans button { background: none; border: 0; cursor: pointer; color: var(--secondary-text-color); font-size: 15px; }
-  ul.plans .planactions { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; padding-left: 74px; }
-  ul.plans button.act { font: inherit; font-size: 13px; border: 1px solid var(--divider-color); border-radius: 14px; padding: 3px 10px; color: var(--primary-color); }
-  .stat.thaw button { font: inherit; font-size: 14px; border-radius: 18px; padding: 6px 12px; cursor: pointer; margin-top: 6px;
-    border: 1px solid var(--primary-color); background: var(--primary-color); color: var(--text-primary-color, #fff); }
-  .dialog .download { display: flex; flex-direction: column; gap: 4px; }
-  .dialog .download a.pdf { text-align: left; font-size: 15px; }
-  .dialog input[type="file"] { font: inherit; font-size: 13px; }
-  .dialog label.check { flex-direction: row; align-items: center; gap: 8px; font-size: 14px; color: var(--primary-text-color); }
-  .dialog button.link { align-self: flex-start; font: inherit; font-size: 14px; background: none; border: 0; padding: 0;
-    color: var(--primary-color); cursor: pointer; }
-  .dialog .buttons { display: flex; justify-content: flex-end; gap: 8px; }
-  .dialog .buttons button { font: inherit; padding: 8px 16px; border-radius: 8px; cursor: pointer; background: none; border: 0; color: var(--primary-color); }
-  .dialog .buttons button.submit { background: var(--primary-color); color: var(--text-primary-color, #fff); }
-  larder-panel-embedded[only] { flex: 1; }
-`;
+const { STYLE } = await import(`./larder-dashboard-style.js${VERSION_QUERY}`);
 
 export class LarderDashboard extends HTMLElement {
-  /** Titel auf der Startseite (Larder experimental überschreibt ihn). */
+  /** Titel auf der Startseite. */
   static appTitle = "Larder";
 
   constructor() {
@@ -932,9 +280,14 @@ export class LarderDashboard extends HTMLElement {
     // Die eingebettete klassische Ansicht steht zwischen Inhalt und Leiste (für Karten und Schätzungen)
     this._nav.before(this._classic);
     this._classic.addEventListener("larder-detail-closed", () => this._closeDetail());
-    this._classic.addEventListener("larder-filled", () => {
+    this._classic.addEventListener("larder-filled", (ev) => {
       if (this._selecting) this.stopSelecting();
+      // Etikett gleich nach dem Befüllen (z. B. für Gefrierbeutel): ein Tipp öffnet den Etiketten-Dialog
+      const ids = (ev.detail && ev.detail.deviceIds) || [];
+      const t = texts(this._hass);
+      if (ids.length) this.showNotice(t.filledNotice(ids.length), { label: t.labelNow, run: () => this.openLabelDialog(ids) });
     });
+    this._classic.addEventListener("larder-transfer", (ev) => this.openTransferDialog(ev.detail.deviceId));
     this._form.addEventListener("submit", (ev) => {
       ev.preventDefault();
       if (this._submit) this._submit();
@@ -1002,6 +355,10 @@ export class LarderDashboard extends HTMLElement {
     try {
       const res = await hass.callWS({ type: `${DOMAIN}/resolve_code`, code: cc });
       deviceId = res && res.device_id;
+      if (res && res.retired) {
+        this.showNotice(res.retired); // Etikett eines schon geleerten Beutels
+        return;
+      }
     } catch {
       deviceId = null;
     }
@@ -1016,9 +373,21 @@ export class LarderDashboard extends HTMLElement {
   }
 
   /** Kurzer Hinweis unter der Kopfleiste (antippen schließt ihn). */
-  showNotice(text) {
+  showNotice(text, action = null) {
     this._notice.textContent = text || "";
     this._notice.hidden = !text;
+    if (text && action) {
+      // z. B. "🖨 Etikett" direkt nach dem Befüllen
+      const btn = el("button", "", action.label);
+      btn.type = "button";
+      btn.dataset.role = "notice-action";
+      btn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        this._notice.hidden = true;
+        action.run();
+      });
+      this._notice.append(" ", btn);
+    }
   }
 
   /** Gescannter NFC-Tag einer Dose, während das Dashboard offen ist: Dose öffnen (leere zum Befüllen). */
@@ -1028,6 +397,10 @@ export class LarderDashboard extends HTMLElement {
     try {
       this._scanUnsub = await hass.connection.subscribeEvents((ev) => {
         const id = ev && ev.data && ev.data.device_id;
+        if (ev && ev.data && ev.data.retired && this.isConnected) {
+          this.showNotice(ev.data.message); // NFC-Sticker eines schon geleerten Beutels
+          return;
+        }
         if (!id || this._scan || this._selecting || !this.isConnected) return; // Serien-Scan wählt nur aus
         const row = this._rows().find((r) => r.id === id);
         if (!row) return;
@@ -1148,6 +521,11 @@ export class LarderDashboard extends HTMLElement {
     const hass = this._hass;
     if (!hass) return;
     const t = texts(hass);
+    if (this._detail && !this._rows().some((r) => r.id === this._detail)) {
+      // geleerter Beutel oder leere Packung: das Gerät gibt es nicht mehr
+      this._detail = null;
+      this._classic.removeAttribute("only");
+    }
     const detail = !!this._detail;
     this._header.hidden = detail;
     this._main.hidden = detail;
@@ -1182,7 +560,7 @@ export class LarderDashboard extends HTMLElement {
       this._filter,
       this._opts,
       t.title,
-      rows.map((r) => [r.id, r.name, r.content, r.days, r.category, r.areaId, r.areaName, r.compartment, r.kcal, r.allergens]),
+      rows.map((r) => [r.id, r.name, r.content, r.days, r.category, r.areaId, r.areaName, r.compartment, r.kcal, r.allergens, r.kind]),
       hass.user && hass.user.name,
       isAdmin(hass),
       this._canGenerate(),
@@ -1270,6 +648,7 @@ export class LarderDashboard extends HTMLElement {
     tile.type = "button";
     tile.dataset.id = row.id;
     tile.append(el("span", "ico", CATEGORY_ICONS[row.category] || CATEGORY_ICONS.other));
+    if (row.kind !== "container") tile.append(el("span", "kindmark", row.kind === "bag" ? "🛍" : "📦"));
     tile.append(el("span", "name", empty ? t.empty : row.content));
     tile.append(el("span", "sub", [row.name, showArea ? row.areaName : null, row.compartment].filter(Boolean).join(" · ")));
     if (!empty && row.days !== null) tile.append(el("span", `badge ${dayClass(row)}`, daysLabel(t, row.days)));
@@ -1439,6 +818,7 @@ export class LarderDashboard extends HTMLElement {
     try {
       const res = await this._hass.callWS({ type: `${DOMAIN}/resolve_code`, code });
       if (!res || !res.valid) notify(t.scanInvalid);
+      else if (res.retired) notify(res.retired);
       else if (!res.device_id) notify(t.scanUnknown);
       else {
         if (this._scan && this._scan.scanned) this._scan.scanned.add(res.device_id);
@@ -1506,6 +886,10 @@ export class LarderDashboard extends HTMLElement {
     }
     if (!res || !res.valid) return false;
     this.setView("containers");
+    if (res.retired) {
+      this.showNotice(res.retired); // Etikett eines schon geleerten Beutels
+      return true;
+    }
     if (!res.device_id) {
       // unbekannt: hinzufügen, mit dem ganzen Code (Zwilling-Codes enthalten Typ und Größe)
       if (isAdmin(hass)) this._classic.openAddDialog(code.trim());
@@ -1737,14 +1121,18 @@ export class LarderDashboard extends HTMLElement {
     return btn;
   }
 
+  /** "＋": Dose, Beutel oder Packung (Dosen nur für Administratoren, siehe larder-dashboard-items.js). */
   _addButton(t) {
-    if (!isAdmin(this._hass)) return null;
     const btn = el("button", "icon", "＋");
     btn.type = "button";
     btn.dataset.role = "add";
     btn.setAttribute("aria-label", t.add);
-    btn.addEventListener("click", () => this._classic.openAddDialog());
+    btn.addEventListener("click", () => this.openAddMenu());
     return btn;
+  }
+
+  _saveOptions() {
+    saveOptions(this._opts);
   }
 
   _chips(t, rows) {
@@ -1788,6 +1176,8 @@ export class LarderDashboard extends HTMLElement {
     else if (state === "expired") rows = rows.filter((r) => r.content !== "" && r.days !== null && r.days < 0);
     else if (state === "filled") rows = rows.filter((r) => r.content !== "");
     else if (state === "empty") rows = rows.filter((r) => r.content === "");
+    else if (state === "bags") rows = rows.filter((r) => r.kind === "bag");
+    else if (state === "packs") rows = rows.filter((r) => r.kind === "pack");
     if (this._filter.area !== null) rows = rows.filter((r) => (r.areaId || "") === this._filter.area);
     if (this._filter.category !== null) rows = rows.filter((r) => r.category === this._filter.category);
     // aus den Reparaturhinweisen (Link "Mehr erfahren")
@@ -1818,7 +1208,7 @@ export class LarderDashboard extends HTMLElement {
     this._searchInput.setAttribute("aria-label", t.search);
     if (this._searchInput.value !== (this._query || "")) this._searchInput.value = this._query || "";
     const state = this._select(
-      [["all", t.filterAll], ["soon", t.filterSoon], ["expired", t.filterExpired], ["filled", t.filterFilled], ["empty", t.filterEmpty]],
+      [["all", t.filterAll], ["soon", t.filterSoon], ["expired", t.filterExpired], ["filled", t.filterFilled], ["empty", t.filterEmpty], ["bags", t.filterBags], ["packs", t.filterPacks]],
       this._filter.state || "all",
       (value) => {
         this._filter.state = value === "all" ? null : value;
@@ -3265,6 +2655,8 @@ export class LarderDashboard extends HTMLElement {
     this._update();
   }
 }
+
+installItems(LarderDashboard, { el, isAdmin, listAreas, DOMAIN });
 
 if (!customElements.get("larder-dashboard")) {
   customElements.define("larder-dashboard", LarderDashboard);

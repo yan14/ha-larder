@@ -2,16 +2,14 @@
 
 from datetime import date, datetime, timedelta
 
-import pytest
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
+from custom_components.larder.const import DOMAIN
 from homeassistant.components import calendar as ha_calendar
 from homeassistant.components.calendar import CalendarEntity, CalendarEntityFeature, CalendarEvent
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
-
-from custom_components.larder.const import DOMAIN
 
 from .test_ai_estimate import _eid, _setup, auto_enable_custom_integrations  # noqa: F401
 
@@ -317,15 +315,13 @@ async def test_rebuild_service_removes_orphans(hass: HomeAssistant) -> None:
 async def test_parallel_setup_creates_only_one_sync_instance(hass: HomeAssistant) -> None:
     """Home Assistant richtet alle Dosen gleichzeitig ein; es darf trotzdem nur einen Abgleich geben."""
     import asyncio
+    from unittest.mock import patch
 
     from pytest_homeassistant_custom_component.common import MockConfigEntry
 
     from custom_components.larder.calendar_sync import async_get_calendar_sync
     from custom_components.larder.nfc import async_get_nfc
     from custom_components.larder.recipe_book import async_get_recipe_book
-
-    from unittest.mock import patch
-
     from homeassistant.helpers.storage import Store
 
     async def slow_load(self):  # wie echtes Laden von der Platte: gibt die Kontrolle ab

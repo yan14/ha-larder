@@ -6,7 +6,7 @@ nur Administratoren (WebSocket-Befehle `larder/recipes`, `larder/recipe_save`, `
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 import uuid
 
@@ -69,7 +69,7 @@ class RecipeBook:
             "steps": _clean(steps),
             "minutes": minutes,
             "source": existing["source"] if existing else source,
-            "created": existing["created"] if existing else datetime.now(timezone.utc).isoformat(),
+            "created": existing["created"] if existing else datetime.now(UTC).isoformat(),
         }
         self._recipes[recipe["id"]] = recipe
         await self._store.async_save({"recipes": list(self._recipes.values())})

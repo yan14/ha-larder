@@ -4,11 +4,10 @@ from datetime import timedelta
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_capture_events
 
+from custom_components.larder.const import DOMAIN
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import device_registry as dr
 from homeassistant.util import dt as dt_util
-
-from custom_components.larder.const import DOMAIN
 
 from .test_ai_estimate import _eid, _setup, auto_enable_custom_integrations  # noqa: F401
 

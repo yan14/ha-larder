@@ -9,8 +9,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, SIGNAL_SETTINGS_CHANGED
-from .entity import LarderConfigEntry, LarderEntity, LarderResettable
+from .const import DOMAIN, KIND_PACK, SIGNAL_SETTINGS_CHANGED
+from .entity import LarderConfigEntry, LarderEntity, LarderResettable, kind_of
 from .estimate import DATA_ESTIMATOR, async_get_estimator
 from .product import watched_allergens
 from .shelf_life import category_for
@@ -23,7 +23,7 @@ async def async_setup_entry(
 ) -> None:
     content = LarderContent(entry)
     entry.runtime_data.resettable[content._key] = content
-    async_add_entities([content, LarderCompartment(entry)])
+    async_add_entities([content] if kind_of(entry) == KIND_PACK else [content, LarderCompartment(entry)])
 
 
 # Produktdaten und Nährwerte des Inhalts (aus dem Strichcode oder von Hand); gehören zum Inhalt
@@ -93,7 +93,7 @@ class LarderContent(TextEntity, LarderResettable):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Kategorie (für Kategorien und Symbole im Dashboard) und, falls vorhanden, Produktdaten."""
         value = self._attr_native_value or ""
-        attrs: dict[str, Any] = {"category": category_for(value) if value else None, **self._product}
+        attrs: dict[str, Any] = {"category": category_for(value) if value else None, "kind": self._kind, **self._product}
         estimator = self.hass.data.get(DOMAIN, {}).get(DATA_ESTIMATOR)
         watched = getattr(estimator, "watch_allergens", None)
         if value.strip() and watched:

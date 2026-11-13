@@ -30,32 +30,27 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from . import shelf_life
-from .product import ALLERGEN_KEYS
 from .const import (
     CONF_AI_ENABLED,
     CONF_AI_TASK_ENTITY,
     CONF_CALENDAR_ENTITY,
     CONF_ESTIMATE_MODE,
-    CONF_NFC_NOTIFY,
-    CONF_REPAIR_HINTS,
-    CONF_TEMPERATURE_WARNING,
     CONF_MEAL_CALENDAR,
-    CONF_THAW_DAYS,
-    DEFAULT_THAW_DAYS,
-    CONF_SOON_DAYS,
-    MAX_SOON_DAYS,
-    SOON_DAYS,
-    CONF_VACUUM_DEFAULT,
-    CONF_WATCH_ALLERGENS,
-    CONF_SHOPPING_DETAILS,
+    CONF_NFC_NOTIFY,
     CONF_OPENED_DAYS,
     CONF_RECIPE_DAYS,
+    CONF_REPAIR_HINTS,
+    CONF_SHOPPING_DETAILS,
+    CONF_SOON_DAYS,
+    CONF_TEMPERATURE_WARNING,
+    CONF_THAW_DAYS,
     CONF_THAWED_DAYS,
-    CONF_EXPERIMENTAL,
     CONF_TODO_ENTITY,
+    CONF_VACUUM_DEFAULT,
+    CONF_WATCH_ALLERGENS,
     DEFAULT_OPENED_DAYS,
     DEFAULT_RECIPE_DAYS,
-    MAX_RECIPE_DAYS,
+    DEFAULT_THAW_DAYS,
     DEFAULT_THAWED_DAYS,
     DOMAIN,
     ESTIMATE_AI,
@@ -63,7 +58,11 @@ from .const import (
     ESTIMATE_OFF,
     ESTIMATE_TABLE,
     ESTIMATE_TABLE_AI,
+    MAX_RECIPE_DAYS,
+    MAX_SOON_DAYS,
+    SOON_DAYS,
 )
+from .product import ALLERGEN_KEYS
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -276,7 +275,6 @@ SETTINGS: dict[str, tuple[str, Any, Any]] = {
     CONF_SOON_DAYS: ("soon_days", SOON_DAYS, _number(0, MAX_SOON_DAYS)),
     CONF_CALENDAR_ENTITY: ("calendar_entity", None, _entity),
     CONF_TODO_ENTITY: ("todo_entity", None, _entity),
-    CONF_EXPERIMENTAL: ("experimental", False, _flag),
     CONF_NFC_NOTIFY: ("nfc_notify", True, _flag),
     CONF_REPAIR_HINTS: ("repair_hints", True, _flag),
     CONF_TEMPERATURE_WARNING: ("temperature_warning", True, _flag),

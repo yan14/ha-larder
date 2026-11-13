@@ -4,13 +4,12 @@ from datetime import timedelta
 
 import pytest
 
+from custom_components.larder import shelf_life as sl
+from custom_components.larder.const import DOMAIN
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import area_registry as ar, device_registry as dr, label_registry as lr
 from homeassistant.util import dt as dt_util
-
-from custom_components.larder import shelf_life as sl
-from custom_components.larder.const import DOMAIN
 
 from .test_ai_estimate import (  # noqa: F401 - Fixture und Helfer wiederverwenden
     _eid,

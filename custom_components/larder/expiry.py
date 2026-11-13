@@ -13,6 +13,7 @@ from homeassistant.helpers import config_validation as cv, entity_registry as er
 from homeassistant.util import dt as dt_util
 
 from .const import DEFAULT_UNIT, DOMAIN, SERVICE_GET_EXPIRING, SOON_DAYS, UNITS
+from .entity import kind_of
 from .estimate import storage_context
 
 DATA_SERVICE_REGISTERED = "get_expiring_registered"
@@ -283,6 +284,7 @@ def collect_expiring(
             {
                 "name": entry.title,
                 "cc": cc,
+                "kind": kind_of(entry),
                 "content": content,
                 "quantity": quantity or None,
                 "unit": unit if quantity else None,

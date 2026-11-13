@@ -9,8 +9,8 @@ from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers import area_registry as ar
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DEFAULT_UNIT, UNITS
-from .entity import LarderConfigEntry, LarderEntity, LarderResettable
+from .const import DEFAULT_UNIT, KIND_CONTAINER, UNITS
+from .entity import LarderConfigEntry, LarderEntity, LarderResettable, kind_of
 
 HOME_NONE = "none"  # kein fester Lagerort: die Dose bleibt beim Leeren, wo sie ist
 
@@ -22,7 +22,7 @@ async def async_setup_entry(
 ) -> None:
     unit = LarderUnit(entry)
     entry.runtime_data.resettable[unit._key] = unit
-    async_add_entities([unit, LarderHomeArea(entry)])
+    async_add_entities([unit, LarderHomeArea(entry)] if kind_of(entry) == KIND_CONTAINER else [unit])
 
 
 class LarderUnit(SelectEntity, LarderResettable):

@@ -10,12 +10,11 @@ Browser öffnen, teilen und drucken lässt.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from functools import cache
+from datetime import date
+from functools import cache, partial
+from http import HTTPStatus
 from pathlib import Path
 import struct
-from datetime import date
-from functools import partial
-from http import HTTPStatus
 
 from aiohttp import web
 import segno
@@ -25,7 +24,8 @@ from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 
-from .const import DOMAIN, scan_app_url
+from .const import DOMAIN, KIND_PACK, scan_app_url
+from .entity import kind_of
 
 URL = f"/api/{DOMAIN}/labels.pdf"
 DATA_VIEW = "labels_view"
@@ -538,6 +538,8 @@ def collect_labels(
         cc = entry.data.get("cc")
         if not cc or (wanted and cc.upper() not in wanted):
             continue
+        if not wanted and kind_of(entry) == KIND_PACK:
+            continue  # Packungen haben keinen Code: nur auf ausdrücklichen Wunsch
         content = best = nutrition = ""
         if with_nutrition:
             entity_id = registry.async_get_entity_id("text", DOMAIN, f"{cc}_content")

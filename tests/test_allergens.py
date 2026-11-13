@@ -1,13 +1,12 @@
 """Tests Block 7: Allergene im Haushalt und Nachkaufen mit Marke und Packung."""
 
+from custom_components.larder.const import DOMAIN
+from custom_components.larder.product import watched_allergens
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 
-from custom_components.larder.const import DOMAIN
-from custom_components.larder.product import watched_allergens
-
-from .test_recipes import RECIPE, _eid, _fake_ai, _fill, _options, _setup, _suggest  # noqa: F401
 from .test_ai_estimate import auto_enable_custom_integrations  # noqa: F401
+from .test_recipes import RECIPE, _eid, _fake_ai, _fill, _options, _setup, _suggest  # noqa: F401
 from .test_shopping import _todo
 
 

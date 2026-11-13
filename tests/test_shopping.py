@@ -1,15 +1,13 @@
 """Tests: Inhalt einer geleerten Dose optional auf eine To-do-Liste (Einkaufsliste) setzen."""
 
-import pytest
 from pytest_homeassistant_custom_component.common import mock_restore_cache
 
+from custom_components.larder.const import DOMAIN
 from homeassistant.components import todo as ha_todo
 from homeassistant.components.todo import TodoItem, TodoItemStatus, TodoListEntity, TodoListEntityFeature
 from homeassistant.core import HomeAssistant, State
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.setup import async_setup_component
-
-from custom_components.larder.const import DOMAIN
 
 from .test_ai_estimate import _eid, _setup, auto_enable_custom_integrations  # noqa: F401
 

@@ -1,8 +1,8 @@
 """Jede Version in manifest.json braucht einen Abschnitt in CHANGELOG.md (Text der GitHub-Releases)."""
 
 import json
-import re
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).parents[1]
 

@@ -5,7 +5,12 @@ from datetime import date, timedelta
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry, mock_restore_cache
 
-from homeassistant.config_entries import SOURCE_USER
+from custom_components.larder.const import DOMAIN
+from custom_components.larder.estimate import (
+    StorageContext,
+    build_instructions,
+    cache_key,
+)
 from homeassistant.core import HomeAssistant, State, SupportsResponse
 from homeassistant.data_entry_flow import FlowResultType
 from homeassistant.exceptions import HomeAssistantError
@@ -16,13 +21,6 @@ from homeassistant.helpers import (
     label_registry as lr,
 )
 from homeassistant.util import dt as dt_util
-
-from custom_components.larder.const import DOMAIN
-from custom_components.larder.estimate import (
-    StorageContext,
-    build_instructions,
-    cache_key,
-)
 
 
 @pytest.fixture(autouse=True)

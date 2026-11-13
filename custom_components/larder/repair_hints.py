@@ -29,7 +29,8 @@ from homeassistant.helpers.event import (
     async_track_time_change,
 )
 
-from .const import DOMAIN, SIGNAL_SETTINGS_CHANGED
+from .const import DOMAIN, KIND_PACK, SIGNAL_SETTINGS_CHANGED
+from .entity import kind_of
 from .estimate import storage_context
 from .expiry import days_left
 from .singleton import async_singleton
@@ -71,14 +72,16 @@ def find_problem_containers(hass: HomeAssistant, today: date | None = None) -> d
         if not cc:
             continue
         name = entry.title or cc
-        if storage_context(hass, cc).area_name is None:
+        pack = kind_of(entry) == KIND_PACK  # Vorrat ohne Dose: Bereich und MHD sind freiwillig
+        if not pack and storage_context(hass, cc).area_name is None:
             found[ISSUE_NO_AREA].append((name, cc))
         content = (_state(hass, registry, "text", f"{cc}_content") or "").strip()
         best = _state(hass, registry, "date", f"{cc}_best_before")
         if not content:
             continue
         if best is None:
-            found[ISSUE_NO_DATE].append((name, cc))
+            if not pack:
+                found[ISSUE_NO_DATE].append((name, cc))
             continue
         try:
             left = days_left(date.fromisoformat(best), today)

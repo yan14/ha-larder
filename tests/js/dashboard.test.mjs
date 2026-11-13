@@ -299,10 +299,13 @@ function $el_cards(classic) {
   return [...classic.shadowRoot.querySelectorAll(".card")];
 }
 
-test("Nicht-Administrator: leere Dose öffnet die Detailansicht, kein Hinzufügen-Button", async () => {
+test("Nicht-Administrator: leere Dose öffnet die Detailansicht, Hinzufügen nur für Beutel und Packungen", async () => {
   const el = mount(makeHass(DOSES, { admin: false }));
   await go(el, "containers");
-  assert.equal($(el, '[data-role="add"]'), null);
+  $(el, '[data-role="add"]').click();
+  assert.equal($(el, '[data-role="add-container"]'), null);
+  assert.ok($(el, '[data-role="add-bag"]') && $(el, '[data-role="add-pack"]'));
+  $(el, ".overlay").click();
   assert.equal($(el, '[data-role="menu-settings"]').hidden, true);
   $$(el, "main .tile").find((t) => t.dataset.id === "d5").click();
   assert.equal(el._classic.getAttribute("only"), "d5");
@@ -314,7 +317,9 @@ test("Hinzufügen öffnet den Dialog des normalen Dashboards", async () => {
   el._classic.openAddDialog = () => opened++;
   await go(el, "containers");
   $(el, '[data-role="add"]').click();
+  $(el, '[data-role="add-container"]').click();
   assert.equal(opened, 1);
+  assert.equal($(el, ".overlay").hidden, true);
   assert.equal($(el, "#settings").hidden, false);
 });
 
@@ -1560,4 +1565,152 @@ test("Eigener QR-Code (?cc=): Dose öffnen wie bei NFC, Scan melden, unbekannte 
   ({ el } = await run("NEU", { admin: false }));
   assert.match($(el, ".notice").textContent, /NEU/);
   window.history.replaceState(null, "", "/");
+});
+
+// ---------- Block 9: Beutel und Packungen ----------
+
+const { buildItems, itemTexts } = await import("../../custom_components/larder/frontend/larder-dashboard-items.js");
+
+test("buildItems: ein Beutel je Anzahl, leere Zeilen fallen weg, Packungen behalten die Menge", () => {
+  const bags = buildItems("bag", [{ content: " Hack ", count: "3", quantity: "500", unit: "grams" }, { content: "" }, { content: "Reh", date: "2027-01-31" }], true);
+  assert.equal(bags.length, 4);
+  assert.deepEqual(bags[0], { content: "Hack", quantity: 500, unit: "grams", vacuum: true });
+  assert.deepEqual(bags[3], { content: "Reh", best_before: "2027-01-31", vacuum: true });
+  const packs = buildItems("pack", [{ content: "Tomaten", quantity: "3", unit: "pieces", count: "5", product: { brand: "Mutti" } }]);
+  assert.deepEqual(packs, [{ content: "Tomaten", quantity: 3, unit: "pieces", product: { brand: "Mutti" } }]);
+  const shape = (o) => JSON.stringify(Object.keys(o).sort());
+  assert.equal(shape(itemTexts({ language: "de" })), shape(itemTexts({ language: "en" })));
+});
+
+test("Beutel anlegen: Dialog, create_items, danach NFC-Sticker der Reihe nach oder Etiketten", async () => {
+  const hass = makeHass(DOSES);
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/create_items`) {
+      hass.wsCalls.push(msg);
+      return { items: msg.items.map((_, i) => ({ device_id: `b${i + 1}`, cc: `HA-${i}`, name: `Beutel ${i + 1}` })) };
+    }
+    if (msg.type === `${D}/nfc_link`) {
+      hass.wsCalls.push(msg);
+      return { by_device: { [msg.device_id]: msg.tag_id } };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await go(el, "containers");
+  $(el, '[data-role="add"]').click();
+  $(el, '[data-role="add-bag"]').click();
+  const form = $(el, "form.dialog");
+  assert.match(form.querySelector("h2").textContent, /Beutel anlegen/);
+  form.querySelector('[data-f="area"]').value = "cellar";
+  form.querySelector("button.submit").click();
+  await flush();
+  assert.match(form.querySelector(".error").textContent, /mindestens einen Inhalt/);
+  form.querySelector('[data-i="content"]').value = "Hackfleisch";
+  form.querySelector('[data-i="count"]').value = "2";
+  form.querySelector('[data-role="item-more"]').click();
+  const rows = form.querySelectorAll(".itemrow");
+  assert.equal(rows.length, 2);
+  rows[1].querySelector('[data-i="content"]').value = "Rehgulasch";
+  form.querySelector("button.submit").click();
+  await flush();
+  await flush();
+  const created = hass.wsCalls.find((m) => m.type === `${D}/create_items`);
+  assert.equal(created.kind, "bag");
+  assert.equal(created.area_id, "cellar");
+  assert.deepEqual(created.items.map((i) => i.content), ["Hackfleisch", "Hackfleisch", "Rehgulasch"]);
+  assert.match(form.querySelector("h2").textContent, /3 Beutel angelegt/);
+  assert.equal(form.querySelectorAll("ul.created li").length, 3);
+  assert.equal(JSON.parse(dom.window.localStorage.getItem("larder.experimental")).itemArea.bag, "cellar");
+
+  // NFC-Serie: gescannter Sticker wird mit dem aktuellen Beutel verknüpft, dann der nächste
+  form.querySelector('[data-role="items-nfc"]').click();
+  assert.match(form.querySelector("h2").textContent, /NFC-Sticker 1 von 3/);
+  assert.match(form.querySelector(".nfcitem").textContent, /Beutel 1 · Hackfleisch/);
+  assert.equal(form.querySelector('[data-role="nfc-write"]'), null); // Browser kann keine Sticker beschreiben
+  await el._classic._tagScanned("tag-a");
+  await flush();
+  assert.deepEqual(hass.wsCalls.filter((m) => m.type === `${D}/nfc_link`).map((m) => [m.tag_id, m.device_id]), [["tag-a", "b1"]]);
+  assert.match(form.querySelector("h2").textContent, /NFC-Sticker 2 von 3/);
+  await el._classic._tagScanned("tag-a"); // schon vergeben
+  await flush();
+  assert.match(form.querySelector('[data-role="nfc-status"]').textContent, /gehört schon/);
+  form.querySelector('[data-role="nfc-skip"]').click();
+  form.querySelector('[data-role="nfc-skip"]').click();
+  assert.equal($(el, ".overlay").hidden, true);
+  assert.match($(el, ".notice").textContent, /1 Sticker verknüpft/);
+});
+
+test("Packungen: anlegen, Filter, Kennzeichen auf der Kachel und Umfüllen in eine leere Dose", async () => {
+  const hass = makeHass([...DOSES, { id: "p1", name: "Packung 1", area: "cellar", content: "Tomaten", days: 200, category: "produce" }]);
+  hass.states["text.p1_inhalt"].attributes.kind = "pack";
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/create_items`) {
+      hass.wsCalls.push(msg);
+      return { items: [{ device_id: "p9", cc: "HA-9", name: "Packung 9" }] };
+    }
+    if (msg.type === `${D}/transfer`) {
+      hass.wsCalls.push(msg);
+      return { left: 2, best_before: null };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await go(el, "containers");
+  assert.equal($(el, 'main .tile[data-id="p1"] .kindmark').textContent, "📦");
+  assert.equal($(el, 'main .tile[data-id="d1"] .kindmark'), null);
+  const state = $(el, '[data-role="state"]');
+  state.value = "packs";
+  state.dispatchEvent(new Event("change"));
+  await flush();
+  assert.deepEqual(names(el), ["Tomaten"]);
+
+  $(el, '[data-role="add"]').click();
+  $(el, '[data-role="add-pack"]').click();
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelector('[data-i="count"]'), null);
+  assert.equal(form.querySelector('[data-i="quantity"]').value, "1");
+  form.querySelector('[data-i="content"]').value = "Kichererbsen";
+  form.querySelector('[data-i="quantity"]').value = "4";
+  form.querySelector('[data-i="date"]').value = "2028-05-01";
+  form.querySelector("button.submit").click();
+  await flush();
+  await flush();
+  const created = hass.wsCalls.find((m) => m.type === `${D}/create_items`);
+  assert.deepEqual(created.items, [{ content: "Kichererbsen", quantity: 4, unit: "pieces", best_before: "2028-05-01" }]);
+  assert.equal($(el, ".overlay").hidden, true);
+  assert.match($(el, ".notice").textContent, /1 Packung angelegt/);
+
+  // Umfüllen: die Karte meldet den Wunsch, das Dashboard fragt nach der leeren Dose
+  el._classic.dispatchEvent(new dom.window.CustomEvent("larder-transfer", { detail: { deviceId: "p1" } }));
+  assert.deepEqual([...form.querySelectorAll('[data-f="target"] option')].map((o) => o.value), ["d5"]);
+  form.querySelector("button.submit").click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/transfer`), { type: `${D}/transfer`, device_id: "p1", target: "d5" });
+  assert.match($(el, ".notice").textContent, /Umgefüllt in Dose 5\. Noch 2 im Vorrat/);
+});
+
+test("Nach dem Befüllen: Hinweis mit Etikett-Knopf; alter Beutel-Code meldet sich als geleert", async () => {
+  const hass = makeHass(DOSES);
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/resolve_code`) return { valid: true, cc: "HA-OLD", device_id: null, retired: "Beutel 3 (Reh) wurde am 12.11.2026 geleert." };
+    return base(msg);
+  };
+  const el = mount(hass);
+  await go(el, "containers");
+  let labels = null;
+  el.openLabelDialog = (ids) => (labels = ids);
+  el._classic.dispatchEvent(new dom.window.CustomEvent("larder-filled", { detail: { deviceIds: ["d5"] } }));
+  assert.match($(el, ".notice").textContent, /Befüllt/);
+  $(el, '[data-role="notice-action"]').click();
+  assert.deepEqual(labels, ["d5"]);
+  assert.equal($(el, ".notice").hidden, true);
+
+  let added = 0;
+  el._classic.openAddDialog = () => added++;
+  await el._openScanned("HA-OLD");
+  assert.equal(added, 0);
+  assert.match($(el, ".notice").textContent, /wurde am 12\.11\.2026 geleert/);
 });

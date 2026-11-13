@@ -29,52 +29,52 @@ from homeassistant.helpers.selector import (
     TextSelector,
 )
 
+from .calendar_sync import async_get_calendar_sync
 from .const import (
-    CONF_CALENDAR_ENTITY,
-    CONF_ESTIMATE_MODE,
-    CONF_NFC_NOTIFY,
-    CONF_REPAIR_HINTS,
-    CONF_TEMPERATURE_WARNING,
-    CONF_MEAL_CALENDAR,
-    CONF_THAW_DAYS,
-    DEFAULT_THAW_DAYS,
-    CONF_VACUUM_DEFAULT,
-    CONF_OPENED_DAYS,
-    CONF_RECIPE_DAYS,
-    CONF_SOON_DAYS,
-    MAX_SOON_DAYS,
-    SOON_DAYS,
-    CONF_THAWED_DAYS,
-    CONF_EXPERIMENTAL,
-    CONF_TODO_ENTITY,
-    CONF_WATCH_ALLERGENS,
-    CONF_SHOPPING_DETAILS,
-    DEFAULT_OPENED_DAYS,
-    DEFAULT_RECIPE_DAYS,
-    MAX_RECIPE_DAYS,
-    DEFAULT_THAWED_DAYS,
-    ESTIMATE_MODES,
-    ESTIMATE_TABLE,
     CONF_AI_TASK_ENTITY,
     CONF_AREA,
-    CONF_INITIAL,
+    CONF_CALENDAR_ENTITY,
     CONF_CC,
+    CONF_ESTIMATE_MODE,
+    CONF_INITIAL,
+    CONF_KIND,
+    CONF_MEAL_CALENDAR,
+    CONF_NFC_NOTIFY,
+    CONF_OPENED_DAYS,
     CONF_QR_CODE,
+    CONF_RECIPE_DAYS,
+    CONF_REPAIR_HINTS,
+    CONF_SHOPPING_DETAILS,
     CONF_SIZE,
+    CONF_SOON_DAYS,
     CONF_SOURCE,
     CONF_TC,
+    CONF_TEMPERATURE_WARNING,
+    CONF_THAW_DAYS,
+    CONF_THAWED_DAYS,
+    CONF_TODO_ENTITY,
+    CONF_VACUUM_DEFAULT,
+    CONF_WATCH_ALLERGENS,
+    DEFAULT_OPENED_DAYS,
+    DEFAULT_RECIPE_DAYS,
+    DEFAULT_THAW_DAYS,
+    DEFAULT_THAWED_DAYS,
+    DISPOSABLE_KINDS,
     DOMAIN,
+    ESTIMATE_MODES,
+    ESTIMATE_TABLE,
+    KIND_BAG,
+    MAX_RECIPE_DAYS,
+    MAX_SOON_DAYS,
     SIGNAL_SETTINGS_CHANGED,
+    SOON_DAYS,
     SOURCE_GENERATED,
     SOURCE_ZWILLING,
 )
-from .calendar_sync import async_get_calendar_sync
-from .panel import async_sync_experimental_panel
 from .estimate import SETTINGS, async_get_estimator
 from .product import ALLERGEN_KEYS
 from .qr import generate_code, parse_qr
 from .scan import async_get_webhook_id, webhook_urls
-
 
 _INITIAL_KEYS = ("vacuum", "shopping", "flexible", "home_area")
 
@@ -189,6 +189,27 @@ class LarderConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
 
+    async def async_step_import(self, data: dict[str, Any]) -> ConfigFlowResult:
+        """Beutel oder Packung aus dem Dashboard anlegen (siehe disposable.py), immer mit neuer ID."""
+        from .disposable import async_get_retired  # noqa: PLC0415 - vermeidet einen Import-Kreis
+
+        retired = await async_get_retired(self.hass)
+        code = generate_code({*self._async_current_ids(), *retired.codes})  # Codes nie wiederverwenden
+        await self.async_set_unique_id(code)
+        self._abort_if_unique_id_configured()
+        kind = data.get(CONF_KIND)
+        return self.async_create_entry(
+            title=data.get("name") or code,
+            data={
+                CONF_CC: code,
+                CONF_TC: None,
+                CONF_SIZE: None,
+                CONF_SOURCE: SOURCE_GENERATED,
+                CONF_KIND: kind if kind in DISPOSABLE_KINDS else KIND_BAG,
+                **{key: data[key] for key in (CONF_AREA, CONF_INITIAL) if data.get(key)},
+            },
+        )
+
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -230,7 +251,6 @@ class LarderOptionsFlow(OptionsFlow):
                 await estimator.async_update_settings(
                     {conf: user_input.get(conf, default) for conf, (_attr, default, _n) in SETTINGS.items()}
                 )
-                await async_sync_experimental_panel(self.hass)
                 await sync.async_sync_all()
                 async_dispatcher_send(self.hass, SIGNAL_SETTINGS_CHANGED)
                 return self.async_create_entry(data=self.config_entry.options)
@@ -283,7 +303,6 @@ class LarderOptionsFlow(OptionsFlow):
                 vol.Optional(CONF_THAW_DAYS, default=DEFAULT_THAW_DAYS): NumberSelector(
                     NumberSelectorConfig(min=0, max=3, step=1, mode=NumberSelectorMode.BOX)
                 ),
-                vol.Optional(CONF_EXPERIMENTAL, default=False): BooleanSelector(),
                 vol.Optional(CONF_AI_TASK_ENTITY): EntitySelector(
                     EntitySelectorConfig(domain="ai_task")
                 ),

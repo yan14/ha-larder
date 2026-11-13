@@ -9,14 +9,13 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN, UnitOfTime
 from homeassistant.core import Event, EventStateChangedData, HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.event import (
     TrackStates,
     async_track_state_change_filtered,
     async_track_time_change,
 )
-
-from homeassistant.helpers.dispatcher import async_dispatcher_connect
 
 from .const import DOMAIN, SIGNAL_SETTINGS_CHANGED
 from .entity import LarderConfigEntry, LarderEntity

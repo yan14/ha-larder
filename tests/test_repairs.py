@@ -1,8 +1,5 @@
 """Tests: Reparaturhinweise für Dosen ohne Bereich, ohne MHD und lange abgelaufene Dosen."""
 
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers import area_registry as ar, device_registry as dr, issue_registry as ir
-
 from custom_components.larder.const import DOMAIN
 from custom_components.larder.estimate import async_get_estimator
 from custom_components.larder.repair_hints import (
@@ -12,6 +9,8 @@ from custom_components.larder.repair_hints import (
     async_get_repairs,
     find_problems,
 )
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import area_registry as ar, device_registry as dr, issue_registry as ir
 
 from .test_recipes import _eid, _fill, _setup, auto_enable_custom_integrations  # noqa: F401
 
@@ -92,10 +91,9 @@ async def test_links_filter_when_several(hass: HomeAssistant) -> None:
 
 
 async def test_fix_flows(hass: HomeAssistant) -> None:
+    from custom_components.larder.history import async_get_history
     from homeassistant.components.repairs import repairs_flow_manager
     from homeassistant.setup import async_setup_component
-
-    from custom_components.larder.history import async_get_history
 
     assert await async_setup_component(hass, "repairs", {})
     for cc in ("AAAA", "BBBB", "CCCC"):

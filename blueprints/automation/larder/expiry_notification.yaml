@@ -33,14 +33,13 @@ blueprint:
         boolean:
     recipes_page:
       name: "Recipes button opens"
+      description: No longer needed (Larder experimental was removed in 3.0); kept so existing automations stay valid.
       default: classic
       selector:
         select:
           options:
             - label: Larder (recipe page)
               value: classic
-            - label: Larder experimental (recipe page)
-              value: experimental
     voice_action:
       name: Voice output (optional)
       description: >
@@ -189,7 +188,7 @@ actions:
       speech: >-
         {{ result.speech }}{% if ideas is defined and ideas.speech %} {{ ideas.speech }}{% endif %}
       recipes_uri: >-
-        {{ '/larder-experimental?view=recipes' if recipes_page == 'experimental' else '/larder?view=recipes' }}
+        /larder?view=recipes
       push_data: >-
         {%- if buttons -%}
         {{ {'url': '/larder', 'clickAction': '/larder',

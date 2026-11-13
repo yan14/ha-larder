@@ -7,24 +7,25 @@ from homeassistant.helpers import area_registry as ar, device_registry as dr
 
 from .calendar_sync import async_get_calendar_sync, async_setup_calendar_service
 from .const import CONF_AREA, CONF_CC, CONF_INITIAL, DOMAIN, PLATFORMS
-from .nfc import async_get_nfc
+from .content_photo import async_setup_content_photo
+from .disposable import async_get_retired, async_setup_disposable_websocket
 from .entity import LarderConfigEntry, LarderRuntime
 from .estimate import async_get_estimator
 from .expiry import async_setup_services
 from .export import async_setup_export
 from .history import async_setup_history_websocket
+from .labels import async_setup_labels
+from .nfc import async_get_nfc
+from .panel import async_setup_panel, async_teardown_panel
 from .plan import async_get_plan, async_setup_plan_websocket
 from .product import async_setup_product_websocket
-from .stats import async_setup_statistics
-from .temperature import async_get_temperature_watch
-from .labels import async_setup_labels
-from .panel import async_setup_panel, async_sync_experimental_panel, async_teardown_panel
 from .recipe_book import async_setup_recipe_book_websocket
-from .content_photo import async_setup_content_photo
 from .recipe_photo import async_setup_recipe_photo
 from .recipes import async_setup_recipe_service
 from .repair_hints import async_get_repairs
 from .scan import async_setup_webhook, async_teardown_webhook
+from .stats import async_setup_statistics
+from .temperature import async_get_temperature_watch
 from .websocket import async_setup_websocket
 
 
@@ -45,6 +46,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_statistics(hass)
     async_setup_plan_websocket(hass)
     async_setup_product_websocket(hass)
+    async_setup_disposable_websocket(hass)
+    await async_get_retired(hass)
     (await async_get_plan(hass)).async_start()
     (await async_get_calendar_sync(hass)).async_start()
     (await async_get_nfc(hass)).async_start()
@@ -52,7 +55,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     (await async_get_temperature_watch(hass)).async_start()
     await async_setup_webhook(hass)
     await async_setup_panel(hass)
-    await async_sync_experimental_panel(hass)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     _async_apply_initial_area(hass, entry)
     return True

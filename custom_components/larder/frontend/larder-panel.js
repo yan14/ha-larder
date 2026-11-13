@@ -7,324 +7,12 @@
  */
 
 const DOMAIN = "larder";
+// Texte und Stylesheet liegen in eigenen Modulen; mit derselben Versionsangabe laden wie dieses Modul,
+// damit nie eine ältere Kopie aus dem Cache benutzt wird.
+const VERSION_QUERY = new URL(import.meta.url).search;
 
-export const STRINGS = {
-  de: {
-    title: "Larder",
-    area: "Bereich",
-    compartment: "Fach",
-    compartmentHint: "z. B. Schublade 2",
-    noArea: "Kein Bereich",
-    content: "Inhalt",
-    bestBefore: "MHD",
-    filledAt: "Eingelagert am",
-    now: "Jetzt",
-    emptyContainer: "Behälter leeren",
-    openDevice: "Gerät öffnen",
-    qrCode: "QR-Code",
-    expired: "abgelaufen",
-    expiresToday: "läuft heute ab",
-    expiresInDays: (n) => `noch ${n} ${n === 1 ? "Tag" : "Tage"}`,
-    count: (n) => `${n} ${n === 1 ? "Dose" : "Dosen"}`,
-    noneTitle: "Noch keine Dosen angelegt",
-    noneText:
-      "Füge mit „Dose hinzufügen“ eine Dose hinzu. Sie erscheint hier automatisch.",
-    openSettings: "Integration öffnen",
-    menu: "Menü",
-    addContainer: "Dose hinzufügen",
-    modeNew: "Neuen QR-Code erstellen",
-    modeZwilling: "Zwilling-QR-Code einlesen",
-    codeLabel: "QR-Code-Inhalt oder ID",
-    nameLabel: "Name (optional)",
-    cancel: "Abbrechen",
-    outcomeQuestion: "Was ist mit dem Inhalt passiert?",
-    eaten: "😋 Gegessen",
-    thrown: "🗑 Weggeworfen",
-    history: "Verlauf",
-    historyEmpty: "Noch nichts geleert.",
-    historyOutcome: { eaten: "gegessen", thrown: "weggeworfen" },
-    historyExpired: "abgelaufen",
-    submit: "Hinzufügen",
-    invalidCode: "Im QR-Code wurde keine gültige ID (cc) gefunden.",
-    alreadyConfigured: "Diese Dose wurde bereits hinzugefügt.",
-    addFailed: "Die Dose konnte nicht hinzugefügt werden.",
-    adminOnly: (code) =>
-      `Nur Administratoren können Dosen hinzufügen. Gescannter Code: ${code}`,
-    areaChangeFailed: "Der Bereich konnte nicht geändert werden.",
-    vacuum: "Vakuum",
-    flexible: "Variabler Lagerort (steht mal hier, mal dort)",
-    homeArea: "Nach dem Leeren zurück in",
-    homeNone: "bleibt, wo sie ist",
-    shopping: "Beim Leeren auf die Einkaufsliste",
-    estimate: "MHD schätzen",
-    estimating: "Schätze …",
-    estimated: (days) => `Geschätzt: ca. ${days} ${days === 1 ? "Tag" : "Tage"} haltbar`,
-    estimateFailed: "Die Schätzung ist fehlgeschlagen.",
-    fill: "Befüllen",
-    fillTitle: "Dose befüllen",
-    fillTitleMany: (n) => `${n} Dosen befüllen`,
-    fillPlaceholder: "z. B. Pizza, Suppe …",
-    fillEstimate: "MHD automatisch schätzen",
-    barcode: "Strichcode scannen (gekaufte Ware)",
-    barcodeTitle: "Strichcode scannen",
-    barcodeDescription: "Strichcode (EAN) auf der Packung scannen, der Produktname kommt in das Feld Inhalt.",
-    barcodeFound: (name, code) => `Gefunden: ${name} (EAN ${code}). Das MHD steht auf der Packung.`,
-    barcodeNotFound: (code) => `Kein Produkt zu EAN ${code} gefunden. Bitte den Inhalt eintippen.`,
-    barcodeOffline: "Open Food Facts ist gerade nicht erreichbar. Bitte den Inhalt eintippen.",
-    barcodeNutrition: "Nährwerte übernommen.",
-    contentPhoto: "Inhalt per Foto erkennen (KI)",
-    contentPhotoBusy: "Foto wird angesehen …",
-    contentPhotoDone: (name) => `Vorschlag: ${name}. Bitte prüfen und dann speichern.`,
-    contentPhotoFailed: "Auf dem Foto wurde nichts erkannt.",
-    offSource: "Daten: Open Food Facts (ODbL).",
-    nutrition: "Nährwerte",
-    allergenWarning: (names) => `⚠ Enthält ${names} (Allergene im Haushalt)`,
-    nutritionFields: {
-      brand: "Marke",
-      package: "Packung",
-      ean: "EAN",
-      kcal_100g: "kcal pro 100 g",
-      kcal_portion: "kcal pro Portion",
-      nutri_score: "Nutri-Score",
-      allergens: "Allergene",
-      nutrients: "Nährwerte",
-    },
-    nutritionNone: "–",
-    nutrientsHint: "z. B. Fett 7 g, Kohlenhydrate 59 g, Eiweiß 14 g (pro 100 g)",
-    fillSave: "Speichern",
-    fillNoContent: "Bitte einen Inhalt eingeben.",
-    fillFailed: "Das Speichern ist fehlgeschlagen.",
-    plusOneDay: "+1 Tag",
-    takeOne: "Eine entnehmen",
-    lastOne: "Letzte entnommen. Dose leeren?",
-    keep: "Nein",
-    opened: "Geöffnet",
-    thawed: "Aufgetaut",
-    recipeBtn: "Rezeptideen",
-    recipeTitle: "Rezeptideen aus Dosen, die bald ablaufen",
-    recipeHint: "Die KI schlägt Gerichte vor, die Dosen mit bald ablaufendem MHD aufbrauchen. Gesendet werden nur Inhalt, Menge, Resttage und Lagerort.",
-    recipeDays: "Tage voraus",
-    recipeServings: "Personen (optional)",
-    recipeGo: "Vorschlagen",
-    recipeBusy: "Die KI überlegt …",
-    recipeNone: (n) => (n === 0 ? "Heute läuft nichts ab." : `In den nächsten ${n} Tagen läuft nichts ab.`),
-    recipeFailed: "Die Rezeptideen konnten nicht erstellt werden.",
-    recipeUses: "Verwendet",
-    recipeExtra: "Zusätzlich",
-    recipeMinutes: (n) => `${n} Min.`,
-    recipeClose: "Schließen",
-    quantity: "Menge",
-    unit: "Einheit",
-    units: { portions: "Portionen", pieces: "Stück", slices: "Scheiben", grams: "Gramm", milliliters: "Milliliter" },
-    searchPlaceholder: "Suchen …",
-    filterLabel: "Filter",
-    filterAll: "Alle",
-    filterSoon: (n) => `Läuft bald ab (≤ ${n} ${n === 1 ? "Tag" : "Tage"})`,
-    filterExpired: "Abgelaufen",
-    filterFilled: "Befüllt",
-    filterEmpty: "Leer",
-    sortLabel: "Sortierung",
-    sortArea: "Nach Bereich",
-    sortDate: "Nach MHD",
-    sortName: "Nach Name",
-    noMatch: "Keine Dose passt zu Suche und Filter.",
-    nfcScan: "NFC-Tag scannen",
-    nfcWrite: "Neuen NFC-Tag beschreiben",
-    nfcWriteHint: "Nach „Hinzufügen“ öffnet die App das Beschreiben: Halte das Handy dann an einen leeren NFC-Tag.",
-    nfcWaiting: "Halte das Handy jetzt an den NFC-Tag …",
-    nfcGot: "Tag erkannt.",
-    nfcInUse: "Dieser Tag ist schon mit einer anderen Dose verknüpft.",
-    nfcLinked: "NFC-Tag verknüpft",
-    nfcNone: "Kein NFC-Tag",
-    nfcLink: "NFC-Tag verknüpfen",
-    nfcUnlink: "Lösen",
-    nfcFailed: "Der NFC-Tag konnte nicht verknüpft werden.",
-    sourceTable: "Tabelle",
-    sourceAi: "KI",
-    sourceLearned: "von dir korrigiert",
-    sourceLearnedTable: "Tabelle, von dir korrigiert",
-    sourceLearnedAi: "KI, von dir korrigiert",
-    tabContainers: "Dosen",
-    tabEstimates: "Schätzungen",
-    estTitle: "Gemerkte Schätzungen",
-    estIntro:
-      "Hier stehen alle Werte, die für Inhalt, Bereich und Vakuum gemerkt wurden (aus der Tabelle, von der KI oder von dir). Du kannst Tage und Tipp ändern, Einträge löschen (dann wird neu geschätzt) oder eigene hinzufügen.",
-    estContent: "Inhalt",
-    estArea: "Bereich",
-    estVacuum: "Vakuum",
-    estNoVacuum: "ohne Vakuum",
-    estDays: "Tage",
-    estTip: "Tipp",
-    estSource: "Quelle",
-    estSave: "Speichern",
-    estDelete: "Löschen",
-    estAdd: "Hinzufügen",
-    estAddTitle: "Eigenen Eintrag hinzufügen",
-    estEmpty: "Noch nichts gemerkt. Einträge entstehen, sobald du ein MHD schätzen lässt oder korrigierst.",
-    estConfirmDelete: (name) => `„${name}“ löschen? Beim nächsten Schätzen wird neu berechnet.`,
-    estFailed: "Die Änderung konnte nicht gespeichert werden.",
-    estLoadFailed: "Die Liste konnte nicht geladen werden.",
-    estNeedFields: "Inhalt, Bereich und Tage ausfüllen.",
-    estOff: "Die MHD-Schätzung ist ausgeschaltet. Die Einträge bleiben erhalten.",
-  },
-  en: {
-    title: "Larder",
-    area: "Area",
-    compartment: "Compartment",
-    compartmentHint: "e.g. drawer 2",
-    noArea: "No area",
-    content: "Contents",
-    bestBefore: "Best before",
-    filledAt: "Filled on",
-    now: "Now",
-    emptyContainer: "Empty container",
-    openDevice: "Open device",
-    qrCode: "QR code",
-    expired: "expired",
-    expiresToday: "expires today",
-    expiresInDays: (n) => `${n} ${n === 1 ? "day" : "days"} left`,
-    count: (n) => `${n} ${n === 1 ? "container" : "containers"}`,
-    noneTitle: "No containers yet",
-    noneText:
-      "Add a container with “Add container”. It will show up here automatically.",
-    openSettings: "Open integration",
-    menu: "Menu",
-    addContainer: "Add container",
-    modeNew: "Create new QR code",
-    modeZwilling: "Read Zwilling QR code",
-    codeLabel: "QR code content or ID",
-    nameLabel: "Name (optional)",
-    cancel: "Cancel",
-    outcomeQuestion: "What happened to the contents?",
-    eaten: "😋 Eaten",
-    thrown: "🗑 Thrown away",
-    history: "History",
-    historyEmpty: "Nothing emptied yet.",
-    historyOutcome: { eaten: "eaten", thrown: "thrown away" },
-    historyExpired: "expired",
-    submit: "Add",
-    invalidCode: "No valid ID (cc) found in the QR code.",
-    alreadyConfigured: "This container has already been added.",
-    addFailed: "The container could not be added.",
-    adminOnly: (code) => `Only administrators can add containers. Scanned code: ${code}`,
-    areaChangeFailed: "The area could not be changed.",
-    vacuum: "Vacuum",
-    flexible: "Flexible storage place (moves around)",
-    homeArea: "After emptying, back to",
-    homeNone: "stays where it is",
-    shopping: "Add to shopping list when emptied",
-    estimate: "Estimate best before",
-    estimating: "Estimating…",
-    estimated: (days) => `Estimated: about ${days} ${days === 1 ? "day" : "days"} shelf life`,
-    estimateFailed: "The estimate failed.",
-    fill: "Fill",
-    fillTitle: "Fill container",
-    fillTitleMany: (n) => `Fill ${n} containers`,
-    fillPlaceholder: "e.g. pizza, soup …",
-    fillEstimate: "Estimate best before automatically",
-    barcode: "Scan barcode (bought food)",
-    barcodeTitle: "Scan barcode",
-    barcodeDescription: "Scan the barcode (EAN) on the package; the product name goes into Contents.",
-    barcodeFound: (name, code) => `Found: ${name} (EAN ${code}). The best-before date is printed on the package.`,
-    barcodeNotFound: (code) => `No product found for EAN ${code}. Please type the contents.`,
-    barcodeOffline: "Open Food Facts cannot be reached right now. Please type the contents.",
-    barcodeNutrition: "Nutrition taken over.",
-    contentPhoto: "Recognise contents from a photo (AI)",
-    contentPhotoBusy: "Looking at the photo …",
-    contentPhotoDone: (name) => `Suggestion: ${name}. Please check, then save.`,
-    contentPhotoFailed: "Nothing was recognised in the photo.",
-    offSource: "Data: Open Food Facts (ODbL).",
-    nutrition: "Nutrition",
-    allergenWarning: (names) => `⚠ Contains ${names} (household allergens)`,
-    nutritionFields: {
-      brand: "Brand",
-      package: "Package",
-      ean: "EAN",
-      kcal_100g: "kcal per 100 g",
-      kcal_portion: "kcal per portion",
-      nutri_score: "Nutri-Score",
-      allergens: "Allergens",
-      nutrients: "Nutrients",
-    },
-    nutritionNone: "–",
-    nutrientsHint: "e.g. fat 7 g, carbohydrates 59 g, protein 14 g (per 100 g)",
-    fillSave: "Save",
-    fillNoContent: "Please enter the contents.",
-    fillFailed: "Saving failed.",
-    plusOneDay: "+1 day",
-    takeOne: "Take one",
-    lastOne: "That was the last one. Empty the container?",
-    keep: "No",
-    opened: "Opened",
-    thawed: "Thawed",
-    recipeBtn: "Recipe ideas",
-    recipeTitle: "Recipe ideas from containers expiring soon",
-    recipeHint: "The AI suggests dishes that use up containers whose best-before date is near. Only contents, quantity, remaining days and storage place are sent.",
-    recipeDays: "Days ahead",
-    recipeServings: "People (optional)",
-    recipeGo: "Suggest",
-    recipeBusy: "The AI is thinking …",
-    recipeNone: (n) => (n === 0 ? "Nothing expires today." : `Nothing expires in the next ${n} days.`),
-    recipeFailed: "The recipe ideas could not be created.",
-    recipeUses: "Uses",
-    recipeExtra: "Also needed",
-    recipeMinutes: (n) => `${n} min`,
-    recipeClose: "Close",
-    quantity: "Quantity",
-    unit: "Unit",
-    units: { portions: "portions", pieces: "pieces", slices: "slices", grams: "grams", milliliters: "milliliters" },
-    searchPlaceholder: "Search …",
-    filterLabel: "Filter",
-    filterAll: "All",
-    filterSoon: (n) => `Expiring soon (≤ ${n} ${n === 1 ? "day" : "days"})`,
-    filterExpired: "Expired",
-    filterFilled: "Filled",
-    filterEmpty: "Empty",
-    sortLabel: "Sort",
-    sortArea: "By area",
-    sortDate: "By best before",
-    sortName: "By name",
-    noMatch: "No container matches the search and filter.",
-    nfcScan: "Scan NFC tag",
-    nfcWrite: "Write a new NFC tag",
-    nfcWriteHint: "After “Add” the app opens its tag writer: hold your phone to an empty NFC tag.",
-    nfcWaiting: "Hold your phone to the NFC tag now …",
-    nfcGot: "Tag detected.",
-    nfcInUse: "This tag is already linked to another container.",
-    nfcLinked: "NFC tag linked",
-    nfcNone: "No NFC tag",
-    nfcLink: "Link NFC tag",
-    nfcUnlink: "Unlink",
-    nfcFailed: "The NFC tag could not be linked.",
-    sourceTable: "table",
-    sourceAi: "AI",
-    sourceLearned: "corrected by you",
-    sourceLearnedTable: "table, corrected by you",
-    sourceLearnedAi: "AI, corrected by you",
-    tabContainers: "Containers",
-    tabEstimates: "Estimates",
-    estTitle: "Remembered estimates",
-    estIntro:
-      "All values remembered for a combination of contents, area and vacuum (from the table, the AI or from you). You can change days and tip, delete entries (the next estimate is calculated anew) or add your own.",
-    estContent: "Contents",
-    estArea: "Area",
-    estVacuum: "Vacuum",
-    estNoVacuum: "no vacuum",
-    estDays: "Days",
-    estTip: "Tip",
-    estSource: "Source",
-    estSave: "Save",
-    estDelete: "Delete",
-    estAdd: "Add",
-    estAddTitle: "Add your own entry",
-    estEmpty: "Nothing remembered yet. Entries appear when you estimate or correct a best-before date.",
-    estConfirmDelete: (name) => `Delete “${name}”? The next estimate is calculated anew.`,
-    estFailed: "The change could not be saved.",
-    estLoadFailed: "The list could not be loaded.",
-    estNeedFields: "Fill in contents, area and days.",
-    estOff: "Best-before estimates are switched off. The entries are kept.",
-  },
-};
+const { STRINGS } = await import(`./larder-panel-strings.js${VERSION_QUERY}`);
+export { STRINGS };
 
 /** Beschriftung der Quelle eines Schätzwerts (Tabelle, KI oder vom Nutzer korrigiert, mit Ursprung). */
 export function sourceLabel(t, source, origin) {
@@ -520,206 +208,7 @@ function navigate(path) {
   window.dispatchEvent(new Event("location-changed"));
 }
 
-const STYLE = `
-  :host { display: block; min-height: 100%; background: var(--primary-background-color);
-    color: var(--primary-text-color); font-family: var(--paper-font-body1_-_font-family, Roboto, sans-serif); }
-  header { display: flex; align-items: center; gap: 12px; padding: 0 16px; height: 56px;
-    background: var(--app-header-background-color, var(--primary-color)); color: var(--app-header-text-color, #fff);
-    position: sticky; top: 0; z-index: 2; box-sizing: border-box; }
-  header h1 { font-size: 20px; font-weight: 400; margin: 0; flex: 1; }
-  header .count { opacity: .85; font-size: 14px; }
-  #menu { display: none; background: none; border: 0; color: inherit; font-size: 24px; cursor: pointer; padding: 4px 8px; }
-  :host([narrow]) #menu { display: inline-block; }
-  main { padding: 16px; max-width: 1400px; margin: 0 auto; box-sizing: border-box; }
-  h2.area { font-size: 15px; font-weight: 500; margin: 20px 4px 8px; color: var(--secondary-text-color);
-    text-transform: uppercase; letter-spacing: .04em; }
-  h2.area:first-child { margin-top: 4px; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
-  .card { background: var(--card-background-color, #fff); border-radius: var(--ha-card-border-radius, 12px);
-    box-shadow: var(--ha-card-box-shadow, 0 1px 3px rgba(0,0,0,.2)); padding: 16px; display: flex; flex-direction: column; gap: 10px; }
-  .card .head { display: flex; align-items: baseline; gap: 8px; }
-  .card .name { font-size: 18px; font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .card a.open { font-size: 13px; color: var(--primary-color); cursor: pointer; text-decoration: none; white-space: nowrap; }
-  .card .arealine { font-size: 13px; color: var(--secondary-text-color); margin-top: -6px; }
-  .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; row-gap: 2px; column-gap: 0; }
-  .row label { grid-column: 1 / -1; font-size: 13px; color: var(--secondary-text-color); }
-  .row input { min-width: 0; font: inherit; color: var(--primary-text-color); background: var(--card-background-color, #fff);
-    border: 1px solid var(--divider-color); border-radius: 6px; padding: 6px 8px; box-sizing: border-box; color-scheme: light dark; }
-  .row input:disabled { opacity: .5; }
-  .row .badge, .row button.now { margin-left: 8px; }
-  .row button.now { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 6px; cursor: pointer;
-    border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
-  .badge { display: none; font-size: 12px; padding: 2px 8px; border-radius: 10px; color: #fff; white-space: nowrap; }
-  .badge.expired { display: inline-block; background: var(--error-color, #db4437); }
-  .badge.soon { display: inline-block; background: var(--warning-color, #ffa600); }
-  .actions { display: flex; align-items: center; gap: 12px; margin-top: 4px; }
-  .actions .spacer { flex: 1; }
-  button.empty { font: inherit; padding: 8px 14px; border-radius: 8px; cursor: pointer; border: 0;
-    background: var(--primary-color); color: var(--text-primary-color, #fff); }
-  button:disabled { opacity: .5; cursor: default; }
-  .qr { width: 72px; height: 72px; border-radius: 6px; background: #fff; display: none; image-rendering: pixelated; }
-  .qr.visible { display: block; }
-  .row select { grid-column: 1 / -1; min-width: 0; font: inherit; color: var(--primary-text-color); background: var(--card-background-color, #fff);
-    border: 1px solid var(--divider-color); border-radius: 6px; padding: 6px 8px; box-sizing: border-box; }
-  .row.arearow { display: none; }
-  .row.arearow.visible { display: grid; }
-  .arealine.hidden { display: none; }
-  header button.add, header button.ideas { font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
-    border: 1px solid currentColor; background: none; color: inherit; display: none; }
-  header button.add.visible, header button.ideas.visible { display: inline-block; }
-  header button.ideas { margin-right: 8px; }
-  .dialog .hint { margin: 0; font-size: 13px; color: var(--secondary-text-color); }
-  .dialog .recipeopts { display: flex; gap: 12px; }
-  .dialog .recipeopts .field { flex: 1; }
-  .dialog .recipelist { display: flex; flex-direction: column; gap: 12px; max-height: 45vh; overflow-y: auto; }
-  .dialog .recipelist:empty { display: none; }
-  .dialog .recipelist .msg { font-size: 14px; color: var(--secondary-text-color); }
-  .dialog .recipe h3 { margin: 0 0 4px; font-size: 16px; font-weight: 500; }
-  .dialog .recipe h3 .meta { font-size: 12px; font-weight: 400; color: var(--secondary-text-color); margin-left: 6px; }
-  .dialog .recipe .line { font-size: 13px; color: var(--secondary-text-color); }
-  .dialog .recipe ol { margin: 6px 0 0; padding-left: 20px; font-size: 14px; }
-  .notice { background: var(--card-background-color, #fff); border-left: 4px solid var(--warning-color, #ffa600);
-    padding: 12px 16px; margin: 0 0 16px; border-radius: 6px; }
-  .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center;
-    justify-content: center; z-index: 10; padding: 16px; box-sizing: border-box; }
-  .overlay[hidden] { display: none; }
-  .dialog { background: var(--card-background-color, #fff); color: var(--primary-text-color); border-radius: 12px;
-    padding: 20px; width: 100%; max-width: 420px; display: flex; flex-direction: column; gap: 12px; box-sizing: border-box; }
-  .dialog h2 { margin: 0; font-size: 20px; font-weight: 500; }
-  .dialog .field { display: flex; flex-direction: column; gap: 4px; font-size: 14px; color: var(--secondary-text-color); }
-  .dialog .field[hidden] { display: none; }
-  .dialog input[type="text"], .dialog input[type="number"], .dialog input[type="date"], .dialog input[type="datetime-local"], .dialog select { font: inherit; color: var(--primary-text-color); background: var(--card-background-color, #fff);
-    border: 1px solid var(--divider-color); border-radius: 6px; padding: 8px; box-sizing: border-box; }
-  .dialog .modes { display: flex; flex-direction: column; gap: 6px; color: var(--primary-text-color); font-size: 15px; }
-  .dialog .error { color: var(--error-color, #db4437); font-size: 14px; min-height: 1em; }
-  .dialog .buttons { display: flex; justify-content: flex-end; gap: 8px; }
-  .dialog .buttons button { font: inherit; padding: 8px 14px; border-radius: 8px; cursor: pointer; border: 0; }
-  .dialog .buttons button.cancel { background: none; color: var(--primary-color); }
-  .dialog .buttons button.submit { background: var(--primary-color); color: var(--text-primary-color, #fff); }
-  .row.vacrow label.check, .row.shoprow label.check, .row.flexrow label.check { grid-column: 1 / -1; display: flex; align-items: center; gap: 8px; font-size: 14px;
-    color: var(--primary-text-color); cursor: pointer; }
-  .estimaterow { display: none; flex-direction: column; gap: 4px; margin-top: -4px; }
-  .estimaterow.visible { display: flex; }
-  .estimaterow button.estimate { align-self: flex-start; font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 6px;
-    cursor: pointer; border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
-  .estimaterow .tip { font-size: 13px; color: var(--secondary-text-color); }
-  .estimaterow .tip.error { color: var(--error-color, #db4437); }
-  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
-  .toolbar[hidden] { display: none; }
-  .toolbar input, .toolbar select { font: inherit; color: var(--primary-text-color); background: var(--card-background-color, #fff);
-    border: 1px solid var(--divider-color); border-radius: 8px; padding: 8px 10px; box-sizing: border-box; min-width: 0; }
-  .toolbar input { flex: 1 1 180px; }
-  .toolbar select { flex: 0 1 auto; }
-  .qty { display: flex; gap: 8px; flex: 1; min-width: 0; }
-  .qty input { flex: 1; min-width: 0; }
-  .qty select { flex: 1; min-width: 0; }
-  .qty button.take { flex: 0 0 auto; font: inherit; font-size: 15px; padding: 4px 12px; border-radius: 8px; cursor: pointer;
-    border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
-  .lastrow { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-top: -4px; }
-  .lastrow[hidden] { display: none; }
-  .lastrow .lasttext { flex: 1; }
-  .allergen-warning { font-size: 13px; font-weight: 600; color: var(--error-color, #c62828); }
-  .allergen-warning[hidden] { display: none; }
-  details.nutrition { font-size: 13px; }
-  details.nutrition[hidden] { display: none; }
-  details.nutrition summary { cursor: pointer; color: var(--primary-color); }
-  details.nutrition .nutgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
-  details.nutrition label { display: flex; flex-direction: column; gap: 2px; color: var(--secondary-text-color); min-width: 0; }
-  details.nutrition label.wide { grid-column: 1 / -1; }
-  details.nutrition input, details.nutrition select, details.nutrition textarea { font: inherit; font-size: 14px; color: var(--primary-text-color);
-    background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 6px; padding: 6px 8px; min-width: 0; box-sizing: border-box; }
-  details.nutrition .source { margin-top: 6px; color: var(--secondary-text-color); font-size: 12px; }
-  .outcomerow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; }
-  .outcomerow[hidden] { display: none; }
-  .outcomerow .otext { flex: 1 1 100%; }
-  .outcomerow button { font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
-    border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
-  details.history { font-size: 13px; color: var(--secondary-text-color); }
-  details.history summary { cursor: pointer; color: var(--primary-color); }
-  details.history ul { margin: 6px 0 0; padding-left: 18px; }
-  .lastrow button { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 6px; cursor: pointer;
-    border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
-  .lastrow button.lastempty { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: var(--primary-color); }
-  .quickrow { display: none; gap: 8px; margin-top: -4px; }
-  .quickrow.visible { display: flex; }
-  .quickrow button { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 6px; cursor: pointer;
-    border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
-  .quickrow button:disabled { opacity: .5; cursor: default; }
-  .nfcrow { display: none; align-items: center; gap: 8px; font-size: 13px; color: var(--secondary-text-color); }
-  .nfcrow.visible { display: flex; }
-  .nfcrow .nfcstate { flex: 1; }
-  .nfcrow button { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 6px; cursor: pointer;
-    border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
-  .card.flash { animation: zwflash 3s ease-out; }
-  @keyframes zwflash { 0%, 60% { box-shadow: 0 0 0 4px var(--primary-color); } 100% { box-shadow: var(--ha-card-box-shadow, 0 1px 3px rgba(0,0,0,.2)); } }
-  .dialog .check { flex-direction: row; align-items: center; gap: 8px; color: var(--primary-text-color); }
-  .dialog .contentline { display: flex; gap: 8px; }
-  .dialog .contentline input { flex: 1; min-width: 0; }
-  .dialog button.photo { flex: 0 0 auto; font-size: 16px; padding: 0 10px; border-radius: 8px; cursor: pointer;
-    border: 1px solid var(--divider-color); background: none; }
-  .dialog button.barcode { flex: 0 0 auto; font-size: 13px; font-weight: 500; padding: 0 12px; border-radius: 8px; cursor: pointer;
-    border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
-  .dialog .barcodestatus { font-size: 13px; color: var(--secondary-text-color); margin: -4px 0 0; }
-  .dialog .check[hidden] { display: none; }
-  .actions button.fill { display: none; }
-  .actions button.fill.visible { display: inline-block; font: inherit; padding: 7px 14px; border-radius: 8px; cursor: pointer;
-    background: none; color: var(--primary-color); border: 1px solid var(--primary-color); }
-  .dialog .nfcstatus { font-size: 14px; color: var(--secondary-text-color); }
-  .dialog .nfcstatus[hidden] { display: none; }
-  header .count { white-space: nowrap; }
-  /* Eingebetteter Modus (für "Larder experimental"): nur die Dialoge, oder mit Attribut "only" die Karte einer Dose. */
-  #back { display: none; background: none; border: 0; color: inherit; font-size: 24px; cursor: pointer; padding: 4px 8px; }
-  :host([embedded]) { min-height: 0; background: none; }
-  :host([embedded]) header, :host([embedded]) .toolbar { display: none; }
-  :host([embedded]:not([only]):not([show])) main { display: none; }
-  :host([embedded][show]) main { padding-top: 4px; }
-  :host([embedded][only]) header { display: flex; }
-  :host([embedded][only]) #back { display: inline-block; }
-  :host([embedded][only]) #menu, :host([embedded][only]) .count, :host([embedded][only]) .tabs,
-  :host([embedded][only]) header button.ideas, :host([embedded][only]) header button.add { display: none !important; }
-  /* Schmale Fenster (Handy, Tablet hochkant): zweizeilige Kopfleiste statt überstehender Schaltflächen.
-     Zeile 1: Menü, Titel, Anzahl, "Dose hinzufügen"; Zeile 2: Reiter und "Rezeptideen". */
-  @media (max-width: 960px) {
-    header { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 0 10px;
-      height: auto; min-height: 56px; padding: 8px 12px; }
-    header #menu { grid-column: 1; grid-row: 1; padding: 4px 6px; }
-    header h1 { grid-column: 2; grid-row: 1; flex: none; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    header .count { grid-column: 3; grid-row: 1; }
-    header button.add { grid-column: 4; grid-row: 1; white-space: nowrap; }
-    header .tabs { grid-column: 1 / 4; grid-row: 2; margin-top: 8px; }
-    header button.ideas { grid-column: 4; grid-row: 2; margin: 8px 0 0; white-space: nowrap; }
-    header .tabs button { padding: 6px 10px; }
-  }
-  header .tabs { display: none; gap: 4px; }
-  header .tabs.visible { display: flex; }
-  header .tabs button { font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
-    border: 1px solid transparent; background: none; color: inherit; opacity: .8; }
-  header .tabs button.active { border-color: currentColor; opacity: 1; }
-  #estimates { display: flex; flex-direction: column; gap: 12px; }
-  #estimates[hidden], #content[hidden] { display: none; }
-  #estimates h2 { margin: 0; font-size: 20px; font-weight: 400; }
-  #estimates .intro { margin: 0; font-size: 14px; color: var(--secondary-text-color); }
-  .est { background: var(--card-background-color, #fff); border-radius: var(--ha-card-border-radius, 12px);
-    box-shadow: var(--ha-card-box-shadow, 0 1px 3px rgba(0,0,0,.2)); padding: 12px 16px; display: grid; gap: 8px 12px;
-    grid-template-columns: minmax(0, 1fr) 90px; align-items: end; }
-  .est .what { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 12px; align-items: baseline; }
-  .est .what .name { font-size: 16px; font-weight: 500; }
-  .est .what .meta { font-size: 13px; color: var(--secondary-text-color); }
-  .est .f { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: var(--secondary-text-color); min-width: 0; }
-  .est input[type="text"], .est input[type="number"], .est select { font: inherit; color: var(--primary-text-color);
-    background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 6px;
-    padding: 6px 8px; box-sizing: border-box; min-width: 0; width: 100%; }
-  .est .btns { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: flex-end; }
-  .est .btns button { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 8px; cursor: pointer; border: 0; }
-  .est .btns button.save { background: var(--primary-color); color: var(--text-primary-color, #fff); }
-  .est .btns button.del { background: none; color: var(--error-color, #db4437); border: 1px solid var(--divider-color); }
-  .est.new { border: 1px dashed var(--divider-color); box-shadow: none; }
-  .est.new h3 { grid-column: 1 / -1; margin: 0; font-size: 15px; font-weight: 500; }
-  .est .check { display: flex; align-items: center; gap: 6px; font-size: 14px; color: var(--primary-text-color); }
-  .none { text-align: center; padding: 48px 16px; color: var(--secondary-text-color); }
-  .none h2 { color: var(--primary-text-color); font-weight: 400; }
-  .none a { color: var(--primary-color); cursor: pointer; }
-`;
+const { STYLE } = await import(`./larder-panel-style.js${VERSION_QUERY}`);
 
 const VIEW_KEY = `${DOMAIN}.panel`;
 
@@ -792,7 +281,7 @@ class DoseCard {
       <div class="lastrow" hidden><span class="lasttext"></span><button class="lastempty" type="button"></button><button class="lastkeep" type="button"></button></div>
       <div class="row"><label data-l="bestBefore"></label><input data-f="bestBefore" type="date"><span class="badge"></span></div>
       <div class="quickrow"><button class="plus1" type="button"></button><button class="opened" type="button"></button><button class="thawed" type="button"></button></div>
-      <div class="row"><label data-l="filledAt"></label><input data-f="filledAt" type="datetime-local"><button class="now" type="button"></button></div>
+      <div class="row filledrow"><label data-l="filledAt"></label><input data-f="filledAt" type="datetime-local"><button class="now" type="button"></button></div>
       <div class="estimaterow"><button class="estimate" type="button"></button><span class="tip" role="status"></span></div>
       <div class="row vacrow"><label class="check"><input type="checkbox" data-f="vacuum"><span data-l="vacuum"></span></label></div>
       <div class="row shoprow"><label class="check"><input type="checkbox" data-f="shopping"><span data-l="shopping"></span></label></div>
@@ -813,7 +302,7 @@ class DoseCard {
         <div class="source" hidden></div>
       </details>
       <div class="nfcrow"><span class="nfcstate"></span><button class="nfcbtn" type="button"></button></div>
-      <div class="actions"><button class="fill" type="button"></button><button class="empty" type="button"></button><span class="spacer"></span><img class="qr" alt=""></div>
+      <div class="actions"><button class="fill" type="button"></button><button class="transfer" type="button" hidden></button><button class="empty" type="button"></button><span class="spacer"></span><img class="qr" alt=""></div>
       <div class="outcomerow" hidden><span class="otext"></span><button class="eaten" type="button"></button><button class="thrown" type="button"></button><button class="ocancel" type="button"></button></div>
       <details class="history"><summary></summary><ul></ul></details>`;
     this.el = el;
@@ -935,6 +424,10 @@ class DoseCard {
     });
     this.q("button.estimate").addEventListener("click", () => this._estimate());
     this.q("button.fill").addEventListener("click", () => this._panel.openFillDialog(this.deviceId));
+    // Packung öffnen und in eine leere Dose umfüllen: die Auswahl der Dose übernimmt das Dashboard
+    this.q("button.transfer").addEventListener("click", () => {
+      this._panel.dispatchEvent(new CustomEvent("larder-transfer", { detail: { deviceId: this.deviceId } }));
+    });
     this.q("button.nfcbtn").addEventListener("click", () => this._panel.nfcAction(this.deviceId));
   }
 
@@ -1154,6 +647,7 @@ class DoseCard {
     this.inputs.content.disabled = !ok(text);
     this.inputs.bestBefore.disabled = !ok(date);
     this.inputs.filledAt.disabled = !ok(dt);
+    this.q(".filledrow").style.display = dt ? "" : "none"; // Packungen haben kein Befüll-Datum
     this.q("button.now").disabled = !ok(dt);
 
     // Schnellaktionen unter dem MHD: +1 Tag (nur mit MHD) und Geöffnet (sobald etwas drin ist).
@@ -1164,7 +658,11 @@ class DoseCard {
 
     // NFC: nur für Administratoren (Verknüpfen und Lösen sind Administrator-Befehle).
     const nfc = this._panel.nfcState(this.deviceId);
-    this.q(".nfcrow").classList.toggle("visible", admin && nfc !== null);
+    const kind = (text && text.attributes && text.attributes.kind) || "container";
+    this.q(".nfcrow").classList.toggle("visible", admin && nfc !== null && kind !== "pack");
+    const transfer = this.q("button.transfer");
+    transfer.hidden = !(kind === "pack" && hasContentNow);
+    transfer.textContent = t.transfer;
     if (nfc !== null) {
       this.q(".nfcstate").textContent = { linked: t.nfcLinked, none: t.nfcNone, waiting: t.nfcWaiting }[nfc];
       this.q("button.nfcbtn").textContent = { linked: t.nfcUnlink, none: t.nfcLink, waiting: t.cancel }[nfc];
@@ -1403,7 +901,7 @@ class LarderPanel extends HTMLElement {
   }
 
   /**
-   * Eingebettet in "Larder experimental": `only` zeigt die Karte einer Dose (mit Zurück-Knopf),
+   * Eingebettet im Dashboard: `only` zeigt die Karte einer Dose (mit Zurück-Knopf),
    * `show="cards"` mit `ids` (kommagetrennt, in dieser Reihenfolge) die Karten mehrerer Dosen,
    * `show="estimates"` die Liste der gemerkten Schätzungen.
    */
@@ -1724,7 +1222,7 @@ class LarderPanel extends HTMLElement {
 
   /** `?add=<ID>` (vom Scan-Webhook): Dialog mit Code öffnen, bzw. Hinweis für Nicht-Administratoren. */
   _handleAddParam() {
-    if (this.hasAttribute("embedded")) return; // in "Larder experimental" übernimmt das die äußere Ansicht
+    if (this.hasAttribute("embedded")) return; // im Dashboard übernimmt das die äußere Ansicht
     const hass = this._hass;
     const code = new URLSearchParams(window.location.search).get("add");
     if (!code || !hass || !hass.user) return;
@@ -1855,12 +1353,18 @@ class LarderPanel extends HTMLElement {
 
   /** Strichcode gekaufter Ware scannen und den Produktnamen (Open Food Facts) als Inhalt eintragen. */
   scanBarcode() {
+    const t = strings(this._hass);
+    const status = this._fillForm.querySelector(".barcodestatus");
+    this.scanBarcodeRaw((code) => this._lookupProduct(code, t, status));
+  }
+
+  /** Strichcode-Scanner der App öffnen; `onCode` bekommt den gelesenen Code (auch für das Dashboard). */
+  scanBarcodeRaw(onCode) {
     const hass = this._hass;
     const external = hass && hass.auth && hass.auth.external;
     if (!this._hasBarcodeScanner() || typeof external.addCommandHandler !== "function" || this._barcodeScan) return;
     const t = strings(hass);
     const original = external._commandHandler;
-    const status = this._fillForm.querySelector(".barcodestatus");
     const scan = {};
     this._barcodeScan = scan;
     const finish = () => {
@@ -1873,7 +1377,7 @@ class LarderPanel extends HTMLElement {
         const code = String((msg.payload && msg.payload.rawValue) || "");
         finish();
         external.fireMessage({ type: "bar_code/close" });
-        this._lookupProduct(code, t, status);
+        onCode(code);
       } else if (this._barcodeScan === scan && msg && msg.command === "bar_code/aborted") {
         finish();
       }
@@ -2632,7 +2136,7 @@ if (!customElements.get("larder-panel")) {
   customElements.define("larder-panel", LarderPanel);
 }
 
-// Eingebettete Variante für "Larder experimental" unter eigenem Namen: Hat der Browser noch ein älteres
+// Eingebettete Variante für das Dashboard unter eigenem Namen: Hat der Browser noch ein älteres
 // <larder-panel> aus einer früheren Sitzung registriert, nutzt die eingebettete Variante trotzdem diesen Code.
 if (!customElements.get("larder-panel-embedded")) {
   customElements.define("larder-panel-embedded", class extends LarderPanel {});

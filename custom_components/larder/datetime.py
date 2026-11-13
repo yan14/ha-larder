@@ -12,8 +12,8 @@ from homeassistant.helpers.entity_platform import (
 )
 from homeassistant.util import dt as dt_util
 
-from .const import SERVICE_CLEAR_FILLED_AT
-from .entity import LarderConfigEntry, LarderResettable
+from .const import KIND_PACK, SERVICE_CLEAR_FILLED_AT
+from .entity import LarderConfigEntry, LarderResettable, kind_of
 
 
 async def async_setup_entry(
@@ -21,9 +21,10 @@ async def async_setup_entry(
     entry: LarderConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    filled_at = LarderFilledAt(entry)
-    entry.runtime_data.resettable[filled_at._key] = filled_at
-    async_add_entities([filled_at])
+    if kind_of(entry) != KIND_PACK:  # Packungen: nur Inhalt, Menge und MHD
+        filled_at = LarderFilledAt(entry)
+        entry.runtime_data.resettable[filled_at._key] = filled_at
+        async_add_entities([filled_at])
     async_get_current_platform().async_register_entity_service(
         SERVICE_CLEAR_FILLED_AT, None, "async_reset"
     )

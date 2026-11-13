@@ -12,8 +12,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
-from .const import scan_app_url
-from .entity import LarderConfigEntry, LarderEntity
+from .const import KIND_PACK, scan_app_url
+from .entity import LarderConfigEntry, LarderEntity, kind_of
 
 
 def render_qr_png(content: str) -> bytes:
@@ -28,7 +28,8 @@ async def async_setup_entry(
     entry: LarderConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    async_add_entities([ZwillingQrCode(hass, entry)])
+    if kind_of(entry) != KIND_PACK:  # Packungen haben keinen Code
+        async_add_entities([ZwillingQrCode(hass, entry)])
 
 
 class ZwillingQrCode(ImageEntity, LarderEntity):

@@ -191,6 +191,9 @@
     },
     "content_photo_none": {
       "message": "Auf dem Foto wurde kein Essen erkannt."
+    },
+    "transfer_invalid": {
+      "message": "Umfüllen geht nur von einer Packung mit Inhalt in eine leere Dose oder einen leeren Beutel."
     }
   },
   "options": {
@@ -211,7 +214,6 @@
           "todo_entity": "Einkaufsliste für geleerte Dosen (optional)",
           "meal_calendar": "Kalender für den Wochenplan",
           "thaw_days": "Auftauen: Tage vorher",
-          "experimental_panel": "„Larder experimental“ in der Seitenleiste anzeigen",
           "recipe_days": "Zeitraum für Rezeptideen (Tage)",
           "soon_days": "„Läuft bald ab“ ab (Tage)",
           "shopping_details": "Marke und Packung mit auf die Einkaufsliste",
@@ -230,7 +232,6 @@
           "todo_entity": "Eine To-do-Liste von Home Assistant (z. B. „Einkaufsliste“, Todoist, Bring!). Wird eine Dose geleert und ihr Schalter „Einkaufsliste“ ist an, kommt der Inhalt auf diese Liste (nicht doppelt). Leer = aus.",
           "meal_calendar": "Optional: geplante Gerichte erscheinen dort als ganztägiger Termin „🍽 …“. Ohne Auswahl stehen sie nur im Dashboard.",
           "thaw_days": "Wie viele Tage vor dem geplanten Tag die Zusammenfassung an Dosen aus dem Gefrierschrank erinnert (0 = am Tag selbst).",
-          "experimental_panel": "Zweiter Eintrag in der Seitenleiste zum Ausprobieren neuer Funktionen, bevor sie ins normale Dashboard kommen. Zurzeit entspricht er dem normalen Larder-Dashboard.",
           "recipe_days": "Rezeptideen „aus Resten“ berücksichtigen Dosen, die in so vielen Tagen ablaufen (0 = nur heute). Im Dashboard lässt sich der Zeitraum für einen einzelnen Aufruf ändern oder ganz abschalten.",
           "soon_days": "Ab so vielen Resttagen gilt eine Dose als „läuft bald ab“ (Hinweis im Dashboard, Filter, Status des Sensors und Vorgabe für die Ablauf-Übersicht).",
           "shopping_details": "Sind Marke oder Packungsgröße einer Dose bekannt (z. B. nach einem Strichcode-Scan), kommen sie beim Leeren mit auf die Liste: „Haferflocken (Kölln, 500 g)“.",

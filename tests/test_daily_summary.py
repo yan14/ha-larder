@@ -8,11 +8,10 @@ from freezegun.api import FrozenDateTimeFactory
 import pytest
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
+from custom_components.larder.expiry import build_speech
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
-
-from custom_components.larder.expiry import build_speech
 
 from .test_recipes import RECIPE, _fake_ai, _fill, _setup, auto_enable_custom_integrations  # noqa: F401
 
@@ -171,10 +170,9 @@ def test_speech_text() -> None:
 
 
 async def test_thaw_reminder_is_sent_even_without_expiring(hass: HomeAssistant, blueprint, freezer) -> None:
-    from homeassistant.helpers import area_registry as ar, device_registry as dr
-
     from custom_components.larder.const import DOMAIN
     from custom_components.larder.plan import async_get_plan
+    from homeassistant.helpers import area_registry as ar, device_registry as dr
 
     await _setup(hass, "AAAA")
     calls = _notify(hass, "mobile_app_yan")

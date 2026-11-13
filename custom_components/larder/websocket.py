@@ -8,10 +8,11 @@ import voluptuous as vol
 
 from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import config_validation as cv, device_registry as dr
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers import config_validation as cv, device_registry as dr
 
 from .const import DOMAIN, EVENT_DOSE_SCANNED
+from .disposable import DATA_RETIRED, retired_text
 from .estimate import MAX_DAYS, MIN_DAYS, async_get_estimator
 from .nfc import async_get_nfc
 from .qr import parse_qr
@@ -227,6 +228,9 @@ def ws_resolve_code(
         connection.send_result(msg["id"], {"valid": False})
         return
     device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, parsed.cc)})
+    # Code eines schon geleerten Beutels: Hinweis statt "unbekannte Dose hinzufügen"
+    retired = hass.data.get(DOMAIN, {}).get(DATA_RETIRED)
+    info = retired.by_code(parsed.cc) if retired is not None and device is None else None
     connection.send_result(
         msg["id"],
         {
@@ -234,6 +238,7 @@ def ws_resolve_code(
             "cc": parsed.cc,
             "device_id": device.id if device else None,
             "name": (device.name_by_user or device.name) if device else None,
+            "retired": retired_text(info, hass.config.language or "en") if info else None,
         },
     )
 

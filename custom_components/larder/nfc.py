@@ -13,13 +13,14 @@ Unbekannte Tags werden ignoriert, damit andere NFC-Tags im Haus unberührt bleib
 
 from __future__ import annotations
 
-import logging
 from collections.abc import Callable
+import logging
 from typing import Any
 
 from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.storage import Store
 from homeassistant.util import slugify
 
@@ -137,6 +138,9 @@ class NfcTags:
         for old in [t for t, linked in self._tags.items() if linked == cc]:
             del self._tags[old]
         self._tags[tag_id] = cc
+        from .disposable import async_get_retired  # noqa: PLC0415 - vermeidet einen Import-Kreis
+
+        (await async_get_retired(self.hass)).forget_tag(tag_id)  # Sticker eines alten Beutels neu benutzt
         await self._store.async_save(self._tags)
 
     async def async_unlink(self, cc: str) -> None:
@@ -160,8 +164,10 @@ class NfcTags:
         return None
 
     async def _tag_scanned(self, event: Event) -> None:
-        cc = self._tags.get(str(event.data.get("tag_id", "")))
+        tag_id = str(event.data.get("tag_id", ""))
+        cc = self._tags.get(tag_id)
         if cc is None:
+            await self._retired_scanned(tag_id, event.data.get("device_id"))
             return
         entry = self._entry(cc)
         device = dr.async_get(self.hass).async_get_device(identifiers={(DOMAIN, cc)})
@@ -190,6 +196,35 @@ class NfcTags:
                     "data": {"url": url, "clickAction": url, "tag": f"{DOMAIN}_{cc}"},
                 },
                 blocking=True,
+            )
+        except HomeAssistantError:
+            _LOGGER.debug("Benachrichtigung an %s fehlgeschlagen", service, exc_info=True)
+
+    async def _retired_scanned(self, tag_id: str, scanner: str | None) -> None:
+        """Sticker eines schon geleerten Beutels: Bescheid sagen statt nichts zu tun."""
+        from .disposable import async_delete_ha_tag, async_get_retired, retired_text  # noqa: PLC0415
+
+        info = (await async_get_retired(self.hass)).by_tag(tag_id)
+        if info is None:
+            return  # fremder Tag: nicht unsere Sache
+        text = retired_text(info, self.hass.config.language or "en")
+        data = {"retired": True, "name": info.get("name"), "message": text, "scanned_by": scanner}
+        self.hass.bus.async_fire(EVENT_DOSE_SCANNED, data)
+        # Home Assistant legt den Tag beim Scannen wieder an (kurz nach diesem Ereignis): danach aufräumen
+        async def cleanup(_now: Any) -> None:
+            await async_delete_ha_tag(self.hass, tag_id)
+
+        async_call_later(self.hass, 2, cleanup)
+        if self._sessions:
+            for forward in list(self._sessions):
+                forward(data)
+            return
+        service = self._notify_service(scanner)
+        if service is None:
+            return
+        try:
+            await self.hass.services.async_call(
+                "notify", service, {"title": "Larder", "message": text}, blocking=True
             )
         except HomeAssistantError:
             _LOGGER.debug("Benachrichtigung an %s fehlgeschlagen", service, exc_info=True)

@@ -2,11 +2,10 @@
 
 from datetime import timedelta
 
-from homeassistant.core import HomeAssistant
-from homeassistant.util import dt as dt_util
-
 from custom_components.larder.history import async_get_history
 from custom_components.larder.stats import build_statistics
+from homeassistant.core import HomeAssistant
+from homeassistant.util import dt as dt_util
 
 from .test_recipes import _fill, _setup, auto_enable_custom_integrations  # noqa: F401
 

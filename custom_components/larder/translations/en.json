@@ -191,6 +191,9 @@
     },
     "content_photo_none": {
       "message": "No food was recognised in the photo."
+    },
+    "transfer_invalid": {
+      "message": "Transfer only works from a pack with contents into an empty container or bag."
     }
   },
   "options": {
@@ -211,7 +214,6 @@
           "todo_entity": "Shopping list for emptied containers (optional)",
           "meal_calendar": "Calendar for the meal plan",
           "thaw_days": "Thawing: days ahead",
-          "experimental_panel": "Show “Larder experimental” in the sidebar",
           "recipe_days": "Period for recipe ideas (days)",
           "soon_days": "\"Expiring soon\" from (days)",
           "shopping_details": "Brand and package on the shopping list",
@@ -230,7 +232,6 @@
           "todo_entity": "A to-do list of Home Assistant (e.g. “Shopping list”, Todoist, Bring!). When a container is emptied and its “Shopping list” switch is on, its contents are added to this list (not twice). Leave empty = off.",
           "meal_calendar": "Optional: planned dishes appear there as an all-day event “🍽 …”. Without a calendar they are only in the dashboard.",
           "thaw_days": "How many days before the planned day the summary reminds you of containers in the freezer (0 = on the day itself).",
-          "experimental_panel": "Second sidebar entry for trying new features before they reach the normal dashboard. At the moment it is the same as the normal Larder dashboard.",
           "recipe_days": "Recipe ideas \"from leftovers\" use containers that expire within this many days (0 = today only). In the dashboard you can change the period for a single request or turn it off.",
           "soon_days": "From this many days left a container counts as \"expiring soon\" (hint in the dashboard, filter, sensor status and the default for the expiry overview).",
           "shopping_details": "If the brand or package size of a container is known (e.g. after a barcode scan), it goes onto the list with the contents when emptying: \"Oats (Kölln, 500 g)\".",

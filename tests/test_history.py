@@ -1,11 +1,10 @@
 """Tests: Verlauf pro Dose (Leeren mit gegessen/weggeworfen, Abruf, CSV)."""
 
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
-
 from custom_components.larder.const import DOMAIN
 from custom_components.larder.export import history_csv
 from custom_components.larder.history import async_get_history
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 
 from .test_recipes import _eid, _fill, _setup, auto_enable_custom_integrations  # noqa: F401
 

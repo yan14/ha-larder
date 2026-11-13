@@ -1888,3 +1888,24 @@ test("Variabler Lagerort: Schalter und „nach dem Leeren zurück in“ auf der 
   el.openFillDialog("d1");
   assert.equal($(el, 'form.fillform [data-w="area"]').hidden, true);
 });
+
+test("Karte einer Packung: Umfüllen-Knopf, kein NFC, kein Befüll-Datum", async () => {
+  const hass = adminHass([{ id: "d1", name: "Packung 1", content: "Tomaten", product: { kind: "pack" } }, { id: "d2", name: "Dose", content: "Reis" }]);
+  // Packungen haben weder "Befüllt am" noch Schalter
+  for (const id of ["datetime.d1_befuellt", "switch.d1_vacuum", "switch.d1_einkaufsliste", "switch.d1_variabler_lagerort"]) {
+    delete hass.entities[id];
+    delete hass.states[id];
+  }
+  const el = mount(hass);
+  const [dose, pack] = $$(el, ".card");
+  assert.equal(pack.querySelector("button.transfer").hidden, false);
+  assert.equal(pack.querySelector(".filledrow").style.display, "none");
+  assert.equal(pack.querySelector(".vacrow").style.display, "none");
+  assert.equal(pack.querySelector(".nfcrow").classList.contains("visible"), false);
+  assert.equal(dose.querySelector("button.transfer").hidden, true);
+  assert.equal(dose.querySelector(".filledrow").style.display, "");
+  let asked = null;
+  el.addEventListener("larder-transfer", (ev) => (asked = ev.detail.deviceId));
+  pack.querySelector("button.transfer").click();
+  assert.equal(asked, "d1");
+});
