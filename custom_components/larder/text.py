@@ -6,7 +6,7 @@ from homeassistant.components.text import TextEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .entity import LarderConfigEntry, LarderResettable
+from .entity import LarderConfigEntry, LarderEntity, LarderResettable
 from .estimate import async_get_estimator
 from .shelf_life import category_for
 
@@ -18,7 +18,7 @@ async def async_setup_entry(
 ) -> None:
     content = LarderContent(entry)
     entry.runtime_data.resettable[content._key] = content
-    async_add_entities([content])
+    async_add_entities([content, LarderCompartment(entry)])
 
 
 class LarderContent(TextEntity, LarderResettable):
@@ -47,3 +47,24 @@ class LarderContent(TextEntity, LarderResettable):
 
     async def async_reset(self) -> None:
         await self.async_set_value("")
+
+
+class LarderCompartment(TextEntity, LarderEntity):
+    """Fach innerhalb des Bereichs, z. B. "Schublade 2" im Gefrierschrank (optional).
+
+    Gehört zum Platz der Dose, nicht zum Inhalt: bleibt beim Leeren. Kommt eine variable Dose beim
+    Leeren an ihren festen Platz zurück, wird das Fach geleert.
+    """
+
+    _key = "compartment"
+    _attr_native_max = 60
+    _attr_native_value: str | None = ""
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        if (last := await self._async_last_state()) is not None:
+            self._attr_native_value = last.state
+
+    async def async_set_value(self, value: str) -> None:
+        self._attr_native_value = value.strip()
+        self.async_write_ha_state()

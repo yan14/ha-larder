@@ -33,8 +33,8 @@ DATA_EXPORT = "export_registered"
 EXPORT_FORMAT = 1
 
 _COLUMNS = {
-    "de": ["Name", "ID", "Bereich", "Inhalt", "Menge", "Einheit", "Eingelagert am", "MHD", "Tage übrig", "Status", "Vakuum"],
-    "en": ["Name", "ID", "Area", "Contents", "Quantity", "Unit", "Filled on", "Best before", "Days left", "Status", "Vacuum"],
+    "de": ["Name", "ID", "Bereich", "Fach", "Inhalt", "Menge", "Einheit", "Eingelagert am", "MHD", "Tage übrig", "Status", "Vakuum"],
+    "en": ["Name", "ID", "Area", "Compartment", "Contents", "Quantity", "Unit", "Filled on", "Best before", "Days left", "Status", "Vacuum"],
 }
 _STATUS = {
     "de": {"none": "", "ok": "gut", "soon": "läuft bald ab", "expired": "abgelaufen"},
@@ -96,6 +96,7 @@ def inventory_rows(hass: HomeAssistant) -> list[dict[str, Any]]:
                 "name": entry.title or cc,
                 "cc": cc,
                 "area": storage_context(hass, cc).area_name or "",
+                "compartment": _value(hass, registry, "text", cc, "compartment") or "",
                 "content": _value(hass, registry, "text", cc, "content") or "",
                 "quantity": quantity or "",
                 "unit": _UNITS[lang].get(unit, "") if quantity and unit in UNITS else "",

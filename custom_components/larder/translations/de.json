@@ -15,7 +15,11 @@
         "data": {
           "qr_code": "QR-Code-Inhalt oder ID",
           "name": "Name (optional)",
-          "area_id": "Bereich (optional)"
+          "area_id": "Bereich (optional)",
+          "vacuum": "Vakuum",
+          "shopping": "Beim Leeren auf die Einkaufsliste",
+          "flexible": "Variabler Lagerort",
+          "home_area": "Nach dem Leeren zurück in"
         }
       },
       "create": {
@@ -23,7 +27,11 @@
         "description": "Es wird eine neue, eindeutige ID erzeugt (Format `HA-XXXXXXXX`), die nicht mit den Zwilling-Codes kollidiert. Den passenden QR-Code findest du danach als Bild am Gerät und kannst ihn ausdrucken und aufkleben.",
         "data": {
           "name": "Name (optional)",
-          "area_id": "Bereich (optional)"
+          "area_id": "Bereich (optional)",
+          "vacuum": "Vakuum",
+          "shopping": "Beim Leeren auf die Einkaufsliste",
+          "flexible": "Variabler Lagerort",
+          "home_area": "Nach dem Leeren zurück in"
         }
       },
       "reconfigure": {
@@ -52,6 +60,9 @@
     "text": {
       "content": {
         "name": "Inhalt"
+      },
+      "compartment": {
+        "name": "Fach"
       }
     },
     "button": {

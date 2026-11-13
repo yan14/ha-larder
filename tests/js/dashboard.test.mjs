@@ -1045,6 +1045,35 @@ test("Wochenplan: Rezept einplanen, Startseite zeigt Plan und Auftauen", async (
   assert.deepEqual(sent[2], { type: `${D}/plan_delete`, plan_id: "p1" });
 });
 
+test("Fach: in Kachel und Liste, durchsuchbar, nach Bereich sortiert", async () => {
+  document.body.innerHTML = "";
+  const hass = makeHass(DOSES);
+  for (const [id, value] of [["d1", "Schublade 2"], ["d2", "Schublade 1"]]) {
+    const eid = `text.${id}_fach`;
+    hass.entities[eid] = { entity_id: eid, device_id: id, platform: D, translation_key: "compartment" };
+    hass.states[eid] = { entity_id: eid, state: value, attributes: {} };
+  }
+  const el = mount(hass);
+  await flush();
+  await go(el, "containers");
+  const tile = $(el, 'main .tile[data-id="d1"]');
+  assert.equal(tile.querySelector(".sub").textContent, "Dose 1 · Schublade 2");
+  const search = $(el, '[data-role="search"]');
+  search.value = "schublade 1";
+  search.dispatchEvent(new Event("input"));
+  await flush();
+  assert.deepEqual(names(el), ["Gouda"]);
+  search.value = "";
+  search.dispatchEvent(new Event("input"));
+  el._opts.sort = "area";
+  el._opts.mode = "list";
+  el._sig = "";
+  el._update();
+  await flush();
+  const subs = $$(el, "main .row .sub").map((n) => n.textContent);
+  assert.ok(subs.indexOf("Dose 2 · Küche · Schublade 1") < subs.indexOf("Dose 1 · Küche · Schublade 2"));
+});
+
 test("QR-Etiketten: Dialog aus Menü und Auswahl, signierter Link zum PDF", async () => {
   const hass = makeHass(DOSES);
   const signed = [];
@@ -1165,6 +1194,45 @@ test("Links aus den Reparaturhinweisen: ?problem filtert die Behälter", async (
   await flush();
   assert.equal(names(el).length, 6);
   window.history.replaceState(null, "", "/");
+});
+
+test("QR-Etiketten: was aufs Etikett kommt, Design und Etikettendrucker", async () => {
+  const hass = makeHass(DOSES);
+  const signed = [];
+  const base = hass.callWS;
+  hass.callWS = async (msg) => (msg.type === "auth/sign_path" ? (signed.push(msg), { path: msg.path }) : base(msg));
+  const el = mount(hass);
+  await flush();
+  el.openLabelDialog();
+  const form = $(el, "form.dialog");
+  const box = (f) => form.querySelector(`[data-f="${f}"]`);
+  const change = (f) => box(f).dispatchEvent(new Event("change"));
+  assert.equal(box("qr").checked, true);
+  assert.equal(box("name").checked, true);
+  assert.equal(box("content").checked, false);
+  box("qr").checked = false;
+  change("qr");
+  box("name").checked = false;
+  change("name");
+  assert.equal(form.querySelector("button.submit").disabled, true); // nichts gewählt
+  box("content").checked = true;
+  change("content");
+  assert.equal(form.querySelector("button.submit").disabled, false);
+  box("design").value = "vintage";
+  change("design");
+  box("layout").value = "62x29";
+  change("layout");
+  assert.equal(box("skip").closest("label").hidden, true);
+  form.querySelector("button.submit").click();
+  await flush();
+  await flush();
+  assert.equal(signed[0].path, "/api/larder/labels.pdf?layout=62x29&skip=0&content=1&qr=0&name=0&design=vintage");
+  // wird gemerkt
+  $(el, ".overlay").click();
+  el.openLabelDialog();
+  assert.equal(box("design").value, "vintage");
+  assert.equal(box("qr").checked, false);
+  assert.equal(box("content").checked, true);
 });
 
 test("Serien-Scan: NFC-Ereignisse und QR-Scanner der App wählen Dosen aus", async () => {

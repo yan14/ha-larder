@@ -12,6 +12,8 @@ export const STRINGS = {
   de: {
     title: "Larder",
     area: "Bereich",
+    compartment: "Fach",
+    compartmentHint: "z. B. Schublade 2",
     noArea: "Kein Bereich",
     content: "Inhalt",
     bestBefore: "MHD",
@@ -63,6 +65,12 @@ export const STRINGS = {
     fillTitleMany: (n) => `${n} Dosen befüllen`,
     fillPlaceholder: "z. B. Pizza, Suppe …",
     fillEstimate: "MHD automatisch schätzen",
+    barcode: "Strichcode scannen (gekaufte Ware)",
+    barcodeTitle: "Strichcode scannen",
+    barcodeDescription: "Strichcode (EAN) auf der Packung scannen, der Produktname kommt in das Feld Inhalt.",
+    barcodeFound: (name, code) => `Gefunden: ${name} (EAN ${code}). Das MHD steht auf der Packung.`,
+    barcodeNotFound: (code) => `Kein Produkt zu EAN ${code} gefunden. Bitte den Inhalt eintippen.`,
+    barcodeOffline: "Open Food Facts ist gerade nicht erreichbar. Bitte den Inhalt eintippen.",
     fillSave: "Speichern",
     fillNoContent: "Bitte einen Inhalt eingeben.",
     fillFailed: "Das Speichern ist fehlgeschlagen.",
@@ -142,6 +150,8 @@ export const STRINGS = {
   en: {
     title: "Larder",
     area: "Area",
+    compartment: "Compartment",
+    compartmentHint: "e.g. drawer 2",
     noArea: "No area",
     content: "Contents",
     bestBefore: "Best before",
@@ -192,6 +202,12 @@ export const STRINGS = {
     fillTitleMany: (n) => `Fill ${n} containers`,
     fillPlaceholder: "e.g. pizza, soup …",
     fillEstimate: "Estimate best before automatically",
+    barcode: "Scan barcode (bought food)",
+    barcodeTitle: "Scan barcode",
+    barcodeDescription: "Scan the barcode (EAN) on the package; the product name goes into Contents.",
+    barcodeFound: (name, code) => `Found: ${name} (EAN ${code}). The best-before date is printed on the package.`,
+    barcodeNotFound: (code) => `No product found for EAN ${code}. Please type the contents.`,
+    barcodeOffline: "Open Food Facts cannot be reached right now. Please type the contents.",
     fillSave: "Save",
     fillNoContent: "Please enter the contents.",
     fillFailed: "Saving failed.",
@@ -311,6 +327,8 @@ export function collectDevices(hass) {
     if (domain === "switch") {
       if (key === "shopping" || (!key && /shopping|einkaufsliste/i.test(ent.entity_id))) slot = "shopping";
       else if (key === "flexible" || (!key && /flexible|variabler_lagerort/i.test(ent.entity_id))) slot = "flexible";
+    } else if (domain === "text") {
+      if (key === "compartment" || (!key && /compartment|_fach$/i.test(ent.entity_id))) slot = "compartment";
     } else if (domain === "select") {
       if (key === "home_area" || (!key && /after_emptying|nach_dem_leeren/i.test(ent.entity_id))) slot = "homeArea";
     }
@@ -584,6 +602,11 @@ const STYLE = `
   .card.flash { animation: zwflash 3s ease-out; }
   @keyframes zwflash { 0%, 60% { box-shadow: 0 0 0 4px var(--primary-color); } 100% { box-shadow: var(--ha-card-box-shadow, 0 1px 3px rgba(0,0,0,.2)); } }
   .dialog .check { flex-direction: row; align-items: center; gap: 8px; color: var(--primary-text-color); }
+  .dialog .contentline { display: flex; gap: 8px; }
+  .dialog .contentline input { flex: 1; min-width: 0; }
+  .dialog button.barcode { flex: 0 0 auto; font-size: 13px; font-weight: 500; padding: 0 12px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
+  .dialog .barcodestatus { font-size: 13px; color: var(--secondary-text-color); margin: -4px 0 0; }
   .dialog .check[hidden] { display: none; }
   .actions button.fill { display: none; }
   .actions button.fill.visible { display: inline-block; font: inherit; padding: 7px 14px; border-radius: 8px; cursor: pointer;
@@ -710,6 +733,7 @@ class DoseCard {
       <div class="head"><span class="name"></span><a class="open"></a></div>
       <div class="arealine"></div>
       <div class="row arearow"><label data-l="area"></label><select data-f="area"></select></div>
+      <div class="row comprow"><label data-l="compartment"></label><input data-f="compartment" type="text" maxlength="60"></div>
       <div class="row"><label data-l="content"></label><input data-f="content" type="text" maxlength="255"></div>
       <div class="row quantityrow"><label data-l="quantity"></label><span class="qty"><input data-f="quantity" type="number" min="0" max="9999" step="1" inputmode="numeric"><select data-f="unit"></select><button class="take" type="button">−1</button></span></div>
       <div class="lastrow" hidden><span class="lasttext"></span><button class="lastempty" type="button"></button><button class="lastkeep" type="button"></button></div>
@@ -752,6 +776,9 @@ class DoseCard {
     this.q("a.open").addEventListener("click", () => navigate(`/config/devices/device/${this.deviceId}`));
     this.inputs.content.addEventListener("change", () => {
       if (this.ids.text) this._call("text", "set_value", { entity_id: this.ids.text, value: this.inputs.content.value });
+    });
+    this.q('[data-f="compartment"]').addEventListener("change", (ev) => {
+      if (this.ids.compartment) this._call("text", "set_value", { entity_id: this.ids.compartment, value: ev.target.value.trim() });
     });
     this.inputs.bestBefore.addEventListener("change", () => {
       const v = this.inputs.bestBefore.value;
@@ -949,6 +976,14 @@ class DoseCard {
     arealine.classList.toggle("hidden", admin);
     this.q(".arearow").classList.toggle("visible", admin);
     this.q('[data-l="area"]').textContent = t.area;
+    // Fach im Bereich (z. B. "Schublade 2")
+    const comp = states[dev.entities.compartment];
+    this.q(".comprow").style.display = comp ? "" : "none";
+    this.q('[data-l="compartment"]').textContent = t.compartment;
+    const compInput = this.q('[data-f="compartment"]');
+    compInput.placeholder = t.compartmentHint;
+    compInput.disabled = !comp || comp.state === "unavailable";
+    this._setInput(compInput, isValidState(comp) ? comp.state : "");
     if (admin) {
       const select = this.q('[data-f="area"]');
       const areas = listAreas(hass, this._panel.larderLabel, dev.areaId);
@@ -1142,6 +1177,10 @@ class LarderPanel extends HTMLElement {
           <label class="field" data-w="code" hidden><span data-l="codeLabel"></span><input type="text" data-f="code" autocomplete="off"></label>
           <label class="field"><span data-l="nameLabel"></span><input type="text" data-f="name" autocomplete="off"></label>
           <label class="field"><span data-l="area"></span><select data-f="area"></select></label>
+          <label class="check"><input type="checkbox" data-f="vacuum"><span data-l="vacuum"></span></label>
+          <label class="check" data-w="shopping" hidden><input type="checkbox" data-f="shopping"><span data-l="shopping"></span></label>
+          <label class="check"><input type="checkbox" data-f="flexible"><span data-l="flexible"></span></label>
+          <label class="field" data-w="homeArea" hidden><span data-l="homeArea"></span><select data-f="homeArea"></select></label>
           <div class="error" role="alert"></div>
           <div class="buttons"><button type="button" class="cancel"></button><button type="submit" class="submit"></button></div>
         </form>
@@ -1149,8 +1188,10 @@ class LarderPanel extends HTMLElement {
       <div class="overlay fill" hidden>
         <form class="dialog fillform" novalidate>
           <h2></h2>
-          <label class="field"><span data-l="content"></span><input type="text" data-f="content" maxlength="255" list="zs-contents" autocomplete="off"><datalist id="zs-contents"></datalist></label>
+          <label class="field"><span data-l="content"></span><span class="contentline"><input type="text" data-f="content" maxlength="255" list="zs-contents" autocomplete="off"><button type="button" class="barcode" hidden>EAN</button></span><datalist id="zs-contents"></datalist></label>
+          <div class="hint barcodestatus" role="status" hidden></div>
           <label class="field" data-w="area" hidden><span data-l="area"></span><select data-f="area"></select></label>
+          <label class="field" data-w="compartment" hidden><span data-l="compartment"></span><input type="text" data-f="compartment" maxlength="60" autocomplete="off"></label>
           <label class="field" data-w="quantity"><span data-l="quantity"></span><span class="qty"><input type="number" data-f="quantity" min="0" max="9999" step="1" inputmode="numeric"><select data-f="unit"></select></span></label>
           <label class="check" data-w="vacuum"><input type="checkbox" data-f="vacuum"><span data-l="vacuum"></span></label>
           <label class="check" data-w="shopping"><input type="checkbox" data-f="shopping"><span data-l="shopping"></span></label>
@@ -1185,6 +1226,10 @@ class LarderPanel extends HTMLElement {
       if (ev.target === this._overlay) this.closeAddDialog();
     });
     this._form.querySelector("button.cancel").addEventListener("click", () => this.closeAddDialog());
+    this._form.querySelector('[data-f="flexible"]').addEventListener("change", () => this._syncHomeArea());
+    this._form.querySelector('[data-f="area"]').addEventListener("change", () => {
+      if (this._form.querySelector('[data-f="flexible"]').checked) this._syncHomeArea();
+    });
     for (const radio of this._form.querySelectorAll('input[name="mode"]')) {
       radio.addEventListener("change", () => this._syncMode());
     }
@@ -1200,6 +1245,7 @@ class LarderPanel extends HTMLElement {
       if (ev.target === this._fillOverlay) this.closeFillDialog();
     });
     this._fillForm.querySelector("button.cancel").addEventListener("click", () => this.closeFillDialog());
+    this._fillForm.querySelector("button.barcode").addEventListener("click", () => this.scanBarcode());
     this._fillForm.addEventListener("submit", (ev) => {
       ev.preventDefault();
       this.submitFill();
@@ -1406,9 +1452,45 @@ class LarderPanel extends HTMLElement {
     this._syncMode();
     this._fillAreaOptions(t);
     this._form.querySelector('[data-f="area"]').value = "";
+    // Vorgaben der neuen Dose: Vakuum (Vorbelegung aus den Einstellungen), Einkaufsliste (nur mit Liste), variabler Lagerort
+    const f = (name) => this._form.querySelector(`[data-f="${name}"]`);
+    f("vacuum").checked = true;
+    f("shopping").checked = false;
+    f("flexible").checked = false;
+    this._form.querySelector('[data-w="shopping"]').hidden = !this._devices.some((d) => hasShoppingList((hass.states || {})[d.entities.shopping]));
+    this._syncHomeArea();
+    if (hass.callWS) {
+      hass
+        .callWS({ type: `${DOMAIN}/settings` })
+        .then((res) => {
+          if (res && typeof res.vacuum_default === "boolean") f("vacuum").checked = res.vacuum_default;
+          if (res && typeof res.shopping_list === "boolean") this._form.querySelector('[data-w="shopping"]').hidden = !res.shopping_list;
+        })
+        .catch(() => {});
+    }
     this._form.querySelector(".error").textContent = "";
     this._notice.hidden = true;
     this._overlay.hidden = false;
+  }
+
+  /** "Nach dem Leeren zurück in": nur bei variablem Lagerort, vorbelegt mit dem gewählten Bereich. */
+  _syncHomeArea() {
+    const t = strings(this._hass);
+    const flexible = this._form.querySelector('[data-f="flexible"]').checked;
+    const wrap = this._form.querySelector('[data-w="homeArea"]');
+    wrap.hidden = !flexible;
+    if (!flexible) return;
+    const select = this._form.querySelector('[data-f="homeArea"]');
+    const area = this._form.querySelector('[data-f="area"]').value;
+    select.replaceChildren(
+      ...[{ id: "", name: t.homeNone }, ...listAreas(this._hass, this.larderLabel)].map((a) => {
+        const opt = document.createElement("option");
+        opt.value = a.id;
+        opt.textContent = a.name;
+        return opt;
+      }),
+    );
+    select.value = area;
   }
 
   closeAddDialog() {
@@ -1452,6 +1534,12 @@ class LarderPanel extends HTMLElement {
     if (mode === "scan") input.qr_code = code;
     if (name) input.name = name;
     if (area) input.area_id = area;
+    const check = (f) => this._form.querySelector(`[data-f="${f}"]`).checked;
+    input.vacuum = check("vacuum");
+    if (!this._form.querySelector('[data-w="shopping"]').hidden) input.shopping = check("shopping");
+    input.flexible = check("flexible");
+    const home = this._form.querySelector('[data-f="homeArea"]').value;
+    if (input.flexible && home) input.home_area = home;
 
     this._busy = true;
     this._form.querySelector("button.submit").disabled = true;
@@ -1569,6 +1657,13 @@ class LarderPanel extends HTMLElement {
     this._fillForm.querySelector("h2").textContent = many ? t.fillTitleMany(devs.length) : `${t.fillTitle}: ${dev.name}`;
     f("content").value = !many && isValidState(text) ? text.state : "";
     f("content").placeholder = t.fillPlaceholder;
+    const barcode = this._fillForm.querySelector("button.barcode");
+    barcode.hidden = !this._hasBarcodeScanner();
+    barcode.title = t.barcode;
+    barcode.setAttribute("aria-label", t.barcode);
+    const barcodeStatus = this._fillForm.querySelector(".barcodestatus");
+    barcodeStatus.hidden = true;
+    barcodeStatus.textContent = "";
     const quantity = states[dev.entities.number];
     const nQuantity = isValidState(quantity) ? Number(quantity.state) : 0;
     f("quantity").value = nQuantity > 0 ? String(nQuantity) : "";
@@ -1596,6 +1691,14 @@ class LarderPanel extends HTMLElement {
         }),
       );
       f("area").value = current;
+    }
+    // Fach gehört zum Platz: bei variablen Dosen zusammen mit dem Bereich abfragen
+    const compWrap = this._fillForm.querySelector('[data-w="compartment"]');
+    compWrap.hidden = areaWrap.hidden || !states[flexible[0] && flexible[0].entities.compartment];
+    if (!compWrap.hidden) {
+      const comp = states[flexible[0].entities.compartment];
+      f("compartment").value = isValidState(comp) ? comp.state : "";
+      f("compartment").placeholder = t.compartmentHint;
     }
     const shop = states[dev.entities.shopping];
     f("shopping").checked = !!shop && shop.state === "on";
@@ -1637,6 +1740,64 @@ class LarderPanel extends HTMLElement {
     );
   }
 
+  /** Kann die App (Companion) Strichcodes scannen? */
+  _hasBarcodeScanner() {
+    const external = this._hass && this._hass.auth && this._hass.auth.external;
+    return !!(external && external.config && external.config.hasBarCodeScanner && typeof external._commandHandler === "function");
+  }
+
+  /** Strichcode gekaufter Ware scannen und den Produktnamen (Open Food Facts) als Inhalt eintragen. */
+  scanBarcode() {
+    const hass = this._hass;
+    const external = hass && hass.auth && hass.auth.external;
+    if (!this._hasBarcodeScanner() || typeof external.addCommandHandler !== "function" || this._barcodeScan) return;
+    const t = strings(hass);
+    const original = external._commandHandler;
+    const status = this._fillForm.querySelector(".barcodestatus");
+    const scan = {};
+    this._barcodeScan = scan;
+    const finish = () => {
+      if (this._barcodeScan !== scan) return;
+      this._barcodeScan = null;
+      external.addCommandHandler(original);
+    };
+    external.addCommandHandler((msg) => {
+      if (this._barcodeScan === scan && msg && msg.command === "bar_code/scan_result") {
+        const code = String((msg.payload && msg.payload.rawValue) || "");
+        finish();
+        external.fireMessage({ type: "bar_code/close" });
+        this._lookupProduct(code, t, status);
+      } else if (this._barcodeScan === scan && msg && msg.command === "bar_code/aborted") {
+        finish();
+      }
+      return original(msg);
+    });
+    external.fireMessage({
+      type: "bar_code/scan",
+      payload: { title: t.barcodeTitle, description: t.barcodeDescription, alternative_option_label: t.cancel },
+    });
+  }
+
+  async _lookupProduct(code, t, status) {
+    let res = null;
+    try {
+      res = await this._hass.callWS({ type: `${DOMAIN}/product`, code });
+    } catch {
+      res = { found: false, error: "unavailable" };
+    }
+    status.hidden = false;
+    if (res && res.found) {
+      const input = this._fillForm.querySelector('[data-f="content"]');
+      input.value = res.name;
+      input.dispatchEvent(new Event("input"));
+      status.textContent = t.barcodeFound(res.name, res.code);
+    } else if (res && res.error === "unavailable") {
+      status.textContent = t.barcodeOffline;
+    } else {
+      status.textContent = t.barcodeNotFound((res && res.code) || code);
+    }
+  }
+
   async submitFill() {
     const hass = this._hass;
     const devs = hass ? (this._fillDevices || []).map((id) => this._devices.find((d) => d.deviceId === id)).filter(Boolean) : [];
@@ -1658,6 +1819,7 @@ class LarderPanel extends HTMLElement {
       filled: new Date(f("filledAt").value),
       bestBefore: f("bestBefore").value,
       area: this._fillForm.querySelector('[data-w="area"]').hidden ? undefined : f("area").value,
+      compartment: this._fillForm.querySelector('[data-w="compartment"]').hidden ? undefined : f("compartment").value.trim(),
     };
     const wantEstimate =
       f("estimate").checked && !this._fillForm.querySelector('[data-w="estimate"]').hidden && !values.bestBefore;
@@ -1714,6 +1876,9 @@ class LarderPanel extends HTMLElement {
     const flex = states[ids.flexible];
     if (values.area !== undefined && flex && flex.state === "on" && (dev.areaId || "") !== values.area && hass.callWS) {
       await hass.callWS({ type: "config/device_registry/update", device_id: dev.deviceId, area_id: values.area || null });
+    }
+    if (values.compartment !== undefined && flex && flex.state === "on" && ids.compartment) {
+      await hass.callService("text", "set_value", { entity_id: ids.compartment, value: values.compartment });
     }
   }
 

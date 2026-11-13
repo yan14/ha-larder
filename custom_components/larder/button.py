@@ -46,7 +46,7 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
         record = self._history_record(history.pop_pending(self._cc))
         for entity in entities:
             await entity.async_reset()
-        self._return_home()
+        await self._async_return_home()
         if record is not None:
             history.add(record)
         if item:
@@ -79,6 +79,7 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
             filled_at=value("datetime", "filled_at"),
             best_before=value("date", "best_before"),
             outcome=outcome,
+            compartment=value("text", "compartment"),
         )
 
     def _entry_title(self) -> str:
@@ -87,7 +88,7 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
             return device.name_by_user or device.name or self._cc
         return self._cc
 
-    def _return_home(self) -> None:
+    async def _async_return_home(self) -> None:
         """Variabler Lagerort mit festem "Lagerort nach dem Leeren": Dose dorthin zurückstellen."""
         flexible = self._sibling_state("switch", "flexible")
         home = self._sibling_state("select", "home_area")
@@ -100,6 +101,12 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
         device = registry.async_get_device(identifiers={(DOMAIN, self._cc)})
         if device is not None and device.area_id != area_id:
             registry.async_update_device(device.id, area_id=area_id)
+            # zurück am festen Platz: das Fach vom vorigen Ort gilt nicht mehr
+            compartment = self._sibling_state("text", "compartment")
+            if compartment is not None and compartment.state not in ("", STATE_UNKNOWN, STATE_UNAVAILABLE):
+                await self.hass.services.async_call(
+                    "text", "set_value", {"entity_id": compartment.entity_id, "value": ""}, blocking=True
+                )
 
     def _shopping_item(self) -> tuple[str, str] | None:
         """(To-do-Liste, Eintrag), wenn die Dose beim Leeren etwas auf die Liste setzen soll."""

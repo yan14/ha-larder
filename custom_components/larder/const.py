@@ -25,6 +25,7 @@ CONF_QR_CODE = "qr_code"
 CONF_CC = "cc"  # eindeutige ID der Dose (Parameter "cc" im QR-Code)
 CONF_TC = "tc"  # Typ-/Produktcode (Parameter "tc")
 CONF_SIZE = "size"  # Größe (Parameter "s")
+CONF_INITIAL = "initial"  # Vorgaben beim Anlegen: vacuum, shopping, flexible, home_area (einmalig)
 CONF_AREA = "area_id"  # Bereich, der beim Anlegen vorgewählt wurde (wird einmalig angewendet)
 CONF_SOURCE = "source"  # "zwilling" (QR eingelesen) oder "generated" (neu erzeugt)
 

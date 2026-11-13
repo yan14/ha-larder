@@ -437,6 +437,7 @@ function adminHass(doses = [{ id: "d1", name: "Dose A", area: "kitchen" }], resp
   hass.callWS = async (msg) => {
     if (msg.type === `${D}/nfc_tags`) return { by_device: hass.nfcLinks }; // Hintergrundabruf, nicht mitzählen
     if (msg.type === "config/label_registry/list") return []; // Hintergrundabruf, nicht mitzählen
+    if (msg.type === `${D}/settings`) return { vacuum_default: hass.vacuumDefault ?? true, shopping_list: !!hass.shoppingList }; // dito
     hass.wsCalls.push(msg);
     return {};
   };
@@ -510,7 +511,7 @@ test("Dose hinzufügen: neuer QR-Code über den Config Flow, mit Name und Bereic
   assert.deepEqual(hass.apiCalls, [
     { method: "POST", path: "config/config_entries/flow", body: { handler: D, show_advanced_options: false } },
     { method: "POST", path: "config/config_entries/flow/f1", body: { next_step_id: "create" } },
-    { method: "POST", path: "config/config_entries/flow/f1", body: { name: "Suppe", area_id: "cellar" } },
+    { method: "POST", path: "config/config_entries/flow/f1", body: { name: "Suppe", area_id: "cellar", vacuum: true, flexible: false } },
   ]);
   assert.equal($(el, ".overlay").hidden, true);
 });
@@ -531,7 +532,7 @@ test("Dose hinzufügen: Zwilling-QR-Code einlesen, ungültiger Code zeigt Fehler
   $(el, "form.dialog").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
   await flush();
   assert.equal(hass.apiCalls[1].body.next_step_id, "scan");
-  assert.deepEqual(hass.apiCalls[2].body, { qr_code: "kaputt!" });
+  assert.deepEqual(hass.apiCalls[2].body, { qr_code: "kaputt!", vacuum: true, flexible: false });
   assert.equal(hass.apiCalls[3].method, "DELETE");
   assert.equal(hass.apiCalls[3].path, "config/config_entries/flow/f2");
   assert.equal($(el, ".dialog .error").textContent, "Im QR-Code wurde keine gültige ID (cc) gefunden.");
@@ -1151,6 +1152,54 @@ test("Verlauf: aufklappen lädt die letzten Einträge der Dose", async () => {
   assert.match(items[1], /01\.09\.2026 · Käse · abgelaufen/);
 });
 
+test("Strichcode im Befüllen-Dialog: Produktname aus Open Food Facts", async () => {
+  const hass = adminHass([{ id: "d1", name: "A" }]);
+  const sent = [];
+  const original = () => true;
+  const external = {
+    config: { hasBarCodeScanner: 1 },
+    _commandHandler: original,
+    addCommandHandler(h) {
+      this._commandHandler = h;
+    },
+    fireMessage: (m) => sent.push(m),
+  };
+  hass.auth = { external };
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/product`) {
+      return msg.code === "4000417025005"
+        ? { found: true, code: msg.code, name: "Zarte Haferflocken" }
+        : { found: false, code: msg.code };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  el.openFillDialog("d1");
+  const form = el.shadowRoot.querySelector("form.fillform");
+  const btn = form.querySelector("button.barcode");
+  assert.equal(btn.hidden, false);
+  btn.click();
+  assert.equal(sent[0].type, "bar_code/scan");
+  external._commandHandler({ command: "bar_code/scan_result", payload: { rawValue: "4000417025005", format: "ean_13" } });
+  await flush();
+  await flush();
+  assert.equal(sent[1].type, "bar_code/close");
+  assert.equal(external._commandHandler, original);
+  assert.equal(form.querySelector('[data-f="content"]').value, "Zarte Haferflocken");
+  assert.match(form.querySelector(".barcodestatus").textContent, /Gefunden: Zarte Haferflocken/);
+  btn.click();
+  external._commandHandler({ command: "bar_code/scan_result", payload: { rawValue: "12345678", format: "ean_8" } });
+  await flush();
+  await flush();
+  assert.match(form.querySelector(".barcodestatus").textContent, /Kein Produkt zu EAN 12345678/);
+  // ohne Scanner der App: kein Knopf
+  document.body.innerHTML = "";
+  const plain = mount(adminHass([{ id: "d1", name: "A" }]));
+  plain.openFillDialog("d1");
+  assert.equal(plain.shadowRoot.querySelector("form.fillform button.barcode").hidden, true);
+});
+
 test("Schnellaktionen: ohne Inhalt versteckt, ohne MHD ist +1 Tag gesperrt", () => {
   const empty = mount(adminHass([{ id: "d1", name: "A" }]));
   assert.equal($(empty, ".quickrow").classList.contains("visible"), false);
@@ -1280,7 +1329,7 @@ test("Dialog: 'NFC-Tag scannen' wartet auf den Tag, legt die Dose an und verknü
   assert.deepEqual(hass.apiCalls.map((c) => c.body), [
     { handler: D, show_advanced_options: false },
     { next_step_id: "create" },
-    { name: "Dose 1" },
+    { name: "Dose 1", vacuum: true, flexible: false },
   ]);
   assert.deepEqual(hass.wsCalls.pop(), { type: `${D}/nfc_link`, tag_id: "neu-tag", entry_id: "e1" });
   assert.equal($(el, ".overlay").hidden, true);
@@ -1329,7 +1378,7 @@ test("Dialog: 'Neuen NFC-Tag beschreiben' legt Dose, Tag und Verknüpfung an und
   assert.deepEqual(hass.apiCalls.map((c) => c.body), [
     { handler: D, show_advanced_options: false },
     { next_step_id: "create" },
-    { name: "Dose 1" },
+    { name: "Dose 1", vacuum: true, flexible: false },
   ]);
   const link = hass.wsCalls.find((c) => c.type === `${D}/nfc_link`);
   const created = hass.wsCalls.find((c) => c.type === "tag/create");

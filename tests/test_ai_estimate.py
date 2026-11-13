@@ -45,7 +45,7 @@ def _eid(hass: HomeAssistant, domain: str, cc: str = "34OL") -> str:
     return next(
         e.entity_id
         for e in er.async_entries_for_device(er.async_get(hass), device.id)
-        if e.domain == domain and (domain != "switch" or e.unique_id.endswith("_vacuum")) and (domain != "select" or e.unique_id.endswith("_unit"))
+        if e.domain == domain and (domain != "switch" or e.unique_id.endswith("_vacuum")) and (domain != "select" or e.unique_id.endswith("_unit")) and (domain != "text" or e.unique_id.endswith("_content"))
     )
 
 

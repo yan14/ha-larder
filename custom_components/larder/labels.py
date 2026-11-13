@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
+from functools import partial
 from http import HTTPStatus
 
 from aiohttp import web
@@ -40,6 +41,7 @@ class Layout:
     left: float  # Rand links
     gap_x: float = 0.0
     gap_y: float = 0.0
+    page: tuple[float, float] = A4  # Etikettendrucker: eine Seite pro Etikett
 
     @property
     def per_page(self) -> int:
@@ -51,7 +53,14 @@ LAYOUTS: dict[str, Layout] = {
     "3x8": Layout(3, 8, 70.0, 36.0, 4.5, 0.0),
     "3x7": Layout(3, 7, 70.0, 42.3, 0.15, 0.0),
     "2x4": Layout(2, 4, 105.0, 74.0, 0.5, 0.0),
+    # Etikettendrucker (eine Seite = ein Etikett), z. B. Brother DK-11209, Dymo 11352, Dymo 99012
+    "62x29": Layout(1, 1, 62.0, 29.0, 0.0, 0.0, page=(62.0, 29.0)),
+    "54x25": Layout(1, 1, 54.0, 25.0, 0.0, 0.0, page=(54.0, 25.0)),
+    "89x36": Layout(1, 1, 89.0, 36.0, 0.0, 0.0, page=(89.0, 36.0)),
 }
+DESIGNS = ("plain", "frame", "notched", "vintage")
+_K = 0.5523  # Bézier-Annäherung eines Viertelkreises
+_BROWN = "0.36 0.24 0.12"
 DEFAULT_LAYOUT = "3x8"
 
 
@@ -124,37 +133,136 @@ def _qr_ops(content: str, x: float, y: float, size: float) -> list[bytes]:
     return ops
 
 
-def _label_ops(label: Label, layout: Layout, index: int, border: bool, language: str) -> list[bytes]:
+def _rounded(x: float, y: float, w: float, h: float, r: float) -> bytes:
+    k = _K * r
+    return (
+        f"{x + r:.2f} {y:.2f} m {x + w - r:.2f} {y:.2f} l "
+        f"{x + w - r + k:.2f} {y:.2f} {x + w:.2f} {y + r - k:.2f} {x + w:.2f} {y + r:.2f} c "
+        f"{x + w:.2f} {y + h - r:.2f} l "
+        f"{x + w:.2f} {y + h - r + k:.2f} {x + w - r + k:.2f} {y + h:.2f} {x + w - r:.2f} {y + h:.2f} c "
+        f"{x + r:.2f} {y + h:.2f} l "
+        f"{x + r - k:.2f} {y + h:.2f} {x:.2f} {y + h - r + k:.2f} {x:.2f} {y + h - r:.2f} c "
+        f"{x:.2f} {y + r:.2f} l "
+        f"{x:.2f} {y + r - k:.2f} {x + r - k:.2f} {y:.2f} {x + r:.2f} {y:.2f} c h"
+    ).encode()
+
+
+def _notched(x: float, y: float, w: float, h: float, r: float) -> bytes:
+    """Rechteck mit nach innen gewölbten Ecken (wie ein Eintrittskarten-Etikett)."""
+    k = _K * r
+    return (
+        f"{x + r:.2f} {y:.2f} m {x + w - r:.2f} {y:.2f} l "
+        f"{x + w - r:.2f} {y + k:.2f} {x + w - k:.2f} {y + r:.2f} {x + w:.2f} {y + r:.2f} c "
+        f"{x + w:.2f} {y + h - r:.2f} l "
+        f"{x + w - k:.2f} {y + h - r:.2f} {x + w - r:.2f} {y + h - k:.2f} {x + w - r:.2f} {y + h:.2f} c "
+        f"{x + r:.2f} {y + h:.2f} l "
+        f"{x + r:.2f} {y + h - k:.2f} {x + k:.2f} {y + h - r:.2f} {x:.2f} {y + h - r:.2f} c "
+        f"{x:.2f} {y + r:.2f} l "
+        f"{x + k:.2f} {y + r:.2f} {x + r:.2f} {y + k:.2f} {x + r:.2f} {y:.2f} c h"
+    ).encode()
+
+
+def _diamond(cx: float, cy: float, s: float) -> bytes:
+    return f"{cx:.2f} {cy - s:.2f} m {cx + s:.2f} {cy:.2f} l {cx:.2f} {cy + s:.2f} l {cx - s:.2f} {cy:.2f} l h f".encode()
+
+
+def _design_ops(design: str, x: float, y: float, w: float, h: float) -> tuple[list[bytes], list[bytes], float]:
+    """(Hintergrund, Rahmen, Abstand nach innen in pt) für ein Etikett."""
+    m = 1.5 * MM
+    x, y, w, h = x + m, y + m, w - 2 * m, h - 2 * m
+    if design == "frame":
+        return [], [b"0 G 0.8 w", _rounded(x, y, w, h, 3 * MM) + b" S"], 2.5 * MM
+    if design == "notched":
+        d = 1.1 * MM
+        return [], [
+            b"0 G 0.9 w", _notched(x, y, w, h, 3.5 * MM) + b" S",
+            b"0.35 w", _notched(x + d, y + d, w - 2 * d, h - 2 * d, 3.5 * MM - d) + b" S",
+        ], 3.0 * MM
+    if design == "vintage":
+        d = 1.3 * MM
+        orn = [
+            f"{_BROWN} rg".encode(),
+            *(_diamond(cx, cy, 0.9 * MM) for cx, cy in (
+                (x + d, y + d), (x + w - d, y + d), (x + d, y + h - d), (x + w - d, y + h - d),
+                (x + w / 2, y + h - d), (x + w / 2, y + d),
+            )),
+        ]
+        return (
+            [b"0.99 0.96 0.88 rg", _rounded(x, y, w, h, 1.2 * MM) + b" f"],
+            [
+                f"{_BROWN} RG".encode(), b"1.3 w", _rounded(x, y, w, h, 1.2 * MM) + b" S",
+                b"0.4 w", _notched(x + d, y + d, w - 2 * d, h - 2 * d, 2.5 * MM) + b" S",
+                *orn, b"0 g",
+            ],
+            3.2 * MM,
+        )
+    return [], [], 0.0
+
+
+def _text_line(text: str, x: float, y: float, size: float, bold: bool) -> bytes:
+    font = b"/F2" if bold else b"/F1"
+    return b"BT " + font + f" {size} Tf {x:.3f} {y:.3f} Td (".encode() + _pdf_text(text) + b") Tj ET"
+
+
+def _label_ops(
+    label: Label,
+    layout: Layout,
+    index: int,
+    border: bool,
+    language: str,
+    show_qr: bool = True,
+    show_name: bool = True,
+    show_content: bool = False,
+    design: str = "plain",
+) -> list[bytes]:
     col, row = index % layout.cols, index // layout.cols
     x_mm = layout.left + col * (layout.width + layout.gap_x)
     y_top_mm = layout.top + row * (layout.height + layout.gap_y)
     x = x_mm * MM
-    y = (A4[1] - y_top_mm - layout.height) * MM  # PDF zählt von unten
+    y = (layout.page[1] - y_top_mm - layout.height) * MM  # PDF zählt von unten
     w, h = layout.width * MM, layout.height * MM
-    pad = 3.0 * MM
-    ops: list[bytes] = [b"q"]
+    background, frame, inset = _design_ops(design, x, y, w, h)
+    pad = 3.0 * MM + inset
+    small = layout.height < 40
+    ops: list[bytes] = [b"q", *background]
     if border:
         ops += [b"0.8 g 0.8 G 0.3 w", f"{x:.3f} {y:.3f} {w:.3f} {h:.3f} re S".encode(), b"0 g 0 G"]
-    qr_size = min(h - 2 * pad, w * 0.5)
-    ops += [b"0 g"] + _qr_ops(label.qr, x + pad, y + (h - qr_size) / 2, qr_size)
-    text_x = x + pad + qr_size + 2.5 * MM
-    text_w = x + w - pad - text_x
-    lines: list[tuple[str, float, bool]] = [(label.name, 11.0 if layout.height < 40 else 13.0, True)]
-    if label.content:
-        lines += [(part, 8.5, False) for part in _wrap(label.content, text_w, 8.5, 2)]
-    if label.best_before:
-        lines.append((f"{_TEXT[language]['best_before']}: {label.best_before}", 8.5, False))
+
+    lines: list[tuple[str, float, bool]] = []
+    big = not show_qr
+    if show_name:
+        lines.append((label.name, (13.0 if small else 15.0) if big else (11.0 if small else 13.0), True))
+    if show_content:
+        size = (10.5 if big else 8.5)
+        if label.content:
+            lines += [(part, size, not show_name and i == 0) for i, part in enumerate(_wrap(label.content, w - 2 * pad, size, 2))]
+        if label.best_before:
+            lines.append((f"{_TEXT[language]['best_before']}: {label.best_before}", size, False))
+    if not lines and not show_qr:
+        lines.append((label.name, 13.0, True))  # nichts gewählt: wenigstens der Name
+
+    if show_qr:
+        qr_size = min(h - 2 * pad, w * 0.5) if lines else min(h, w) - 2 * pad
+        qr_x = x + pad if lines else x + (w - qr_size) / 2
+        ops += [b"0 g"] + _qr_ops(label.qr, qr_x, y + (h - qr_size) / 2, qr_size)
+        text_x = x + pad + qr_size + 2.5 * MM
+        text_w = x + w - pad - text_x
+        centered = False
+    else:
+        text_x, text_w, centered = x + pad, w - 2 * pad, True
+
     total = sum(size * 1.25 for _, size, _ in lines)
     cursor = y + h / 2 + total / 2
     for text, size, bold in lines:
         cursor -= size * 1.05
-        font = b"/F2" if bold else b"/F1"
-        ops.append(
-            b"BT " + font + f" {size} Tf {text_x:.3f} {cursor:.3f} Td (".encode()
-            + _pdf_text(_fit(text, text_w, size, bold))
-            + b") Tj ET"
-        )
+        fitted = _fit(text, text_w, size, bold)
+        line_x = text_x
+        if centered:
+            line_x = text_x + max(0.0, (text_w - len(fitted) * size * _AVG[bold]) / 2)
+        ops.append(b"0 g")
+        ops.append(_text_line(fitted, line_x, cursor, size, bold))
         cursor -= size * 0.2
+    ops += frame
     ops.append(b"Q")
     return ops
 
@@ -165,6 +273,11 @@ def build_pdf(
     skip: int = 0,
     border: bool = False,
     language: str = "en",
+    *,
+    show_qr: bool = True,
+    show_name: bool = True,
+    show_content: bool = False,
+    design: str = "plain",
 ) -> bytes:
     """PDF mit allen Etiketten; `skip` lässt am Anfang schon benutzte Felder eines Bogens frei."""
     layout = LAYOUTS.get(layout_key, LAYOUTS[DEFAULT_LAYOUT])
@@ -176,7 +289,7 @@ def build_pdf(
         ops: list[bytes] = []
         for i, label in enumerate(slots[start : start + layout.per_page]):
             if label is not None:
-                ops += _label_ops(label, layout, i, border, language)
+                ops += _label_ops(label, layout, i, border, language, show_qr, show_name, show_content, design)
         pages.append(ops)
 
     objects: list[bytes] = []
@@ -190,7 +303,7 @@ def build_pdf(
     font_regular = add(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>")
     font_bold = add(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>")
     kids: list[int] = []
-    width, height = A4[0] * MM, A4[1] * MM
+    width, height = layout.page[0] * MM, layout.page[1] * MM
     for ops in pages:
         stream = b"\n".join(ops)
         content = add(b"<< /Length %d >>\nstream\n" % len(stream) + stream + b"\nendstream")
@@ -270,20 +383,28 @@ class LabelSheetView(HomeAssistantView):
             codes += [ident for domain, ident in (device.identifiers if device else ()) if domain == DOMAIN]
         if (query.get("cc") or query.get("device")) and not codes:
             return self.json_message("no containers", HTTPStatus.NOT_FOUND)
-        labels = collect_labels(hass, codes, query.get("content") == "1")
+        show_content = query.get("content") == "1"
+        labels = collect_labels(hass, codes, show_content)
         if not labels:
             return self.json_message("no containers", HTTPStatus.NOT_FOUND)
         try:
             skip = int(query.get("skip", "0"))
         except ValueError:
             skip = 0
+        design = query.get("design", "plain")
         pdf = await hass.async_add_executor_job(
-            build_pdf,
-            labels,
-            query.get("layout", DEFAULT_LAYOUT),
-            skip,
-            query.get("border") == "1",
-            hass.config.language or "en",
+            partial(
+                build_pdf,
+                labels,
+                query.get("layout", DEFAULT_LAYOUT),
+                skip,
+                query.get("border") == "1",
+                hass.config.language or "en",
+                show_qr=query.get("qr", "1") != "0",
+                show_name=query.get("name", "1") != "0",
+                show_content=show_content,
+                design=design if design in DESIGNS else "plain",
+            )
         )
         return web.Response(
             body=pdf,

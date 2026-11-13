@@ -207,7 +207,12 @@ async def ws_settings(
     estimator = await async_get_estimator(hass)
     connection.send_result(
         msg["id"],
-        {"recipe_days": estimator.recipe_days, "soon_days": estimator.soon_days},
+        {
+            "recipe_days": estimator.recipe_days,
+            "soon_days": estimator.soon_days,
+            "vacuum_default": estimator.vacuum_default,
+            "shopping_list": bool(estimator.todo_entity),
+        },
     )
 
 

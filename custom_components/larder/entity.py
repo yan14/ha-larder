@@ -11,7 +11,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import CONF_CC, CONF_SIZE, CONF_TC, DOMAIN, MANUFACTURER
+from .const import CONF_CC, CONF_INITIAL, CONF_SIZE, CONF_TC, DOMAIN, MANUFACTURER
 
 
 @dataclass
@@ -33,6 +33,8 @@ class LarderEntity(RestoreEntity):
     def __init__(self, entry: ConfigEntry) -> None:
         cc: str = entry.data[CONF_CC]
         self._cc = cc
+        # Vorgaben aus dem Anlegen-Dialog (Vakuum, Einkaufsliste, variabler Lagerort), nur beim ersten Start
+        self._initial: dict = dict(entry.data.get(CONF_INITIAL) or {})
         tc: str | None = entry.data.get(CONF_TC)
         size: str | None = entry.data.get(CONF_SIZE)
 

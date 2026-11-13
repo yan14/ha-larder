@@ -6,7 +6,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import area_registry as ar, device_registry as dr
 
 from .calendar_sync import async_get_calendar_sync, async_setup_calendar_service
-from .const import CONF_AREA, CONF_CC, DOMAIN, PLATFORMS
+from .const import CONF_AREA, CONF_CC, CONF_INITIAL, DOMAIN, PLATFORMS
 from .nfc import async_get_nfc
 from .entity import LarderConfigEntry, LarderRuntime
 from .estimate import async_get_estimator
@@ -14,6 +14,7 @@ from .expiry import async_setup_services
 from .export import async_setup_export
 from .history import async_setup_history_websocket
 from .plan import async_get_plan, async_setup_plan_websocket
+from .product import async_setup_product_websocket
 from .stats import async_setup_statistics
 from .temperature import async_get_temperature_watch
 from .labels import async_setup_labels
@@ -41,6 +42,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_history_websocket(hass)
     async_setup_statistics(hass)
     async_setup_plan_websocket(hass)
+    async_setup_product_websocket(hass)
     (await async_get_plan(hass)).async_start()
     (await async_get_calendar_sync(hass)).async_start()
     (await async_get_nfc(hass)).async_start()
@@ -61,7 +63,7 @@ def _async_apply_initial_area(hass: HomeAssistant, entry: LarderConfigEntry) -> 
     oder geleerter Bereich nicht bei jedem Neuladen überschrieben wird.
     """
     area_id = entry.data.get(CONF_AREA)
-    if CONF_AREA not in entry.data:
+    if CONF_AREA not in entry.data and CONF_INITIAL not in entry.data:
         return
     if area_id and ar.async_get(hass).async_get_area(area_id) is not None:
         device = dr.async_get(hass).async_get_device(
@@ -69,7 +71,7 @@ def _async_apply_initial_area(hass: HomeAssistant, entry: LarderConfigEntry) -> 
         )
         if device is not None and device.area_id is None:
             dr.async_get(hass).async_update_device(device.id, area_id=area_id)
-    data = {key: value for key, value in entry.data.items() if key != CONF_AREA}
+    data = {key: value for key, value in entry.data.items() if key not in (CONF_AREA, CONF_INITIAL)}
     hass.config_entries.async_update_entry(entry, data=data)
 
 

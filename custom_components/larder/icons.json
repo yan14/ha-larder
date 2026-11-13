@@ -8,6 +8,9 @@
     "text": {
       "content": {
         "default": "mdi:food-variant"
+      },
+      "compartment": {
+        "default": "mdi:tray"
       }
     },
     "button": {

@@ -38,7 +38,7 @@ export const TEXTS = {
     viewCards: "Karten mit allen Details",
     estimates: "Schätzungen",
     menuEstimates: "Gemerkte Schätzungen",
-    menuLabels: "QR-Etiketten drucken",
+    menuLabels: "Etiketten drucken",
     menuData: "Export und Import",
     menuStats: "Statistik",
     statsPeriod: "Zeitraum",
@@ -75,11 +75,18 @@ export const TEXTS = {
     dataImported: (r) => `Eingelesen: ${r.added} neu, ${r.updated} aktualisiert` + (r.kept ? `, ${r.kept} eigene behalten` : "") + (r.skipped ? `, ${r.skipped} ungültig` : "") + ".",
     dataImportFailed: "Das ist keine Datei mit Larder-Schätzungen.",
     dataLinkFailed: "Der Link konnte nicht erstellt werden.",
-    labelsTitle: "QR-Etiketten drucken",
+    labelsTitle: "Etiketten drucken",
     labelsFor: (n) => (n === null ? "Alle Dosen" : n === 1 ? "1 ausgewählte Dose" : `${n} ausgewählte Dosen`),
-    labelsLayout: "Etikettenbogen (A4)",
+    labelsLayout: "Format",
     labelsSkip: "Schon benutzte Etiketten überspringen",
-    labelsContent: "Inhalt und MHD mitdrucken (für Etiketten, die nicht dauerhaft bleiben)",
+    labelsContent: "Inhalt und MHD (für Etiketten, die nicht dauerhaft bleiben)",
+    labelsWhat: "Was aufs Etikett kommt (mindestens eins):",
+    labelsQr: "QR-Code",
+    labelsName: "Name der Dose",
+    labelsDesign: "Design",
+    labelsDesigns: { plain: "Schlicht", frame: "Rahmen", notched: "Eingekerbte Ecken", vintage: "Vintage" },
+    labelsSheets: "A4-Bögen",
+    labelsPrinters: "Etikettendrucker",
     labelsBorder: "Schnittlinien (für normales Papier)",
     labelsOpen: "PDF öffnen",
     labelsCreate: "PDF erstellen",
@@ -264,7 +271,7 @@ export const TEXTS = {
     viewCards: "Cards with all details",
     estimates: "Estimates",
     menuEstimates: "Remembered estimates",
-    menuLabels: "Print QR labels",
+    menuLabels: "Print labels",
     menuData: "Export and import",
     menuStats: "Statistics",
     statsPeriod: "Period",
@@ -301,11 +308,18 @@ export const TEXTS = {
     dataImported: (r) => `Imported: ${r.added} new, ${r.updated} updated` + (r.kept ? `, ${r.kept} own kept` : "") + (r.skipped ? `, ${r.skipped} invalid` : "") + ".",
     dataImportFailed: "This is not a file with Larder estimates.",
     dataLinkFailed: "The link could not be created.",
-    labelsTitle: "Print QR labels",
+    labelsTitle: "Print labels",
     labelsFor: (n) => (n === null ? "All containers" : n === 1 ? "1 selected container" : `${n} selected containers`),
-    labelsLayout: "Label sheet (A4)",
+    labelsLayout: "Format",
     labelsSkip: "Skip labels already used",
-    labelsContent: "Print contents and best-before date (for labels that will not stay)",
+    labelsContent: "Contents and best-before date (for labels that will not stay)",
+    labelsWhat: "What goes on the label (at least one):",
+    labelsQr: "QR code",
+    labelsName: "Container name",
+    labelsDesign: "Design",
+    labelsDesigns: { plain: "Plain", frame: "Frame", notched: "Notched corners", vintage: "Vintage" },
+    labelsSheets: "A4 sheets",
+    labelsPrinters: "Label printers",
     labelsBorder: "Cutting lines (for plain paper)",
     labelsOpen: "Open PDF",
     labelsCreate: "Create PDF",
@@ -511,7 +525,9 @@ export function describeDevices(hass, devices, now = new Date()) {
     const content = isValid(text) ? text.state.trim() : "";
     const days = isValid(date) ? daysUntil(date.state, now) : null;
     const category = content ? (text.attributes && text.attributes.category) || "other" : "empty";
-    return { dev, id: dev.deviceId, name: dev.name, content, days, soon: soonDaysOf(date), category, areaId: dev.areaId, areaName: dev.areaName };
+    const comp = states[dev.entities.compartment];
+    const compartment = isValid(comp) ? comp.state.trim() : "";
+    return { dev, id: dev.deviceId, name: dev.name, content, days, soon: soonDaysOf(date), category, areaId: dev.areaId, areaName: dev.areaName, compartment };
   });
 }
 
@@ -529,7 +545,7 @@ function sortRows(rows, sort, lang) {
   };
   const out = [...rows];
   if (sort === "name") out.sort((a, b) => cmp(a.content || "￿" + a.name, b.content || "￿" + b.name));
-  else if (sort === "area") out.sort((a, b) => cmp(a.areaName || "￿", b.areaName || "￿") || byDate(a, b));
+  else if (sort === "area") out.sort((a, b) => cmp(a.areaName || "￿", b.areaName || "￿") || cmp(a.compartment || "", b.compartment || "") || byDate(a, b));
   else if (sort === "category") out.sort((a, b) => cmp(a.category, b.category) || byDate(a, b));
   else out.sort(byDate);
   return out;
@@ -601,7 +617,16 @@ export async function preparePhoto(file) {
 }
 
 /** Etikettenbögen wie in labels.py (Felder pro Bogen für "überspringen"). */
-const LABEL_LAYOUTS = { "3x8": { per: 24, size: "70 × 36 mm" }, "3x7": { per: 21, size: "70 × 42,3 mm" }, "2x4": { per: 8, size: "105 × 74 mm" } };
+const LABEL_LAYOUTS = {
+  "3x8": { per: 24, size: "70 × 36 mm" },
+  "3x7": { per: 21, size: "70 × 42,3 mm" },
+  "2x4": { per: 8, size: "105 × 74 mm" },
+  // Etikettendrucker: eine Seite pro Etikett
+  "62x29": { per: 1, size: "Brother DK-11209", printer: true },
+  "54x25": { per: 1, size: "Dymo 11352", printer: true },
+  "89x36": { per: 1, size: "Dymo 99012", printer: true },
+};
+const LABEL_DESIGNS = ["plain", "frame", "notched", "vintage"];
 
 function loadOptions() {
   try {
@@ -614,6 +639,8 @@ function loadOptions() {
       recipePeriod: RECIPE_PERIODS.includes(raw.recipePeriod) ? raw.recipePeriod : "default",
       recipeServings: Number.isInteger(raw.recipeServings) && raw.recipeServings >= 0 && raw.recipeServings <= 12 ? raw.recipeServings : 0,
       labelLayout: LABEL_LAYOUTS[raw.labelLayout] ? raw.labelLayout : "3x8",
+      labelDesign: LABEL_DESIGNS.includes(raw.labelDesign) ? raw.labelDesign : "plain",
+      labelParts: raw.labelParts && typeof raw.labelParts === "object" ? raw.labelParts : { qr: true, name: true, content: false },
     };
   } catch {
     return { mode: "grid", sort: "date", areaSort: "name", recipeSort: "newest", recipePeriod: "default" };
@@ -1131,7 +1158,7 @@ export class LarderDashboard extends HTMLElement {
       this._filter,
       this._opts,
       t.title,
-      rows.map((r) => [r.id, r.name, r.content, r.days, r.category, r.areaId, r.areaName]),
+      rows.map((r) => [r.id, r.name, r.content, r.days, r.category, r.areaId, r.areaName, r.compartment]),
       hass.user && hass.user.name,
       isAdmin(hass),
       this._canGenerate(),
@@ -1220,7 +1247,7 @@ export class LarderDashboard extends HTMLElement {
     tile.dataset.id = row.id;
     tile.append(el("span", "ico", CATEGORY_ICONS[row.category] || CATEGORY_ICONS.other));
     tile.append(el("span", "name", empty ? t.empty : row.content));
-    tile.append(el("span", "sub", showArea && row.areaName ? `${row.name} · ${row.areaName}` : row.name));
+    tile.append(el("span", "sub", [row.name, showArea ? row.areaName : null, row.compartment].filter(Boolean).join(" · ")));
     if (!empty && row.days !== null) tile.append(el("span", `badge ${dayClass(row)}`, daysLabel(t, row.days)));
     this._markSelected(tile, row);
     tile.addEventListener("click", () => this.openContainer(row));
@@ -1234,7 +1261,7 @@ export class LarderDashboard extends HTMLElement {
     btn.dataset.id = row.id;
     const text = el("span", "text");
     text.append(el("span", "name", empty ? t.empty : row.content));
-    text.append(el("span", "sub", row.areaName ? `${row.name} · ${row.areaName}` : row.name));
+    text.append(el("span", "sub", [row.name, row.areaName, row.compartment].filter(Boolean).join(" · ")));
     btn.append(el("span", "ico", CATEGORY_ICONS[row.category] || CATEGORY_ICONS.other), text);
     if (!empty && row.days !== null) btn.append(el("span", `badge ${dayClass(row)}`, daysLabel(t, row.days)));
     this._markSelected(btn, row);
@@ -1743,7 +1770,7 @@ export class LarderDashboard extends HTMLElement {
     else if (problem === "nodate") rows = rows.filter((r) => r.content !== "" && r.days === null);
     else if (problem === "longexpired") rows = rows.filter((r) => r.content !== "" && r.days !== null && r.days <= -7);
     const q = (this._query || "").trim().toLowerCase();
-    if (q) rows = rows.filter((r) => [r.name, r.content, r.areaName || ""].some((v) => v.toLowerCase().includes(q)));
+    if (q) rows = rows.filter((r) => [r.name, r.content, r.areaName || "", r.compartment || ""].some((v) => v.toLowerCase().includes(q)));
     return sortRows(rows, this._opts.sort, this._lang());
   }
 
@@ -2997,29 +3024,56 @@ export class LarderDashboard extends HTMLElement {
       wrap.append(control);
       return wrap;
     };
-    const check = (label, name) => {
+    const check = (label, name, checked = false) => {
       const wrap = el("label", "check");
       const box = el("input");
       box.type = "checkbox";
       box.dataset.f = name;
+      box.checked = checked;
       wrap.append(box, el("span", "", label));
       return wrap;
     };
     const layout = el("select");
     layout.dataset.f = "layout";
+    const sheets = el("optgroup");
+    sheets.label = t.labelsSheets;
+    const printers = el("optgroup");
+    printers.label = t.labelsPrinters;
     for (const [key, info] of Object.entries(LABEL_LAYOUTS)) {
-      const o = el("option", "", `${key.replace("x", " × ")} (${info.size})`);
+      const [w, h] = key.split("x");
+      const o = el("option", "", info.printer ? `${w} × ${h} mm (${info.size})` : `${w} × ${h} (${info.size})`);
       o.value = key;
-      layout.append(o);
+      (info.printer ? printers : sheets).append(o);
     }
+    layout.append(sheets, printers);
     layout.value = this._opts.labelLayout;
+    const design = el("select");
+    design.dataset.f = "design";
+    for (const key of LABEL_DESIGNS) {
+      const o = el("option", "", t.labelsDesigns[key]);
+      o.value = key;
+      design.append(o);
+    }
+    design.value = this._opts.labelDesign;
+    const parts = this._opts.labelParts;
+    const what = el("div", "checks");
+    what.dataset.role = "label-parts";
+    what.append(
+      check(t.labelsQr, "qr", parts.qr !== false),
+      check(t.labelsName, "name", parts.name !== false),
+      check(t.labelsContent, "content", !!parts.content),
+    );
     const skip = el("input");
     skip.type = "number";
     skip.min = "0";
     skip.inputMode = "numeric";
     skip.dataset.f = "skip";
     skip.value = "0";
-    const syncMax = () => (skip.max = String(LABEL_LAYOUTS[layout.value].per - 1));
+    const skipField = field(t.labelsSkip, skip);
+    const syncMax = () => {
+      skip.max = String(LABEL_LAYOUTS[layout.value].per - 1);
+      skipField.hidden = !!LABEL_LAYOUTS[layout.value].printer; // Etikettendrucker: nichts zu überspringen
+    };
     syncMax();
     layout.addEventListener("change", syncMax);
     const error = el("div", "error");
@@ -3035,19 +3089,26 @@ export class LarderDashboard extends HTMLElement {
       el("h2", "", t.labelsTitle),
       el("p", "hint", t.labelsFor(deviceIds ? deviceIds.length : null)),
       field(t.labelsLayout, layout),
-      field(t.labelsSkip, skip),
-      check(t.labelsContent, "content"),
+      skipField,
+      el("div", "hint", t.labelsWhat),
+      what,
+      field(t.labelsDesign, design),
       check(t.labelsBorder, "border"),
       el("p", "hint", t.labelsHint),
       error,
       buttons,
     );
-    // geänderte Optionen: alten Link verwerfen
+    // geänderte Optionen: alten Link verwerfen; mindestens eins von QR-Code, Name, Inhalt
+    const syncParts = () => {
+      submit.disabled = !["qr", "name", "content"].some((f) => form.querySelector(`[data-f="${f}"]`).checked);
+    };
+    syncParts();
     for (const control of form.querySelectorAll("[data-f]")) {
       control.addEventListener("change", () => {
         const link = form.querySelector("a.pdf");
         if (link) link.remove();
         submit.textContent = t.labelsCreate;
+        syncParts();
       });
     }
     this._submit = () => this._openLabels(deviceIds);
@@ -3055,13 +3116,16 @@ export class LarderDashboard extends HTMLElement {
   }
 
   /** URL des PDFs (signiert, damit sie sich ohne Anmeldung im Browser der App öffnen lässt). */
-  async labelUrl(deviceIds, { layout, skip, content, border }) {
+  async labelUrl(deviceIds, { layout, skip, content, border, qr = true, name = true, design = "plain" }) {
     const params = new URLSearchParams();
     if (deviceIds && deviceIds.length) params.set("device", deviceIds.join(","));
     params.set("layout", layout);
     params.set("skip", String(skip));
     if (content) params.set("content", "1");
     if (border) params.set("border", "1");
+    if (!qr) params.set("qr", "0");
+    if (!name) params.set("name", "0");
+    if (design !== "plain") params.set("design", design);
     const path = `/api/${DOMAIN}/labels.pdf?${params}`;
     const signed = await this._hass.callWS({ type: "auth/sign_path", path, expires: 300 });
     return this._hass.hassUrl ? this._hass.hassUrl(signed.path) : signed.path;
@@ -3077,14 +3141,18 @@ export class LarderDashboard extends HTMLElement {
     const value = (name) => form.querySelector(`[data-f="${name}"]`);
     const layout = value("layout").value;
     const per = LABEL_LAYOUTS[layout].per;
-    const skip = Math.min(Math.max(parseInt(value("skip").value, 10) || 0, 0), per - 1);
+    const skip = LABEL_LAYOUTS[layout].printer ? 0 : Math.min(Math.max(parseInt(value("skip").value, 10) || 0, 0), per - 1);
+    const parts = { qr: value("qr").checked, name: value("name").checked, content: value("content").checked };
+    const design = value("design").value;
     this._opts.labelLayout = layout;
+    this._opts.labelDesign = design;
+    this._opts.labelParts = parts;
     saveOptions(this._opts);
     const error = form.querySelector(".error");
     error.textContent = "";
     let url;
     try {
-      url = await this.labelUrl(deviceIds, { layout, skip, content: value("content").checked, border: value("border").checked });
+      url = await this.labelUrl(deviceIds, { layout, skip, border: value("border").checked, ...parts, design });
     } catch {
       error.textContent = t.labelsFailed;
       return;

@@ -64,6 +64,8 @@ class LarderHomeArea(SelectEntity, LarderEntity):
         await super().async_added_to_hass()
         if (last := await self._async_last_state()) is not None:
             self._area_id = last.attributes.get("area_id") or None
+        else:
+            self._area_id = self._initial.get("home_area") or None
         self._refresh()
         self.async_on_remove(self.hass.bus.async_listen(ar.EVENT_AREA_REGISTRY_UPDATED, self._areas_changed))
 

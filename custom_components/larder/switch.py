@@ -36,6 +36,8 @@ class LarderVacuumSwitch(SwitchEntity, LarderEntity):
         await super().async_added_to_hass()
         if (last := await self._async_last_state()) is not None:
             self._attr_is_on = last.state == "on"
+        elif "vacuum" in self._initial:
+            self._attr_is_on = bool(self._initial["vacuum"])
         else:
             self._attr_is_on = (await async_get_estimator(self.hass)).vacuum_default
 
@@ -66,6 +68,8 @@ class LarderShoppingSwitch(SwitchEntity, LarderEntity):
         )
         if (last := await self._async_last_state()) is not None:
             self._attr_is_on = last.state == "on"
+        else:
+            self._attr_is_on = bool(self._initial.get("shopping", False))
 
     @property
     def extra_state_attributes(self) -> dict[str, str | None]:
@@ -96,6 +100,8 @@ class LarderFlexibleSwitch(SwitchEntity, LarderEntity):
         await super().async_added_to_hass()
         if (last := await self._async_last_state()) is not None:
             self._attr_is_on = last.state == "on"
+        else:
+            self._attr_is_on = bool(self._initial.get("flexible", False))
 
     async def async_turn_on(self, **kwargs) -> None:
         self._attr_is_on = True

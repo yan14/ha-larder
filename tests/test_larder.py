@@ -100,6 +100,7 @@ async def test_flow_creates_device_with_entities(hass: HomeAssistant) -> None:
         "34OL_portions",
         "34OL_unit",
         "34OL_flexible",
+        "34OL_compartment",
         "34OL_home_area",
         "34OL_days_left",
     }
@@ -329,3 +330,54 @@ async def test_flexible_container_returns_to_its_home_area_when_emptied(hass: Ho
     areas.async_delete(pantry.id)
     await hass.async_block_till_done()
     assert hass.states.get(home).state == "none" and hass.states.get(home).attributes["area_id"] is None
+
+
+async def test_initial_options_from_add_dialog(hass: HomeAssistant) -> None:
+    """Vakuum, Einkaufsliste, variabler Lagerort und Lagerort nach dem Leeren gleich beim Anlegen."""
+    from homeassistant.helpers import area_registry as ar, entity_registry as er
+
+    area = ar.async_get(hass).async_get_or_create("Vorratskammer")
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": "user"})
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"next_step_id": "create"})
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"name": "Neue", "vacuum": False, "shopping": True, "flexible": True, "home_area": area.id}
+    )
+    assert result["type"] == "create_entry"
+    await hass.async_block_till_done()
+    entry = result["result"]
+    assert "initial" not in entry.data  # nur einmal angewendet
+    cc = entry.data["cc"]
+    registry = er.async_get(hass)
+    state = lambda platform, key: hass.states.get(registry.async_get_entity_id(platform, DOMAIN, f"{cc}_{key}"))  # noqa: E731
+    assert state("switch", "vacuum").state == "off"
+    assert state("switch", "shopping").state == "on"
+    assert state("switch", "flexible").state == "on"
+    assert state("select", "home_area").attributes["area_id"] == area.id
+
+
+async def test_compartment_stays_on_emptying_and_resets_when_returning_home(hass: HomeAssistant) -> None:
+    from homeassistant.helpers import area_registry as ar, device_registry as dr, entity_registry as er
+
+    result = await hass.config_entries.flow.async_init(DOMAIN, context={"source": "user"})
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"next_step_id": "create"})
+    home = ar.async_get(hass).async_get_or_create("Vorratskammer")
+    result = await hass.config_entries.flow.async_configure(result["flow_id"], {"name": "Box"})
+    await hass.async_block_till_done()
+    cc = result["result"].data["cc"]
+    reg = er.async_get(hass)
+    eid = lambda platform, key: reg.async_get_entity_id(platform, DOMAIN, f"{cc}_{key}")  # noqa: E731
+    await hass.services.async_call("text", "set_value", {"entity_id": eid("text", "compartment"), "value": " Schublade 2 "}, blocking=True)
+    assert hass.states.get(eid("text", "compartment")).state == "Schublade 2"
+    await hass.services.async_call("text", "set_value", {"entity_id": eid("text", "content"), "value": "Lachs"}, blocking=True)
+    await hass.services.async_call("button", "press", {"entity_id": eid("button", "empty_container")}, blocking=True)
+    assert hass.states.get(eid("text", "compartment")).state == "Schublade 2"  # fester Platz: bleibt
+
+    # variable Dose: beim Zurückstellen an den festen Platz wird das Fach geleert
+    await hass.services.async_call("switch", "turn_on", {"entity_id": eid("switch", "flexible")}, blocking=True)
+    await hass.services.async_call("select", "select_option", {"entity_id": eid("select", "home_area"), "option": "Vorratskammer"}, blocking=True)
+    await hass.services.async_call("text", "set_value", {"entity_id": eid("text", "content"), "value": "Reis"}, blocking=True)
+    await hass.services.async_call("button", "press", {"entity_id": eid("button", "empty_container")}, blocking=True)
+    await hass.async_block_till_done()
+    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, cc)})
+    assert device.area_id == home.id
+    assert hass.states.get(eid("text", "compartment")).state == ""

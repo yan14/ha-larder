@@ -15,7 +15,11 @@
         "data": {
           "qr_code": "QR code content or ID",
           "name": "Name (optional)",
-          "area_id": "Area (optional)"
+          "area_id": "Area (optional)",
+          "vacuum": "Vacuum",
+          "shopping": "Add to shopping list when emptied",
+          "flexible": "Flexible storage place",
+          "home_area": "After emptying, back to"
         }
       },
       "create": {
@@ -23,7 +27,11 @@
         "description": "A new unique ID is generated (format `HA-XXXXXXXX`) that cannot collide with Zwilling codes. Afterwards you find the matching QR code as an image on the device, ready to print and stick on.",
         "data": {
           "name": "Name (optional)",
-          "area_id": "Area (optional)"
+          "area_id": "Area (optional)",
+          "vacuum": "Vacuum",
+          "shopping": "Add to shopping list when emptied",
+          "flexible": "Flexible storage place",
+          "home_area": "After emptying, back to"
         }
       },
       "reconfigure": {
@@ -52,6 +60,9 @@
     "text": {
       "content": {
         "name": "Contents"
+      },
+      "compartment": {
+        "name": "Compartment"
       }
     },
     "button": {

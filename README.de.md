@@ -97,6 +97,7 @@ Es gibt vier Wege. Für die beiden NFC-Wege brauchst du die Home Assistant App a
 - **Zwilling-QR-Code einlesen** braucht den Inhalt des originalen Codes oder nur die ID. Kommst du von [📷 in der App](#scannen-in-der-app) oder vom iOS-Kurzbefehl, ist das Feld schon ausgefüllt.
 - **Neuen NFC-Tag beschreiben** erscheint nur in der App auf einem Handy, das Tags beschreiben kann. Bei **NFC-Tag scannen** hältst du das Handy an den Tag. Details unter [NFC-Tags](#nfc-tags).
 - Name und Bereich sind optional. Beides lässt sich später ändern (den Bereich direkt auf der Karte).
+- **Vakuum**, **Beim Leeren auf die Einkaufsliste** (sobald eine Einkaufsliste gewählt ist) und **Variabler Lagerort** mit **Nach dem Leeren zurück in** lassen sich gleich mit setzen; ändern kannst du sie später auf der Karte.
 
 ### Über die Integration
 
@@ -196,12 +197,12 @@ Eine Leiste unten wechselt zwischen fünf Seiten:
 
 **Die Karte einer Dose** (in der Kartenansicht oder nach dem Antippen) zeigt alles und lässt es dich ändern:
 
-- Bereich (Auswahlfeld; welche Bereiche angeboten werden, lässt sich mit einem Label eingrenzen, siehe [Bereiche und Labels](#bereiche-und-labels)), **Inhalt**, **Menge und Einheit** (**−1** entnimmt eine Portion, ein Stück oder eine Scheibe; bei der letzten fragt es, ob die Dose geleert werden soll), **MHD** (mit Hinweis „abgelaufen“ oder „noch n Tage“, sobald es bald abläuft), **Eingelagert am** („Jetzt“ setzt die aktuelle Zeit),
+- Bereich (Auswahlfeld; welche Bereiche angeboten werden, lässt sich mit einem Label eingrenzen, siehe [Bereiche und Labels](#bereiche-und-labels)), **Fach** (optional, z. B. „Schublade 2“ im Gefrierschrank; steht auf der Kachel, ist durchsuchbar und wird mit dem Bereich sortiert), **Inhalt**, **Menge und Einheit** (**−1** entnimmt eine Portion, ein Stück oder eine Scheibe; bei der letzten fragt es, ob die Dose geleert werden soll), **MHD** (mit Hinweis „abgelaufen“ oder „noch n Tage“, sobald es bald abläuft), **Eingelagert am** („Jetzt“ setzt die aktuelle Zeit),
 - **+1 Tag** verschiebt das MHD um einen Tag, **Geöffnet** kürzt es auf die in den Einstellungen gesetzte Zahl Tage (Standard 3), **Aufgetaut** macht dasselbe für Essen aus dem Gefrierfach (Standard 2 Tage, nicht wieder einfrieren). Beides verlängert nie ein Datum; ohne Datum wird eines gesetzt,
 - **MHD schätzen** (wenn die [Schätzung](#mhd-schätzung) aktiv ist, ein Inhalt eingetragen und das MHD leer ist),
 - **Vakuum**, **Beim Leeren auf die Einkaufsliste** (sobald eine [Einkaufsliste](#einkaufsliste) gewählt ist), **Variabler Lagerort** mit **Nach dem Leeren zurück in** (siehe [Dosen befüllen](#dosen-befüllen)), der **NFC-Tag** (verknüpfen oder lösen), **Gerät öffnen** und **Behälter leeren**. Vor dem Leeren fragt die Karte **😋 Gegessen** oder **🗑 Weggeworfen**; die Antwort kommt in den **Verlauf** der Dose (aufklappbare Liste unten auf der Karte, die letzten zehn Befüllungen).
 
-**⋮** oben öffnet ein Menü: **📊 Statistik** und **🖨 QR-Etiketten drucken** für alle, **📦 Export und Import**, die [gemerkten Schätzungen](#gemerkte-schätzungen-verwalten) und die Einstellungen der Integration für Administratoren. Das ☰ links ist die Seitenleiste von Home Assistant.
+**⋮** oben öffnet ein Menü: **📊 Statistik** und **🖨 Etiketten drucken** für alle, **📦 Export und Import**, die [gemerkten Schätzungen](#gemerkte-schätzungen-verwalten) und die Einstellungen der Integration für Administratoren. Das ☰ links ist die Seitenleiste von Home Assistant.
 
 <p>
 <img src="docs/images/dashboard-areas-de.png" width="250" alt="Bereiche">
@@ -240,9 +241,11 @@ Danach alle auf einmal befüllen oder Rezeptideen holen. So geht eine Inventur d
 
 Eine leere Dose zeigt den Button **Befüllen**. Er öffnet einen kleinen Dialog: **Inhalt** (mit Vorschlägen aus früheren Eingaben, neueste zuerst, danach deine gemerkten Schätzungen), **Menge und Einheit** (optional), **Vakuum**, **Befüllt am** (vorbelegt mit jetzt), optional ein **MHD** und **MHD automatisch schätzen** (nur wenn die Schätzung aktiv und das MHD leer ist). **Speichern** setzt alles und schätzt das MHD.
 
+**Gekaufte Ware:** In der Home Assistant App scannt der Knopf **EAN** neben dem Inhalt den Strichcode auf der Packung und trägt den Produktnamen aus [Open Food Facts](https://de.openfoodfacts.org) ein (freie Produktdatenbank, braucht Internet). Das MHD steht auf der Packung; trag es im Dialog ein. Nichts gefunden oder offline: Inhalt wie gewohnt eintippen.
+
 Der Dialog öffnet sich auch von selbst direkt nach dem Anlegen einer neuen Dose im Dashboard (auch nach dem Beschreiben eines NFC-Tags), sodass du sie gleich befüllen kannst. Ebenso nach einem Scan (📷 in der App, eigener QR-Code, NFC-Tag, Kurzbefehl), wenn die Dose leer ist; eine Dose mit Inhalt öffnet ihre Karte.
 
-**Dosen, die umziehen:** Manche Dosen stehen immer am selben Ort, andere (z. B. Vakuumdosen) mal im Kühlschrank, mal im 0-Grad-Fach. Schalte bei solchen Dosen auf der Karte **Variabler Lagerort** ein. Dann fragt der Befüll-Dialog auch nach dem **Bereich** (Administratoren), damit die Schätzung den richtigen Ort nimmt, und **Behälter leeren** stellt die Dose zurück in den Bereich unter **Nach dem Leeren zurück in** (z. B. den Vorratsraum, in dem die leeren Dosen stehen). Dosen ohne den Schalter behalten ihren Bereich, und der Dialog fragt nicht.
+**Dosen, die umziehen:** Manche Dosen stehen immer am selben Ort, andere (z. B. Vakuumdosen) mal im Kühlschrank, mal im 0-Grad-Fach. Schalte bei solchen Dosen auf der Karte **Variabler Lagerort** ein. Dann fragt der Befüll-Dialog auch nach dem **Bereich** (Administratoren), damit die Schätzung den richtigen Ort nimmt, und **Behälter leeren** stellt die Dose zurück in den Bereich unter **Nach dem Leeren zurück in** (z. B. den Vorratsraum, in dem die leeren Dosen stehen). Dosen ohne den Schalter behalten ihren Bereich, und der Dialog fragt nicht. Bei variablen Dosen fragt der Dialog auch nach dem **Fach**; kommt die Dose nach dem Leeren zurück, wird das Fach geleert.
 
 **Mehrere Dosen auf einmal:** Die leeren Dosen auswählen (oder nacheinander scannen) und **Befüllen (n)** drücken: Derselbe Dialog befüllt alle, siehe [Mehrere Dosen auswählen](#mehrere-dosen-auswählen).
 
@@ -440,7 +443,7 @@ Der Kalender muss Termine anlegen **und** löschen können. Reine Lese-Kalender 
 
 Im Dashboard **⋮ → 📦 Export und Import** (Administratoren):
 
-- **📄 Bestand als Tabelle (CSV)**: alle Dosen mit Name, ID, Bereich, Inhalt, Menge, Einheit, Eingelagert am, MHD, Tage übrig, Status und Vakuum. Auf Deutsch mit Semikolon, damit Excel sie direkt öffnet.
+- **📄 Bestand als Tabelle (CSV)**: alle Dosen mit Name, ID, Bereich, Fach, Inhalt, Menge, Einheit, Eingelagert am, MHD, Tage übrig, Status und Vakuum. Auf Deutsch mit Semikolon, damit Excel sie direkt öffnet.
 - **🕘 Verlauf (CSV)**: jede geleerte Befüllung mit Dose, Inhalt, Menge, Eingelagert am, MHD, Geleert am, Tage gelagert, ob sie abgelaufen war und ob sie gegessen oder weggeworfen wurde. Ohne die Frage geleerte Dosen (Automation, Geräteseite) haben kein Ergebnis.
 - **💾 Gemerkte Schätzungen (Sicherung)**: alle [gemerkten MHD-Werte](#gemerkte-schätzungen-verwalten) als JSON-Datei.
 - **Schätzungen einlesen**: liest so eine Datei wieder ein, z. B. nach einer Neuinstallation oder auf einem zweiten Home Assistant. Eigene Korrekturen bleiben, wenn die Datei für dieselbe Kombination nur einen Tabellen- oder KI-Wert hat; mit **Vorhandene Schätzungen vorher löschen** ersetzt die Datei alles. Ungültige Einträge werden übersprungen und gezählt.
@@ -529,14 +532,15 @@ Dieselben Codes funktionieren im [Serien-Scan](#mehrere-dosen-auswählen) des Da
 
 #### Etikettenbogen
 
-Viele Codes auf einmal drucken: im Dashboard **⋮ → 🖨 QR-Etiketten drucken** (alle Dosen) oder Dosen auswählen und **🖨 Etiketten**. Dann wählst du
+Viele Etiketten auf einmal drucken: im Dashboard **⋮ → 🖨 Etiketten drucken** (alle Dosen) oder Dosen auswählen und **🖨 Etiketten**. Dann wählst du
 
-- den **Etikettenbogen**: A4 mit 3 × 8 (70 × 36 mm), 3 × 7 (70 × 42,3 mm) oder 2 × 4 (105 × 74 mm) Etiketten, wie es sie von Avery Zweckform, Herma und anderen gibt,
-- **Schon benutzte Etiketten überspringen**, um auf einem angebrochenen Bogen weiterzumachen,
-- **Inhalt und MHD mitdrucken**, für Etiketten, die nicht dauerhaft auf der Dose bleiben (sonst steht nur der Name drauf, so bleibt das Etikett gültig, wenn sich der Inhalt ändert),
+- das **Format**: einen A4-Bogen mit 3 × 8 (70 × 36 mm), 3 × 7 (70 × 42,3 mm) oder 2 × 4 (105 × 74 mm) Etiketten, wie es sie von Avery Zweckform, Herma und anderen gibt, oder einen **Etikettendrucker** (62 × 29 mm wie Brother DK-11209, 54 × 25 mm wie Dymo 11352, 89 × 36 mm wie Dymo 99012; ein Etikett pro Seite),
+- **Schon benutzte Etiketten überspringen** (nur A4), um auf einem angebrochenen Bogen weiterzumachen,
+- **was aufs Etikett kommt**, mindestens eins von: **QR-Code**, **Name der Dose**, **Inhalt und MHD**. Ohne QR-Code steht der Text größer in der Mitte, schön für Dosen mit [NFC-Tag](#nfc-tags). Inhalt und MHD sind für Etiketten gedacht, die nicht dauerhaft bleiben (z. B. Gefrierbeutel); nur mit dem Namen bleibt das Etikett gültig, wenn sich der Inhalt ändert,
+- das **Design**: schlicht, Rahmen, eingekerbte Ecken oder Vintage (Altpapier-Look mit Verzierungen),
 - **Schnittlinien**, für normales Papier.
 
-**PDF erstellen** erzeugt einen Link, dann **PDF öffnen** antippen. In der Home Assistant App öffnet es sich im Browser, von dort druckst oder teilst du es. Mit **100 %** drucken (nicht „an Seite anpassen“), damit die Codes auf die Etiketten treffen. Der Link gilt fünf Minuten.
+**PDF erstellen** erzeugt einen Link, dann **PDF öffnen** antippen. In der Home Assistant App öffnet es sich im Browser, von dort druckst oder teilst du es. Mit **100 %** drucken (nicht „an Seite anpassen“), damit die Codes auf die Etiketten treffen. Der Link gilt fünf Minuten. Deine Auswahl merkt sich das Gerät.
 
 ### NFC-Tags
 
@@ -605,6 +609,7 @@ Pro Dose entsteht ein Gerät (eindeutig über die ID, den Parameter `cc` eines Z
 | **Befüllt am** | `datetime` | Wann wurde die Dose befüllt? |
 | **MHD** | `date` | Mindesthaltbarkeitsdatum |
 | **Inhalt** | `text` | Was ist in der Dose? |
+| **Fach** | `text` | Optionaler Platz im Bereich, z. B. „Schublade 2“. Bleibt beim Leeren; wird geleert, wenn eine variable Dose an ihren Lagerort zurückkommt |
 | **Behälter leeren** | `button` | Setzt die Dose komplett zurück: **Inhalt** wird leer, **MHD** und **Befüllt am** werden gelöscht. **Vakuum** bleibt bewusst erhalten, es ist eine Eigenschaft der Dose und nicht des Inhalts |
 | **Menge** | `number` | Wie viel in der Dose ist, z. B. 4 (0 = nicht angegeben). Wird von **Behälter leeren** zurückgesetzt |
 | **Einheit** | `select` | Einheit der Menge: Portionen (Standard), Stück, Scheiben, Gramm oder Milliliter. Wird von **Behälter leeren** auf Portionen zurückgesetzt. Beides steht im Dashboard, im Befüll-Dialog, im Ergebnis von `get_expiring` und fließt in die Rezeptideen ein. Tipp: *Portionen* für fertige Gerichte (Chili, Suppe), *Stück* oder *Scheiben* für Zählbares (Eier, Schinken) |

@@ -85,6 +85,7 @@ def build_record(
     filled_at: str | None,
     best_before: str | None,
     outcome: str | None,
+    compartment: str | None = None,
 ) -> dict[str, Any]:
     now = dt_util.now()
     filled_day: date | None = None
@@ -103,6 +104,7 @@ def build_record(
         "quantity": quantity or None,
         "unit": unit if quantity else None,
         "area": area,
+        "compartment": compartment or None,
         "filled_at": filled_at,
         "best_before": best_before,
         "emptied": now.isoformat(timespec="seconds"),

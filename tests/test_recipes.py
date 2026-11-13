@@ -29,7 +29,7 @@ async def _setup(hass: HomeAssistant, cc: str) -> MockConfigEntry:
 
 def _eid(hass: HomeAssistant, domain: str, cc: str) -> str:
     device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, cc)})
-    return next(e.entity_id for e in er.async_entries_for_device(er.async_get(hass), device.id) if e.domain == domain and (domain != "switch" or e.unique_id.endswith("_vacuum")) and (domain != "select" or e.unique_id.endswith("_unit")))
+    return next(e.entity_id for e in er.async_entries_for_device(er.async_get(hass), device.id) if e.domain == domain and (domain != "switch" or e.unique_id.endswith("_vacuum")) and (domain != "select" or e.unique_id.endswith("_unit")) and (domain != "text" or e.unique_id.endswith("_content")))
 
 
 async def _fill(hass, cc, content, days, quantity=None, unit=None):
@@ -228,10 +228,10 @@ async def test_settings_websocket(hass: HomeAssistant, hass_ws_client) -> None:
     entry = await _setup(hass, "AAAA")
     client = await hass_ws_client(hass)
     await client.send_json({"id": 1, "type": "larder/settings"})
-    assert (await client.receive_json())["result"] == {"recipe_days": 3, "soon_days": 3}
+    assert (await client.receive_json())["result"] == {"recipe_days": 3, "soon_days": 3, "vacuum_default": True, "shopping_list": False}
     await _options(hass, entry, recipe_days=0)
     await client.send_json({"id": 2, "type": "larder/settings"})
-    assert (await client.receive_json())["result"] == {"recipe_days": 0, "soon_days": 3}
+    assert (await client.receive_json())["result"] == {"recipe_days": 0, "soon_days": 3, "vacuum_default": True, "shopping_list": False}
 
 
 async def test_soon_days_setting_changes_status_attribute_and_overview(hass: HomeAssistant) -> None:

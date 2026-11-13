@@ -24,10 +24,26 @@ def test_pdf_pages_skip_and_text() -> None:
     assert _pages(build_pdf(labels[:23], "3x8", skip=2)) == 2
     assert _pages(build_pdf(labels[:8], "2x4", skip=99)) == 2  # skip wird auf 7 begrenzt
     # Text in Helvetica (WinAnsi): Umlaute als ein Byte, Klammern maskiert, lange Inhalte gekürzt
-    pdf = build_pdf([Label("Küche (1)", "x", "Sehr lange Bolognese-Sauce mit sehr viel Hackfleisch und Gemüse aus dem Garten", "24.12.2026")], language="de")
+    pdf = build_pdf([Label("Küche (1)", "x", "Sehr lange Bolognese-Sauce mit sehr viel Hackfleisch und Gemüse aus dem Garten", "24.12.2026")], language="de", show_content=True)
     assert b"K\xfcche \\(1\\)" in pdf
     assert b"MHD: 24.12.2026" in pdf
     assert b"\x85" in pdf  # … am Ende des gekürzten Inhalts
+
+
+def test_options_designs_and_label_printer() -> None:
+    label = Label("Dose 1", scan_app_url("HA-00000001"), "Gulasch", "01.12.2026")
+    with_qr = build_pdf([label], "3x8")
+    without_qr = build_pdf([label], "3x8", show_qr=False, show_name=False, show_content=True)
+    assert with_qr.count(b" re\n") > 50  # QR-Module als Rechtecke
+    assert b" re\n" not in without_qr and b"(Gulasch) Tj" in without_qr and b"(Dose 1)" not in without_qr
+    # nichts gewählt: wenigstens der Name
+    assert b"(Dose 1) Tj" in build_pdf([label], show_qr=False, show_name=False)
+    for design in ("frame", "notched", "vintage"):
+        assert b" c " in build_pdf([label], design=design)  # Rundungen
+    assert b"0.99 0.96 0.88 rg" in build_pdf([label], design="vintage")
+    # Etikettendrucker: eine Seite pro Etikett im Etikettenformat
+    pdf = build_pdf([label, label], "62x29")
+    assert _pages(pdf) == 2 and b"/MediaBox [0 0 175.75 82.20]" in pdf
 
 
 async def test_collect_labels_and_http_view(hass: HomeAssistant, hass_client) -> None:
@@ -49,7 +65,7 @@ async def test_collect_labels_and_http_view(hass: HomeAssistant, hass_client) ->
     assert _pages(await resp.read()) == 1
 
     device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "BBBB")})
-    resp = await client.get(f"/api/larder/labels.pdf?device={device.id}&layout=2x4&content=1&border=1")
+    resp = await client.get(f"/api/larder/labels.pdf?device={device.id}&layout=2x4&content=1&border=1&qr=0&design=vintage")
     body = await resp.read()
     assert resp.status == 200 and b"Dose BBBB" in body and b"Dose AAAA" not in body
 

@@ -3,6 +3,13 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 2.10.0
+
+- **Add container with options:** the add dialog now also sets **Vacuum**, **Add to shopping list when emptied** and **Flexible storage place** with **After emptying, back to** (also for the NFC ways).
+- **Compartment** within an area (new entity, e.g. "drawer 2"): on the card, on tiles and in the list, searchable, sorted with the area, in the CSV and the history; asked in the fill dialog for flexible containers and cleared when they go back after emptying.
+- **Barcode of bought food:** **EAN** in the fill dialog (Home Assistant app) scans the package and fills in the product name from Open Food Facts.
+- **Labels:** choose what is printed (QR code, container name, contents and best-before date; at least one), four designs (plain, frame, notched corners, vintage) and label printers (62 × 29, 54 × 25, 89 × 36 mm, one label per page). The menu entry is now **🖨 Print labels**.
+
 ## 2.9.1
 
 - Fix: translations of the fixable repair hints (hassfest check of 2.9.0 failed); no change in behaviour.

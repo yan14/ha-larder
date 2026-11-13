@@ -97,6 +97,7 @@ There are four ways. The two NFC ways need the Home Assistant app on a phone wit
 - **Read Zwilling QR code** needs the content of the original code or just the ID. When you come from [📷 in the app](#scanning-in-the-app) or the iOS Shortcut, the field is already filled in.
 - **Write a new NFC tag** only appears in the app on a phone that can write tags. For **Scan NFC tag** you hold the phone to the tag. Details in [NFC tags](#nfc-tags).
 - Name and area are optional. You can change both later (the area right on the card).
+- **Vacuum**, **Add to shopping list when emptied** (once a shopping list is chosen) and **Flexible storage place** with **After emptying, back to** can be set right away; you can change them later on the card.
 
 ### Through the integration
 
@@ -196,12 +197,12 @@ A bar at the bottom switches between five pages:
 
 **The card of a container** (in the card view, or after tapping a container) shows everything and lets you edit it:
 
-- area (dropdown; which areas are offered can be narrowed down with a label, see [Areas and labels](#areas-and-labels)), **contents**, **quantity and unit** (**−1** takes one portion, piece or slice; at the last one it asks whether to empty the container), **best before** (with a hint "expired" or "n days left" once it expires soon), **filled on** ("Now" sets the current time),
+- area (dropdown; which areas are offered can be narrowed down with a label, see [Areas and labels](#areas-and-labels)), **compartment** (optional, e.g. "drawer 2" in the freezer; shown on the tile, searchable, sorted with the area), **contents**, **quantity and unit** (**−1** takes one portion, piece or slice; at the last one it asks whether to empty the container), **best before** (with a hint "expired" or "n days left" once it expires soon), **filled on** ("Now" sets the current time),
 - **+1 day** moves the best-before date by a day, **Opened** shortens it to the days set in the settings (default 3), **Thawed** does the same for food out of the freezer (default 2 days, do not refreeze). Neither ever extends a date; without a date one is set,
 - **Estimate best before** (when [estimating](#best-before-estimate) is on, contents are entered and the date is empty),
 - **Vacuum**, **Add to shopping list when emptied** (once a [shopping list](#shopping-list) is chosen), **Flexible storage place** with **After emptying, back to** (see [Filling containers](#filling-containers)), the **NFC tag** (link or unlink), **Open device** and **Empty container**. Before emptying, the card asks **😋 Eaten** or **🗑 Thrown away**; the answer goes into the container's **History** (fold-out list at the bottom of the card, the last ten fillings).
 
-**⋮** at the top opens a menu: **📊 Statistics** and **🖨 Print QR labels** for everyone, **📦 Export and import**, the [remembered estimates](#managing-remembered-estimates) and the integration settings for administrators. The ☰ on the left is the Home Assistant sidebar.
+**⋮** at the top opens a menu: **📊 Statistics** and **🖨 Print labels** for everyone, **📦 Export and import**, the [remembered estimates](#managing-remembered-estimates) and the integration settings for administrators. The ☰ on the left is the Home Assistant sidebar.
 
 <p>
 <img src="docs/images/dashboard-areas-en.png" width="250" alt="Areas">
@@ -240,9 +241,11 @@ Then fill them all at once or ask for recipe ideas, which makes an inventory of 
 
 An empty container shows a **Fill** button. It opens a small dialog: **contents** (with suggestions from what you entered before, newest first, then your remembered estimates), **quantity and unit** (optional), **vacuum**, **filled on** (preset to now), optionally a **best-before date**, and **Estimate best before automatically** (only if estimating is on and the date is empty). **Save** sets everything and estimates the date.
 
+**Bought food:** in the Home Assistant app the button **EAN** next to the contents scans the barcode on the package and fills in the product name from [Open Food Facts](https://world.openfoodfacts.org) (free product database, needs internet). The best-before date is printed on the package; enter it in the dialog. Nothing found or offline: type the contents as usual.
+
 The dialog also opens by itself right after you add a new container in the dashboard (including after writing an NFC tag), so you can fill it straight away. It also opens after a scan (📷 in the app, own QR code, NFC tag, Shortcut) when the container is empty; a container that already has contents opens its card.
 
-**Containers that move around:** some containers always stand in the same place, others (for example vacuum boxes) are in the fridge one day and in the 0 °C drawer the next. Switch on **Flexible storage place** on the card of such a container. The fill dialog then also asks for the **area** (administrators), so the estimate uses the right place, and **Empty container** puts the container back into the area chosen under **After emptying, back to** (for example the pantry where the empty boxes are kept). Containers without the switch keep their area and the fill dialog does not ask.
+**Containers that move around:** some containers always stand in the same place, others (for example vacuum boxes) are in the fridge one day and in the 0 °C drawer the next. Switch on **Flexible storage place** on the card of such a container. The fill dialog then also asks for the **area** (administrators), so the estimate uses the right place, and **Empty container** puts the container back into the area chosen under **After emptying, back to** (for example the pantry where the empty boxes are kept). Containers without the switch keep their area and the fill dialog does not ask. For flexible containers the dialog also asks for the **compartment**; when the container goes back after emptying, the compartment is cleared.
 
 **Several containers at once:** select the empty containers (or scan them one after another) and press **Fill (n)**: the same dialog fills all of them, see [Selecting several containers](#selecting-several-containers).
 
@@ -440,7 +443,7 @@ The calendar must be able to create **and** delete events. Read-only calendars (
 
 In the dashboard **⋮ → 📦 Export and import** (administrators):
 
-- **📄 Inventory as a table (CSV)**: all containers with name, ID, area, contents, quantity, unit, filled on, best before, days left, status and vacuum. In German with semicolons, so Excel opens it directly.
+- **📄 Inventory as a table (CSV)**: all containers with name, ID, area, compartment, contents, quantity, unit, filled on, best before, days left, status and vacuum. In German with semicolons, so Excel opens it directly.
 - **🕘 History (CSV)**: every emptied filling with container, contents, quantity, filled on, best before, emptied on, days stored, whether it was expired and whether it was eaten or thrown away. Containers emptied without the question (automation, device page) have no outcome.
 - **💾 Remembered estimates (backup)**: all [remembered best-before values](#managing-remembered-estimates) as a JSON file.
 - **Import estimates**: reads such a file back, for example after a reinstall or on a second Home Assistant. Your own corrections are kept when the file only has a table or AI value for the same combination; with **Delete existing estimates first** the file replaces everything. Invalid entries are skipped and counted.
@@ -529,14 +532,15 @@ The same codes work in the [serial scan](#selecting-several-containers) of the d
 
 #### Label sheet
 
-To print many codes at once: **⋮ → 🖨 Print QR labels** in the dashboard (all containers), or select containers and press **🖨 Labels**. Then choose
+To print many labels at once: **⋮ → 🖨 Print labels** in the dashboard (all containers), or select containers and press **🖨 Labels**. Then choose
 
-- the **label sheet**: A4 with 3 × 8 (70 × 36 mm), 3 × 7 (70 × 42.3 mm) or 2 × 4 (105 × 74 mm) labels, as sold by Avery Zweckform, Herma and others,
-- **Skip labels already used**, to continue on a partly used sheet,
-- **Print contents and best-before date**, for labels that will not stay on the container (by default only the name is printed, so the label stays valid when the contents change),
+- the **format**: an A4 sheet with 3 × 8 (70 × 36 mm), 3 × 7 (70 × 42.3 mm) or 2 × 4 (105 × 74 mm) labels, as sold by Avery Zweckform, Herma and others, or a **label printer** (62 × 29 mm like Brother DK-11209, 54 × 25 mm like Dymo 11352, 89 × 36 mm like Dymo 99012; one label per page),
+- **Skip labels already used** (A4 only), to continue on a partly used sheet,
+- **what goes on the label**, at least one of: **QR code**, **container name**, **contents and best-before date**. Without the QR code the text is centred and larger, nice for containers with an [NFC tag](#nfc-tags). Contents and date are meant for labels that do not stay on the container (e.g. freezer bags); with only the name the label stays valid when the contents change,
+- the **design**: plain, frame, notched corners or vintage (old-paper look with ornaments),
 - **Cutting lines**, for plain paper.
 
-**Create PDF** makes a link; tap **Open PDF**. In the Home Assistant app it opens in the browser, from where you print or share it. Print at **100 %** (not "fit to page") so the codes hit the labels. The link is valid for five minutes.
+**Create PDF** makes a link; tap **Open PDF**. In the Home Assistant app it opens in the browser, from where you print or share it. Print at **100 %** (not "fit to page") so the codes hit the labels. The link is valid for five minutes. Your choices are remembered on the device.
 
 ### NFC tags
 
@@ -605,6 +609,7 @@ Every container becomes a device (identified by its ID, the `cc` parameter of a 
 | **Filled on** | `datetime` | When was the container filled? |
 | **Best before** | `date` | Best-before date (MHD) |
 | **Contents** | `text` | What is in the container? |
+| **Compartment** | `text` | Optional place inside the area, e.g. "drawer 2". Kept when emptying; cleared when a flexible container goes back to its storage place |
 | **Empty container** | `button` | Resets the whole container: **Contents** become empty, **Best before** and **Filled on** are cleared. **Vacuum** is deliberately kept, it is a property of the container, not of its contents |
 | **Quantity** | `number` | How much is in the container, e.g. 4 (0 = not specified). Reset by **Empty container** |
 | **Unit** | `select` | Unit of the quantity: portions (default), pieces, slices, grams or milliliters. Reset to portions by **Empty container**. Both show up in the dashboard, the fill dialog, the `get_expiring` result and the recipe ideas. Tip: use *portions* for finished dishes (chili, soup) and *pieces* or *slices* for countable food (eggs, ham) |

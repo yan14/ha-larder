@@ -55,6 +55,7 @@ from .const import (
     ESTIMATE_TABLE,
     CONF_AI_TASK_ENTITY,
     CONF_AREA,
+    CONF_INITIAL,
     CONF_CC,
     CONF_QR_CODE,
     CONF_SIZE,
@@ -72,10 +73,28 @@ from .qr import generate_code, parse_qr
 from .scan import async_get_webhook_id, webhook_urls
 
 
-def _area_data(user_input: dict[str, Any]) -> dict[str, str]:
-    """Gewählten Bereich nur dann in den Eintrag schreiben, wenn einer gewählt wurde."""
-    area_id = user_input.get(CONF_AREA)
-    return {CONF_AREA: area_id} if area_id else {}
+_INITIAL_KEYS = ("vacuum", "shopping", "flexible", "home_area")
+
+
+def _area_data(user_input: dict[str, Any]) -> dict[str, Any]:
+    """Gewählten Bereich und die Vorgaben der Dose (falls angegeben) einmalig in den Eintrag schreiben."""
+    data: dict[str, Any] = {}
+    if area_id := user_input.get(CONF_AREA):
+        data[CONF_AREA] = area_id
+    initial = {key: user_input[key] for key in _INITIAL_KEYS if user_input.get(key) is not None}
+    if initial:
+        data[CONF_INITIAL] = initial
+    return data
+
+
+def _option_fields() -> dict:
+    """Optionale Vorgaben der Dose (im Dialog des Dashboards gesetzt)."""
+    return {
+        vol.Optional("vacuum"): BooleanSelector(),
+        vol.Optional("shopping"): BooleanSelector(),
+        vol.Optional("flexible"): BooleanSelector(),
+        vol.Optional("home_area"): AreaSelector(),
+    }
 
 
 class LarderConfigFlow(ConfigFlow, domain=DOMAIN):
@@ -125,6 +144,7 @@ class LarderConfigFlow(ConfigFlow, domain=DOMAIN):
                 vol.Required(CONF_QR_CODE): TextSelector(),
                 vol.Optional(CONF_NAME): TextSelector(),
                 vol.Optional(CONF_AREA): AreaSelector(),
+                **_option_fields(),
             }
         )
         return self.async_show_form(
@@ -160,6 +180,7 @@ class LarderConfigFlow(ConfigFlow, domain=DOMAIN):
                 {
                     vol.Optional(CONF_NAME): TextSelector(),
                     vol.Optional(CONF_AREA): AreaSelector(),
+                    **_option_fields(),
                 }
             ),
         )
