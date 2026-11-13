@@ -1228,6 +1228,33 @@ test("Nährwerte auf der Karte: anzeigen und einzeln ändern", async () => {
   assert.equal($(empty, ".card details.nutrition").hidden, true);
 });
 
+test("Inhalt per Foto im Befüllen-Dialog (KI)", async () => {
+  const hass = adminHass([{ id: "d1", name: "A" }]);
+  hass.services = { ai_task: { generate_data: {} } };
+  const posted = [];
+  hass.fetchWithAuth = async (url, opts) => {
+    posted.push({ url, file: opts.body.get("file") });
+    return { ok: true, json: async () => ({ content: "Chili con carne" }) };
+  };
+  const el = mount(hass);
+  el.openFillDialog("d1");
+  const form = el.shadowRoot.querySelector("form.fillform");
+  assert.equal(form.querySelector("button.photo").hidden, false);
+  const input = form.querySelector("input.photofile");
+  Object.defineProperty(input, "files", { configurable: true, value: [new File(["x"], "a.jpg", { type: "image/jpeg" })] });
+  input.dispatchEvent(new dom.window.Event("change"));
+  await flush();
+  await flush();
+  assert.equal(posted[0].url, "/api/larder/content_photo");
+  assert.equal(form.querySelector('[data-f="content"]').value, "Chili con carne");
+  assert.match(form.querySelector(".barcodestatus").textContent, /Vorschlag: Chili con carne/);
+  // ohne KI: kein Knopf
+  document.body.innerHTML = "";
+  const plain = mount(adminHass([{ id: "d1", name: "A" }]));
+  plain.openFillDialog("d1");
+  assert.equal(plain.shadowRoot.querySelector("form.fillform button.photo").hidden, true);
+});
+
 test("Schnellaktionen: ohne Inhalt versteckt, ohne MHD ist +1 Tag gesperrt", () => {
   const empty = mount(adminHass([{ id: "d1", name: "A" }]));
   assert.equal($(empty, ".quickrow").classList.contains("visible"), false);

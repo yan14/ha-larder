@@ -188,6 +188,9 @@
     },
     "recipe_photo_no_media": {
       "message": "Home Assistant hat keinen Medienordner; dort werden die Fotos kurz abgelegt."
+    },
+    "content_photo_none": {
+      "message": "Auf dem Foto wurde kein Essen erkannt."
     }
   },
   "options": {

@@ -33,7 +33,7 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 
 - [Warum dieses Projekt?](#warum-dieses-projekt)
 - [Installation](#installation) · [Erste Schritte](#erste-schritte) · [Dose anlegen](#dose-anlegen) · [Bereiche und Labels](#bereiche-und-labels) · [Einstellungen](#einstellungen)
-- [Dashboard „Larder“](#dashboard-larder) · [Mehrere Dosen auswählen](#mehrere-dosen-auswählen) · [Dosen befüllen](#dosen-befüllen) · [Larder experimental](#larder-experimental)
+- [Dashboard „Larder“](#dashboard-larder) · [Mehrere Dosen auswählen](#mehrere-dosen-auswählen) · [Karte für deine Dashboards](#karte-für-deine-dashboards) · [Dosen befüllen](#dosen-befüllen) · [Larder experimental](#larder-experimental)
 - [MHD-Schätzung](#mhd-schätzung) · [Rezepte](#rezepte) · [Tägliche Zusammenfassung](#tägliche-zusammenfassung) · [Einkaufsliste](#einkaufsliste) · [Kalender](#mhd-im-kalender) · [Wochenplan](#wochenplan) · [Export und Import](#export-und-import) · [Statistik](#statistik) · [Reparaturhinweise](#reparaturhinweise)
 - [Scannen](#scannen): [in der App](#scannen-in-der-app), [eigene QR-Codes](#eigene-qr-codes), [NFC-Tags](#nfc-tags), [Zwilling-Codes (iOS-Kurzbefehl)](#ios-kurzbefehl-für-die-originalen-zwilling-codes)
 - [Referenz](#referenz): [Entitäten](#entitäten), [Dienste und Ereignisse](#dienste-und-ereignisse), [Webhook](#webhook-schnittstelle)
@@ -235,6 +235,19 @@ Danach alle auf einmal befüllen oder Rezeptideen holen. So geht eine Inventur d
 <p align="center"><img src="docs/images/dashboard-select-de.png" width="250" alt="Dosen auswählen"></p>
 
 
+### Karte für deine Dashboards
+
+Die Karte **Larder** zeigt auf jedem Dashboard die Dosen, die bald ablaufen, die dringendsten zuerst. Die Integration lädt sie selbst (keine Ressource nötig), sie steht in der Kartenauswahl; Antippen einer Dose öffnet sie im Larder-Dashboard.
+
+```yaml
+type: custom:larder-card
+title: Läuft bald ab   # optional
+days: 3                # optional, Standard: Einstellung „Läuft bald ab“
+show_expired: true     # optional
+limit: 8               # optional
+area: kueche           # optional, Bereichs-ID
+```
+
 ## Dosen befüllen
 
 <p align="center"><img src="docs/images/fill-dialog-de.png" width="560" alt="Dialog Dose befüllen"></p>
@@ -242,6 +255,8 @@ Danach alle auf einmal befüllen oder Rezeptideen holen. So geht eine Inventur d
 Eine leere Dose zeigt den Button **Befüllen**. Er öffnet einen kleinen Dialog: **Inhalt** (mit Vorschlägen aus früheren Eingaben, neueste zuerst, danach deine gemerkten Schätzungen), **Menge und Einheit** (optional), **Vakuum**, **Befüllt am** (vorbelegt mit jetzt), optional ein **MHD** und **MHD automatisch schätzen** (nur wenn die Schätzung aktiv und das MHD leer ist). **Speichern** setzt alles und schätzt das MHD.
 
 **Gekaufte Ware:** In der Home Assistant App scannt der Knopf **EAN** neben dem Inhalt den Strichcode auf der Packung und trägt den Produktnamen aus [Open Food Facts](https://de.openfoodfacts.org) ein (freie Produktdatenbank, braucht Internet). Marke, Packungsgröße, EAN und die [Nährwerte](#nährwerte) werden mit übernommen. Das MHD steht auf der Packung; trag es im Dialog ein. Nichts gefunden oder offline: Inhalt wie gewohnt eintippen.
+
+**Inhalt per Foto:** Mit eingerichteter [KI](#ki-optional) macht **📷** neben dem Inhalt ein Foto vom Essen (oder nimmt eins aus der Galerie) und trägt ein, was die KI erkennt, z. B. „Gulasch mit Kartoffeln“. Kurz prüfen und ggf. korrigieren.
 
 ### Nährwerte
 
@@ -422,6 +437,8 @@ Ein Gericht für einen Tag einplanen: **📅 Einplanen** an einer Rezeptidee ode
 
 - Die **Startseite** zeigt, was in den nächsten sieben Tagen geplant ist, die **Rezeptseite** alle Pläne (✕ nimmt einen heraus).
 - Mit einem **Kalender für den Wochenplan** in den [Einstellungen](#einstellungen) wird jeder Plan zusätzlich ein ganztägiger Termin „🍽 Spaghetti Bolognese“; wird der Plan gelöscht, verschwindet auch der Termin.
+- **✓ Gekocht** an einem Plan nimmt aus jeder seiner Dosen eine Portion (wenn sie mehr als eine hat) oder leert sie als gegessen und nimmt den Plan aus der Liste.
+- **Fehlende Zutaten:** Der Dialog übernimmt auch die Zutaten des Rezepts. Was in keiner deiner Dosen steckt, steht am Plan; **🛒 n fehlen → Einkaufsliste** setzt es auf die [Einkaufsliste](#einkaufsliste) (was dort schon offen ist, kommt nicht doppelt).
 
 **Auftau-Erinnerung.** Steht eine Dose, die ein geplantes Gericht braucht, im **Gefrierschrank** (nach Name oder Label des Bereichs), erinnert Larder rechtzeitig daran, sie in den Kühlschrank zu stellen, standardmäßig am Vortag (Einstellung **Auftauen: Tage vorher**, 0–3):
 
@@ -544,8 +561,8 @@ Viele Etiketten auf einmal drucken: im Dashboard **⋮ → 🖨 Etiketten drucke
 
 - das **Format**: einen A4-Bogen mit 3 × 8 (70 × 36 mm), 3 × 7 (70 × 42,3 mm) oder 2 × 4 (105 × 74 mm) Etiketten, wie es sie von Avery Zweckform, Herma und anderen gibt, oder einen **Etikettendrucker** (62 × 29 mm wie Brother DK-11209, 54 × 25 mm wie Dymo 11352, 89 × 36 mm wie Dymo 99012; ein Etikett pro Seite),
 - **Schon benutzte Etiketten überspringen** (nur A4), um auf einem angebrochenen Bogen weiterzumachen,
-- **was aufs Etikett kommt**, mindestens eins von: **QR-Code**, **Name der Dose**, **Inhalt und MHD**. Ohne QR-Code steht der Text größer in der Mitte, schön für Dosen mit [NFC-Tag](#nfc-tags). Inhalt und MHD sind für Etiketten gedacht, die nicht dauerhaft bleiben (z. B. Gefrierbeutel); nur mit dem Namen bleibt das Etikett gültig, wenn sich der Inhalt ändert,
-- das **Design**: schlicht, Rahmen, eingekerbte Ecken oder Vintage (Altpapier-Look mit Verzierungen),
+- **was aufs Etikett kommt**, mindestens eins von: **QR-Code**, **Name der Dose**, **Inhalt und MHD**, **Nährwerte** (kcal, Nutri-Score, Allergene, aus den [Nährwerten](#nährwerte) der Dose). Ohne QR-Code steht der Text größer in der Mitte, schön für Dosen mit [NFC-Tag](#nfc-tags). Die Schrift wird so groß wie möglich gesetzt und bricht in eine zweite Zeile um statt abgeschnitten zu werden. Inhalt und MHD sind für Etiketten gedacht, die nicht dauerhaft bleiben (z. B. Gefrierbeutel); nur mit dem Namen bleibt das Etikett gültig, wenn sich der Inhalt ändert,
+- das **Design**: schlicht, Rahmen, eingekerbte Ecken oder **Handschrift** (Glas-Etikett mit Handschrift-Font [Kalam](https://fonts.google.com/specimen/Kalam), SIL Open Font License). Etiketten sind immer schwarz-weiß,
 - **Schnittlinien**, für normales Papier.
 
 **PDF erstellen** erzeugt einen Link, dann **PDF öffnen** antippen. In der Home Assistant App öffnet es sich im Browser, von dort druckst oder teilst du es. Mit **100 %** drucken (nicht „an Seite anpassen“), damit die Codes auf die Etiketten treffen. Der Link gilt fünf Minuten. Deine Auswahl merkt sich das Gerät.

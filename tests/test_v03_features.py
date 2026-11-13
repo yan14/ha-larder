@@ -227,7 +227,12 @@ async def test_panel_registered_and_static_js_served(hass: HomeAssistant, hass_c
     assert panel.config["_panel_custom"]["name"] == "larder-dashboard"
 
     client = await hass_client()
-    for name in ("larder-dashboard.js", "larder-panel.js", "larder-experimental.js"):
+    # Lovelace-Karte wird global geladen (keine Ressource nötig)
+    card_urls = [u for u in hass.data[frontend.DATA_EXTRA_MODULE_URL].urls if "larder-card.js" in u]
+    assert len(card_urls) == 1
+    assert re.fullmatch(r"/larder_static/larder-card\.js\?v=\d+\.\d+\.\d+", card_urls[0])
+
+    for name in ("larder-dashboard.js", "larder-panel.js", "larder-experimental.js", "larder-card.js"):
         resp = await client.get(f"/larder_static/{name}")
         assert resp.status == 200
         assert "customElements.define" in await resp.text()
@@ -243,6 +248,7 @@ async def test_panel_registered_and_static_js_served(hass: HomeAssistant, hass_c
     assert await hass.config_entries.async_unload(second.entry_id)
     await hass.async_block_till_done()
     assert "larder" not in hass.data[frontend.DATA_PANELS]
+    assert not [u for u in hass.data[frontend.DATA_EXTRA_MODULE_URL].urls if "larder-card.js" in u]
 
     # Neu laden: Panel wird wieder registriert (statischer Pfad nur einmal)
     assert await hass.config_entries.async_setup(entry.entry_id)

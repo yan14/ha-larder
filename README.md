@@ -33,7 +33,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 - [Why this project?](#why-this-project)
 - [Installation](#installation) · [Getting started](#getting-started) · [Adding a container](#adding-a-container) · [Areas and labels](#areas-and-labels) · [Settings](#settings)
-- [Dashboard "Larder"](#dashboard-larder) · [Selecting several containers](#selecting-several-containers) · [Filling containers](#filling-containers) · [Larder experimental](#larder-experimental)
+- [Dashboard "Larder"](#dashboard-larder) · [Selecting several containers](#selecting-several-containers) · [Card for your dashboards](#card-for-your-dashboards) · [Filling containers](#filling-containers) · [Larder experimental](#larder-experimental)
 - [Best-before estimate](#best-before-estimate) · [Recipes](#recipes) · [Daily summary](#daily-summary) · [Shopping list](#shopping-list) · [Calendar](#best-before-dates-in-your-calendar) · [Meal plan](#meal-plan) · [Export and import](#export-and-import) · [Statistics](#statistics) · [Repairs](#repairs)
 - [Scanning](#scanning): [in the app](#scanning-in-the-app), [own QR codes](#your-own-qr-codes), [NFC tags](#nfc-tags), [Zwilling codes (iOS Shortcut)](#ios-shortcut-for-the-original-zwilling-codes)
 - [Reference](#reference): [entities](#entities), [services and events](#services-and-events), [webhook](#webhook-interface)
@@ -235,6 +235,19 @@ Then fill them all at once or ask for recipe ideas, which makes an inventory of 
 <p align="center"><img src="docs/images/dashboard-select-en.png" width="250" alt="Selecting containers"></p>
 
 
+### Card for your dashboards
+
+The card **Larder** shows the containers that expire soon on any dashboard, with the most urgent first. It is loaded by the integration itself (no resource to add) and is listed in the card picker; tap a container to open it in the Larder dashboard.
+
+```yaml
+type: custom:larder-card
+title: Expiring soon   # optional
+days: 3                # optional, default: the setting "Expiring soon"
+show_expired: true     # optional
+limit: 8               # optional
+area: kitchen          # optional, area ID
+```
+
 ## Filling containers
 
 <p align="center"><img src="docs/images/fill-dialog-en.png" width="560" alt="Fill container dialog"></p>
@@ -242,6 +255,8 @@ Then fill them all at once or ask for recipe ideas, which makes an inventory of 
 An empty container shows a **Fill** button. It opens a small dialog: **contents** (with suggestions from what you entered before, newest first, then your remembered estimates), **quantity and unit** (optional), **vacuum**, **filled on** (preset to now), optionally a **best-before date**, and **Estimate best before automatically** (only if estimating is on and the date is empty). **Save** sets everything and estimates the date.
 
 **Bought food:** in the Home Assistant app the button **EAN** next to the contents scans the barcode on the package and fills in the product name from [Open Food Facts](https://world.openfoodfacts.org) (free product database, needs internet). Brand, package size, EAN and the [nutrition](#nutrition) are taken over too. The best-before date is printed on the package; enter it in the dialog. Nothing found or offline: type the contents as usual.
+
+**Contents from a photo:** with an [AI](#ai-optional) set up, **📷** next to the contents takes a photo of the food (or picks one) and fills in what the AI recognises, e.g. "Goulash with potatoes". Check it and correct if needed.
 
 ### Nutrition
 
@@ -422,6 +437,8 @@ Plan a dish for a day: **📅 Plan** on a recipe idea or a recipe from the book 
 
 - The **start page** shows what is planned for the next seven days, the **recipe page** all plans (✕ removes one).
 - With a **calendar for the meal plan** in the [settings](#settings), every plan also becomes an all-day event "🍽 Spaghetti Bolognese"; removing the plan removes the event.
+- **✓ Cooked** on a plan takes one portion from each of its containers (if they have more than one) or empties them as eaten, and removes the plan from the list.
+- **Missing ingredients:** the dialog also takes the ingredients of the recipe. Those that are in none of your containers are shown on the plan; **🛒 n missing → shopping list** puts them on the [shopping list](#shopping-list) (items already open there are not added twice).
 
 **Thaw reminder.** If a container needed for a planned dish stands in the **freezer** (by the area's name or label), Larder reminds you in time to move it to the fridge, by default the day before (setting **Thawing: days ahead**, 0–3):
 
@@ -544,8 +561,8 @@ To print many labels at once: **⋮ → 🖨 Print labels** in the dashboard (al
 
 - the **format**: an A4 sheet with 3 × 8 (70 × 36 mm), 3 × 7 (70 × 42.3 mm) or 2 × 4 (105 × 74 mm) labels, as sold by Avery Zweckform, Herma and others, or a **label printer** (62 × 29 mm like Brother DK-11209, 54 × 25 mm like Dymo 11352, 89 × 36 mm like Dymo 99012; one label per page),
 - **Skip labels already used** (A4 only), to continue on a partly used sheet,
-- **what goes on the label**, at least one of: **QR code**, **container name**, **contents and best-before date**. Without the QR code the text is centred and larger, nice for containers with an [NFC tag](#nfc-tags). Contents and date are meant for labels that do not stay on the container (e.g. freezer bags); with only the name the label stays valid when the contents change,
-- the **design**: plain, frame, notched corners or vintage (old-paper look with ornaments),
+- **what goes on the label**, at least one of: **QR code**, **container name**, **contents and best-before date**, **nutrition** (kcal, Nutri-Score, allergens, from the [nutrition](#nutrition) of the container). Without the QR code the text is centred and larger, nice for containers with an [NFC tag](#nfc-tags). The text is sized to fill the label and wraps onto a second line instead of being cut off. Contents and date are meant for labels that do not stay on the container (e.g. freezer bags); with only the name the label stays valid when the contents change,
+- the **design**: plain, frame, notched corners or **handwriting** (jar label with a handwritten font, [Kalam](https://fonts.google.com/specimen/Kalam), SIL Open Font License). Labels are always black and white,
 - **Cutting lines**, for plain paper.
 
 **Create PDF** makes a link; tap **Open PDF**. In the Home Assistant app it opens in the browser, from where you print or share it. Print at **100 %** (not "fit to page") so the codes hit the labels. The link is valid for five minutes. Your choices are remembered on the device.

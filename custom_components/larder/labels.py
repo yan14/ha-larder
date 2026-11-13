@@ -1,7 +1,8 @@
 """QR-Etikettenbogen (A4) als PDF: eigene QR-Codes mehrerer Dosen zum Ausdrucken.
 
 Das PDF wird hier ohne Zusatzbibliothek geschrieben: die QR-Codes als Vektor-Rechtecke (scharf
-in jeder Druckgröße), Text in der eingebauten Schrift Helvetica. Aufgerufen wird es aus dem
+in jeder Druckgröße), Text in Helvetica oder (Design "Handschrift") in der eingebetteten freien
+Schrift Kalam (SIL Open Font License, fonts/OFL-Kalam.txt). Immer schwarz-weiß. Aufgerufen wird es aus dem
 Dashboard über eine signierte URL (`/api/larder/labels.pdf?...`), damit es sich in der App im
 Browser öffnen, teilen und drucken lässt.
 """
@@ -9,6 +10,9 @@ Browser öffnen, teilen und drucken lässt.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import cache
+from pathlib import Path
+import struct
 from datetime import date
 from functools import partial
 from http import HTTPStatus
@@ -58,9 +62,9 @@ LAYOUTS: dict[str, Layout] = {
     "54x25": Layout(1, 1, 54.0, 25.0, 0.0, 0.0, page=(54.0, 25.0)),
     "89x36": Layout(1, 1, 89.0, 36.0, 0.0, 0.0, page=(89.0, 36.0)),
 }
-DESIGNS = ("plain", "frame", "notched", "vintage")
+DESIGNS = ("plain", "frame", "notched", "handwritten")
 _K = 0.5523  # Bézier-Annäherung eines Viertelkreises
-_BROWN = "0.36 0.24 0.12"
+FONT_FILE = Path(__file__).parent / "fonts" / "Kalam-Bold.ttf"
 DEFAULT_LAYOUT = "3x8"
 
 
@@ -70,6 +74,7 @@ class Label:
     qr: str
     content: str = ""
     best_before: str = ""
+    nutrition: str = ""  # z. B. "372 kcal/100 g · Nutri-Score A · Gluten"
 
 
 _TEXT = {
@@ -82,32 +87,6 @@ def _pdf_text(value: str) -> bytes:
     """Text für Helvetica (WinAnsi): Umlaute bleiben, Unbekanntes wird '?', Klammern werden maskiert."""
     raw = value.encode("cp1252", errors="replace")
     return raw.replace(b"\\", b"\\\\").replace(b"(", b"\\(").replace(b")", b"\\)")
-
-
-# Durchschnittliche Zeichenbreite von Helvetica (Anteil der Schriftgröße) für das Kürzen langer Texte
-_AVG = {False: 0.53, True: 0.58}
-
-
-def _fit(text: str, width_pt: float, size: float, bold: bool = False) -> str:
-    """Text so kürzen, dass er (ungefähr) in die Breite passt."""
-    text = " ".join(text.split())
-    limit = max(1, int(width_pt / (size * _AVG[bold])))
-    return text if len(text) <= limit else text[: max(1, limit - 1)].rstrip() + "…"
-
-
-def _wrap(text: str, width_pt: float, size: float, max_lines: int) -> list[str]:
-    """Text auf höchstens `max_lines` Zeilen umbrechen; der Rest wird mit … gekürzt."""
-    limit = max(1, int(width_pt / (size * _AVG[False])))
-    lines: list[str] = []
-    words = text.split()
-    while words and len(lines) < max_lines:
-        line = words.pop(0)
-        while words and len(line) + 1 + len(words[0]) <= limit:
-            line += " " + words.pop(0)
-        lines.append(line)
-    if words:
-        lines[-1] = lines[-1] + " " + " ".join(words)
-    return [_fit(line, width_pt, size) for line in lines]
 
 
 def _qr_ops(content: str, x: float, y: float, size: float) -> list[bytes]:
@@ -131,6 +110,115 @@ def _qr_ops(content: str, x: float, y: float, size: float) -> list[bytes]:
                 c += 1
     ops.append(b"f")
     return ops
+
+
+_HELVETICA_REGULAR = [278, 278, 355, 556, 556, 889, 667, 191, 333, 333, 389, 584, 278, 333, 278, 278, 556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 278, 278, 584, 584, 584, 556, 1015, 667, 667, 722, 722, 667, 611, 778, 722, 278, 500, 667, 556, 833, 722, 778, 667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 278, 278, 278, 469, 556, 333, 556, 556, 500, 556, 556, 278, 556, 556, 222, 222, 500, 222, 833, 556, 556, 556, 556, 333, 500, 278, 556, 500, 722, 500, 500, 500, 334, 260, 334, 584, 0, 556, 0, 222, 556, 333, 1000, 556, 556, 333, 1000, 667, 333, 1000, 0, 611, 0, 0, 222, 222, 333, 333, 350, 556, 1000, 333, 1000, 500, 333, 944, 0, 500, 667, 278, 333, 556, 556, 556, 556, 260, 556, 333, 737, 370, 556, 584, 333, 737, 552, 400, 549, 333, 333, 333, 576, 537, 333, 333, 333, 365, 556, 834, 834, 834, 611, 667, 667, 667, 667, 667, 667, 1000, 722, 667, 667, 667, 667, 278, 278, 278, 278, 722, 722, 778, 778, 778, 778, 778, 584, 778, 722, 722, 722, 722, 667, 667, 611, 556, 556, 556, 556, 556, 556, 889, 500, 556, 556, 556, 556, 278, 278, 278, 278, 556, 556, 556, 556, 556, 556, 556, 549, 611, 556, 556, 556, 556, 500, 556, 500]
+_HELVETICA_BOLD = [278, 333, 474, 556, 556, 889, 722, 238, 333, 333, 389, 584, 278, 333, 278, 278, 556, 556, 556, 556, 556, 556, 556, 556, 556, 556, 333, 333, 584, 584, 584, 611, 975, 722, 722, 722, 722, 667, 611, 778, 722, 278, 556, 722, 611, 833, 722, 778, 667, 778, 722, 667, 611, 722, 667, 944, 667, 667, 611, 333, 278, 333, 584, 556, 333, 556, 611, 556, 611, 556, 333, 611, 611, 278, 278, 556, 278, 889, 611, 611, 611, 611, 389, 556, 333, 611, 556, 778, 556, 556, 500, 389, 280, 389, 584, 0, 556, 0, 278, 556, 500, 1000, 556, 556, 333, 1000, 667, 333, 1000, 0, 611, 0, 0, 278, 278, 500, 500, 350, 556, 1000, 333, 1000, 556, 333, 944, 0, 500, 667, 278, 333, 556, 556, 556, 556, 280, 556, 333, 737, 370, 556, 584, 333, 737, 552, 400, 549, 333, 333, 333, 576, 556, 333, 333, 333, 365, 556, 834, 834, 834, 611, 722, 722, 722, 722, 722, 722, 1000, 722, 667, 667, 667, 667, 278, 278, 278, 278, 722, 722, 778, 778, 778, 778, 778, 584, 778, 722, 722, 722, 722, 667, 667, 611, 556, 556, 556, 556, 556, 556, 889, 556, 556, 556, 556, 556, 278, 278, 278, 278, 611, 611, 611, 611, 611, 611, 611, 549, 611, 611, 611, 611, 611, 556, 611, 556]
+
+
+@cache
+def _kalam() -> tuple[bytes, list[int], dict[str, int]]:
+    """Schriftdatei, Breiten für WinAnsi 32–255 (in 1/1000 em) und Kennzahlen für den Font-Deskriptor."""
+    data = FONT_FILE.read_bytes()
+    count = struct.unpack(">H", data[4:6])[0]
+    tables = {}
+    for i in range(count):
+        tag, _sum, offset, length = struct.unpack(">4sIII", data[12 + 16 * i : 28 + 16 * i])
+        tables[tag.decode()] = (offset, length)
+
+    def table(tag: str) -> bytes:
+        offset, length = tables[tag]
+        return data[offset : offset + length]
+
+    head, hhea, hmtx = table("head"), table("hhea"), table("hmtx")
+    upem = struct.unpack(">H", head[18:20])[0]
+    bbox = struct.unpack(">hhhh", head[36:44])
+    ascent, descent = struct.unpack(">hh", hhea[4:8])
+    metrics = struct.unpack(">H", hhea[34:36])[0]
+    advances = [struct.unpack(">H", hmtx[4 * i : 4 * i + 2])[0] for i in range(metrics)]
+    # cmap Format 4 (Unicode BMP)
+    cmap = table("cmap")
+    glyph_of: dict[int, int] = {}
+    for i in range(struct.unpack(">H", cmap[2:4])[0]):
+        platform, encoding, offset = struct.unpack(">HHI", cmap[4 + 8 * i : 12 + 8 * i])
+        if struct.unpack(">H", cmap[offset : offset + 2])[0] != 4 or (platform, encoding) not in ((3, 1), (0, 3), (0, 4)):
+            continue
+        sub = cmap[offset:]
+        segs = struct.unpack(">H", sub[6:8])[0] // 2
+        ends = struct.unpack(f">{segs}H", sub[14 : 14 + 2 * segs])
+        starts = struct.unpack(f">{segs}H", sub[16 + 2 * segs : 16 + 4 * segs])
+        deltas = struct.unpack(f">{segs}h", sub[16 + 4 * segs : 16 + 6 * segs])
+        range_pos = 16 + 6 * segs
+        ranges = struct.unpack(f">{segs}H", sub[range_pos : range_pos + 2 * segs])
+        for seg in range(segs):
+            for code in range(starts[seg], ends[seg] + 1):
+                if code == 0xFFFF:
+                    continue
+                if ranges[seg] == 0:
+                    glyph = (code + deltas[seg]) & 0xFFFF
+                else:
+                    pos = range_pos + 2 * seg + ranges[seg] + 2 * (code - starts[seg])
+                    glyph = struct.unpack(">H", sub[pos : pos + 2])[0]
+                    glyph = (glyph + deltas[seg]) & 0xFFFF if glyph else 0
+                if glyph:
+                    glyph_of[code] = glyph
+        break
+    widths = []
+    for b in range(32, 256):
+        try:
+            char = bytes([b]).decode("cp1252")
+        except UnicodeDecodeError:
+            widths.append(0)
+            continue
+        glyph = glyph_of.get(ord(char), 0)
+        advance = advances[min(glyph, metrics - 1)] if glyph else 0
+        widths.append(round(advance * 1000 / upem))
+    scale = 1000 / upem
+    info = {
+        "ascent": round(ascent * scale),
+        "descent": round(descent * scale),
+        "bbox": [round(v * scale) for v in bbox],
+    }
+    return data, widths, info
+
+
+# Schriften im PDF: F1 Helvetica, F2 Helvetica-Bold, F3 Kalam (Handschrift)
+def _widths(font: str) -> list[int]:
+    if font == "F3":
+        return _kalam()[1]
+    return _HELVETICA_BOLD if font == "F2" else _HELVETICA_REGULAR
+
+
+def _measure(text: str, font: str, size: float) -> float:
+    widths = _widths(font)
+    raw = text.encode("cp1252", errors="replace")
+    return sum(widths[b - 32] if b >= 32 else 0 for b in raw) * size / 1000
+
+
+def _fit(text: str, width_pt: float, size: float, font: str = "F1") -> str:
+    """Text so kürzen, dass er in die Breite passt (mit … am Ende)."""
+    text = " ".join(text.split())
+    if _measure(text, font, size) <= width_pt:
+        return text
+    while text and _measure(text + "…", font, size) > width_pt:
+        text = text[:-1]
+    return text.rstrip() + "…"
+
+
+def _wrap(text: str, width_pt: float, size: float, max_lines: int, font: str = "F1") -> list[str] | None:
+    """Wortweise umbrechen; None, wenn es in `max_lines` Zeilen nicht passt (ohne Wort zu zerschneiden)."""
+    words = text.split()
+    lines: list[str] = []
+    while words:
+        line = words.pop(0)
+        if _measure(line, font, size) > width_pt:
+            return None
+        while words and _measure(f"{line} {words[0]}", font, size) <= width_pt:
+            line += " " + words.pop(0)
+        lines.append(line)
+        if len(lines) > max_lines:
+            return None
+    return lines
 
 
 def _rounded(x: float, y: float, w: float, h: float, r: float) -> bytes:
@@ -162,46 +250,98 @@ def _notched(x: float, y: float, w: float, h: float, r: float) -> bytes:
     ).encode()
 
 
-def _diamond(cx: float, cy: float, s: float) -> bytes:
-    return f"{cx:.2f} {cy - s:.2f} m {cx + s:.2f} {cy:.2f} l {cx:.2f} {cy + s:.2f} l {cx - s:.2f} {cy:.2f} l h f".encode()
+def _bracket(x: float, y: float, w: float, h: float) -> bytes:
+    """Klassisches Glas-Etikett: gewölbte Ecken, oben und unten leicht nach außen, seitlich nach innen geschwungen."""
+    r = min(w, h) * 0.16
+    k = _K * r
+    bump = h * 0.06  # Wölbung oben/unten
+    dent = w * 0.035  # Einzug an den Seiten
+    mx, my = x + w / 2, y + h / 2
+    return (
+        f"{x + r:.2f} {y + bump:.2f} m "
+        f"{x + w * 0.3:.2f} {y + bump:.2f} {mx - w * 0.12:.2f} {y:.2f} {mx:.2f} {y:.2f} c "
+        f"{mx + w * 0.12:.2f} {y:.2f} {x + w * 0.7:.2f} {y + bump:.2f} {x + w - r:.2f} {y + bump:.2f} c "
+        f"{x + w - r:.2f} {y + bump + k:.2f} {x + w - k:.2f} {y + bump + r:.2f} {x + w:.2f} {y + bump + r:.2f} c "
+        f"{x + w - dent:.2f} {my - h * 0.12:.2f} {x + w - dent:.2f} {my + h * 0.12:.2f} {x + w:.2f} {y + h - bump - r:.2f} c "
+        f"{x + w - k:.2f} {y + h - bump - r:.2f} {x + w - r:.2f} {y + h - bump - k:.2f} {x + w - r:.2f} {y + h - bump:.2f} c "
+        f"{x + w * 0.7:.2f} {y + h - bump:.2f} {mx + w * 0.12:.2f} {y + h:.2f} {mx:.2f} {y + h:.2f} c "
+        f"{mx - w * 0.12:.2f} {y + h:.2f} {x + w * 0.3:.2f} {y + h - bump:.2f} {x + r:.2f} {y + h - bump:.2f} c "
+        f"{x + r:.2f} {y + h - bump - k:.2f} {x + k:.2f} {y + h - bump - r:.2f} {x:.2f} {y + h - bump - r:.2f} c "
+        f"{x + dent:.2f} {my + h * 0.12:.2f} {x + dent:.2f} {my - h * 0.12:.2f} {x:.2f} {y + bump + r:.2f} c "
+        f"{x + k:.2f} {y + bump + r:.2f} {x + r:.2f} {y + bump + k:.2f} {x + r:.2f} {y + bump:.2f} c h"
+    ).encode()
 
 
-def _design_ops(design: str, x: float, y: float, w: float, h: float) -> tuple[list[bytes], list[bytes], float]:
-    """(Hintergrund, Rahmen, Abstand nach innen in pt) für ein Etikett."""
+def _design_ops(design: str, x: float, y: float, w: float, h: float) -> tuple[list[bytes], float, float]:
+    """(Rahmen, Abstand nach innen waagrecht, senkrecht in pt) – alles schwarz, keine Flächen."""
     m = 1.5 * MM
     x, y, w, h = x + m, y + m, w - 2 * m, h - 2 * m
     if design == "frame":
-        return [], [b"0 G 0.8 w", _rounded(x, y, w, h, 3 * MM) + b" S"], 2.5 * MM
+        return [b"0 G 0.8 w", _rounded(x, y, w, h, 3 * MM) + b" S"], 2.0 * MM, 2.0 * MM
     if design == "notched":
         d = 1.1 * MM
-        return [], [
+        return [
             b"0 G 0.9 w", _notched(x, y, w, h, 3.5 * MM) + b" S",
             b"0.35 w", _notched(x + d, y + d, w - 2 * d, h - 2 * d, 3.5 * MM - d) + b" S",
-        ], 3.0 * MM
-    if design == "vintage":
-        d = 1.3 * MM
-        orn = [
-            f"{_BROWN} rg".encode(),
-            *(_diamond(cx, cy, 0.9 * MM) for cx, cy in (
-                (x + d, y + d), (x + w - d, y + d), (x + d, y + h - d), (x + w - d, y + h - d),
-                (x + w / 2, y + h - d), (x + w / 2, y + d),
-            )),
-        ]
-        return (
-            [b"0.99 0.96 0.88 rg", _rounded(x, y, w, h, 1.2 * MM) + b" f"],
-            [
-                f"{_BROWN} RG".encode(), b"1.3 w", _rounded(x, y, w, h, 1.2 * MM) + b" S",
-                b"0.4 w", _notched(x + d, y + d, w - 2 * d, h - 2 * d, 2.5 * MM) + b" S",
-                *orn, b"0 g",
-            ],
-            3.2 * MM,
-        )
-    return [], [], 0.0
+        ], 2.6 * MM, 2.6 * MM
+    if design == "handwritten":
+        d = 1.0 * MM
+        return [
+            b"0 G 1.1 w", _bracket(x, y, w, h) + b" S",
+            b"0.35 w", _bracket(x + d, y + d, w - 2 * d, h - 2 * d) + b" S",
+        ], w * 0.07 + 2 * MM, h * 0.06 + 2.4 * MM
+    return [], 0.0, 0.0
 
 
-def _text_line(text: str, x: float, y: float, size: float, bold: bool) -> bytes:
-    font = b"/F2" if bold else b"/F1"
-    return b"BT " + font + f" {size} Tf {x:.3f} {y:.3f} Td (".encode() + _pdf_text(text) + b") Tj ET"
+def _text_line(text: str, x: float, y: float, size: float, font: str) -> bytes:
+    return b"BT /" + font.encode() + f" {size:.2f} Tf {x:.3f} {y:.3f} Td (".encode() + _pdf_text(text) + b") Tj ET"
+
+
+def _layout_text(
+    label: Label, show_name: bool, show_content: bool, show_nutrition: bool, width: float, height: float,
+    language: str, bold: str, regular: str, big: bool,
+) -> list[tuple[str, float, str]]:
+    """Zeilen (Text, Größe, Schrift) so groß wie möglich, die in width × height passen.
+
+    Der Name (bzw. der Inhalt, wenn kein Name gedruckt wird) bricht auf bis zu zwei Zeilen um, statt
+    abgeschnitten zu werden; Inhalt, MHD und Nährwerte sind kleiner.
+    """
+    main = label.name if show_name else (label.content if show_content and label.content else "")
+    content = label.content if show_content and show_name else ""
+    if content and content.casefold() == main.casefold():
+        content = ""  # Name und Inhalt gleich ("Zucker"): nicht doppelt drucken
+    extras: list[str] = []
+    if show_content and label.best_before:
+        extras.append(f"{_TEXT[language]['best_before']}: {label.best_before}")
+    if show_nutrition and label.nutrition:
+        extras.append(label.nutrition)
+    if not main and not content and not extras:
+        main = label.name
+    # Obergrenze, damit kurze Namen ("Zucker") nicht viel größer werden als lange
+    top = min(height * 0.34, 40.0) if big else min(height * 0.24, 22.0)
+    size = top
+    while size >= 6.0:
+        small = max(5.5, min(size * 0.6, 11.0))
+        lines: list[tuple[str, float, str]] = []
+        main_lines = _wrap(main, width, size, 2, bold) if main else []
+        if main_lines is None:
+            size -= 0.5
+            continue
+        lines += [(line, size, bold) for line in main_lines]
+        if content:
+            content_lines = _wrap(content, width, small, 2, regular)
+            if content_lines is None:
+                content_lines = [_fit(content, width, small, regular)]
+            lines += [(line, small, regular) for line in content_lines]
+        for extra in extras:
+            extra_lines = _wrap(extra, width, small * 0.95, 2, regular) or [_fit(extra, width, small * 0.95, regular)]
+            lines += [(line, small * 0.95, regular) for line in extra_lines]
+        total = sum(s * 1.18 for _, s, _ in lines)
+        if total <= height:
+            return lines
+        size -= 0.5
+    # passt auch klein nicht: eine gekürzte Zeile
+    return [(_fit(main or label.name, width, 6.0, bold), 6.0, bold)]
 
 
 def _label_ops(
@@ -214,6 +354,7 @@ def _label_ops(
     show_name: bool = True,
     show_content: bool = False,
     design: str = "plain",
+    show_nutrition: bool = False,
 ) -> list[bytes]:
     col, row = index % layout.cols, index // layout.cols
     x_mm = layout.left + col * (layout.width + layout.gap_x)
@@ -221,47 +362,36 @@ def _label_ops(
     x = x_mm * MM
     y = (layout.page[1] - y_top_mm - layout.height) * MM  # PDF zählt von unten
     w, h = layout.width * MM, layout.height * MM
-    background, frame, inset = _design_ops(design, x, y, w, h)
-    pad = 3.0 * MM + inset
-    small = layout.height < 40
-    ops: list[bytes] = [b"q", *background]
+    frame, inset_x, inset_y = _design_ops(design, x, y, w, h)
+    pad = 2.5 * MM
+    pad_x, pad_y = pad + inset_x, pad + inset_y
+    hand = design == "handwritten"
+    bold, regular = ("F3", "F3") if hand else ("F2", "F1")
+    ops: list[bytes] = [b"q 0 g 0 G"]
     if border:
-        ops += [b"0.8 g 0.8 G 0.3 w", f"{x:.3f} {y:.3f} {w:.3f} {h:.3f} re S".encode(), b"0 g 0 G"]
+        ops += [b"0.6 G 0.3 w", f"{x:.3f} {y:.3f} {w:.3f} {h:.3f} re S".encode(), b"0 G"]
 
-    lines: list[tuple[str, float, bool]] = []
-    big = not show_qr
-    if show_name:
-        lines.append((label.name, (13.0 if small else 15.0) if big else (11.0 if small else 13.0), True))
-    if show_content:
-        size = (10.5 if big else 8.5)
-        if label.content:
-            lines += [(part, size, not show_name and i == 0) for i, part in enumerate(_wrap(label.content, w - 2 * pad, size, 2))]
-        if label.best_before:
-            lines.append((f"{_TEXT[language]['best_before']}: {label.best_before}", size, False))
-    if not lines and not show_qr:
-        lines.append((label.name, 13.0, True))  # nichts gewählt: wenigstens der Name
-
+    has_text = show_name or show_content or show_nutrition or not show_qr
     if show_qr:
-        qr_size = min(h - 2 * pad, w * 0.5) if lines else min(h, w) - 2 * pad
-        qr_x = x + pad if lines else x + (w - qr_size) / 2
-        ops += [b"0 g"] + _qr_ops(label.qr, qr_x, y + (h - qr_size) / 2, qr_size)
-        text_x = x + pad + qr_size + 2.5 * MM
-        text_w = x + w - pad - text_x
-        centered = False
+        qr_size = min(h - 2 * pad_y, w * 0.38) if has_text else min(w - 2 * pad_x, h - 2 * pad_y)
+        qr_x = x + pad_x if has_text else x + (w - qr_size) / 2
+        ops += _qr_ops(label.qr, qr_x, y + (h - qr_size) / 2, qr_size)
+        text_x = qr_x + qr_size + 2.5 * MM
+        text_w = x + w - pad_x - text_x
     else:
-        text_x, text_w, centered = x + pad, w - 2 * pad, True
-
-    total = sum(size * 1.25 for _, size, _ in lines)
-    cursor = y + h / 2 + total / 2
-    for text, size, bold in lines:
-        cursor -= size * 1.05
-        fitted = _fit(text, text_w, size, bold)
-        line_x = text_x
-        if centered:
-            line_x = text_x + max(0.0, (text_w - len(fitted) * size * _AVG[bold]) / 2)
-        ops.append(b"0 g")
-        ops.append(_text_line(fitted, line_x, cursor, size, bold))
-        cursor -= size * 0.2
+        text_x, text_w = x + pad_x, w - 2 * pad_x
+    text_h = h - 2 * pad_y
+    if has_text:
+        lines = _layout_text(
+            label, show_name, show_content, show_nutrition, text_w, text_h, language, bold, regular, not show_qr
+        )
+        total = sum(size * 1.18 for _, size, _ in lines)
+        cursor = y + h / 2 + total / 2
+        for text, size, font in lines:
+            cursor -= size * 0.95
+            line_x = text_x if show_qr else text_x + max(0.0, (text_w - _measure(text, font, size)) / 2)
+            ops.append(_text_line(text, line_x, cursor, size, font))
+            cursor -= size * 0.23
     ops += frame
     ops.append(b"Q")
     return ops
@@ -278,8 +408,11 @@ def build_pdf(
     show_name: bool = True,
     show_content: bool = False,
     design: str = "plain",
+    show_nutrition: bool = False,
 ) -> bytes:
     """PDF mit allen Etiketten; `skip` lässt am Anfang schon benutzte Felder eines Bogens frei."""
+    if design == "vintage":
+        design = "handwritten"  # früherer Name
     layout = LAYOUTS.get(layout_key, LAYOUTS[DEFAULT_LAYOUT])
     language = "de" if language.lower().startswith("de") else "en"
     skip = max(0, min(skip, layout.per_page - 1))
@@ -289,7 +422,9 @@ def build_pdf(
         ops: list[bytes] = []
         for i, label in enumerate(slots[start : start + layout.per_page]):
             if label is not None:
-                ops += _label_ops(label, layout, i, border, language, show_qr, show_name, show_content, design)
+                ops += _label_ops(
+                    label, layout, i, border, language, show_qr, show_name, show_content, design, show_nutrition
+                )
         pages.append(ops)
 
     objects: list[bytes] = []
@@ -302,6 +437,24 @@ def build_pdf(
     pages_id = add(b"")
     font_regular = add(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>")
     font_bold = add(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>")
+    fonts = f"/F1 {font_regular} 0 R /F2 {font_bold} 0 R"
+    if design == "handwritten":
+        data, widths, info = _kalam()
+        file_id = add(b"<< /Length %d /Length1 %d >>\nstream\n" % (len(data), len(data)) + data + b"\nendstream")
+        descriptor = add(
+            (
+                f"<< /Type /FontDescriptor /FontName /Kalam-Bold /Flags 32 /FontBBox [{' '.join(map(str, info['bbox']))}] "
+                f"/ItalicAngle 0 /Ascent {info['ascent']} /Descent {info['descent']} /CapHeight {info['ascent']} "
+                f"/StemV 120 /FontFile2 {file_id} 0 R >>"
+            ).encode()
+        )
+        font_hand = add(
+            (
+                f"<< /Type /Font /Subtype /TrueType /BaseFont /Kalam-Bold /FirstChar 32 /LastChar 255 "
+                f"/Widths [{' '.join(map(str, widths))}] /FontDescriptor {descriptor} 0 R /Encoding /WinAnsiEncoding >>"
+            ).encode()
+        )
+        fonts += f" /F3 {font_hand} 0 R"
     kids: list[int] = []
     width, height = layout.page[0] * MM, layout.page[1] * MM
     for ops in pages:
@@ -311,7 +464,7 @@ def build_pdf(
             add(
                 (
                     f"<< /Type /Page /Parent {pages_id} 0 R /MediaBox [0 0 {width:.2f} {height:.2f}] "
-                    f"/Resources << /Font << /F1 {font_regular} 0 R /F2 {font_bold} 0 R >> >> "
+                    f"/Resources << /Font << {fonts} >> >> "
                     f"/Contents {content} 0 R >>"
                 ).encode()
             )
@@ -342,7 +495,32 @@ def _format_date(value: str, language: str) -> str:
     return d.strftime("%d.%m.%Y") if language.lower().startswith("de") else d.isoformat()
 
 
-def collect_labels(hass: HomeAssistant, codes: list[str] | None, with_content: bool) -> list[Label]:
+_NUTRITION_TEXT = {"de": {"portion": "Portion"}, "en": {"portion": "portion"}}
+
+
+def nutrition_line(attrs: dict, language: str) -> str:
+    """Kurze Nährwertzeile fürs Etikett: kcal (pro Portion bzw. 100 g), Nutri-Score, Allergene."""
+    de = language.lower().startswith("de")
+    parts = []
+
+    def num(value) -> str:
+        text = f"{value:g}" if isinstance(value, (int, float)) else str(value)
+        return text.replace(".", ",") if de else text
+
+    if attrs.get("kcal_portion") is not None:
+        parts.append(f"{num(attrs['kcal_portion'])} kcal/{_NUTRITION_TEXT['de' if de else 'en']['portion']}")
+    if attrs.get("kcal_100g") is not None:
+        parts.append(f"{num(attrs['kcal_100g'])} kcal/100 g")
+    if attrs.get("nutri_score"):
+        parts.append(f"Nutri-Score {attrs['nutri_score']}")
+    if attrs.get("allergens"):
+        parts.append(str(attrs["allergens"]))
+    return " · ".join(parts)
+
+
+def collect_labels(
+    hass: HomeAssistant, codes: list[str] | None, with_content: bool, with_nutrition: bool = False
+) -> list[Label]:
     """Etiketten der gewünschten Dosen (alle, wenn `codes` leer ist), alphabetisch nach Name."""
     registry = er.async_get(hass)
     wanted = {c.upper() for c in codes or []}
@@ -352,7 +530,12 @@ def collect_labels(hass: HomeAssistant, codes: list[str] | None, with_content: b
         cc = entry.data.get("cc")
         if not cc or (wanted and cc.upper() not in wanted):
             continue
-        content = best = ""
+        content = best = nutrition = ""
+        if with_nutrition:
+            entity_id = registry.async_get_entity_id("text", DOMAIN, f"{cc}_content")
+            state = hass.states.get(entity_id) if entity_id else None
+            if state is not None:
+                nutrition = nutrition_line(dict(state.attributes), language)
         if with_content:
             for platform, key in (("text", "content"), ("date", "best_before")):
                 entity_id = registry.async_get_entity_id(platform, DOMAIN, f"{cc}_{key}")
@@ -362,7 +545,7 @@ def collect_labels(hass: HomeAssistant, codes: list[str] | None, with_content: b
                     content = value
                 else:
                     best = _format_date(value, language) if value else ""
-        labels.append(Label(entry.title or cc, scan_app_url(cc), content, best))
+        labels.append(Label(entry.title or cc, scan_app_url(cc), content, best, nutrition))
     labels.sort(key=lambda label: label.name.casefold())
     return labels
 
@@ -384,7 +567,8 @@ class LabelSheetView(HomeAssistantView):
         if (query.get("cc") or query.get("device")) and not codes:
             return self.json_message("no containers", HTTPStatus.NOT_FOUND)
         show_content = query.get("content") == "1"
-        labels = collect_labels(hass, codes, show_content)
+        show_nutrition = query.get("nutrition") == "1"
+        labels = collect_labels(hass, codes, show_content, show_nutrition)
         if not labels:
             return self.json_message("no containers", HTTPStatus.NOT_FOUND)
         try:
@@ -392,6 +576,7 @@ class LabelSheetView(HomeAssistantView):
         except ValueError:
             skip = 0
         design = query.get("design", "plain")
+        design = "handwritten" if design == "vintage" else design
         pdf = await hass.async_add_executor_job(
             partial(
                 build_pdf,
@@ -404,6 +589,7 @@ class LabelSheetView(HomeAssistantView):
                 show_name=query.get("name", "1") != "0",
                 show_content=show_content,
                 design=design if design in DESIGNS else "plain",
+                show_nutrition=show_nutrition,
             )
         )
         return web.Response(

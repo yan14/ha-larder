@@ -20,6 +20,7 @@ from .temperature import async_get_temperature_watch
 from .labels import async_setup_labels
 from .panel import async_setup_panel, async_sync_experimental_panel, async_teardown_panel
 from .recipe_book import async_setup_recipe_book_websocket
+from .content_photo import async_setup_content_photo
 from .recipe_photo import async_setup_recipe_photo
 from .recipes import async_setup_recipe_service
 from .repair_hints import async_get_repairs
@@ -37,6 +38,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_calendar_service(hass)
     async_setup_recipe_book_websocket(hass)
     async_setup_recipe_photo(hass)
+    async_setup_content_photo(hass)
     async_setup_labels(hass)
     async_setup_export(hass)
     async_setup_history_websocket(hass)

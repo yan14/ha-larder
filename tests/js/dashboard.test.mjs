@@ -1002,7 +1002,7 @@ test("Wochenplan: Rezept einplanen, Startseite zeigt Plan und Auftauen", async (
   let plans = { plans: [], thaw: [] };
   hass.callWS = async (msg) => {
     if (msg.type === `${D}/plan_list`) return plans;
-    if (msg.type === `${D}/plan_add` || msg.type === `${D}/plan_delete` || msg.type === `${D}/thawed`) {
+    if ([`${D}/plan_add`, `${D}/plan_delete`, `${D}/thawed`, `${D}/plan_cooked`, `${D}/plan_shopping`].includes(msg.type)) {
       sent.push(msg);
       return {};
     }
@@ -1023,10 +1023,10 @@ test("Wochenplan: Rezept einplanen, Startseite zeigt Plan und Auftauen", async (
   form.querySelector("button.submit").click();
   await flush();
   await flush();
-  assert.deepEqual(sent[0], { type: `${D}/plan_add`, date: iso(1), title: "Lachs-Pasta", device_ids: ["d1"], recipe_id: "r1" });
+  assert.deepEqual(sent[0], { type: `${D}/plan_add`, date: iso(1), title: "Lachs-Pasta", device_ids: ["d1"], ingredients: ["Lachs", "Nudeln"], recipe_id: "r1" });
 
   plans = {
-    plans: [{ id: "p1", date: iso(1), title: "Lachs-Pasta", containers: [{ device_id: "d1", name: "Dose 1", content: "Lachs", frozen: true, thawed: false }] }],
+    plans: [{ id: "p1", date: iso(1), title: "Lachs-Pasta", missing: ["Nudeln"], containers: [{ device_id: "d1", name: "Dose 1", content: "Lachs", frozen: true, thawed: false }] }],
     thaw: [{ cc: "D1", device_id: "d1", name: "Dose 1", content: "Lachs", plan: "Lachs-Pasta", date: iso(1), days_until: 1 }],
   };
   await go(el, "start");
@@ -1040,9 +1040,16 @@ test("Wochenplan: Rezept einplanen, Startseite zeigt Plan und Auftauen", async (
   await go(el, "recipes");
   await flush();
   await flush();
+  $(el, '[data-role="plan-shopping"]').click();
+  await flush();
+  assert.deepEqual(sent[2], { type: `${D}/plan_shopping`, plan_id: "p1" });
+  $(el, '[data-role="plan-cooked"]').click();
+  await flush();
+  assert.deepEqual(sent[3], { type: `${D}/plan_cooked`, plan_id: "p1" });
+  await flush();
   $(el, '[data-role="plan-delete"]').click();
   await flush();
-  assert.deepEqual(sent[2], { type: `${D}/plan_delete`, plan_id: "p1" });
+  assert.deepEqual(sent[4], { type: `${D}/plan_delete`, plan_id: "p1" });
 });
 
 test("Fach: in Kachel und Liste, durchsuchbar, nach Bereich sortiert", async () => {
@@ -1231,7 +1238,7 @@ test("QR-Etiketten: was aufs Etikett kommt, Design und Etikettendrucker", async 
   box("content").checked = true;
   change("content");
   assert.equal(form.querySelector("button.submit").disabled, false);
-  box("design").value = "vintage";
+  box("design").value = "handwritten";
   change("design");
   box("layout").value = "62x29";
   change("layout");
@@ -1239,11 +1246,11 @@ test("QR-Etiketten: was aufs Etikett kommt, Design und Etikettendrucker", async 
   form.querySelector("button.submit").click();
   await flush();
   await flush();
-  assert.equal(signed[0].path, "/api/larder/labels.pdf?layout=62x29&skip=0&content=1&qr=0&name=0&design=vintage");
+  assert.equal(signed[0].path, "/api/larder/labels.pdf?layout=62x29&skip=0&content=1&qr=0&name=0&design=handwritten");
   // wird gemerkt
   $(el, ".overlay").click();
   el.openLabelDialog();
-  assert.equal(box("design").value, "vintage");
+  assert.equal(box("design").value, "handwritten");
   assert.equal(box("qr").checked, false);
   assert.equal(box("content").checked, true);
 });

@@ -3,6 +3,13 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 2.12.0
+
+- **Lovelace card** `custom:larder-card`: containers that expire soon on any dashboard (options title, days, show_expired, limit, area); loaded automatically, listed in the card picker, tap opens the container.
+- **Contents from a photo:** 📷 in the fill dialog lets the AI recognise the food and fills in the contents.
+- **Meal plan: ✓ Cooked** takes a portion from (or empties) the containers of the dish; **missing ingredients** of the recipe are shown and go to the shopping list with one tap.
+- **Labels:** always black and white; text fills the label and wraps instead of being cut off; new option **nutrition** (kcal, Nutri-Score, allergens); new design **handwriting** (jar label with the Kalam font, OFL) replaces vintage.
+
 ## 2.11.0
 
 - **Product data from the barcode:** brand, package size and EAN are kept along with the name.

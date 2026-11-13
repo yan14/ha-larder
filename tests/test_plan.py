@@ -117,3 +117,41 @@ async def test_calendar_event_is_created_and_removed(hass: HomeAssistant) -> Non
     assert f"larder-plan:{added['id']}" in cal.events[0].description
     await plan.async_delete(added["id"])
     assert cal.events == []
+
+
+async def test_cooked_and_shopping(hass: HomeAssistant, hass_ws_client) -> None:
+    from custom_components.larder.history import async_get_history
+
+    from .test_shopping import _todo
+
+    for cc in ("AAAA", "BBBB"):
+        await _setup(hass, cc)
+    await _fill(hass, "AAAA", "Bolognese-Sauce", 60, quantity=3)
+    await _fill(hass, "BBBB", "Parmesan", 20)
+    todo = await _todo(hass)
+    ws = await hass_ws_client(hass)
+    tomorrow = (dt_util.now().date() + timedelta(days=1)).isoformat()
+    await ws.send_json({
+        "id": 1, "type": "larder/plan_add", "date": tomorrow, "title": "Spaghetti",
+        "device_ids": [_device(hass, "AAAA"), _device(hass, "BBBB")],
+        "ingredients": ["500 g Spaghetti", "Bolognese-Sauce", "Parmesan", "1 Zwiebel"],
+    })
+    plan = (await ws.receive_json())["result"]["plan"]
+    assert plan["missing"] == ["500 g Spaghetti", "1 Zwiebel"]
+
+    # Einkaufsliste: ohne gewählte Liste Fehler, sonst nur das Fehlende
+    await ws.send_json({"id": 2, "type": "larder/plan_shopping", "plan_id": plan["id"]})
+    assert (await ws.receive_json())["error"]["code"] == "no_shopping_list"
+    estimator = await async_get_estimator(hass)
+    await estimator.async_update_settings({"todo_entity": "todo.einkaufen"})
+    await ws.send_json({"id": 3, "type": "larder/plan_shopping", "plan_id": plan["id"]})
+    assert (await ws.receive_json())["result"] == {"added": 2, "missing": 2}
+    assert todo.summaries == ["500 g Spaghetti", "1 Zwiebel"]
+
+    # gekocht: Dose mit 3 Portionen → 2, Dose ohne Menge → geleert (gegessen); Plan verschwindet
+    await ws.send_json({"id": 4, "type": "larder/plan_cooked", "plan_id": plan["id"]})
+    assert (await ws.receive_json())["result"] == {"emptied": 1, "taken": 1}
+    assert hass.states.get(_eid(hass, "number", "AAAA")).state == "2.0"
+    assert hass.states.get(_eid(hass, "text", "BBBB")).state == ""
+    assert (await async_get_history(hass)).list("BBBB")[0]["outcome"] == "eaten"
+    assert (await async_get_plan(hass)).list() == []

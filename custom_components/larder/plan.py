@@ -120,8 +120,12 @@ class MealPlan:
     # ----- Pläne -----
 
     def list(self, since: date | None = None) -> list[dict[str, Any]]:
+        """Offene Pläne ab heute (gekochte nicht mehr)."""
         since_iso = (since or dt_util.now().date()).isoformat()
-        return sorted((p for p in self.plans if p["date"] >= since_iso), key=lambda p: (p["date"], p["title"].casefold()))
+        return sorted(
+            (p for p in self.plans if p["date"] >= since_iso and not p.get("cooked")),
+            key=lambda p: (p["date"], p["title"].casefold()),
+        )
 
     def _public(self, plan: dict[str, Any]) -> dict[str, Any]:
         devices = dr.async_get(self.hass)
@@ -138,9 +142,14 @@ class MealPlan:
                     "thawed": cc in plan.get("thawed", []),
                 }
             )
-        return {k: v for k, v in plan.items() if k not in ("ccs", "thawed")} | {"containers": containers}
+        return {k: v for k, v in plan.items() if k not in ("ccs", "thawed")} | {
+            "containers": containers,
+            "missing": self.missing_ingredients(plan),
+        }
 
-    async def async_add(self, day: date, title: str, ccs: list[str], recipe_id: str | None = None) -> dict[str, Any]:
+    async def async_add(
+        self, day: date, title: str, ccs: list[str], recipe_id: str | None = None, ingredients: list[str] | None = None
+    ) -> dict[str, Any]:
         plan = {
             "id": uuid.uuid4().hex[:12],
             "date": day.isoformat(),
@@ -151,6 +160,8 @@ class MealPlan:
         }
         if recipe_id:
             plan["recipe_id"] = recipe_id
+        if ingredients:
+            plan["ingredients"] = [str(i).strip()[:120] for i in ingredients if str(i).strip()][:40]
         self.plans.append(plan)
         self._save()
         await self._async_calendar_add(plan)
@@ -164,6 +175,76 @@ class MealPlan:
         self._save()
         await self._async_calendar_delete(plan)
         return True
+
+    def get(self, plan_id: str) -> dict[str, Any] | None:
+        return next((p for p in self.plans if p["id"] == plan_id), None)
+
+    async def async_cooked(self, plan_id: str) -> dict[str, int] | None:
+        """Gericht gekocht: benutzte Dosen leeren (gegessen) bzw. bei mehreren Portionen eine entnehmen."""
+        from .history import async_get_history
+
+        plan = self.get(plan_id)
+        if plan is None:
+            return None
+        registry = er.async_get(self.hass)
+        history = await async_get_history(self.hass)
+        emptied = taken = 0
+        for cc in plan.get("ccs", []):
+            if not _state(self.hass, "text", cc, "content"):
+                continue
+            try:
+                quantity = int(float(_state(self.hass, "number", cc, "portions") or 0))
+            except ValueError:
+                quantity = 0
+            unit = _state(self.hass, "select", cc, "unit") or "portions"
+            number_id = registry.async_get_entity_id("number", DOMAIN, f"{cc}_portions")
+            if quantity > 1 and unit in ("portions", "pieces", "slices") and number_id:
+                await self.hass.services.async_call(
+                    "number", "set_value", {"entity_id": number_id, "value": quantity - 1}, blocking=True
+                )
+                taken += 1
+                continue
+            button = registry.async_get_entity_id("button", DOMAIN, f"{cc}_empty_container")
+            if button:
+                history.set_pending(cc, "eaten")
+                try:
+                    await self.hass.services.async_call("button", "press", {"entity_id": button}, blocking=True)
+                    emptied += 1
+                except HomeAssistantError:
+                    _LOGGER.debug("Leeren von %s nicht möglich", cc, exc_info=True)
+                history.pop_pending(cc)
+        plan["cooked"] = dt_util.now().isoformat(timespec="seconds")
+        self._save()
+        return {"emptied": emptied, "taken": taken}
+
+    def missing_ingredients(self, plan: dict[str, Any]) -> list[str]:
+        """Zutaten des Plans, die in keiner der gewählten Dosen sind (grober Vergleich der Wörter)."""
+        have = " ".join((_state(self.hass, "text", cc, "content") or "").casefold() for cc in plan.get("ccs", []))
+        out = []
+        for item in plan.get("ingredients", []):
+            words = [w for w in shelf_life.norm(item).split() if len(w) > 2 and not w.isdigit()]
+            if words and any(w in shelf_life.norm(have) for w in words):
+                continue
+            out.append(item)
+        return out
+
+    async def async_shopping(self, plan_id: str) -> dict[str, int] | None:
+        """Fehlende Zutaten auf die gewählte Einkaufsliste setzen (offene Einträge nicht doppelt)."""
+        from .shopping import async_add_to_shopping_list
+
+        plan = self.get(plan_id)
+        if plan is None:
+            return None
+        estimator = self.hass.data.get(DOMAIN, {}).get("estimator")
+        todo = getattr(estimator, "todo_entity", None)
+        if not todo:
+            raise HomeAssistantError("no shopping list")
+        missing = self.missing_ingredients(plan)
+        added = 0
+        for item in missing:
+            if await async_add_to_shopping_list(self.hass, todo, item):
+                added += 1
+        return {"added": added, "missing": len(missing)}
 
     # ----- Kalender -----
 
@@ -329,6 +410,7 @@ async def ws_plan_list(hass: HomeAssistant, connection: websocket_api.ActiveConn
         vol.Required("title"): vol.All(str, vol.Length(min=1, max=120)),
         vol.Optional("device_ids", default=[]): [str],
         vol.Optional("recipe_id"): str,
+        vol.Optional("ingredients", default=[]): [str],
     }
 )
 @websocket_api.async_response
@@ -340,7 +422,7 @@ async def ws_plan_add(hass: HomeAssistant, connection: websocket_api.ActiveConne
         return
     ccs = [cc for d in msg["device_ids"] if (cc := _cc_of_device(hass, d))]
     plan = await async_get_plan(hass)
-    added = await plan.async_add(day, msg["title"], ccs, msg.get("recipe_id"))
+    added = await plan.async_add(day, msg["title"], ccs, msg.get("recipe_id"), msg["ingredients"])
     connection.send_result(msg["id"], {"plan": plan._public(added)})  # noqa: SLF001
 
 
@@ -362,11 +444,37 @@ async def ws_thawed(hass: HomeAssistant, connection: websocket_api.ActiveConnect
     connection.send_result(msg["id"], {"thawed": await plan.async_mark_thawed(ccs)})
 
 
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/plan_cooked", vol.Required("plan_id"): str})
+@websocket_api.async_response
+async def ws_plan_cooked(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    plan = await async_get_plan(hass)
+    result = await plan.async_cooked(msg["plan_id"])
+    if result is None:
+        connection.send_error(msg["id"], "not_found", "plan not found")
+        return
+    connection.send_result(msg["id"], result)
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/plan_shopping", vol.Required("plan_id"): str})
+@websocket_api.async_response
+async def ws_plan_shopping(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    plan = await async_get_plan(hass)
+    try:
+        result = await plan.async_shopping(msg["plan_id"])
+    except HomeAssistantError:
+        connection.send_error(msg["id"], "no_shopping_list", "no shopping list chosen")
+        return
+    if result is None:
+        connection.send_error(msg["id"], "not_found", "plan not found")
+        return
+    connection.send_result(msg["id"], result)
+
+
 def async_setup_plan_websocket(hass: HomeAssistant) -> None:
     domain_data = hass.data.setdefault(DOMAIN, {})
     if domain_data.get(DATA_WS):
         return
-    for command in (ws_plan_list, ws_plan_add, ws_plan_delete, ws_thawed):
+    for command in (ws_plan_list, ws_plan_add, ws_plan_delete, ws_thawed, ws_plan_cooked, ws_plan_shopping):
         websocket_api.async_register_command(hass, command)
     domain_data[DATA_WS] = True
 

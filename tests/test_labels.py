@@ -27,7 +27,7 @@ def test_pdf_pages_skip_and_text() -> None:
     pdf = build_pdf([Label("Küche (1)", "x", "Sehr lange Bolognese-Sauce mit sehr viel Hackfleisch und Gemüse aus dem Garten", "24.12.2026")], language="de", show_content=True)
     assert b"K\xfcche \\(1\\)" in pdf
     assert b"MHD: 24.12.2026" in pdf
-    assert b"\x85" in pdf  # … am Ende des gekürzten Inhalts
+    assert b"\x85" in pdf  # … am Ende des gekürzten Inhalts (nach zwei Zeilen)
 
 
 def test_options_designs_and_label_printer() -> None:
@@ -38,9 +38,19 @@ def test_options_designs_and_label_printer() -> None:
     assert b" re\n" not in without_qr and b"(Gulasch) Tj" in without_qr and b"(Dose 1)" not in without_qr
     # nichts gewählt: wenigstens der Name
     assert b"(Dose 1) Tj" in build_pdf([label], show_qr=False, show_name=False)
-    for design in ("frame", "notched", "vintage"):
-        assert b" c " in build_pdf([label], design=design)  # Rundungen
-    assert b"0.99 0.96 0.88 rg" in build_pdf([label], design="vintage")
+    for design in ("frame", "notched", "handwritten"):
+        pdf = build_pdf([label], design=design)
+        assert b" c " in pdf  # Rundungen
+        assert b" rg" not in pdf and b" RG" not in pdf  # immer schwarz-weiß
+    hand = build_pdf([label], design="vintage")  # alter Name
+    assert b"/FontFile2" in hand and b"/BaseFont /Kalam-Bold" in hand and b"/F3 " in hand
+    assert b"/FontFile2" not in build_pdf([label], design="frame")
+    # Nährwertzeile, gleicher Name/Inhalt nur einmal
+    both = build_pdf([Label("Zucker", "x", "Zucker", "", "372 kcal/100 g")], show_content=True, show_nutrition=True)
+    assert both.count(b"(Zucker) Tj") == 1 and b"(372 kcal/100 g) Tj" in both
+    # lange Namen werden umgebrochen statt abgeschnitten
+    long = build_pdf([Label("Chocolate Chunks dark", "x")])
+    assert b"(Chocolate) Tj" in long and b"(Chunks dark) Tj" in long
     # Etikettendrucker: eine Seite pro Etikett im Etikettenformat
     pdf = build_pdf([label, label], "62x29")
     assert _pages(pdf) == 2 and b"/MediaBox [0 0 175.75 82.20]" in pdf
@@ -65,7 +75,7 @@ async def test_collect_labels_and_http_view(hass: HomeAssistant, hass_client) ->
     assert _pages(await resp.read()) == 1
 
     device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "BBBB")})
-    resp = await client.get(f"/api/larder/labels.pdf?device={device.id}&layout=2x4&content=1&border=1&qr=0&design=vintage")
+    resp = await client.get(f"/api/larder/labels.pdf?device={device.id}&layout=2x4&content=1&border=1&qr=0&design=handwritten&nutrition=1")
     body = await resp.read()
     assert resp.status == 200 and b"Dose BBBB" in body and b"Dose AAAA" not in body
 
@@ -93,3 +103,12 @@ async def test_signed_url_with_options_works_without_login(hass: HomeAssistant, 
     assert resp.status == 200
     tampered = path.replace("skip=2", "skip=3")
     assert (await client.get(tampered)).status == 401
+
+
+def test_nutrition_line() -> None:
+    from custom_components.larder.labels import nutrition_line
+
+    attrs = {"kcal_100g": 372, "kcal_portion": 149.5, "nutri_score": "A", "allergens": "Gluten, Milch"}
+    assert nutrition_line(attrs, "de") == "149,5 kcal/Portion · 372 kcal/100 g · Nutri-Score A · Gluten, Milch"
+    assert nutrition_line({"kcal_100g": 200}, "en") == "200 kcal/100 g"
+    assert nutrition_line({}, "de") == ""

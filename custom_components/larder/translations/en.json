@@ -188,6 +188,9 @@
     },
     "recipe_photo_no_media": {
       "message": "Home Assistant has no media folder; the photos are stored there briefly."
+    },
+    "content_photo_none": {
+      "message": "No food was recognised in the photo."
     }
   },
   "options": {

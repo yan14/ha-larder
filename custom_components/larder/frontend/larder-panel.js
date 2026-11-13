@@ -72,6 +72,10 @@ export const STRINGS = {
     barcodeNotFound: (code) => `Kein Produkt zu EAN ${code} gefunden. Bitte den Inhalt eintippen.`,
     barcodeOffline: "Open Food Facts ist gerade nicht erreichbar. Bitte den Inhalt eintippen.",
     barcodeNutrition: "Nährwerte übernommen.",
+    contentPhoto: "Inhalt per Foto erkennen (KI)",
+    contentPhotoBusy: "Foto wird angesehen …",
+    contentPhotoDone: (name) => `Vorschlag: ${name}. Bitte prüfen und dann speichern.`,
+    contentPhotoFailed: "Auf dem Foto wurde nichts erkannt.",
     offSource: "Daten: Open Food Facts (ODbL).",
     nutrition: "Nährwerte",
     nutritionFields: {
@@ -224,6 +228,10 @@ export const STRINGS = {
     barcodeNotFound: (code) => `No product found for EAN ${code}. Please type the contents.`,
     barcodeOffline: "Open Food Facts cannot be reached right now. Please type the contents.",
     barcodeNutrition: "Nutrition taken over.",
+    contentPhoto: "Recognise contents from a photo (AI)",
+    contentPhotoBusy: "Looking at the photo …",
+    contentPhotoDone: (name) => `Suggestion: ${name}. Please check, then save.`,
+    contentPhotoFailed: "Nothing was recognised in the photo.",
     offSource: "Data: Open Food Facts (ODbL).",
     nutrition: "Nutrition",
     nutritionFields: {
@@ -643,6 +651,8 @@ const STYLE = `
   .dialog .check { flex-direction: row; align-items: center; gap: 8px; color: var(--primary-text-color); }
   .dialog .contentline { display: flex; gap: 8px; }
   .dialog .contentline input { flex: 1; min-width: 0; }
+  .dialog button.photo { flex: 0 0 auto; font-size: 16px; padding: 0 10px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--divider-color); background: none; }
   .dialog button.barcode { flex: 0 0 auto; font-size: 13px; font-weight: 500; padding: 0 12px; border-radius: 8px; cursor: pointer;
     border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
   .dialog .barcodestatus { font-size: 13px; color: var(--secondary-text-color); margin: -4px 0 0; }
@@ -1269,7 +1279,7 @@ class LarderPanel extends HTMLElement {
       <div class="overlay fill" hidden>
         <form class="dialog fillform" novalidate>
           <h2></h2>
-          <label class="field"><span data-l="content"></span><span class="contentline"><input type="text" data-f="content" maxlength="255" list="zs-contents" autocomplete="off"><button type="button" class="barcode" hidden>EAN</button></span><datalist id="zs-contents"></datalist></label>
+          <label class="field"><span data-l="content"></span><span class="contentline"><input type="text" data-f="content" maxlength="255" list="zs-contents" autocomplete="off"><button type="button" class="barcode" hidden>EAN</button><button type="button" class="photo" hidden>📷</button><input type="file" class="photofile" accept="image/*" capture="environment" hidden></span><datalist id="zs-contents"></datalist></label>
           <div class="hint barcodestatus" role="status" hidden></div>
           <label class="field" data-w="area" hidden><span data-l="area"></span><select data-f="area"></select></label>
           <label class="field" data-w="compartment" hidden><span data-l="compartment"></span><input type="text" data-f="compartment" maxlength="60" autocomplete="off"></label>
@@ -1327,6 +1337,8 @@ class LarderPanel extends HTMLElement {
     });
     this._fillForm.querySelector("button.cancel").addEventListener("click", () => this.closeFillDialog());
     this._fillForm.querySelector("button.barcode").addEventListener("click", () => this.scanBarcode());
+    this._fillForm.querySelector("button.photo").addEventListener("click", () => this._fillForm.querySelector("input.photofile").click());
+    this._fillForm.querySelector("input.photofile").addEventListener("change", (ev) => this.contentFromPhoto(ev.target));
     this._fillForm.addEventListener("submit", (ev) => {
       ev.preventDefault();
       this.submitFill();
@@ -1742,6 +1754,10 @@ class LarderPanel extends HTMLElement {
     barcode.hidden = !this._hasBarcodeScanner();
     barcode.title = t.barcode;
     barcode.setAttribute("aria-label", t.barcode);
+    const photo = this._fillForm.querySelector("button.photo");
+    photo.hidden = !(hass.fetchWithAuth && hass.services && hass.services.ai_task);
+    photo.title = t.contentPhoto;
+    photo.setAttribute("aria-label", t.contentPhoto);
     const barcodeStatus = this._fillForm.querySelector(".barcodestatus");
     barcodeStatus.hidden = true;
     barcodeStatus.textContent = "";
@@ -1858,6 +1874,36 @@ class LarderPanel extends HTMLElement {
       type: "bar_code/scan",
       payload: { title: t.barcodeTitle, description: t.barcodeDescription, alternative_option_label: t.cancel },
     });
+  }
+
+  /** Foto hochladen, die KI schlägt den Inhalt vor (nur ein Vorschlag, gespeichert wird mit "Speichern"). */
+  async contentFromPhoto(input) {
+    const hass = this._hass;
+    const file = input.files && input.files[0];
+    if (!file || !hass.fetchWithAuth) return;
+    const t = strings(hass);
+    const status = this._fillForm.querySelector(".barcodestatus");
+    const button = this._fillForm.querySelector("button.photo");
+    status.hidden = false;
+    status.textContent = t.contentPhotoBusy;
+    button.disabled = true;
+    try {
+      const form = new FormData();
+      form.append("file", file, file.name || "photo.jpg");
+      const res = await hass.fetchWithAuth(`/api/${DOMAIN}/content_photo`, { method: "POST", body: form });
+      const body = await res.json().catch(() => ({}));
+      if (!res.ok || !body.content) throw new Error(body.message || t.contentPhotoFailed);
+      const field = this._fillForm.querySelector('[data-f="content"]');
+      field.value = body.content;
+      field.dispatchEvent(new Event("input"));
+      this._scannedProduct = null;
+      status.textContent = t.contentPhotoDone(body.content);
+    } catch (err) {
+      status.textContent = (err && err.message) || t.contentPhotoFailed;
+    } finally {
+      button.disabled = false;
+      input.value = "";
+    }
   }
 
   async _lookupProduct(code, t, status) {

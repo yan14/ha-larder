@@ -26,6 +26,7 @@ FRONTEND_DIR = Path(__file__).parent / "frontend"
 DATA_PANEL = "panel_registered"
 DATA_PANEL_EXPERIMENTAL = "panel_experimental_registered"
 DATA_STATIC = "static_registered"
+DATA_CARD = "card_url"
 DATA_PANEL_LOCK = "panel_lock"
 
 
@@ -44,6 +45,11 @@ async def async_setup_panel(hass: HomeAssistant) -> None:
             domain_data[DATA_STATIC] = True
 
         integration = await async_get_integration(hass, DOMAIN)
+        # Lovelace-Karte "Larder: läuft bald ab" (custom:larder-card), ohne Ressource eintragen zu müssen
+        if not domain_data.get(DATA_CARD):
+            card_url = f"{STATIC_URL}/larder-card.js?v={integration.version}"
+            frontend.add_extra_js_url(hass, card_url)
+            domain_data[DATA_CARD] = card_url
         await panel_custom.async_register_panel(
             hass,
             frontend_url_path=PANEL_URL_PATH,
@@ -88,6 +94,8 @@ async def async_sync_experimental_panel(hass: HomeAssistant) -> None:
 def async_teardown_panel(hass: HomeAssistant) -> None:
     """Panels entfernen, wenn die letzte Dose entladen wurde."""
     domain_data = hass.data.get(DOMAIN, {})
+    if card_url := domain_data.pop(DATA_CARD, None):
+        frontend.remove_extra_js_url(hass, card_url)
     if domain_data.pop(DATA_PANEL_EXPERIMENTAL, None):
         frontend.async_remove_panel(hass, PANEL_EXPERIMENTAL_PATH)
     if domain_data.pop(DATA_PANEL, None):

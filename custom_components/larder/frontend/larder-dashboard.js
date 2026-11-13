@@ -84,7 +84,8 @@ export const TEXTS = {
     labelsQr: "QR-Code",
     labelsName: "Name der Dose",
     labelsDesign: "Design",
-    labelsDesigns: { plain: "Schlicht", frame: "Rahmen", notched: "Eingekerbte Ecken", vintage: "Vintage" },
+    labelsDesigns: { plain: "Schlicht", frame: "Rahmen", notched: "Eingekerbte Ecken", handwritten: "Handschrift (Glas-Etikett)" },
+    labelsNutrition: "Nährwerte (kcal, Nutri-Score, Allergene)",
     labelsSheets: "A4-Bögen",
     labelsPrinters: "Etikettendrucker",
     labelsBorder: "Schnittlinien (für normales Papier)",
@@ -106,6 +107,12 @@ export const TEXTS = {
     planSaveFailed: "Konnte nicht eingeplant werden.",
     planned: "📅 Geplant",
     planDelete: "Aus dem Plan nehmen",
+    planCooked: "Gekocht",
+    planCookedDone: (r) => `Gekocht: ${r.emptied || 0} Dose(n) geleert, ${r.taken || 0}× eine Portion entnommen.`,
+    planShopping: (n) => `${n} fehlen → Einkaufsliste`,
+    planShoppingDone: (n) => (n ? `${n} Zutat(en) auf die Einkaufsliste gesetzt.` : "Steht schon alles auf der Einkaufsliste."),
+    planNoList: "Bitte zuerst in den Einstellungen eine Einkaufsliste wählen.",
+    planFailed: "Das hat nicht geklappt.",
     planDay: (iso, lang) => {
       const d = new Date(`${iso}T12:00:00`);
       const today = new Date();
@@ -318,7 +325,8 @@ export const TEXTS = {
     labelsQr: "QR code",
     labelsName: "Container name",
     labelsDesign: "Design",
-    labelsDesigns: { plain: "Plain", frame: "Frame", notched: "Notched corners", vintage: "Vintage" },
+    labelsDesigns: { plain: "Plain", frame: "Frame", notched: "Notched corners", handwritten: "Handwritten (jar label)" },
+    labelsNutrition: "Nutrition (kcal, Nutri-Score, allergens)",
     labelsSheets: "A4 sheets",
     labelsPrinters: "Label printers",
     labelsBorder: "Cutting lines (for plain paper)",
@@ -340,6 +348,12 @@ export const TEXTS = {
     planSaveFailed: "Could not be planned.",
     planned: "📅 Planned",
     planDelete: "Remove from the plan",
+    planCooked: "Cooked",
+    planCookedDone: (r) => `Cooked: ${r.emptied || 0} container(s) emptied, ${r.taken || 0}× one portion taken.`,
+    planShopping: (n) => `${n} missing → shopping list`,
+    planShoppingDone: (n) => (n ? `${n} ingredient(s) added to the shopping list.` : "Everything is already on the shopping list."),
+    planNoList: "Please choose a shopping list in the settings first.",
+    planFailed: "That did not work.",
     planDay: (iso, lang) => {
       const d = new Date(`${iso}T12:00:00`);
       const today = new Date();
@@ -630,7 +644,7 @@ const LABEL_LAYOUTS = {
   "54x25": { per: 1, size: "Dymo 11352", printer: true },
   "89x36": { per: 1, size: "Dymo 99012", printer: true },
 };
-const LABEL_DESIGNS = ["plain", "frame", "notched", "vintage"];
+const LABEL_DESIGNS = ["plain", "frame", "notched", "handwritten"];
 
 function loadOptions() {
   try {
@@ -643,7 +657,7 @@ function loadOptions() {
       recipePeriod: RECIPE_PERIODS.includes(raw.recipePeriod) ? raw.recipePeriod : "default",
       recipeServings: Number.isInteger(raw.recipeServings) && raw.recipeServings >= 0 && raw.recipeServings <= 12 ? raw.recipeServings : 0,
       labelLayout: LABEL_LAYOUTS[raw.labelLayout] ? raw.labelLayout : "3x8",
-      labelDesign: LABEL_DESIGNS.includes(raw.labelDesign) ? raw.labelDesign : "plain",
+      labelDesign: raw.labelDesign === "vintage" ? "handwritten" : LABEL_DESIGNS.includes(raw.labelDesign) ? raw.labelDesign : "plain",
       labelParts: raw.labelParts && typeof raw.labelParts === "object" ? raw.labelParts : { qr: true, name: true, content: false },
     };
   } catch {
@@ -815,6 +829,8 @@ const STYLE = `
   ul.plans .title { font-weight: 500; flex: 1; }
   ul.plans .used { flex-basis: 100%; font-size: 13px; color: var(--secondary-text-color); padding-left: 74px; }
   ul.plans button { background: none; border: 0; cursor: pointer; color: var(--secondary-text-color); font-size: 15px; }
+  ul.plans .planactions { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 6px; padding-left: 74px; }
+  ul.plans button.act { font: inherit; font-size: 13px; border: 1px solid var(--divider-color); border-radius: 14px; padding: 3px 10px; color: var(--primary-color); }
   .stat.thaw button { font: inherit; font-size: 14px; border-radius: 18px; padding: 6px 12px; cursor: pointer; margin-top: 6px;
     border: 1px solid var(--primary-color); background: var(--primary-color); color: var(--text-primary-color, #fff); }
   .dialog .download { display: flex; flex-direction: column; gap: 4px; }
@@ -2719,6 +2735,36 @@ export class LarderDashboard extends HTMLElement {
       const used = plan.containers.map((c) => `${c.content || c.name}${c.frozen && !c.thawed ? " 🧊" : ""}`).join(", ");
       li.append(el("span", "day", t.planDay(plan.date, lang)), el("span", "title", plan.title));
       if (used) li.append(el("span", "used", used));
+      const actions = el("span", "planactions");
+      const cooked = el("button", "act", `✓ ${t.planCooked}`);
+      cooked.type = "button";
+      cooked.dataset.role = "plan-cooked";
+      cooked.addEventListener("click", async () => {
+        try {
+          const res = await this._hass.callWS({ type: `${DOMAIN}/plan_cooked`, plan_id: plan.id });
+          this.showNotice(t.planCookedDone(res || {}));
+        } catch {
+          this.showNotice(t.planFailed);
+        }
+        this.loadPlans();
+      });
+      actions.append(cooked);
+      if (plan.missing && plan.missing.length) {
+        const shop = el("button", "act", `🛒 ${t.planShopping(plan.missing.length)}`);
+        shop.type = "button";
+        shop.dataset.role = "plan-shopping";
+        shop.title = plan.missing.join(", ");
+        shop.addEventListener("click", async () => {
+          try {
+            const res = await this._hass.callWS({ type: `${DOMAIN}/plan_shopping`, plan_id: plan.id });
+            this.showNotice(t.planShoppingDone(res.added));
+          } catch (err) {
+            this.showNotice(err && err.code === "no_shopping_list" ? t.planNoList : t.planFailed);
+          }
+        });
+        actions.append(shop);
+      }
+      li.append(actions);
       if (withDelete) {
         const del = el("button", "", "✕");
         del.type = "button";
@@ -2803,6 +2849,7 @@ export class LarderDashboard extends HTMLElement {
           date: day.value,
           title: name,
           device_ids: deviceIds,
+          ingredients: (recipe && (suggestion ? [...(recipe.uses || []), ...(recipe.extra_ingredients || [])] : recipe.ingredients)) || [],
           ...(recipe && recipe.id && !suggestion ? { recipe_id: recipe.id } : {}),
         });
       } catch {
@@ -3068,6 +3115,7 @@ export class LarderDashboard extends HTMLElement {
       check(t.labelsQr, "qr", parts.qr !== false),
       check(t.labelsName, "name", parts.name !== false),
       check(t.labelsContent, "content", !!parts.content),
+      check(t.labelsNutrition, "nutrition", !!parts.nutrition),
     );
     const skip = el("input");
     skip.type = "number";
@@ -3106,7 +3154,7 @@ export class LarderDashboard extends HTMLElement {
     );
     // geänderte Optionen: alten Link verwerfen; mindestens eins von QR-Code, Name, Inhalt
     const syncParts = () => {
-      submit.disabled = !["qr", "name", "content"].some((f) => form.querySelector(`[data-f="${f}"]`).checked);
+      submit.disabled = !["qr", "name", "content", "nutrition"].some((f) => form.querySelector(`[data-f="${f}"]`).checked);
     };
     syncParts();
     for (const control of form.querySelectorAll("[data-f]")) {
@@ -3122,7 +3170,7 @@ export class LarderDashboard extends HTMLElement {
   }
 
   /** URL des PDFs (signiert, damit sie sich ohne Anmeldung im Browser der App öffnen lässt). */
-  async labelUrl(deviceIds, { layout, skip, content, border, qr = true, name = true, design = "plain" }) {
+  async labelUrl(deviceIds, { layout, skip, content, border, qr = true, name = true, nutrition = false, design = "plain" }) {
     const params = new URLSearchParams();
     if (deviceIds && deviceIds.length) params.set("device", deviceIds.join(","));
     params.set("layout", layout);
@@ -3131,6 +3179,7 @@ export class LarderDashboard extends HTMLElement {
     if (border) params.set("border", "1");
     if (!qr) params.set("qr", "0");
     if (!name) params.set("name", "0");
+    if (nutrition) params.set("nutrition", "1");
     if (design !== "plain") params.set("design", design);
     const path = `/api/${DOMAIN}/labels.pdf?${params}`;
     const signed = await this._hass.callWS({ type: "auth/sign_path", path, expires: 300 });
@@ -3148,7 +3197,7 @@ export class LarderDashboard extends HTMLElement {
     const layout = value("layout").value;
     const per = LABEL_LAYOUTS[layout].per;
     const skip = LABEL_LAYOUTS[layout].printer ? 0 : Math.min(Math.max(parseInt(value("skip").value, 10) || 0, 0), per - 1);
-    const parts = { qr: value("qr").checked, name: value("name").checked, content: value("content").checked };
+    const parts = { qr: value("qr").checked, name: value("name").checked, content: value("content").checked, nutrition: value("nutrition").checked };
     const design = value("design").value;
     this._opts.labelLayout = layout;
     this._opts.labelDesign = design;
