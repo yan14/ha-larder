@@ -3,6 +3,10 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 2.5.0
+
+- **Several contents in one container:** separate them with commas, e.g. `Salami, Kochschinken, Leberwurst`. The table estimate looks up each item and takes the shortest best-before date (the tip names the item that decides it); the AI is told to answer for the item that spoils first. The shopping list gets one entry per item, and containers with items of different kinds get the new category **Mixed** 🍱. Remembered table estimates are recalculated once.
+
 ## 2.4.0
 
 - **QR label sheet (A4):** **☰ → 🖨 Print QR labels** (all containers) or **🖨 Labels** in the selection creates a PDF with the QR codes: 3 × 8, 3 × 7 or 2 × 4 labels per sheet, skip labels already used, optionally contents and best-before date, optionally cutting lines for plain paper. The PDF opens via a signed link (valid for five minutes), also in the Home Assistant app.

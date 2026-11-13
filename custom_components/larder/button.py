@@ -11,6 +11,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DOMAIN
 from .entity import LarderConfigEntry, LarderEntity, LarderRuntime
+from .shelf_life import split_items
 from .shopping import async_add_to_shopping_list
 
 
@@ -43,7 +44,8 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
             await entity.async_reset()
         self._return_home()
         if item:
-            await async_add_to_shopping_list(self.hass, item[0], item[1])
+            for part in split_items(item[1]):  # "Salami, Leberwurst" → zwei Einträge
+                await async_add_to_shopping_list(self.hass, item[0], part)
 
     def _return_home(self) -> None:
         """Variabler Lagerort mit festem "Lagerort nach dem Leeren": Dose dorthin zurückstellen."""

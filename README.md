@@ -184,7 +184,7 @@ A bar at the bottom switches between five pages:
   - Tap a filled container to open its card, tap an empty one to fill it right away (see [Filling containers](#filling-containers)).
   - **📷** scans a container (only in the Home Assistant app, see [Scanning in the app](#scanning-in-the-app)), **＋** adds one (see [From the dashboard](#from-the-dashboard-recommended)), **☑** starts the [selection](#selecting-several-containers).
 - **Areas**: one tile per area with the number of containers and how many expire soon; tapping shows its containers. Administrators add areas with **＋** and rename them or set their storage kind with **✏️** (see [Areas and labels](#areas-and-labels)).
-- **Categories**: the same for kinds of food (fish, meat, dairy, dishes and leftovers, dry goods, …). The category comes from the built-in shelf-life table and is the attribute `category` of the **Contents** entity. Containers without a match are listed under "Other", empty ones under "Empty".
+- **Categories**: the same for kinds of food (fish, meat, dairy, dishes and leftovers, dry goods, …). The category comes from the built-in shelf-life table and is the attribute `category` of the **Contents** entity. Containers without a match are listed under "Other", containers with [several contents](#several-contents-in-one-container) of different kinds under "Mixed", empty ones under "Empty".
 - **Recipes**: your [recipe book](#recipe-book) with [recipe ideas](#recipe-ideas) and recipes read from a photo.
 
 **The card of a container** (in the card view, or after tapping a container) shows everything and lets you edit it:
@@ -237,6 +237,16 @@ The dialog also opens by itself right after you add a new container in the dashb
 **Containers that move around:** some containers always stand in the same place, others (for example vacuum boxes) are in the fridge one day and in the 0 °C drawer the next. Switch on **Flexible storage place** on the card of such a container. The fill dialog then also asks for the **area** (administrators), so the estimate uses the right place, and **Empty container** puts the container back into the area chosen under **After emptying, back to** (for example the pantry where the empty boxes are kept). Containers without the switch keep their area and the fill dialog does not ask.
 
 **Several containers at once:** select the empty containers (or scan them one after another) and press **Fill (n)**: the same dialog fills all of them, see [Selecting several containers](#selecting-several-containers).
+
+### Several contents in one container
+
+A container can hold several things, for example different cold cuts. Separate them with commas: `Salami, Kochschinken, Leberwurst` (a semicolon works too; `1,5 kg` stays one item).
+
+- The **estimate** looks up each item on its own and takes the **shortest** best-before date; the tip says which item decides it ("Lachs" decides the best-before date). If the table does not know one of the items, it counts as no match (in *table, else AI* mode the AI then answers for the item that spoils first).
+- The **shopping list** gets each item as its own entry.
+- The **category** stays if all items are of the same kind (cold cuts), otherwise it is **Mixed**.
+
+There is one best-before date per container: everything in it is used up or thrown away together.
 
 ## Larder experimental
 

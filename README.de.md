@@ -184,7 +184,7 @@ Eine Leiste unten wechselt zwischen fünf Seiten:
   - Eine gefüllte Dose öffnet beim Antippen ihre Karte, eine leere lässt sich gleich befüllen (siehe [Dosen befüllen](#dosen-befüllen)).
   - **📷** scannt eine Dose (nur in der Home Assistant App, siehe [Scannen in der App](#scannen-in-der-app)), **＋** legt eine an (siehe [Im Dashboard](#im-dashboard-empfohlen)), **☑** startet die [Auswahl](#mehrere-dosen-auswählen).
 - **Bereiche**: eine Kachel pro Bereich mit der Anzahl der Dosen und wie viele bald ablaufen; Antippen zeigt seine Dosen. Administratoren legen mit **＋** Bereiche an und benennen sie mit **✏️** um oder ändern ihre Lagerart (siehe [Bereiche und Labels](#bereiche-und-labels)).
-- **Kategorien**: dasselbe für Arten von Lebensmitteln (Fisch, Fleisch, Milchprodukte, Gerichte und Reste, Trockenware, …). Die Kategorie stammt aus der eingebauten Haltbarkeitstabelle und ist das Attribut `category` der Entität **Inhalt**. Dosen ohne Treffer stehen unter „Sonstiges“, leere unter „Leer“.
+- **Kategorien**: dasselbe für Arten von Lebensmitteln (Fisch, Fleisch, Milchprodukte, Gerichte und Reste, Trockenware, …). Die Kategorie stammt aus der eingebauten Haltbarkeitstabelle und ist das Attribut `category` der Entität **Inhalt**. Dosen ohne Treffer stehen unter „Sonstiges“, Dosen mit [mehreren Inhalten](#mehrere-inhalte-in-einer-dose) verschiedener Art unter „Gemischt“, leere unter „Leer“.
 - **Rezepte**: dein [Rezeptbuch](#rezeptbuch) mit [Rezeptideen](#rezeptideen) und Rezepten, die die KI von einem Foto liest.
 
 **Die Karte einer Dose** (in der Kartenansicht oder nach dem Antippen) zeigt alles und lässt es dich ändern:
@@ -237,6 +237,16 @@ Der Dialog öffnet sich auch von selbst direkt nach dem Anlegen einer neuen Dose
 **Dosen, die umziehen:** Manche Dosen stehen immer am selben Ort, andere (z. B. Vakuumdosen) mal im Kühlschrank, mal im 0-Grad-Fach. Schalte bei solchen Dosen auf der Karte **Variabler Lagerort** ein. Dann fragt der Befüll-Dialog auch nach dem **Bereich** (Administratoren), damit die Schätzung den richtigen Ort nimmt, und **Behälter leeren** stellt die Dose zurück in den Bereich unter **Nach dem Leeren zurück in** (z. B. den Vorratsraum, in dem die leeren Dosen stehen). Dosen ohne den Schalter behalten ihren Bereich, und der Dialog fragt nicht.
 
 **Mehrere Dosen auf einmal:** Die leeren Dosen auswählen (oder nacheinander scannen) und **Befüllen (n)** drücken: Derselbe Dialog befüllt alle, siehe [Mehrere Dosen auswählen](#mehrere-dosen-auswählen).
+
+### Mehrere Inhalte in einer Dose
+
+In einer Dose kann Verschiedenes liegen, z. B. unterschiedliche Wurst. Trenne die Inhalte mit Komma: `Salami, Kochschinken, Leberwurst` (Semikolon geht auch; `1,5 kg` bleibt ein Inhalt).
+
+- Die **Schätzung** schlägt jeden Inhalt einzeln nach und nimmt das **kürzeste** MHD; der Tipp sagt, welcher Inhalt es bestimmt („Lachs“ bestimmt das MHD). Kennt die Tabelle einen der Inhalte nicht, zählt das als kein Treffer (im Modus *Tabelle, sonst KI* antwortet dann die KI für den Inhalt, der zuerst verdirbt).
+- Die **Einkaufsliste** bekommt jeden Inhalt als eigenen Eintrag.
+- Die **Kategorie** bleibt, wenn alle Inhalte von derselben Art sind (Wurst), sonst ist sie **Gemischt**.
+
+Es gibt ein MHD pro Dose: Was darin liegt, wird zusammen verbraucht oder weggeworfen.
 
 ## Larder experimental
 

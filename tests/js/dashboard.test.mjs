@@ -454,6 +454,14 @@ test("Kategorien: Kacheln je Kategorie inklusive 'Leer', Antippen filtert", asyn
   assert.deepEqual(names(el), ["Lachs"]);
 });
 
+test("Kategorien: gemischte Dosen stehen unter 'Gemischt'", async () => {
+  const el = mount(makeHass([...DOSES, { id: "d6", name: "Dose 6", area: "kitchen", content: "Gouda, Lachs", days: 2, category: "mixed" }]));
+  await go(el, "categories");
+  assert.deepEqual(names(el), ["Fisch", "Milchprodukte", "Gerichte & Reste", "Trockenware", "Gemischt", "Leer"]);
+  const tile = $$(el, "main .tile").find((t) => t.querySelector(".name").textContent === "Gemischt");
+  assert.equal(tile.querySelector(".ico").textContent, "🍱");
+});
+
 test("Navigation setzt Filter zurück", async () => {
   const el = mount(makeHass(DOSES));
   await go(el, "areas");

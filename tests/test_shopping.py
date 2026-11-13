@@ -97,6 +97,15 @@ async def test_emptying_adds_content_when_switch_is_on(hass: HomeAssistant) -> N
     assert hass.states.get(_eid(hass, "text")).state == ""  # Dose wurde trotzdem geleert
 
 
+async def test_several_contents_become_separate_items(hass: HomeAssistant) -> None:
+    todo = await _todo(hass)
+    entry = await _setup(hass)
+    await _choose_list(hass, entry, "todo.einkaufen")
+    await _switch(hass, True)
+    await _fill_and_empty(hass, "Salami, Kochschinken; 1,5 kg Reis")
+    assert todo.summaries == ["Salami", "Kochschinken", "1,5 kg Reis"]
+
+
 async def test_leftovers_do_not_reach_the_list_when_switch_is_off(hass: HomeAssistant) -> None:
     todo = await _todo(hass)
     entry = await _setup(hass)

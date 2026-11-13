@@ -86,6 +86,7 @@ export const TEXTS = {
       dry: "Trockenware",
       sweet: "Süßes",
       coffee: "Kaffee & Tee",
+      mixed: "Gemischt",
       other: "Sonstiges",
       empty: "Leer",
     },
@@ -240,6 +241,7 @@ export const TEXTS = {
       dry: "Dry goods",
       sweet: "Sweets",
       coffee: "Coffee & tea",
+      mixed: "Mixed",
       other: "Other",
       empty: "Empty",
     },
@@ -335,6 +337,7 @@ export const CATEGORY_ICONS = {
   dry: "🌾",
   sweet: "🍫",
   coffee: "☕",
+  mixed: "🍱",
   other: "📦",
   empty: "🫙",
 };

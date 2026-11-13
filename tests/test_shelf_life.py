@@ -742,3 +742,29 @@ async def test_old_table_values_are_recalculated_after_a_table_update(hass: Home
     estimator.learn(key, 5)
     out = (await _estimate(hass, overwrite=True, apply=False))[_eid(hass, "date")]
     assert out["days"] == 5
+
+
+def test_several_items_in_one_container() -> None:
+    from custom_components.larder.shelf_life import MIXED, category_for, lookup, split_items
+
+    assert split_items("Salami, Kochschinken; Leberwurst") == ["Salami", "Kochschinken", "Leberwurst"]
+    assert split_items("1,5 kg Reis") == ["1,5 kg Reis"]
+    assert split_items("Lachs") == ["Lachs"]
+    assert split_items(" , ") == []
+    # gleiche Art: Kategorie bleibt, gemischt: "mixed"
+    assert category_for("Salami, Kochschinken, Leberwurst") == "deli"
+    assert category_for("Gouda, Lachs") == MIXED
+    assert category_for("Gouda, Xyzzy") == "dairy"
+    assert category_for("Xyzzy") is None
+
+    args = {"area_name": "Kühlschrank", "temperature_c": None, "label_texts": (), "vacuum": False, "language": "de"}
+    gouda, lachs = lookup("Gouda", **args), lookup("Lachs", **args)
+    assert lachs.days < gouda.days
+    mixed = lookup("Gouda, Lachs", **args)
+    assert mixed.days == lachs.days
+    assert mixed.tip.startswith("„Lachs“ bestimmt das MHD.")
+    # gleicher Wert: kein Zusatz
+    assert lookup("Salami, Salami", **args).tip == lookup("Salami", **args).tip
+    # ein unbekannter Inhalt: kein Treffer (er könnte zuerst verderben)
+    with pytest.raises(sl.TableNoMatch):
+        lookup("Gouda, Xyzzy", **args)

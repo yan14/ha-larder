@@ -198,6 +198,8 @@ def build_instructions(
         "You estimate how long a food item stays good in a household.",
         "Be conservative and food-safety minded. Assume the item is stored right away.",
         f"Item (may be a dish or an ingredient): {content}",
+        "If several items are listed (separated by commas), they share one container: "
+        "answer for the item that spoils first and name it in the storage tip.",
         f"Storage location (name chosen by the user, may be German): {place}",
     ]
     if context.hints:

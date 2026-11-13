@@ -124,7 +124,7 @@ TIPS: dict[str, tuple[str, str]] = {
 # "~a" ist ein schwaches Stichwort, das nur zählt, wenn sonst nichts passt ("filet").
 # TABLE_VERSION erhöhen, wenn sich Einträge oder die Erkennung ändern: gemerkte Tabellenwerte
 # werden dann neu berechnet (eigene Korrekturen bleiben).
-TABLE_VERSION = 2
+TABLE_VERSION = 3  # 3: mehrere Inhalte (Komma) werden einzeln geschätzt
 ENTRIES: tuple[Entry, ...] = (
     # --- Gerichte und Reste (Priorität 3) ---
     _e("dish", "Gericht / Reste", "Dish / leftovers", "dish",
@@ -334,6 +334,25 @@ def _keyword_score(keyword: str, text: str) -> tuple[bool, bool, int] | None:
 
 def _keyword_matches(keyword: str, text: str) -> bool:
     return _keyword_score(keyword, f" {norm(text)} " if text.strip() == text else text) is not None
+
+
+MIXED = "mixed"  # Kategorie für Dosen mit Inhalten verschiedener Art
+
+
+def split_items(content: str) -> list[str]:
+    """Mehrere Inhalte einer Dose: "Salami, Kochschinken; Leberwurst" → drei Einträge (sonst einer)."""
+    # Komma trennt, außer zwischen Ziffern ("1,5 kg Reis")
+    parts = [p.strip() for p in re.split(r";|,(?!\d)|(?<!\d),", content or "")]
+    parts = [p for p in parts if p]
+    return parts
+
+
+def category_for(content: str) -> str | None:
+    """Kategorie der Dose; bei Inhalten verschiedener Art "mixed"."""
+    cats = {e.cat for e in (find_entry(p) for p in split_items(content)) if e is not None}
+    if not cats:
+        return None
+    return cats.pop() if len(cats) == 1 else MIXED
 
 
 def find_entry(content: str) -> Entry | None:
@@ -554,7 +573,39 @@ def lookup(
     language: str,
     storage_hint: str | None = None,
 ) -> TableResult:
-    """Haltbarkeit aus der Tabelle berechnen oder eine passende Ausnahme auslösen."""
+    """Haltbarkeit aus der Tabelle berechnen oder eine passende Ausnahme auslösen.
+
+    Mehrere Inhalte (mit Komma getrennt) werden einzeln nachgeschlagen; es gilt der kürzeste Wert.
+    Kennt die Tabelle einen davon nicht, gilt das als kein Treffer (sonst könnte gerade das
+    Unbekannte zuerst verderben).
+    """
+    items = split_items(content)
+    if len(items) <= 1:
+        return _lookup_one(content, area_name=area_name, temperature_c=temperature_c, label_texts=label_texts,
+                           vacuum=vacuum, language=language, storage_hint=storage_hint)
+    results = [
+        (item, _lookup_one(item, area_name=area_name, temperature_c=temperature_c, label_texts=label_texts,
+                           vacuum=vacuum, language=language, storage_hint=storage_hint))
+        for item in items
+    ]
+    item, shortest = min(results, key=lambda r: r[1].days)
+    if len({r.days for _, r in results}) == 1:
+        return shortest
+    lang = "de" if language.lower().startswith("de") else "en"
+    note = f"„{item}“ bestimmt das MHD." if lang == "de" else f"“{item}” decides the best-before date."
+    return TableResult(shortest.days, f"{note} {shortest.tip}".strip(), shortest.basis)
+
+
+def _lookup_one(
+    content: str,
+    *,
+    area_name: str | None,
+    temperature_c: float | None,
+    label_texts: tuple[str, ...] | list[str],
+    vacuum: bool,
+    language: str,
+    storage_hint: str | None = None,
+) -> TableResult:
     lang = "de" if language.lower().startswith("de") else "en"
     entry = find_entry(content)
     if entry is None:
