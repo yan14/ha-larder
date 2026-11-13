@@ -16,7 +16,7 @@ async def test_content_from_photo(hass: HomeAssistant, hass_client, ready) -> No
     assert resp.status == HTTPStatus.OK
     assert (await resp.json()) == {"content": "Chili con carne"}
     assert calls[0]["files_present"] == [True]
-    assert not any(ready.rglob("*-content.jpg"))  # wieder gelöscht
+    assert not any(ready.rglob("*-photo.jpg"))  # wieder gelöscht
 
     _fake_ai(hass, {"found": False})
     resp = await client.post(URL, data=_form(("a.jpg", "image/jpeg", b"x")))

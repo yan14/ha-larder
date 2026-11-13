@@ -240,7 +240,7 @@ test("Behälter: Sortierung wird gemerkt, Gruppen nach Bereich und Kategorie", a
     select.dispatchEvent(new dom.window.Event("change"));
     await flush();
   };
-  assert.deepEqual([...$(el, ".bar select").options].map((o) => o.textContent), ["Ablaufdatum / MHD", "Bereich", "Alphabetisch", "Kategorie"]);
+  assert.deepEqual([...$(el, ".bar select").options].map((o) => o.textContent), ["Ablaufdatum / MHD", "Bereich", "Bereich und Fach", "Alphabetisch", "Kategorie"]);
   await pick("area");
   assert.deepEqual($$(el, "main h2").map((h) => h.textContent), ["Keller", "Küche", "Ohne Bereich"]);
   await pick("category");
@@ -254,6 +254,22 @@ test("Behälter: Sortierung wird gemerkt, Gruppen nach Bereich und Kategorie", a
   const again = mount(makeHass(DOSES));
   await go(again, "containers");
   assert.equal($(again, ".bar select").value, "name");
+});
+
+test("Behälter: Gruppen nach Bereich und Fach", async () => {
+  const hass = makeHass(DOSES);
+  for (const [id, comp] of [["d1", "Fach 2"], ["d2", "Fach 1"], ["d3", ""]]) {
+    const eid = `text.${id}_fach`;
+    hass.entities[eid] = { entity_id: eid, device_id: id, platform: D, translation_key: "compartment" };
+    hass.states[eid] = { entity_id: eid, state: comp, attributes: {} };
+  }
+  const el = mount(hass);
+  await go(el, "containers");
+  const select = $(el, ".bar select");
+  select.value = "place";
+  select.dispatchEvent(new dom.window.Event("change"));
+  await flush();
+  assert.deepEqual($$(el, "main h2").map((h) => h.textContent), ["Keller", "Küche · Fach 1", "Küche · Fach 2", "Ohne Bereich"]);
 });
 
 test("Behälter: Umschalter zwischen Kacheln und Liste", async () => {
@@ -1715,4 +1731,93 @@ test("Nach dem Befüllen: Hinweis mit Etikett-Knopf; alter Beutel-Code meldet si
   await el._openScanned("HA-OLD");
   assert.equal(added, 0);
   assert.match($(el, ".notice").textContent, /wurde am 12\.11\.2026 geleert/);
+});
+
+// ---------- Block 11: Vorrat ----------
+
+test("Vorrat: Ansicht aus dem Menü, Mindestbestand ändern, Ort öffnet die Packung", async () => {
+  const hass = makeHass(DOSES);
+  let products = [
+    { key: "ketchup", name: "Ketchup", count: 4, min: 5, low: true, brand: "Heinz", package: "500 ml", places: [
+      { device_id: "d1", area: "Vorrat", compartment: "Keller", count: 3 }, { device_id: "d2", area: "Kühlschrank", compartment: "", count: 1 }] },
+    { key: "senf", name: "Senf", count: 0, min: 1, low: true, places: [] },
+  ];
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/stock`) return { products, shopping_list: false };
+    if (msg.type === `${D}/stock_min`) {
+      hass.wsCalls.push(msg);
+      products = products.map((p) => (p.name === msg.content ? { ...p, min: msg.min, low: p.count < msg.min } : p));
+      return { products };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  $(el, "#settings").click();
+  $(el, '[data-role="menu-stock"]').click();
+  await flush();
+  await flush();
+  assert.equal($(el, "h1").textContent, "Vorrat");
+  const items = $$(el, ".stockitem");
+  assert.deepEqual(items.map((i) => i.querySelector(".name").textContent), ["Ketchup", "Senf"]);
+  assert.equal(items[0].querySelector(".count").textContent, "4");
+  assert.equal(items[0].querySelector(".badge").textContent, "zu wenig");
+  assert.equal(items[1].querySelector(".badge").textContent, "keine mehr da");
+  assert.deepEqual([...items[0].querySelectorAll("button.place")].map((b) => b.textContent), ["Vorrat · Keller: 3", "Kühlschrank: 1"]);
+  assert.match($(el, "main").textContent, /fehlt noch eine Einkaufsliste/);
+  const min = items[0].querySelector('[data-role="stock-min"]');
+  min.value = "3";
+  min.dispatchEvent(new dom.window.Event("change"));
+  await flush();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/stock_min`), { type: `${D}/stock_min`, content: "Ketchup", min: 3 });
+  assert.equal($$(el, ".stockitem")[0].querySelector(".badge"), null);
+  $$(el, ".stockitem")[0].querySelector("button.place").click();
+  assert.equal(el._classic.getAttribute("only"), "d1");
+});
+
+test("Packung verschieben/aufteilen und Kassenbon im Packungs-Dialog", async () => {
+  const hass = makeHass(DOSES);
+  hass.states["text.d1_inhalt"].attributes.kind = "pack";
+  hass.states["number.d1_portionen"].state = "5";
+  hass.states["select.d1_einheit"].state = "pieces";
+  hass.fetchWithAuth = async (url, init) => {
+    hass.fetched = { url, file: init.body.get("file") };
+    return { ok: true, json: async () => ({ items: [{ name: "Gehackte Tomaten", count: 3 }, { name: "Milch", count: 1 }] }) };
+  };
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/pack_move`) {
+      hass.wsCalls.push(msg);
+      return { moved: msg.count, merged: false };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await go(el, "containers");
+  el._classic.dispatchEvent(new dom.window.CustomEvent("larder-move", { detail: { deviceId: "d1" } }));
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelector('[data-f="count"]').value, "5");
+  assert.equal(form.querySelector('[data-f="area"]').value, "kitchen");
+  form.querySelector('[data-f="count"]').value = "2";
+  form.querySelector('[data-f="area"]').value = "cellar";
+  form.querySelector('[data-f="compartment"]').value = "Regal";
+  form.querySelector("button.submit").click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/pack_move`), { type: `${D}/pack_move`, device_id: "d1", count: 2, compartment: "Regal", area_id: "cellar" });
+  assert.match($(el, ".notice").textContent, /2 nach Keller · Regal verschoben/);
+
+  // Kassenbon: Vorschläge landen in den Zeilen
+  $(el, '[data-role="add"]').click();
+  $(el, '[data-role="add-pack"]').click();
+  const file = form.querySelector('[data-role="receipt-file"]');
+  assert.ok(form.querySelector('[data-role="item-receipt"]'));
+  Object.defineProperty(file, "files", { value: [new File(["x"], "bon.jpg", { type: "image/jpeg" })], configurable: true });
+  file.dispatchEvent(new dom.window.Event("change"));
+  await flush();
+  await flush();
+  assert.equal(hass.fetched.url, `/api/${D}/receipt_photo`);
+  const rows = [...form.querySelectorAll(".itemrow")].map((r) => [r.querySelector('[data-i="content"]').value, r.querySelector('[data-i="quantity"]').value]);
+  assert.deepEqual(rows, [["Gehackte Tomaten", "3"], ["Milch", "1"]]);
+  assert.match(form.querySelector('[data-role="item-status"]').textContent, /2 Produkt/);
 });

@@ -93,6 +93,7 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
             outcome=outcome,
             compartment=value("text", "compartment"),
             product=self._product_data(),
+            kind=self._kind,
         )
 
     def _product_data(self) -> dict | None:

@@ -63,6 +63,25 @@ const TEXT = {
     transfer: "Umfüllen",
     transferDone: (name, left) => `Umgefüllt in ${name}.${left ? ` Noch ${left} im Vorrat.` : ""}`,
     transferFailed: "Umfüllen fehlgeschlagen.",
+    stockTitle: "Vorrat",
+    stockIntro: "Packungen nach Produkt, über alle Orte zusammengezählt. Mit Mindestbestand kommt ein Produkt auf die Einkaufsliste, sobald weniger da ist.",
+    stockNoList: "Für den Mindestbestand fehlt noch eine Einkaufsliste in den Einstellungen.",
+    stockEmpty: "Noch keine Packungen. Lege sie über ＋ → Packung an.",
+    stockMin: "Mindestens",
+    stockLow: "zu wenig",
+    stockNone: "keine mehr da",
+    stockFailed: "Speichern fehlgeschlagen.",
+    receipt: "Kassenbon",
+    receiptBusy: "Kassenbon wird gelesen …",
+    receiptDone: (n) => `${n} Produkt(e) vom Kassenbon übernommen. Bitte prüfen und das MHD ergänzen.`,
+    receiptFailed: "Auf dem Foto wurde kein Kassenbon erkannt.",
+    moveTitle: "Verschieben / aufteilen",
+    moveCount: (n) => `Wie viele? (von ${n})`,
+    moveTo: "Nach",
+    moveHint: "Liegt dort schon dieselbe Ware mit demselben MHD, werden die Packungen zusammengelegt.",
+    move: "Verschieben",
+    moveDone: (n, place) => `${n} nach ${place} verschoben.`,
+    moveFailed: "Verschieben fehlgeschlagen.",
     units: { portions: "Portionen", pieces: "Stück", slices: "Scheiben", grams: "Gramm", milliliters: "Milliliter" },
   },
   en: {
@@ -119,6 +138,25 @@ const TEXT = {
     transfer: "Move",
     transferDone: (name, left) => `Moved into ${name}.${left ? ` ${left} left in stock.` : ""}`,
     transferFailed: "Moving failed.",
+    stockTitle: "Stock",
+    stockIntro: "Packs by product, summed over all places. With a minimum stock a product goes onto the shopping list as soon as there is less.",
+    stockNoList: "For the minimum stock, choose a shopping list in the settings first.",
+    stockEmpty: "No packs yet. Add them with ＋ → Pack.",
+    stockMin: "At least",
+    stockLow: "too few",
+    stockNone: "none left",
+    stockFailed: "Saving failed.",
+    receipt: "Receipt",
+    receiptBusy: "Reading the receipt …",
+    receiptDone: (n) => `${n} product(s) taken from the receipt. Please check them and add the best-before dates.`,
+    receiptFailed: "No receipt was recognised in the photo.",
+    moveTitle: "Move / split",
+    moveCount: (n) => `How many? (of ${n})`,
+    moveTo: "To",
+    moveHint: "If the same food with the same best-before date is already there, the packs are merged.",
+    move: "Move",
+    moveDone: (n, place) => `${n} moved to ${place}.`,
+    moveFailed: "Moving failed.",
     units: { portions: "portions", pieces: "pieces", slices: "slices", grams: "grams", milliliters: "milliliters" },
   },
 };
@@ -150,6 +188,146 @@ export function buildItems(kind, rows, vacuum = true) {
 
 export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN }) {
   const proto = Dashboard.prototype;
+
+  proto.stockTitle = function stockTitle() {
+    return itemTexts(this._hass).stockTitle;
+  };
+
+  proto.loadStock = async function loadStock() {
+    const hass = this._hass;
+    if (!hass || !hass.callWS) return;
+    try {
+      this._stock = await hass.callWS({ type: `${DOMAIN}/stock` });
+    } catch {
+      this._stock = { products: [], error: true };
+    }
+    this._sig = "";
+    this._update();
+  };
+
+  /** Vorrats-Ansicht: alle Produkte mit Bestand, Orten und Mindestbestand (direkt bearbeitbar). */
+  proto._renderStock = function _renderStock() {
+    const hass = this._hass;
+    const t = itemTexts(hass);
+    const frag = document.createDocumentFragment();
+    const data = this._stock;
+    if (!data) {
+      this._main.replaceChildren(frag);
+      return;
+    }
+    frag.append(el("p", "note", t.stockIntro));
+    if (!data.shopping_list && data.products.some((p) => p.min > 0)) frag.append(el("p", "note warn", t.stockNoList));
+    if (!data.products.length) frag.append(el("p", "note", t.stockEmpty));
+    const list = el("div", "stocklist");
+    for (const p of data.products) {
+      const item = el("section", `stockitem${p.low ? " low" : ""}`);
+      item.dataset.key = p.key;
+      const head = el("div", "stockhead");
+      head.append(el("span", "name", p.name), el("span", "count", String(p.count)));
+      if (p.low) head.append(el("span", "badge expired", p.count ? t.stockLow : t.stockNone));
+      const min = el("input");
+      min.type = "number";
+      min.min = "0";
+      min.max = "999";
+      min.inputMode = "numeric";
+      min.dataset.role = "stock-min";
+      min.value = p.min ? String(p.min) : "";
+      min.placeholder = "–";
+      min.setAttribute("aria-label", `${t.stockMin} (${p.name})`);
+      min.addEventListener("change", async () => {
+        const value = Math.max(0, Math.min(999, parseInt(min.value, 10) || 0));
+        try {
+          const res = await hass.callWS({ type: `${DOMAIN}/stock_min`, content: p.name, min: value });
+          this._stock = { ...this._stock, products: res.products };
+          this._sig = "";
+          this._update();
+        } catch {
+          this.showNotice(t.stockFailed);
+        }
+      });
+      const minWrap = el("label", "stockmin", t.stockMin);
+      minWrap.append(min);
+      head.append(minWrap);
+      item.append(head);
+      if (p.brand || p.package) item.append(el("div", "sub", [p.brand, p.package].filter(Boolean).join(" · ")));
+      const places = el("div", "places");
+      for (const place of p.places) {
+        const chip = el("button", "place", `${[place.area, place.compartment].filter(Boolean).join(" · ") || "–"}: ${place.count}`);
+        chip.type = "button";
+        chip.dataset.id = place.device_id;
+        chip.addEventListener("click", () => this.openDetail(place.device_id));
+        places.append(chip);
+      }
+      if (p.places.length) item.append(places);
+      list.append(item);
+    }
+    frag.append(list);
+    this._main.replaceChildren(frag);
+  };
+
+  /** Packung verschieben oder aufteilen (ein Teil an einen anderen Ort). */
+  proto.openMoveDialog = function openMoveDialog(deviceId) {
+    const hass = this._hass;
+    const t = itemTexts(hass);
+    const row = this._rows().find((r) => r.id === deviceId);
+    if (!row) return;
+    const states = hass.states || {};
+    const qty = Number((states[row.dev.entities.number] || {}).state) || 1;
+    const unit = (states[row.dev.entities.select] || {}).state;
+    const total = ["pieces", "portions"].includes(unit) && qty > 0 ? qty : 1;
+    const count = el("input");
+    count.type = "number";
+    count.min = "1";
+    count.max = String(total);
+    count.inputMode = "numeric";
+    count.dataset.f = "count";
+    count.value = String(total);
+    const area = el("select");
+    area.dataset.f = "area";
+    for (const a of [{ id: "", name: t.noArea }, ...listAreas(hass, this._classic.larderLabel, row.areaId)]) {
+      const o = el("option", "", a.name);
+      o.value = a.id;
+      area.append(o);
+    }
+    area.value = row.areaId || "";
+    const compartment = el("input");
+    compartment.type = "text";
+    compartment.maxLength = 60;
+    compartment.dataset.f = "compartment";
+    compartment.placeholder = t.compartmentHint;
+    const error = el("div", "error");
+    error.setAttribute("role", "alert");
+    const submit = button("submit", t.move, null, "submit");
+    this._form.replaceChildren(
+      el("h2", "", t.moveTitle),
+      el("p", "nfcitem", `${row.content} · ${[row.areaName, row.compartment].filter(Boolean).join(" · ")}`),
+      field(t.moveCount(total), count),
+      field(t.moveTo, area),
+      field(t.compartment, compartment),
+      el("p", "hint", t.moveHint),
+      error,
+      buttonsRow(button("cancel", t.cancel, () => this._closeDialog()), submit),
+    );
+    this._submit = async () => {
+      const n = Math.max(1, Math.min(total, parseInt(count.value, 10) || total));
+      submit.disabled = true;
+      error.textContent = "";
+      try {
+        const msg = { type: `${DOMAIN}/pack_move`, device_id: deviceId, count: n, compartment: compartment.value.trim() };
+        msg.area_id = area.value || null;
+        await hass.callWS(msg);
+        const place = [area.value ? area.options[area.selectedIndex].textContent : t.noArea, compartment.value.trim()].filter(Boolean).join(" · ");
+        this._closeDialog();
+        this.showNotice(t.moveDone(n, place));
+        if (this._view === "stock") this.loadStock();
+      } catch (err) {
+        error.textContent = (err && err.message) || t.moveFailed;
+      } finally {
+        submit.disabled = false;
+      }
+    };
+    this._overlay.hidden = false;
+  };
 
   const buttonsRow = (...buttons) => {
     const row = el("div", "buttons");
@@ -309,6 +487,44 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN }) {
       scan.dataset.role = "item-scan";
       extras.push(scan);
     }
+    if (!bag && this._canGenerate() && hass.fetchWithAuth) {
+      // Kassenbon fotografieren: die KI schlägt Produkte mit Anzahl vor
+      const file = el("input");
+      file.type = "file";
+      file.accept = "image/*";
+      file.hidden = true;
+      file.dataset.role = "receipt-file";
+      const receipt = button("link", `🧾 ${t.receipt}`, () => file.click());
+      receipt.dataset.role = "item-receipt";
+      file.addEventListener("change", async () => {
+        const photo = file.files && file.files[0];
+        file.value = "";
+        if (!photo) return;
+        status.hidden = false;
+        status.textContent = t.receiptBusy;
+        receipt.disabled = true;
+        try {
+          const body = new FormData();
+          body.append("file", photo, photo.name || "receipt.jpg");
+          const res = await hass.fetchWithAuth(`/api/${DOMAIN}/receipt_photo`, { method: "POST", body });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok || !Array.isArray(data.items) || !data.items.length) throw new Error(data.message || t.receiptFailed);
+          for (const item of data.items) {
+            const free = [...rows.children].find((r) => !r.querySelector('[data-i="content"]').value.trim());
+            const row = free || addRow();
+            row.querySelector('[data-i="content"]').value = item.name;
+            row.querySelector('[data-i="quantity"]').value = String(item.count || 1);
+            row._product = null;
+          }
+          status.textContent = t.receiptDone(data.items.length);
+        } catch (err) {
+          status.textContent = (err && err.message) || t.receiptFailed;
+        } finally {
+          receipt.disabled = false;
+        }
+      });
+      extras.push(receipt, file);
+    }
     const more = button("link", t.more, () => addRow().querySelector('[data-i="content"]').focus());
     more.dataset.role = "item-more";
     extras.push(more);
@@ -387,11 +603,9 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN }) {
     const list = el("ul", "created");
     for (const c of created) list.append(el("li", "", `${c.name} · ${c.content}`));
     const actions = [];
-    if (isAdmin(this._hass)) {
-      const nfc = button("", t.nfc, () => this.openNfcSeries(created));
-      nfc.dataset.role = "items-nfc";
-      actions.push(nfc);
-    }
+    const nfc = button("", t.nfc, () => this.openNfcSeries(created)); // Beutel kennzeichnet jeder (Dosen nur Administratoren)
+    nfc.dataset.role = "items-nfc";
+    actions.push(nfc);
     const labels = button("", t.labels, () => this.openLabelDialog(ids));
     labels.dataset.role = "items-labels";
     actions.push(labels, button("submit", t.done, () => this._closeDialog()));

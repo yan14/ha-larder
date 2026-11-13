@@ -71,20 +71,33 @@ Bags and packs can be added by everyone in the household, containers only by adm
 
 **Bags.** Choose the area (e.g. the freezer) and enter one row per content; **×** makes several bags with the same content (4 × minced meat, 500 g each). **Vacuum sealed** is preset, and the best-before date is [estimated](best-before.md#best-before-estimate) unless you enter one. The bags are named "Bag 1", "Bag 2" … Afterwards mark each bag:
 
-- **📡 NFC stickers** (administrators) goes through the new bags one after another: **✍ Write sticker** in the Home Assistant app writes a blank sticker, or simply scan a sticker that is already written; **Skip** leaves a bag without one.
+- **📡 NFC stickers** goes through the new bags one after another: **✍ Write sticker** in the Home Assistant app writes a blank sticker, or simply scan a sticker that is already written; **Skip** leaves a bag without one.
 - **🖨 Labels** opens the [label sheet](scanning.md#label-sheet) for exactly these bags.
 
 A bag works like a container (scan it, take a portion, **Opened**, **Thawed**, recipes, meal plan). When you empty it, the bag, its entities and its NFC tag are removed from Home Assistant (also from Settings → Tags), so nothing piles up. If an old sticker or label is scanned by mistake, Larder says when that bag was emptied instead of opening something else. Codes are never used twice; a sticker that survived can be written or scanned again for a new bag.
 
 **Packs.** One row per product with the **count** and the best-before date printed on the package; **📷 Scan barcode** (Home Assistant app) fills in the name, brand and [nutrition](#nutrition) from Open Food Facts. Packs have no code and only a few entities (contents, compartment, quantity, unit, best-before date, days left, empty), so even many of them stay light. They show up everywhere containers do: expiring soon, [daily summary](kitchen.md#daily-summary), [recipes](kitchen.md#recipes), [statistics](dashboard.md#statistics), the filter **Packs** on the containers page (📦 on the tile).
 
+**📷 Receipt** (with an [AI](best-before.md#ai-optional) set up) reads a photo of your shopping receipt: the food items and their count appear as rows, non-food lines, deposits and totals are left out. Check them, add the best-before dates (or leave them empty) and press **Add**. The optional **compartment** in the dialog applies to all rows.
+
 - **−1** on the card takes one pack; the last one removes the entry.
+- **Move / split** brings some or all packs of an entry to another area and compartment (e.g. 2 of 5 ketchup to *Pantry · Cupboard*). If the same food with the same best-before date is already there, the packs are merged; otherwise a new entry with the same data is created.
+- **Minimum stock** on the card (e.g. at least 4 ketchup) applies to the product, i.e. to all packs with this contents in every place, and is kept when the last pack is gone. As soon as there are fewer, the product goes onto the [shopping list](kitchen.md#shopping-list) (with brand and package, not twice).
 - **Move into a container** opens a pack: choose an empty container, the contents and nutrition move into it, and the best-before date is estimated again for the opened food (at most the printed date).
 
 <p align="center">
 <img src="../images/dashboard-pack-en.png" width="250" alt="Card of a pack">
 <img src="../images/dashboard-transfer-en.png" width="250" alt="Move into a container">
 </p>
+
+### Stock
+
+<p align="center">
+<img src="../images/dashboard-stock-en.png" width="250" alt="Stock">
+<img src="../images/dashboard-move-en.png" width="250" alt="Move">
+</p>
+
+**⋮ → 🥫 Stock** in the dashboard lists all packs by product, summed over every place, with brand, package and where they are (tap a place to open the pack). Set the **minimum stock** of every product right there; products below it are marked *too few* or *none left*. Products with a minimum stay in the list even when none are left.
 
 ## Areas and labels
 

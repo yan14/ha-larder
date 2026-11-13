@@ -34,7 +34,7 @@ export const CATEGORY_ICONS = {
 };
 
 const VIEWS = ["start", "containers", "recipes", "areas", "categories"];
-const ALL_VIEWS = [...VIEWS, "estimates", "stats"]; // "estimates" und "stats" erreicht man über ☰/⚙
+const ALL_VIEWS = [...VIEWS, "estimates", "stats", "stock"]; // "estimates" und "stats" erreicht man über ☰/⚙
 const MODES = ["grid", "list", "cards"];
 const VIEW_ICONS = { start: "🏠", containers: "🫙", recipes: "📖", areas: "📍", categories: "🏷️" };
 
@@ -83,7 +83,7 @@ function sortRows(rows, sort, lang) {
   };
   const out = [...rows];
   if (sort === "name") out.sort((a, b) => cmp(a.content || "￿" + a.name, b.content || "￿" + b.name));
-  else if (sort === "area") out.sort((a, b) => cmp(a.areaName || "￿", b.areaName || "￿") || cmp(a.compartment || "", b.compartment || "") || byDate(a, b));
+  else if (sort === "area" || sort === "place") out.sort((a, b) => cmp(a.areaName || "￿", b.areaName || "￿") || cmp(a.compartment || "", b.compartment || "") || byDate(a, b));
   else if (sort === "category") out.sort((a, b) => cmp(a.category, b.category) || byDate(a, b));
   else out.sort(byDate);
   return out;
@@ -171,7 +171,7 @@ function loadOptions() {
     const raw = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "{}");
     return {
       mode: MODES.includes(raw.mode) ? raw.mode : "grid",
-      sort: ["date", "area", "name", "category"].includes(raw.sort) ? raw.sort : "date",
+      sort: ["date", "area", "place", "name", "category"].includes(raw.sort) ? raw.sort : "date",
       areaSort: ["name", "count", "soon"].includes(raw.areaSort) ? raw.areaSort : "name",
       recipeSort: ["newest", "name"].includes(raw.recipeSort) ? raw.recipeSort : "newest",
       recipePeriod: RECIPE_PERIODS.includes(raw.recipePeriod) ? raw.recipePeriod : "default",
@@ -223,7 +223,7 @@ export class LarderDashboard extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>${STYLE}</style>
       <header><button id="menu" type="button" aria-label="Menu">☰</button><h1></h1><button id="settings" type="button" hidden>⋮</button></header>
-      <div class="menu" hidden><button type="button" data-role="menu-stats"></button><button type="button" data-role="menu-labels"></button><button type="button" data-role="menu-data"></button><button type="button" data-role="menu-estimates"></button><button type="button" data-role="menu-settings"></button></div>
+      <div class="menu" hidden><button type="button" data-role="menu-stats"></button><button type="button" data-role="menu-stock"></button><button type="button" data-role="menu-labels"></button><button type="button" data-role="menu-data"></button><button type="button" data-role="menu-estimates"></button><button type="button" data-role="menu-settings"></button></div>
       <div class="notice" role="alert" hidden></div>
       <main></main>
       <nav></nav>
@@ -266,6 +266,10 @@ export class LarderDashboard extends HTMLElement {
       this._menu.hidden = true;
       this.setView("stats");
     });
+    this._menu.querySelector('[data-role="menu-stock"]').addEventListener("click", () => {
+      this._menu.hidden = true;
+      this.setView("stock");
+    });
     this._menu.querySelector('[data-role="menu-data"]').addEventListener("click", () => {
       this._menu.hidden = true;
       this.openDataDialog();
@@ -288,6 +292,7 @@ export class LarderDashboard extends HTMLElement {
       if (ids.length) this.showNotice(t.filledNotice(ids.length), { label: t.labelNow, run: () => this.openLabelDialog(ids) });
     });
     this._classic.addEventListener("larder-transfer", (ev) => this.openTransferDialog(ev.detail.deviceId));
+    this._classic.addEventListener("larder-move", (ev) => this.openMoveDialog(ev.detail.deviceId));
     this._form.addEventListener("submit", (ev) => {
       ev.preventDefault();
       if (this._submit) this._submit();
@@ -460,6 +465,7 @@ export class LarderDashboard extends HTMLElement {
     }
     this._view = view;
     if (view === "stats") this.loadStats();
+    if (view === "stock") this.loadStock();
     if (view === "start" || view === "recipes") this.loadPlans();
     const { soon, ...rest } = filter || {};
     this._filter = { area: null, category: null, state: soon ? "soon" : null, problem: null, ...rest };
@@ -539,7 +545,9 @@ export class LarderDashboard extends HTMLElement {
           ? t.estimates
           : this._view === "stats"
             ? t.menuStats
-            : t.views[this._view];
+            : this._view === "stock"
+              ? this.stockTitle()
+              : t.views[this._view];
     // ⋮: Statistik und Etiketten für alle, Export, Schätzungen und Einstellungen nur für Administratoren
     const admin = isAdmin(hass);
     this._settingsBtn.hidden = false;
@@ -553,6 +561,7 @@ export class LarderDashboard extends HTMLElement {
     this._menu.querySelector('[data-role="menu-labels"]').textContent = `🖨 ${t.menuLabels}`;
     this._menu.querySelector('[data-role="menu-data"]').textContent = `📦 ${t.menuData}`;
     this._menu.querySelector('[data-role="menu-stats"]').textContent = `📊 ${t.menuStats}`;
+    this._menu.querySelector('[data-role="menu-stock"]').textContent = `🥫 ${this.stockTitle()}`;
 
     const rows = this._rows();
     const sig = JSON.stringify([
@@ -579,6 +588,7 @@ export class LarderDashboard extends HTMLElement {
       this._areaEdit,
       this._plans,
       this._view === "stats" ? [this._stats, this._statsDays] : null,
+      this._view === "stock" ? this._stock : null,
       this._view === "areas" ? this._areaSig() : null,
     ]);
     if (sig === this._sig) return;
@@ -604,6 +614,9 @@ export class LarderDashboard extends HTMLElement {
         break;
       case "stats":
         this._renderStats(t);
+        break;
+      case "stock":
+        this._renderStock();
         break;
       default:
         this._renderStart(t, rows);
@@ -1242,7 +1255,7 @@ export class LarderDashboard extends HTMLElement {
     const bar = el("div", "bar");
     bar.append(
       this._select(
-        [["date", t.sortDate], ["area", t.sortArea], ["name", t.sortName], ["category", t.sortCategory]],
+        [["date", t.sortDate], ["area", t.sortArea], ["place", t.sortPlace], ["name", t.sortName], ["category", t.sortCategory]],
         this._opts.sort,
         (value) => {
           this._opts.sort = value;
@@ -1300,7 +1313,7 @@ export class LarderDashboard extends HTMLElement {
       frag.append(el("p", "note", t.noMatch));
     } else {
       const mode = this._selecting && this._opts.mode === "cards" ? "grid" : this._opts.mode;
-      const grouped = this._opts.sort === "area" || this._opts.sort === "category";
+      const grouped = ["area", "place", "category"].includes(this._opts.sort);
       const container = (items) => {
         const box = el("div", mode === "grid" ? "tiles" : "list");
         for (const row of items) box.append(mode === "grid" ? this._tile(row, t) : this._listRow(row, t));
@@ -1313,7 +1326,12 @@ export class LarderDashboard extends HTMLElement {
       } else if (!grouped) {
         frag.append(container(rows));
       } else {
-        const keyOf = (r) => (this._opts.sort === "area" ? r.areaName || t.noArea : t.categories[r.category] || r.category);
+        const keyOf = (r) =>
+          this._opts.sort === "area"
+            ? r.areaName || t.noArea
+            : this._opts.sort === "place"
+              ? [r.areaName || t.noArea, r.compartment].filter(Boolean).join(" · ")
+              : t.categories[r.category] || r.category;
         let current;
         let group = [];
         const flush = () => {

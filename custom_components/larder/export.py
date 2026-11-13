@@ -24,6 +24,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, UNITS
+from .entity import kind_of
 from .estimate import MAX_DAYS, MIN_DAYS, async_get_estimator, cache_key, storage_context
 from .expiry import days_left, soon_days, status_for
 from .history import async_get_history
@@ -34,9 +35,9 @@ EXPORT_FORMAT = 1
 
 _COLUMNS = {
     "de": ["Name", "ID", "Bereich", "Fach", "Inhalt", "Menge", "Einheit", "Eingelagert am", "MHD", "Tage übrig", "Status", "Vakuum",
-           "Marke", "Packung", "EAN", "kcal/100 g", "kcal/Portion", "Nutri-Score", "Allergene", "Nährwerte"],
+           "Marke", "Packung", "EAN", "kcal/100 g", "kcal/Portion", "Nutri-Score", "Allergene", "Nährwerte", "Art"],
     "en": ["Name", "ID", "Area", "Compartment", "Contents", "Quantity", "Unit", "Filled on", "Best before", "Days left", "Status", "Vacuum",
-           "Brand", "Package", "EAN", "kcal/100 g", "kcal/portion", "Nutri-Score", "Allergens", "Nutrients"],
+           "Brand", "Package", "EAN", "kcal/100 g", "kcal/portion", "Nutri-Score", "Allergens", "Nutrients", "Kind"],
 }
 _STATUS = {
     "de": {"none": "", "ok": "gut", "soon": "läuft bald ab", "expired": "abgelaufen"},
@@ -47,9 +48,13 @@ _UNITS = {
     "en": {"portions": "portions", "pieces": "pieces", "slices": "slices", "grams": "g", "milliliters": "ml"},
 }
 _YES = {"de": ("ja", "nein"), "en": ("yes", "no")}
+_KINDS = {
+    "de": {"container": "Dose", "bag": "Beutel", "pack": "Packung"},
+    "en": {"container": "Container", "bag": "Bag", "pack": "Pack"},
+}
 _HISTORY_COLUMNS = {
-    "de": ["Name", "ID", "Bereich", "Inhalt", "Menge", "Einheit", "Eingelagert am", "MHD", "Geleert am", "Tage gelagert", "Abgelaufen", "Ergebnis"],
-    "en": ["Name", "ID", "Area", "Contents", "Quantity", "Unit", "Filled on", "Best before", "Emptied on", "Days stored", "Expired", "Outcome"],
+    "de": ["Name", "ID", "Bereich", "Inhalt", "Menge", "Einheit", "Eingelagert am", "MHD", "Geleert am", "Tage gelagert", "Abgelaufen", "Ergebnis", "Art"],
+    "en": ["Name", "ID", "Area", "Contents", "Quantity", "Unit", "Filled on", "Best before", "Emptied on", "Days stored", "Expired", "Outcome", "Kind"],
 }
 _OUTCOME = {"de": {"eaten": "gegessen", "thrown": "weggeworfen"}, "en": {"eaten": "eaten", "thrown": "thrown away"}}
 
@@ -125,6 +130,7 @@ def inventory_rows(hass: HomeAssistant) -> list[dict[str, Any]]:
                 "status": _STATUS[lang][status_for(left, soon)],
                 "vacuum": _YES[lang][0] if vacuum == STATE_ON else _YES[lang][1],
                 **{key: _product(hass, registry, cc).get(key, "") for key in _PRODUCT_COLUMNS},
+                "kind": _KINDS[lang][kind_of(entry)],
             }
         )
     rows.sort(key=lambda r: str(r["name"]).casefold())
@@ -169,6 +175,7 @@ async def history_csv(hass: HomeAssistant) -> bytes:
                 "" if r.get("days_stored") is None else r["days_stored"],
                 _YES[lang][0] if r.get("expired") else _YES[lang][1],
                 _OUTCOME[lang].get(r.get("outcome") or "", ""),
+                _KINDS[lang].get(r.get("kind") or "container", ""),
             ]
         )
     return ("\ufeff" + out.getvalue()).encode("utf-8")

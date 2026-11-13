@@ -80,6 +80,8 @@ SOON_DAYS = 3  # ab so vielen Resttagen gilt eine Dose als "läuft bald ab" (Vor
 CONF_SOON_DAYS = "soon_days"
 MAX_SOON_DAYS = 30
 SIGNAL_SETTINGS_CHANGED = f"{DOMAIN}_settings_changed"
+SIGNAL_STOCK_CHANGED = f"{DOMAIN}_stock_changed"  # Mindestbestände geändert
+DATA_STOCK = "stock"
 
 # Seitenleisten-Panel "Larder"
 PANEL_URL_PATH = "larder"

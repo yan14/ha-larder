@@ -71,20 +71,33 @@ Beutel und Packungen kann jeder im Haushalt anlegen, Dosen nur Administratoren.
 
 **Beutel.** Bereich wählen (z. B. den Gefrierschrank) und pro Inhalt eine Zeile eintragen; **×** legt mehrere Beutel mit demselben Inhalt an (4 × Hackfleisch, je 500 g). **Vakuumiert** ist vorbelegt, das MHD wird [geschätzt](best-before.md#mhd-schätzung), wenn du keins einträgst. Die Beutel heißen „Beutel 1“, „Beutel 2“ … Danach kennzeichnest du jeden Beutel:
 
-- **📡 NFC-Sticker** (Administratoren) führt der Reihe nach durch die neuen Beutel: **✍ Sticker beschreiben** in der Home Assistant App beschreibt einen leeren Sticker, oder du scannst einfach einen schon beschriebenen; **Überspringen** lässt einen Beutel ohne Sticker.
+- **📡 NFC-Sticker** führt der Reihe nach durch die neuen Beutel: **✍ Sticker beschreiben** in der Home Assistant App beschreibt einen leeren Sticker, oder du scannst einfach einen schon beschriebenen; **Überspringen** lässt einen Beutel ohne Sticker.
 - **🖨 Etiketten** öffnet den [Etikettenbogen](scanning.md#etikettenbogen) für genau diese Beutel.
 
 Ein Beutel funktioniert wie eine Dose (scannen, Portion entnehmen, **Geöffnet**, **Aufgetaut**, Rezepte, Wochenplan). Beim Leeren werden der Beutel, seine Entitäten und sein NFC-Tag aus Home Assistant entfernt (auch aus Einstellungen → Tags), damit sich nichts ansammelt. Wird ein alter Sticker oder ein altes Etikett versehentlich gescannt, sagt Larder, wann dieser Beutel geleert wurde, statt etwas anderes zu öffnen. Codes werden nie doppelt vergeben; ein Sticker, der überlebt hat, lässt sich für einen neuen Beutel wieder beschreiben oder scannen.
 
 **Packungen.** Pro Produkt eine Zeile mit der **Anzahl** und dem aufgedruckten MHD; **📷 Strichcode scannen** (Home Assistant App) trägt Name, Marke und [Nährwerte](#nährwerte) aus Open Food Facts ein. Packungen haben keinen Code und nur wenige Entitäten (Inhalt, Fach, Menge, Einheit, MHD, Resttage, Leeren), so bleiben auch viele davon schlank. Sie tauchen überall auf, wo Dosen auftauchen: läuft bald ab, [tägliche Zusammenfassung](kitchen.md#tägliche-zusammenfassung), [Rezepte](kitchen.md#rezepte), [Statistik](dashboard.md#statistik), der Filter **Packungen** auf der Behälter-Seite (📦 auf der Kachel).
 
+**📷 Kassenbon** (mit eingerichteter [KI](best-before.md#ki-optional)) liest ein Foto deines Kassenbons: Die Lebensmittel mit Anzahl erscheinen als Zeilen, Nicht-Lebensmittel, Pfand und Summen bleiben weg. Prüfen, MHD ergänzen (oder leer lassen) und **Anlegen** drücken. Das optionale **Fach** im Dialog gilt für alle Zeilen.
+
 - **−1** auf der Karte entnimmt eine Packung; die letzte entfernt den Eintrag.
+- **Verschieben / aufteilen** bringt einen Teil oder alle Packungen eines Eintrags in einen anderen Bereich und ein anderes Fach (z. B. 2 von 5 Ketchup nach *Vorrat · Schrank*). Liegt dort schon dieselbe Ware mit demselben MHD, werden die Packungen zusammengelegt; sonst entsteht ein neuer Eintrag mit denselben Daten.
+- **Mindestbestand** auf der Karte (z. B. mindestens 4 Ketchup) gilt für das Produkt, also für alle Packungen mit diesem Inhalt an allen Orten, und bleibt gemerkt, auch wenn die letzte Packung weg ist. Sobald weniger da ist, kommt das Produkt auf die [Einkaufsliste](kitchen.md#einkaufsliste) (mit Marke und Packung, nicht doppelt).
 - **In Dose umfüllen** öffnet eine Packung: leere Dose wählen, Inhalt und Nährwerte wandern hinein, und das MHD wird für die geöffnete Ware neu geschätzt (höchstens das aufgedruckte Datum).
 
 <p align="center">
 <img src="../images/dashboard-pack-de.png" width="250" alt="Karte einer Packung">
 <img src="../images/dashboard-transfer-de.png" width="250" alt="In Dose umfüllen">
 </p>
+
+### Vorrat
+
+<p align="center">
+<img src="../images/dashboard-stock-de.png" width="250" alt="Vorrat">
+<img src="../images/dashboard-move-de.png" width="250" alt="Move">
+</p>
+
+**⋮ → 🥫 Vorrat** im Dashboard zeigt alle Packungen nach Produkt, über alle Orte zusammengezählt, mit Marke, Packung und wo sie liegen (Antippen eines Orts öffnet die Packung). Den **Mindestbestand** jedes Produkts stellst du direkt dort ein; was darunter liegt, ist mit *zu wenig* oder *keine mehr da* markiert. Produkte mit Mindestbestand bleiben in der Liste, auch wenn keins mehr da ist.
 
 ## Bereiche und Labels
 

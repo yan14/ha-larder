@@ -70,6 +70,9 @@ export const STRINGS = {
     offSource: "Daten: Open Food Facts (ODbL).",
     nutrition: "Nährwerte",
     transfer: "In Dose umfüllen",
+    movePack: "Verschieben / aufteilen",
+    minStock: "Mindestbestand",
+    minStockFailed: "Mindestbestand konnte nicht gespeichert werden.",
     allergenWarning: (names) => `⚠ Enthält ${names} (Allergene im Haushalt)`,
     nutritionFields: {
       brand: "Marke",
@@ -228,6 +231,9 @@ export const STRINGS = {
     offSource: "Data: Open Food Facts (ODbL).",
     nutrition: "Nutrition",
     transfer: "Move into a container",
+    movePack: "Move / split",
+    minStock: "Minimum stock",
+    minStockFailed: "Could not save the minimum stock.",
     allergenWarning: (names) => `⚠ Contains ${names} (household allergens)`,
     nutritionFields: {
       brand: "Brand",

@@ -151,6 +151,21 @@ export const STYLE = `
   .dialog .hint { margin: 0; font-size: 12px; color: var(--secondary-text-color); }
   .dialog a.pdf { align-self: stretch; text-align: center; padding: 12px; border-radius: 10px; font-size: 16px; text-decoration: none;
     background: var(--primary-color); color: var(--text-primary-color, #fff); }
+  .stocklist { display: flex; flex-direction: column; gap: 8px; }
+  .stockitem { background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 12px; padding: 10px 12px; }
+  .stockitem.low { border-color: var(--error-color, #c62828); }
+  .stockhead { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .stockhead .name { flex: 1; font-size: 16px; min-width: 0; }
+  .stockhead .count { font-size: 20px; font-weight: 500; }
+  .stockhead .badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; background: var(--error-color, #c62828); color: #fff; }
+  .stockhead label.stockmin { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--secondary-text-color); }
+  .stockhead label.stockmin input { width: 56px; font: inherit; font-size: 15px; padding: 4px 6px; border-radius: 8px;
+    border: 1px solid var(--divider-color); background: var(--card-background-color, #fff); color: var(--primary-text-color); }
+  .stockitem .sub { font-size: 12px; color: var(--secondary-text-color); margin-top: 2px; }
+  .stockitem .places { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .stockitem button.place { font: inherit; font-size: 12px; padding: 3px 10px; border-radius: 12px; cursor: pointer;
+    border: 1px solid var(--divider-color); background: none; color: var(--primary-text-color); }
+  p.note.warn { color: var(--error-color, #c62828); }
   .stat { background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; }
   .stat h3 { margin: 0 0 8px; font-size: 14px; font-weight: 500; color: var(--secondary-text-color); }
   .stat .figs { display: flex; flex-wrap: wrap; gap: 8px 18px; }

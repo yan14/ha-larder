@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, SIGNAL_SETTINGS_CHANGED
+from .const import DATA_STOCK, DOMAIN, KIND_PACK, SIGNAL_SETTINGS_CHANGED, SIGNAL_STOCK_CHANGED
 from .entity import LarderConfigEntry, LarderEntity, LarderResettable
 from .estimate import DATA_ESTIMATOR, async_get_estimator
 from .product import watched_allergens
@@ -84,6 +84,7 @@ class LarderContent(TextEntity, LarderResettable):
             self._product = clean_product(dict(last.attributes))
         # Allergene im Haushalt geändert: Warnung neu berechnen
         self.async_on_remove(async_dispatcher_connect(self.hass, SIGNAL_SETTINGS_CHANGED, self.async_write_ha_state))
+        self.async_on_remove(async_dispatcher_connect(self.hass, SIGNAL_STOCK_CHANGED, self.async_write_ha_state))
 
     @property
     def product(self) -> dict[str, Any]:
@@ -96,6 +97,8 @@ class LarderContent(TextEntity, LarderResettable):
         attrs: dict[str, Any] = {"category": category_for(value) if value else None, "kind": self._kind, **self._product}
         estimator = self.hass.data.get(DOMAIN, {}).get(DATA_ESTIMATOR)
         watched = getattr(estimator, "watch_allergens", None)
+        if self._kind == KIND_PACK and (stock := self.hass.data.get(DOMAIN, {}).get(DATA_STOCK)) is not None:
+            attrs["min_stock"] = stock.minimum(value)  # Mindestbestand des Produkts (für die Karte)
         if value.strip() and watched:
             warning = watched_allergens(value, self._product.get("allergens", ""), watched, self.hass.config.language or "en")
             if warning:

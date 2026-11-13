@@ -52,21 +52,24 @@ def build_instructions(language: str) -> str:
     )
 
 
-async def async_content_from_photo(hass: HomeAssistant, mime: str, content: bytes) -> str:
+async def async_ask_photo(
+    hass: HomeAssistant, mime: str, content: bytes, task_name: str, instructions: str, structure: dict[str, Any]
+) -> Any:
+    """Ein Foto mit Anweisung und Antwort-Schema an "AI Task" geben; liefert `data` der Antwort."""
     if not hass.services.has_service("ai_task", "generate_data"):
         raise EstimateError("ai_unavailable")
     key, media = _media_dir(hass)
     folder = media / SUBDIR
-    path = folder / f"{uuid.uuid4().hex[:12]}-content{TYPES[mime]}"
+    path = folder / f"{uuid.uuid4().hex[:12]}-photo{TYPES[mime]}"
 
     def write() -> None:
         folder.mkdir(parents=True, exist_ok=True)
         path.write_bytes(content)
 
     data: dict[str, Any] = {
-        "task_name": "Larder: contents from photo",
-        "instructions": build_instructions(hass.config.language),
-        "structure": STRUCTURE,
+        "task_name": task_name,
+        "instructions": instructions,
+        "structure": structure,
         "attachments": [
             {
                 "media_content_id": f"media-source://media_source/{key}/{SUBDIR.as_posix()}/{path.name}",
@@ -92,7 +95,13 @@ async def async_content_from_photo(hass: HomeAssistant, mime: str, content: byte
         raise EstimateError("recipe_photo_failed", error=str(err)) from err
     finally:
         await hass.async_add_executor_job(lambda: path.unlink(missing_ok=True))
-    answer = (response or {}).get("data")
+    return (response or {}).get("data")
+
+
+async def async_content_from_photo(hass: HomeAssistant, mime: str, content: bytes) -> str:
+    answer = await async_ask_photo(
+        hass, mime, content, "Larder: contents from photo", build_instructions(hass.config.language), STRUCTURE
+    )
     if not isinstance(answer, dict) or answer.get("found") is False:
         raise EstimateError("content_photo_none")
     text = " ".join(str(answer.get("content") or "").split())[:120]
@@ -101,26 +110,36 @@ async def async_content_from_photo(hass: HomeAssistant, mime: str, content: byte
     return text
 
 
+async def read_photo(view: HomeAssistantView, request: web.Request) -> tuple[str, bytes] | web.Response:
+    """Ein Foto aus dem Formular lesen (Feld `file`); bei Fehlern die fertige Antwort."""
+    hass = request.app[KEY_HASS]
+    request._client_max_size = MAX_FILE_BYTES + 1024 * 1024  # noqa: SLF001
+    try:
+        form = await request.post()
+    except ValueError:
+        return view.json_message("too large", HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
+    field = form.get("file")
+    if not isinstance(field, web.FileField):
+        return view.json({"error": "file_count"}, HTTPStatus.BAD_REQUEST)
+    mime = (field.content_type or "").split(";")[0].strip().lower()
+    if mime not in TYPES or mime == "application/pdf":
+        return view.json({"error": "unsupported_type", "type": mime}, HTTPStatus.BAD_REQUEST)
+    content = await hass.async_add_executor_job(field.file.read, MAX_FILE_BYTES + 1)
+    if len(content) > MAX_FILE_BYTES:
+        return view.json_message("too large", HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
+    return mime, content
+
+
 class ContentPhotoView(HomeAssistantView):
     url = URL
     name = f"api:{DOMAIN}:content_photo"
 
     async def post(self, request: web.Request) -> web.Response:
         hass = request.app[KEY_HASS]
-        request._client_max_size = MAX_FILE_BYTES + 1024 * 1024  # noqa: SLF001
-        try:
-            form = await request.post()
-        except ValueError:
-            return self.json_message("too large", HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
-        field = form.get("file")
-        if not isinstance(field, web.FileField):
-            return self.json({"error": "file_count"}, HTTPStatus.BAD_REQUEST)
-        mime = (field.content_type or "").split(";")[0].strip().lower()
-        if mime not in TYPES or mime == "application/pdf":
-            return self.json({"error": "unsupported_type", "type": mime}, HTTPStatus.BAD_REQUEST)
-        content = await hass.async_add_executor_job(field.file.read, MAX_FILE_BYTES + 1)
-        if len(content) > MAX_FILE_BYTES:
-            return self.json_message("too large", HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
+        photo = await read_photo(self, request)
+        if isinstance(photo, web.Response):
+            return photo
+        mime, content = photo
         try:
             text = await async_content_from_photo(hass, mime, content)
         except HomeAssistantError as err:

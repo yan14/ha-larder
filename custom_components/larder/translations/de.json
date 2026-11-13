@@ -194,6 +194,12 @@
     },
     "transfer_invalid": {
       "message": "Umfüllen geht nur von einer Packung mit Inhalt in eine leere Dose oder einen leeren Beutel."
+    },
+    "receipt_photo_none": {
+      "message": "Auf dem Foto wurde kein Kassenbon mit Lebensmitteln erkannt."
+    },
+    "move_invalid": {
+      "message": "Verschieben geht nur für Packungen in einen vorhandenen Bereich."
     }
   },
   "options": {

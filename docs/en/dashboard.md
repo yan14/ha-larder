@@ -12,7 +12,7 @@ A bar at the bottom switches between five pages:
 
 - **Start**: a greeting with your Home Assistant name, tiles for everything that should be used up soon (expired first), and shortcuts to the recipe suggestions and the containers. In the Home Assistant app there is also **📷 Scan container** (see [Scanning in the app](scanning.md#scanning-in-the-app)).
 - **Containers**: all containers with a symbol for the kind of food, the contents, the container name and the days left.
-  - **Search** in name, contents and area; **filter** by *expiring soon*, *expired*, *filled*, *empty*, *bags* or *packs*; **sort** by best-before date, area, alphabet or category (area and category are grouped). The number of containers shown is above the list.
+  - **Search** in name, contents and area; **filter** by *expiring soon*, *expired*, *filled*, *empty*, *bags* or *packs*; **sort** by best-before date, area, area and compartment, alphabet or category (area, area and compartment, and category are grouped; *area and compartment* shows exactly what is in each compartment). The number of containers shown is above the list.
   - The button on the right switches between **tiles**, a **list** and **cards with all details**. Your choice is remembered on the device.
   - Tap a filled container to open its card, tap an empty one to fill it right away (see [Filling containers](containers.md#filling-containers)).
   - **📷** scans a container (only in the Home Assistant app, see [Scanning in the app](scanning.md#scanning-in-the-app)), **＋** adds one (see [From the dashboard](containers.md#from-the-dashboard-recommended)), **☑** starts the [selection](#selecting-several-containers).

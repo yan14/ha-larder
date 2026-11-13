@@ -6,6 +6,7 @@ from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .const import DOMAIN, KIND_PACK
 from .entity import LarderConfigEntry, LarderResettable
 
 
@@ -39,8 +40,16 @@ class LarderPortions(NumberEntity, LarderResettable):
             return
 
     async def async_set_native_value(self, value: float) -> None:
+        before = self._attr_native_value
         self._attr_native_value = value
         self.async_write_ha_state()
+        if self._kind == KIND_PACK and 0 < value < (before or 0):
+            # Packung entnommen: Mindestbestand prüfen (Einkaufsliste)
+            from .stock import async_check_stock  # noqa: PLC0415 - vermeidet einen Import-Kreis
+
+            content = self._sibling_state("text", "content")
+            if content is not None:
+                self.hass.async_create_task(async_check_stock(self.hass, content.state), f"{DOMAIN}_stock_{self._cc}")
 
     async def async_reset(self) -> None:
         await self.async_set_native_value(0)

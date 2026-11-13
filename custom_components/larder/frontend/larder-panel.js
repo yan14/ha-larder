@@ -287,6 +287,7 @@ class DoseCard {
       <div class="row shoprow"><label class="check"><input type="checkbox" data-f="shopping"><span data-l="shopping"></span></label></div>
       <div class="row flexrow"><label class="check"><input type="checkbox" data-f="flexible"><span data-l="flexible"></span></label></div>
       <div class="row homerow"><label data-l="homeArea"></label><select data-f="homeArea"></select></div>
+      <div class="row minrow" hidden><label data-l="minStock"></label><input data-f="minStock" type="number" min="0" max="999" step="1" inputmode="numeric"><span class="stockinfo"></span></div>
       <div class="allergen-warning" role="note" hidden></div>
       <details class="nutrition"><summary></summary>
         <div class="nutgrid">
@@ -302,7 +303,7 @@ class DoseCard {
         <div class="source" hidden></div>
       </details>
       <div class="nfcrow"><span class="nfcstate"></span><button class="nfcbtn" type="button"></button></div>
-      <div class="actions"><button class="fill" type="button"></button><button class="transfer" type="button" hidden></button><button class="empty" type="button"></button><span class="spacer"></span><img class="qr" alt=""></div>
+      <div class="actions"><button class="fill" type="button"></button><button class="transfer" type="button" hidden></button><button class="move" type="button" hidden></button><button class="empty" type="button"></button><span class="spacer"></span><img class="qr" alt=""></div>
       <div class="outcomerow" hidden><span class="otext"></span><button class="eaten" type="button"></button><button class="thrown" type="button"></button><button class="ocancel" type="button"></button></div>
       <details class="history"><summary></summary><ul></ul></details>`;
     this.el = el;
@@ -425,6 +426,17 @@ class DoseCard {
     this.q("button.estimate").addEventListener("click", () => this._estimate());
     this.q("button.fill").addEventListener("click", () => this._panel.openFillDialog(this.deviceId));
     // Packung öffnen und in eine leere Dose umfüllen: die Auswahl der Dose übernimmt das Dashboard
+    this.q("button.move").addEventListener("click", () => {
+      this._panel.dispatchEvent(new CustomEvent("larder-move", { detail: { deviceId: this.deviceId } }));
+    });
+    // Mindestbestand des Produkts (gilt für alle Packungen mit diesem Inhalt)
+    this.q('[data-f="minStock"]').addEventListener("change", (ev) => {
+      const hass = this._panel.hass;
+      const content = this.inputs.content.value.trim();
+      if (!hass || !hass.callWS || !content) return;
+      const value = Math.max(0, Math.min(999, parseInt(ev.target.value, 10) || 0));
+      hass.callWS({ type: `${DOMAIN}/stock_min`, content, min: value }).catch(() => this._panel.showError(strings(hass).minStockFailed));
+    });
     this.q("button.transfer").addEventListener("click", () => {
       this._panel.dispatchEvent(new CustomEvent("larder-transfer", { detail: { deviceId: this.deviceId } }));
     });
@@ -663,6 +675,13 @@ class DoseCard {
     const transfer = this.q("button.transfer");
     transfer.hidden = !(kind === "pack" && hasContentNow);
     transfer.textContent = t.transfer;
+    const move = this.q("button.move");
+    move.hidden = !(kind === "pack" && hasContentNow);
+    move.textContent = t.movePack;
+    const minRow = this.q(".minrow");
+    minRow.hidden = !(kind === "pack" && hasContentNow);
+    this.q('[data-l="minStock"]').textContent = t.minStock;
+    if (!minRow.hidden) this._setInput(this.q('[data-f="minStock"]'), text.attributes.min_stock ? String(text.attributes.min_stock) : "");
     if (nfc !== null) {
       this.q(".nfcstate").textContent = { linked: t.nfcLinked, none: t.nfcNone, waiting: t.nfcWaiting }[nfc];
       this.q("button.nfcbtn").textContent = { linked: t.nfcUnlink, none: t.nfcLink, waiting: t.cancel }[nfc];
@@ -1857,7 +1876,7 @@ class LarderPanel extends HTMLElement {
 
   async loadNfc() {
     const hass = this._hass;
-    if (!hass || !hass.callWS || !isAdmin(hass)) return;
+    if (!hass || !hass.callWS) return;
     try {
       const res = await hass.callWS({ type: `${DOMAIN}/nfc_tags` });
       this._nfcLinks = (res && res.by_device) || {};
@@ -1892,7 +1911,19 @@ class LarderPanel extends HTMLElement {
   /** Ereignisse abonnieren (nur Administratoren dürfen beliebige Ereignisse abonnieren). */
   async _subscribe() {
     const hass = this._hass;
-    if (this._subscribed || !hass || !isAdmin(hass) || !hass.connection || !hass.connection.subscribeEvents) return;
+    if (this._subscribed || !hass || !hass.connection) return;
+    if (!isAdmin(hass)) {
+      // ohne Administratorrechte: nur gescannte Tags (zum Kennzeichnen von Beuteln), über Larder
+      if (typeof hass.connection.subscribeMessage !== "function") return;
+      this._subscribed = true;
+      try {
+        this._unsubs.push(await hass.connection.subscribeMessage((ev) => this._tagScanned(ev && ev.tag_id), { type: `${DOMAIN}/tag_scans` }));
+      } catch {
+        this._subscribed = false;
+      }
+      return;
+    }
+    if (!hass.connection.subscribeEvents) return;
     this._subscribed = true;
     try {
       this._unsubs.push(
@@ -2064,7 +2095,7 @@ class LarderPanel extends HTMLElement {
     this._handleOpenParam();
     this._handleRecipesParam();
     this._subscribe();
-    if (!this._nfcLoaded && isAdmin(hass)) {
+    if (!this._nfcLoaded) {
       this._nfcLoaded = true;
       this.loadNfc();
     }

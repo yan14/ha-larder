@@ -77,7 +77,7 @@ doses.forEach(([name, area, content, days, category, kind = "container"], i) => 
   const ids = { text: `text.${id}_c`, date: `date.${id}_b`, datetime: `datetime.${id}_f`, button: `button.${id}_e`, image: `image.${id}_q`, switch: `switch.${id}_v`, number: `number.${id}_p`, select: `select.${id}_u` };
   if (kind === "pack") for (const k of ["datetime", "image", "switch"]) delete ids[k]; // Packungen: nur Inhalt, Menge, MHD
   for (const e of Object.values(ids)) entities[e] = { entity_id: e, device_id: id, platform: "larder" };
-  states[ids.text] = { entity_id: ids.text, state: content, attributes: { category, kind, ...(/Hazelnut|Haselnuss/.test(content) ? { brand: "Nutella", package: "450 g", kcal_100g: 539, nutri_score: "E", allergen_warning: [de ? "Schalenfrüchte" : "Nuts"] } : {}), ...(/Penne/.test(content) ? { brand: "Barilla", package: "500 g", ean: "8076800195057", kcal_100g: 359, kcal_portion: 449, nutri_score: "A", allergens: de ? "Gluten" : "Gluten", nutrients: de ? "Fett 2 g, Kohlenhydrate 71 g, davon Zucker 3,5 g, Eiweiß 13 g, Salz 0,01 g (pro 100 g)" : "Fat 2 g, carbohydrates 71 g, of which sugars 3.5 g, protein 13 g, salt 0.01 g (per 100 g)", source: "openfoodfacts" } : {}) } };
+  states[ids.text] = { entity_id: ids.text, state: content, attributes: { category, kind, ...(/Hazelnut|Haselnuss/.test(content) ? { brand: "Nutella", package: "450 g", kcal_100g: 539, nutri_score: "E", min_stock: 2, allergen_warning: [de ? "Schalenfrüchte" : "Nuts"] } : {}), ...(/Penne/.test(content) ? { brand: "Barilla", package: "500 g", ean: "8076800195057", kcal_100g: 359, kcal_portion: 449, nutri_score: "A", allergens: de ? "Gluten" : "Gluten", nutrients: de ? "Fett 2 g, Kohlenhydrate 71 g, davon Zucker 3,5 g, Eiweiß 13 g, Salz 0,01 g (pro 100 g)" : "Fat 2 g, carbohydrates 71 g, of which sugars 3.5 g, protein 13 g, salt 0.01 g (per 100 g)", source: "openfoodfacts" } : {}) } };
   states[ids.date] = { entity_id: ids.date, state: days === null ? "unknown" : day(days), attributes: { estimates: true } };
   if (ids.datetime) states[ids.datetime] = { entity_id: ids.datetime, state: "unknown", attributes: {} };
   if (ids.switch) states[ids.switch] = { entity_id: ids.switch, state: "on", attributes: {} };
@@ -158,6 +158,17 @@ const hass = {
       { key: "c", content: "Salmon", area: "Fridge", vacuum: true, days: 2, tip: "", source: "learned", origin: "ai" } ] };
     if (msg.type === "call_service") return { response: { recipes: suggestions } };
     if (msg.type === "larder/nfc_tags") return { links: {}, by_device: {} };
+    if (msg.type === "larder/stock") return { shopping_list: true, products: de ? [
+      { key: "haselnusscreme", name: "Haselnusscreme", count: 3, min: 2, low: false, brand: "Nutella", package: "450 g", places: [{ device_id: "demo13", area: "Keller", compartment: "Regal oben", count: 3 }] },
+      { key: "ketchup", name: "Ketchup", count: 3, min: 4, low: true, brand: "Heinz", package: "500 ml", places: [{ device_id: "demo12", area: "Vorratskammer", compartment: "Schrank", count: 2 }, { device_id: "demo12", area: "Küche", compartment: "Tür", count: 1 }] },
+      { key: "senf", name: "Senf", count: 0, min: 1, low: true, places: [] },
+      { key: "tomaten gehackt", name: "Tomaten gehackt", count: 6, min: 0, low: false, brand: "Mutti", package: "400 g", places: [{ device_id: "demo12", area: "Keller", compartment: "Regal oben", count: 4 }, { device_id: "demo12", area: "Vorratskammer", compartment: "", count: 2 }] },
+    ] : [
+      { key: "chopped tomatoes", name: "Chopped tomatoes", count: 6, min: 0, low: false, brand: "Mutti", package: "400 g", places: [{ device_id: "demo12", area: "Basement", compartment: "Top shelf", count: 4 }, { device_id: "demo12", area: "Pantry", compartment: "", count: 2 }] },
+      { key: "hazelnut spread", name: "Hazelnut spread", count: 3, min: 2, low: false, brand: "Nutella", package: "450 g", places: [{ device_id: "demo13", area: "Basement", compartment: "Top shelf", count: 3 }] },
+      { key: "ketchup", name: "Ketchup", count: 3, min: 4, low: true, brand: "Heinz", package: "500 ml", places: [{ device_id: "demo12", area: "Pantry", compartment: "Cupboard", count: 2 }, { device_id: "demo12", area: "Kitchen", compartment: "Door", count: 1 }] },
+      { key: "mustard", name: "Mustard", count: 0, min: 1, low: true, places: [] },
+    ] };
     return {};
   },
 };
@@ -193,6 +204,7 @@ if (q.get("dialog") === "bag" || q.get("dialog") === "pack") {
 }
 if (q.get("dialog") === "labels") el.openLabelDialog();
 if (q.get("dialog") === "transfer") el.openTransferDialog("demo12");
+if (q.get("dialog") === "move") el.openMoveDialog("demo12");
 if (q.get("dialog") === "plan") el.openPlanDialog(recipes[1]);
 if (q.get("select") === "1") {
   el.startSelecting();

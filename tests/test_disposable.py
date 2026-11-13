@@ -82,7 +82,7 @@ async def test_emptying_a_bag_removes_it_and_its_tag(hass: HomeAssistant, hass_w
     assert "tag-1" not in hass.data[ha_tag.TAG_DATA].data
     assert (await async_get_nfc(hass)).tag_of(cc) is None
     record = (await async_get_history(hass)).list()[0]
-    assert record["content"] == "Rehgulasch" and record["name"] == "Bag 1"
+    assert record["content"] == "Rehgulasch" and record["name"] == "Bag 1" and record["kind"] == "bag"
 
     # alter Code und alter Sticker: Hinweis statt "unbekannt"
     retired = await async_get_retired(hass)

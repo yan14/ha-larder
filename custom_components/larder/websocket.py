@@ -7,12 +7,13 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant.components import websocket_api
-from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.core import Event, HomeAssistant, callback
+from homeassistant.exceptions import HomeAssistantError, Unauthorized
 from homeassistant.helpers import config_validation as cv, device_registry as dr
 
-from .const import DOMAIN, EVENT_DOSE_SCANNED
+from .const import DOMAIN, EVENT_DOSE_SCANNED, KIND_BAG
 from .disposable import DATA_RETIRED, retired_text
+from .entity import kind_of
 from .estimate import MAX_DAYS, MIN_DAYS, async_get_estimator
 from .nfc import async_get_nfc
 from .qr import parse_qr
@@ -40,6 +41,7 @@ def async_setup_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_nfc_tags)
     websocket_api.async_register_command(hass, ws_nfc_link)
     websocket_api.async_register_command(hass, ws_nfc_unlink)
+    websocket_api.async_register_command(hass, ws_tag_scans)
     domain_data[DATA_WS_REGISTERED] = True
 
 
@@ -125,7 +127,6 @@ async def ws_delete(
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/nfc_tags"})
-@websocket_api.require_admin
 @websocket_api.async_response
 async def ws_nfc_tags(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
@@ -148,7 +149,6 @@ async def ws_nfc_tags(
         cv.has_at_least_one_key("cc", "entry_id", "device_id"),
     )
 )
-@websocket_api.require_admin
 @websocket_api.async_response
 async def ws_nfc_link(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
@@ -156,7 +156,14 @@ async def ws_nfc_link(
     nfc = await async_get_nfc(hass)
     try:
         cc = nfc.resolve_cc(msg.get("cc"), msg.get("entry_id"), msg.get("device_id"))
+        # Beutel kennzeichnet jeder im Haushalt, Dosen nur Administratoren
+        entry = nfc._entry(cc)  # noqa: SLF001
+        if not connection.user.is_admin and (entry is None or kind_of(entry) != KIND_BAG):
+            raise Unauthorized
         await nfc.async_link(msg["tag_id"], cc)
+    except Unauthorized:
+        connection.send_error(msg["id"], websocket_api.ERR_UNAUTHORIZED, "Unauthorized")
+        return
     except HomeAssistantError as err:
         _error(connection, msg["id"], err)
         return
@@ -241,6 +248,24 @@ def ws_resolve_code(
             "retired": retired_text(info, hass.config.language or "en") if info else None,
         },
     )
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/tag_scans"})
+@websocket_api.async_response
+async def ws_tag_scans(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Gescannte NFC-Tags melden (für Nutzer ohne Administratorrechte, die Beutel kennzeichnen).
+
+    Ereignisse abonnieren dürfen sonst nur Administratoren; hier geht nur die Tag-ID weiter.
+    """
+
+    @callback
+    def forward(event: Event) -> None:
+        connection.send_message(websocket_api.event_message(msg["id"], {"tag_id": event.data.get("tag_id")}))
+
+    connection.subscriptions[msg["id"]] = hass.bus.async_listen("tag_scanned", forward)
+    connection.send_result(msg["id"])
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/scan_session"})

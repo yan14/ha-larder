@@ -146,6 +146,12 @@ export const STYLE = `
   .actions button.transfer { font: inherit; padding: 7px 14px; border-radius: 8px; cursor: pointer;
     background: none; color: var(--primary-color); border: 1px solid var(--primary-color); }
   .actions button.transfer[hidden] { display: none; }
+  .actions button.move { font: inherit; padding: 7px 14px; border-radius: 8px; cursor: pointer;
+    background: none; color: var(--primary-color); border: 1px solid var(--primary-color); }
+  .actions button.move[hidden], .row.minrow[hidden] { display: none; }
+  .actions { flex-wrap: wrap; }
+  .row.minrow input { max-width: 90px; }
+  .row.minrow .stockinfo { font-size: 13px; color: var(--secondary-text-color); }
   .dialog .nfcstatus { font-size: 14px; color: var(--secondary-text-color); }
   .dialog .nfcstatus[hidden] { display: none; }
   header .count { white-space: nowrap; }

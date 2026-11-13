@@ -65,4 +65,4 @@ async def test_unknown_device_and_history_csv(hass: HomeAssistant, hass_ws_clien
     header, row = text.splitlines()
     assert header.startswith("Name;ID;Bereich;Inhalt")
     assert row.startswith("Dose AAAA;AAAA;;Lachs;")
-    assert row.endswith(";nein;weggeworfen")
+    assert row.endswith(";nein;weggeworfen;Dose")

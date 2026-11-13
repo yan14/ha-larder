@@ -1647,7 +1647,7 @@ test("'Befüllen' erscheint nur bei leerer Dose und öffnet den Dialog mit Vorsc
   assert.equal(overlay.hidden, false);
   assert.match($(el, "form.fillform h2").textContent, /Leer/);
   assert.deepEqual($$(el, "datalist option").map((o) => o.value), ["Pizza", "Suppe"]);
-  assert.deepEqual(hass.wsCalls, [{ type: `${D}/contents` }]);
+  assert.deepEqual(hass.wsCalls.filter((m) => m.type !== `${D}/nfc_tags`), [{ type: `${D}/contents` }]);
   assert.equal($(el, 'form.fillform [data-f="vacuum"]').checked, true);
   assert.ok($(el, 'form.fillform [data-f="filledAt"]').value.length > 0);
 
@@ -1908,4 +1908,21 @@ test("Karte einer Packung: Umfüllen-Knopf, kein NFC, kein Befüll-Datum", async
   el.addEventListener("larder-transfer", (ev) => (asked = ev.detail.deviceId));
   pack.querySelector("button.transfer").click();
   assert.equal(asked, "d1");
+});
+
+test("Karte einer Packung: Mindestbestand und Verschieben", async () => {
+  const hass = adminHass([{ id: "d1", name: "Packung 1", content: "Ketchup", product: { kind: "pack", min_stock: 4 } }]);
+  const el = mount(hass);
+  const card = $(el, ".card");
+  assert.equal(card.querySelector(".minrow").hidden, false);
+  const min = card.querySelector('[data-f="minStock"]');
+  assert.equal(min.value, "4");
+  min.value = "6";
+  min.dispatchEvent(new Event("change"));
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/stock_min`), { type: `${D}/stock_min`, content: "Ketchup", min: 6 });
+  let moved = null;
+  el.addEventListener("larder-move", (ev) => (moved = ev.detail.deviceId));
+  card.querySelector("button.move").click();
+  assert.equal(moved, "d1");
 });

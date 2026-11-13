@@ -3,7 +3,16 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
-## 3.0.1
+## 3.1.0
+
+- **Stock view** (**⋮ → 🥫 Stock**): packs by product, summed over every place, with where they are and the **minimum stock**, editable at a glance.
+- **Minimum stock** per product, also on the card of a pack: when there are fewer packs (−1, emptying, moving into a container), the product goes onto the shopping list with brand and package. Kept when the last pack is gone.
+- **Move / split packs**: bring some or all packs of an entry to another area and compartment; packs of the same food with the same best-before date are merged.
+- **Packs from a receipt photo**: 📷 Receipt in the pack dialog lets the AI propose the food items with their count.
+- **Group by area and compartment** on the containers page.
+- **NFC stickers for bags** can now be linked by all users (containers still by administrators).
+- **Kind** (container, bag, pack) as a column in the inventory and history CSV.
+
 
 - **Compartment for packs:** packs now have the **Compartment** entity too (e.g. "top shelf"), on the card, tiles and in the search. Existing packs get it after the update.
 - **Compartment when adding bags and packs:** optional field in the dialog, applied to all items added at once.

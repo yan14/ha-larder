@@ -194,6 +194,12 @@
     },
     "transfer_invalid": {
       "message": "Transfer only works from a pack with contents into an empty container or bag."
+    },
+    "receipt_photo_none": {
+      "message": "No receipt with food was recognised in the photo."
+    },
+    "move_invalid": {
+      "message": "Only packs can be moved, into an existing area."
     }
   },
   "options": {
