@@ -53,32 +53,41 @@ def _state(hass: HomeAssistant, registry: er.EntityRegistry, platform: str, uniq
     return state.state
 
 
+# Filter im Dashboard (Link "Mehr erfahren"): /larder?problem=…
+DASHBOARD_FILTER = {ISSUE_NO_AREA: "noarea", ISSUE_NO_DATE: "nodate", ISSUE_LONG_EXPIRED: "longexpired"}
+
+
 def find_problems(hass: HomeAssistant, today: date | None = None) -> dict[str, list[str]]:
     """Namen der betroffenen Dosen je Hinweis (alphabetisch)."""
+    return {key: [name for name, _cc in items] for key, items in find_problem_containers(hass, today).items()}
+
+
+def find_problem_containers(hass: HomeAssistant, today: date | None = None) -> dict[str, list[tuple[str, str]]]:
+    """(Name, cc) der betroffenen Dosen je Hinweis, alphabetisch nach Name."""
     registry = er.async_get(hass)
-    found: dict[str, list[str]] = {key: [] for key in ISSUES}
+    found: dict[str, list[tuple[str, str]]] = {key: [] for key in ISSUES}
     for entry in hass.config_entries.async_entries(DOMAIN):
         cc = entry.data.get("cc")
         if not cc:
             continue
         name = entry.title or cc
         if storage_context(hass, cc).area_name is None:
-            found[ISSUE_NO_AREA].append(name)
+            found[ISSUE_NO_AREA].append((name, cc))
         content = (_state(hass, registry, "text", f"{cc}_content") or "").strip()
         best = _state(hass, registry, "date", f"{cc}_best_before")
         if not content:
             continue
         if best is None:
-            found[ISSUE_NO_DATE].append(name)
+            found[ISSUE_NO_DATE].append((name, cc))
             continue
         try:
             left = days_left(date.fromisoformat(best), today)
         except ValueError:
             continue
         if left <= -LONG_EXPIRED_DAYS:
-            found[ISSUE_LONG_EXPIRED].append(name)
-    for names in found.values():
-        names.sort(key=str.casefold)
+            found[ISSUE_LONG_EXPIRED].append((name, cc))
+    for items in found.values():
+        items.sort(key=lambda item: item[0].casefold())
     return found
 
 
@@ -163,10 +172,12 @@ class Repairs:
         hass = self.hass
         estimator = hass.data.get(DOMAIN, {}).get("estimator")
         enabled = getattr(estimator, "repair_hints", True)
-        problems = find_problems(hass, today) if enabled else {}
+        problems = find_problem_containers(hass, today) if enabled else {}
         language = hass.config.language or "en"
+        devices = dr.async_get(hass)
         for key in ISSUES:
-            names = problems.get(key) or []
+            items = problems.get(key) or []
+            names = [name for name, _cc in items]
             if not names:
                 ir.async_delete_issue(hass, DOMAIN, key)
                 continue
@@ -175,16 +186,22 @@ class Repairs:
                 "containers": _listing(names, language),
                 "days": str(LONG_EXPIRED_DAYS),
             }
+            # "Mehr erfahren" springt ins Dashboard: eine Dose direkt, mehrere gefiltert
+            url = f"/{DOMAIN}?problem={DASHBOARD_FILTER[key]}"
+            if len(items) == 1:
+                device = devices.async_get_device(identifiers={(DOMAIN, items[0][1])})
+                if device is not None:
+                    url = f"/{DOMAIN}?open={device.id}"
             ir.async_create_issue(
                 hass,
                 DOMAIN,
                 key,
-                is_fixable=False,
+                is_fixable=True,
                 is_persistent=False,
                 severity=ir.IssueSeverity.WARNING,
                 translation_key=key,
                 translation_placeholders=placeholders,
-                learn_more_url="https://github.com/yan14/ha-larder#repairs",
+                learn_more_url=url,
             )
 
 

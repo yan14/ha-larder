@@ -34,7 +34,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 - [Why this project?](#why-this-project)
 - [Installation](#installation) · [Getting started](#getting-started) · [Adding a container](#adding-a-container) · [Areas and labels](#areas-and-labels) · [Settings](#settings)
 - [Dashboard "Larder"](#dashboard-larder) · [Selecting several containers](#selecting-several-containers) · [Filling containers](#filling-containers) · [Larder experimental](#larder-experimental)
-- [Best-before estimate](#best-before-estimate) · [Recipes](#recipes) · [Daily summary](#daily-summary) · [Shopping list](#shopping-list) · [Calendar](#best-before-dates-in-your-calendar) · [Export and import](#export-and-import) · [Statistics](#statistics) · [Repairs](#repairs)
+- [Best-before estimate](#best-before-estimate) · [Recipes](#recipes) · [Daily summary](#daily-summary) · [Shopping list](#shopping-list) · [Calendar](#best-before-dates-in-your-calendar) · [Meal plan](#meal-plan) · [Export and import](#export-and-import) · [Statistics](#statistics) · [Repairs](#repairs)
 - [Scanning](#scanning): [in the app](#scanning-in-the-app), [own QR codes](#your-own-qr-codes), [NFC tags](#nfc-tags), [Zwilling codes (iOS Shortcut)](#ios-shortcut-for-the-original-zwilling-codes)
 - [Reference](#reference): [entities](#entities), [services and events](#services-and-events), [webhook](#webhook-interface)
 - [Alternatives](#alternatives) · [Development](#development)
@@ -169,8 +169,11 @@ Settings → Devices & services → **Larder** → **Configure** (on any contain
 | Vacuum preset | on | Preset of the **Vacuum** switch for new containers |
 | NFC: notify the phone | on | Notification on the scanning phone after an [NFC scan](#nfc-tags) |
 | Repair hints | on | Hints under Settings → System → Repairs, see [Repairs](#repairs) |
+| Temperature warning | on | Warning when a freezer or fridge with a temperature sensor stays too warm, see [Repairs](#repairs) |
 | Calendar | none | [Best-before dates in your calendar](#best-before-dates-in-your-calendar) |
 | Shopping list | none | [Shopping list](#shopping-list) for emptied containers |
+| Calendar for the meal plan | none | Planned dishes as all-day events, see [Meal plan](#meal-plan) |
+| Thawing: days ahead | 1 | Thaw reminder for frozen containers of a planned dish, see [Meal plan](#meal-plan) |
 | Larder experimental | off | A second sidebar entry for trying new features, see [Larder experimental](#larder-experimental) |
 
 The dialog also shows the **webhook URL** for the [iOS Shortcut](#ios-shortcut-for-the-original-zwilling-codes).
@@ -198,7 +201,7 @@ A bar at the bottom switches between five pages:
 - **Estimate best before** (when [estimating](#best-before-estimate) is on, contents are entered and the date is empty),
 - **Vacuum**, **Add to shopping list when emptied** (once a [shopping list](#shopping-list) is chosen), **Flexible storage place** with **After emptying, back to** (see [Filling containers](#filling-containers)), the **NFC tag** (link or unlink), **Open device** and **Empty container**. Before emptying, the card asks **😋 Eaten** or **🗑 Thrown away**; the answer goes into the container's **History** (fold-out list at the bottom of the card, the last ten fillings).
 
-**⚙** at the top (administrators) opens a menu with the [remembered estimates](#managing-remembered-estimates) and the integration settings. The ☰ is the Home Assistant sidebar.
+**⋮** at the top opens a menu: **📊 Statistics** and **🖨 Print QR labels** for everyone, **📦 Export and import**, the [remembered estimates](#managing-remembered-estimates) and the integration settings for administrators. The ☰ on the left is the Home Assistant sidebar.
 
 <p>
 <img src="docs/images/dashboard-areas-en.png" width="250" alt="Areas">
@@ -216,6 +219,7 @@ The dashboard is visible to all users; only **administrators** can add container
 
 - **Fill (n)** (administrators): fills all selected *empty* containers at once with the same contents, vacuum, filled-on date and best-before date, for example after cooking a big batch or after shopping. Quantity counts per container. With the estimate switched on, each container gets its own estimate.
 - **✨ Recipe ideas**: asks the AI for recipes that use exactly the selected *filled* containers, whatever their best-before date (expired ones are still left out).
+- **🗑 Empty (n)** (administrators): empties the selected filled containers after asking **Eaten** or **Thrown away** (for the history).
 - **🖨 Labels**: an [A4 label sheet](#label-sheet) with the QR codes of the selected containers.
 - **Done** ends the selection.
 
@@ -223,7 +227,7 @@ The dashboard is visible to all users; only **administrators** can add container
 
 - **QR codes** in the Home Assistant app on iOS and Android: the app's own scanner opens and stays open, scan one code after the other; each hit shows the container name and the number selected. Own QR codes and the original Zwilling codes both work; a container that has not been added yet is reported. **Switch to NFC** in the scanner (or closing it) changes to NFC; the serial scan keeps running.
 - **NFC tags** linked to a container: choose **NFC** (this closes the QR scanner; while the camera is in use the iPhone does not read NFC tags). Then hold the phone to a tag; the iPhone shows a banner "Open in Home Assistant" at the top, tap it. The container is selected, and you stay on the page. Android reads the tag directly. While a serial scan is running, the phone gets no Larder notification after an NFC scan.
-- **⏹ Stop scanning** ends the serial scan.
+- **⏹ Stop scanning** ends the serial scan. Afterwards an **inventory** box lists the filled containers that were *not* scanned (maybe already eaten but not emptied); **Select these** selects them, for example to empty them with **🗑 Empty**.
 
 Then fill them all at once or ask for recipe ideas, which makes an inventory of a freezer or a shopping trip quick.
 
@@ -370,7 +374,7 @@ The **Recipes** page is your own recipe book (stored in Home Assistant, `.storag
 
 ## Daily summary
 
-The included blueprint sends a **daily summary** of what expires soon. Nothing is sent when nothing expires. Expired containers are named with their container and the note **should be emptied**, so you know which one to clear out.
+The included blueprint sends a **daily summary** of what expires soon. Nothing is sent when nothing expires. Expired containers are named with their container and the note **should be emptied**, so you know which one to clear out. Containers to [thaw for a planned dish](#meal-plan) come first, with a **Thawed** button. Re-import the blueprint to get that button.
 
 [![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fexpiry_notification.yaml)
 
@@ -401,6 +405,20 @@ response_variable: result
 
 `larder.suggest_recipes` also returns `speech` ("Idea: …"). For your own dashboards there is the sensor **Days until best before** on every container.
 
+## Meal plan
+
+Plan a dish for a day: **📅 Plan** on a recipe idea or a recipe from the book (also for non-administrators). The dialog takes the dish, the day (preset: tomorrow) and the **containers** it needs; the containers whose contents appear in the recipe are already ticked.
+
+- The **start page** shows what is planned for the next seven days, the **recipe page** all plans (✕ removes one).
+- With a **calendar for the meal plan** in the [settings](#settings), every plan also becomes an all-day event "🍽 Spaghetti Bolognese"; removing the plan removes the event.
+
+**Thaw reminder.** If a container needed for a planned dish stands in the **freezer** (by the area's name or label), Larder reminds you in time to move it to the fridge, by default the day before (setting **Thawing: days ahead**, 0–3):
+
+- on the start page under **🧊 Move to the fridge to thaw**, with a button **✓ Thawed**,
+- in the [daily summary](#daily-summary) as the first lines ("🧊 Bolognese sauce (Box 4) for Spaghetti Bolognese, tomorrow") and in the voice output; the push gets a button **Thawed**. The summary is sent for this even when nothing expires.
+
+**Thawed** works like the **Thawed** button on the card (shortens the best-before date) and moves [flexible containers](#filling-containers) to the fridge if there is exactly one fridge area.
+
 ## Shopping list
 
 Under Settings → Devices & services → **Larder** → **Configure** you can pick a **to-do list** of Home Assistant, for example the built-in *Shopping list*, Todoist or Bring!. Each container then has a checkbox **Add to shopping list when emptied** (the `Shopping list` switch, off by default). When you press **Empty container** on a container with the checkbox on, its contents are added to the list, for example "Basmati".
@@ -420,7 +438,7 @@ The calendar must be able to create **and** delete events. Read-only calendars (
 
 ## Export and import
 
-In the dashboard **☰ → 📦 Export and import** (administrators):
+In the dashboard **⋮ → 📦 Export and import** (administrators):
 
 - **📄 Inventory as a table (CSV)**: all containers with name, ID, area, contents, quantity, unit, filled on, best before, days left, status and vacuum. In German with semicolons, so Excel opens it directly.
 - **🕘 History (CSV)**: every emptied filling with container, contents, quantity, filled on, best before, emptied on, days stored, whether it was expired and whether it was eaten or thrown away. Containers emptied without the question (automation, device page) have no outcome.
@@ -433,7 +451,7 @@ For bug reports, **Download diagnostics** (⋮ on a container's entry under Sett
 
 ## Statistics
 
-**☰ → 📊 Statistics** in the dashboard shows, for the last 30 or 90 days, a year or everything:
+**⋮ → 📊 Statistics** in the dashboard shows, for the last 30 or 90 days, a year or everything:
 
 - **In stock now**: filled, empty, expiring soon, expired (and filled without a date).
 - **Emptied**: how many were eaten and thrown away, the share thrown away and the average storage time until eaten.
@@ -475,6 +493,16 @@ Larder shows hints under **Settings → System → Repairs** when containers nee
 
 A hint disappears by itself as soon as no container is affected any more (checked on every change and once a day). You can switch the hints off in the [settings](#settings) ("Repair hints").
 
+**Fix** opens a dialog right in the repairs:
+
+- **without an area**: one area field per container, saving assigns them,
+- **without a best-before date**: estimates the date for all of them (what the estimate does not know stays in the hint),
+- **expired long ago**: tick containers and empty them; they go into the history as thrown away.
+
+**Learn more** opens the Larder dashboard: one container directly, several on the containers page filtered to exactly these (`/larder?problem=noarea`, `nodate` or `longexpired`).
+
+**Temperature warning.** If an area with a **temperature sensor** (Settings → Areas → area → temperature sensor) is a freezer, fridge or 0 °C drawer by its name or label, Larder warns when it stays too warm: freezer above −12 °C for 30 minutes, fridge above 8 °C or 0 °C drawer above 6 °C for 60 minutes. The repair hint lists the filled containers there; the event `larder_temperature_warning` (`area_id`, `area`, `temperature`, `limit`, `containers`) is for your own push or siren, `larder_temperature_ok` follows when it is cold again (1 °C below the limit). Switch it off with the setting **Temperature warning**.
+
 ## Scanning
 
 There are four ways to get from a container to its entry in the dashboard. They can be mixed freely. For an inventory, the [serial scan](#selecting-several-containers) selects many containers in a row.
@@ -501,7 +529,7 @@ The same codes work in the [serial scan](#selecting-several-containers) of the d
 
 #### Label sheet
 
-To print many codes at once: **☰ → 🖨 Print QR labels** in the dashboard (all containers), or select containers and press **🖨 Labels**. Then choose
+To print many codes at once: **⋮ → 🖨 Print QR labels** in the dashboard (all containers), or select containers and press **🖨 Labels**. Then choose
 
 - the **label sheet**: A4 with 3 × 8 (70 × 36 mm), 3 × 7 (70 × 42.3 mm) or 2 × 4 (105 × 74 mm) labels, as sold by Avery Zweckform, Herma and others,
 - **Skip labels already used**, to continue on a partly used sheet,
@@ -603,7 +631,7 @@ The values survive restarts. "Empty container" is a regular button entity, so yo
 | `larder.get_statistics` | Eaten / thrown away, most frequent contents, storage time and current stock, see [Statistics](#statistics) |
 | `larder.rebuild_calendar` | Clean up the [calendar](#best-before-dates-in-your-calendar) |
 
-The event `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) fires when a linked [NFC tag](#nfc-tags) or one of [your own QR codes](#your-own-qr-codes) is scanned (then with `source: qr`).
+The event `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) fires when a linked [NFC tag](#nfc-tags) or one of [your own QR codes](#your-own-qr-codes) is scanned (then with `source: qr`). `larder_temperature_warning` and `larder_temperature_ok` belong to the [temperature warning](#repairs).
 
 ### Webhook interface
 

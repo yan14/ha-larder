@@ -23,6 +23,7 @@ export const TEXTS = {
     helpRecipes: "Rezeptvorschläge",
     helpContainers: "Behälter anzeigen",
     settings: "Einstellungen",
+    moreActions: "Weitere Aktionen",
     add: "Hinzufügen",
     sort: "Sortieren nach",
     sortDate: "Ablaufdatum / MHD",
@@ -86,6 +87,39 @@ export const TEXTS = {
     labelsFailed: "Das PDF konnte nicht geöffnet werden.",
     labelsHint: "Mit 100 % drucken (nicht „an Seite anpassen“), damit die Codes auf die Etiketten treffen.",
     selectLabels: "Etiketten",
+    selectEmpty: (n) => `Leeren (${n})`,
+    plan: "Einplanen",
+    planTitle: "Gericht einplanen",
+    planDish: "Gericht",
+    planDate: "Tag",
+    planContainers: "Dafür gebrauchte Dosen",
+    planNoContainers: "Keine gefüllten Dosen.",
+    planNeedTitle: "Bitte ein Gericht eingeben.",
+    planSaveFailed: "Konnte nicht eingeplant werden.",
+    planned: "📅 Geplant",
+    planDelete: "Aus dem Plan nehmen",
+    planDay: (iso, lang) => {
+      const d = new Date(`${iso}T12:00:00`);
+      const today = new Date();
+      today.setHours(12, 0, 0, 0);
+      const diff = Math.round((d - today) / 86400000);
+      if (diff === 0) return "Heute";
+      if (diff === 1) return "Morgen";
+      return d.toLocaleDateString(lang, { weekday: "short", day: "2-digit", month: "2-digit" });
+    },
+    thawTitle: "🧊 Zum Auftauen in den Kühlschrank",
+    thawItem: (i) => `${i.content} (${i.name}) für ${i.plan}`,
+    thawDone: "Aufgetaut",
+    emptyTitle: (n) => (n === 1 ? "1 Dose leeren" : `${n} Dosen leeren`),
+    emptyQuestion: "Was ist mit dem Inhalt passiert?",
+    eaten: "😋 Gegessen",
+    thrown: "🗑 Weggeworfen",
+    emptyFailed: (n) => `${n} Dose(n) konnten nicht geleert werden.`,
+    inventoryTitle: (n) => `Inventur: ${n} gescannt`,
+    inventoryAll: "Alle gefüllten Dosen wurden gescannt. ✓",
+    inventoryMissing: (n) => (n === 1 ? "1 gefüllte Dose wurde nicht gescannt, vielleicht schon gegessen:" : `${n} gefüllte Dosen wurden nicht gescannt, vielleicht schon gegessen:`),
+    inventorySelect: "Diese auswählen",
+    inventoryClose: "Schließen",
     menuSettings: "Einstellungen der Integration",
     empty: "Leer",
     noArea: "Ohne Bereich",
@@ -93,6 +127,7 @@ export const TEXTS = {
     noMatch: "Keine passenden Behälter.",
     filterArea: (name) => `Bereich: ${name}`,
     filterCategory: (name) => `Kategorie: ${name}`,
+    problems: { noarea: "Ohne Bereich", nodate: "Gefüllt ohne MHD", longexpired: "Seit über 7 Tagen abgelaufen" },
     filterSoon: "Läuft bald ab",
     filterAll: "Alle",
     filterExpired: "Abgelaufen",
@@ -214,6 +249,7 @@ export const TEXTS = {
     helpRecipes: "Recipe suggestions",
     helpContainers: "Show containers",
     settings: "Settings",
+    moreActions: "More actions",
     add: "Add",
     sort: "Sort by",
     sortDate: "Best-before date",
@@ -277,6 +313,39 @@ export const TEXTS = {
     labelsFailed: "The PDF could not be opened.",
     labelsHint: "Print at 100 % (not “fit to page”) so the codes hit the labels.",
     selectLabels: "Labels",
+    selectEmpty: (n) => `Empty (${n})`,
+    plan: "Plan",
+    planTitle: "Plan a dish",
+    planDish: "Dish",
+    planDate: "Day",
+    planContainers: "Containers needed for it",
+    planNoContainers: "No filled containers.",
+    planNeedTitle: "Please enter a dish.",
+    planSaveFailed: "Could not be planned.",
+    planned: "📅 Planned",
+    planDelete: "Remove from the plan",
+    planDay: (iso, lang) => {
+      const d = new Date(`${iso}T12:00:00`);
+      const today = new Date();
+      today.setHours(12, 0, 0, 0);
+      const diff = Math.round((d - today) / 86400000);
+      if (diff === 0) return "Today";
+      if (diff === 1) return "Tomorrow";
+      return d.toLocaleDateString(lang, { weekday: "short", day: "2-digit", month: "2-digit" });
+    },
+    thawTitle: "🧊 Move to the fridge to thaw",
+    thawItem: (i) => `${i.content} (${i.name}) for ${i.plan}`,
+    thawDone: "Thawed",
+    emptyTitle: (n) => (n === 1 ? "Empty 1 container" : `Empty ${n} containers`),
+    emptyQuestion: "What happened to the contents?",
+    eaten: "😋 Eaten",
+    thrown: "🗑 Thrown away",
+    emptyFailed: (n) => `${n} container(s) could not be emptied.`,
+    inventoryTitle: (n) => `Inventory: ${n} scanned`,
+    inventoryAll: "All filled containers were scanned. ✓",
+    inventoryMissing: (n) => (n === 1 ? "1 filled container was not scanned, maybe already eaten:" : `${n} filled containers were not scanned, maybe already eaten:`),
+    inventorySelect: "Select these",
+    inventoryClose: "Close",
     menuSettings: "Integration settings",
     empty: "Empty",
     noArea: "No area",
@@ -284,6 +353,7 @@ export const TEXTS = {
     noMatch: "No matching containers.",
     filterArea: (name) => `Area: ${name}`,
     filterCategory: (name) => `Category: ${name}`,
+    problems: { noarea: "Without an area", nodate: "Filled without a date", longexpired: "Expired more than 7 days ago" },
     filterSoon: "Expiring soon",
     filterAll: "All",
     filterExpired: "Expired",
@@ -569,7 +639,9 @@ const STYLE = `
   header button { background: none; border: 0; color: inherit; font-size: 22px; cursor: pointer; padding: 4px 8px; }
   #menu { display: none; }
   :host([narrow]) #menu { display: inline-block; }
-  main { flex: 1; padding: 12px 16px 16px; box-sizing: border-box; }
+  main { flex: 1; padding: 12px 16px 16px; box-sizing: border-box; display: flex; flex-direction: column; }
+  main > * { flex: 0 0 auto; }
+  main > .selbar { margin-top: auto; }
   :host([classic-view]) main { flex: none; padding-bottom: 0; }
   :host([classic-view]) larder-panel-embedded { flex: 1; }
   .menu { position: absolute; top: 52px; right: 8px; z-index: 5; display: flex; flex-direction: column; min-width: 220px;
@@ -628,6 +700,12 @@ const STYLE = `
   .row.empty { opacity: .65; }
   .note { color: var(--secondary-text-color); font-size: 14px; margin: 8px 0; }
   .scanpanel { margin: 0 0 12px; }
+  .inventory { background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 12px; padding: 10px 14px; }
+  .inventory .lead { margin: 0 0 4px; }
+  .inventory button { font: inherit; font-size: 14px; border-radius: 18px; padding: 6px 12px; cursor: pointer; margin: 6px 8px 0 0;
+    border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
+  ul.missing { margin: 4px 0; padding-left: 20px; font-size: 14px; }
+  .dialog .buttons.outcome { flex-wrap: wrap; }
   .scanpanel .note { margin: 6px 0 0; }
   .segment { display: flex; border: 1px solid var(--divider-color); border-radius: 20px; padding: 3px; background: var(--card-background-color, #fff); touch-action: pan-y; }
   .segment button { flex: 1; font: inherit; font-size: 14px; border: 0; border-radius: 16px; padding: 8px 10px; cursor: pointer;
@@ -696,6 +774,17 @@ const STYLE = `
   .month .seg.eaten { background: var(--success-color, #43a047); border-radius: 0 0 4px 4px; }
   .month .seg.thrown { background: var(--error-color, #e53935); border-radius: 4px 4px 0 0; }
   .month .lbl { font-size: 11px; color: var(--secondary-text-color); margin-top: 4px; }
+  .dialog .checks { display: flex; flex-direction: column; gap: 6px; max-height: 40vh; overflow: auto; }
+  .tiles + .stat, .lead + .stat { margin-top: 16px; }
+  ul.plans { list-style: none; margin: 0; padding: 0; }
+  ul.plans li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; padding: 4px 0; border-top: 1px solid var(--divider-color); }
+  ul.plans li:first-child { border-top: 0; }
+  ul.plans .day { font-size: 13px; color: var(--secondary-text-color); min-width: 64px; }
+  ul.plans .title { font-weight: 500; flex: 1; }
+  ul.plans .used { flex-basis: 100%; font-size: 13px; color: var(--secondary-text-color); padding-left: 74px; }
+  ul.plans button { background: none; border: 0; cursor: pointer; color: var(--secondary-text-color); font-size: 15px; }
+  .stat.thaw button { font: inherit; font-size: 14px; border-radius: 18px; padding: 6px 12px; cursor: pointer; margin-top: 6px;
+    border: 1px solid var(--primary-color); background: var(--primary-color); color: var(--text-primary-color, #fff); }
   .dialog .download { display: flex; flex-direction: column; gap: 4px; }
   .dialog .download a.pdf { text-align: left; font-size: 15px; }
   .dialog input[type="file"] { font: inherit; font-size: 13px; }
@@ -717,7 +806,7 @@ export class LarderDashboard extends HTMLElement {
     this._hass = null;
     this._view = "start";
     this._detail = null;
-    this._filter = { area: null, category: null, state: null };
+    this._filter = { area: null, category: null, state: null, problem: null };
     this._opts = loadOptions();
     this._recipeDays = SOON_DAYS; // bis die Einstellung geladen ist
     this._sig = "";
@@ -734,8 +823,8 @@ export class LarderDashboard extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this.shadowRoot.innerHTML = `
       <style>${STYLE}</style>
-      <header><button id="menu" type="button" aria-label="Menu">☰</button><h1></h1><button id="settings" type="button" hidden>⚙</button></header>
-      <div class="menu" hidden><button type="button" data-role="menu-estimates"></button><button type="button" data-role="menu-labels"></button><button type="button" data-role="menu-data"></button><button type="button" data-role="menu-stats"></button><button type="button" data-role="menu-settings"></button></div>
+      <header><button id="menu" type="button" aria-label="Menu">☰</button><h1></h1><button id="settings" type="button" hidden>⋮</button></header>
+      <div class="menu" hidden><button type="button" data-role="menu-stats"></button><button type="button" data-role="menu-labels"></button><button type="button" data-role="menu-data"></button><button type="button" data-role="menu-estimates"></button><button type="button" data-role="menu-settings"></button></div>
       <div class="notice" role="alert" hidden></div>
       <main></main>
       <nav></nav>
@@ -844,6 +933,7 @@ export class LarderDashboard extends HTMLElement {
     this._update();
     if (first) {
       this.loadRecipes();
+      this.loadPlans();
       this.loadSettings();
       this._handleViewParam();
       this._subscribeScans();
@@ -905,9 +995,11 @@ export class LarderDashboard extends HTMLElement {
     const open = params.get("open");
     const add = params.get("add");
     const cc = params.get("cc");
-    if (!view && !open && !add && !cc && !params.has("recipes")) return;
+    const problem = params.get("problem");
+    if (!view && !open && !add && !cc && !problem && !params.has("recipes")) return;
     window.history.replaceState(null, "", window.location.pathname);
     if (params.has("recipes")) this.setView("recipes");
+    else if (problem && ["noarea", "nodate", "longexpired"].includes(problem)) this.setView("containers", { problem });
     else if (view && ALL_VIEWS.includes(view)) this.setView(view);
     if (cc) {
       this._openScanned(cc);
@@ -944,8 +1036,9 @@ export class LarderDashboard extends HTMLElement {
     }
     this._view = view;
     if (view === "stats") this.loadStats();
+    if (view === "start" || view === "recipes") this.loadPlans();
     const { soon, ...rest } = filter || {};
-    this._filter = { area: null, category: null, state: soon ? "soon" : null, ...rest };
+    this._filter = { area: null, category: null, state: soon ? "soon" : null, problem: null, ...rest };
     this._openRecipe = null;
     if (this._detail) this._closeDetail();
     this._sig = "";
@@ -1018,8 +1111,14 @@ export class LarderDashboard extends HTMLElement {
           : this._view === "stats"
             ? t.menuStats
             : t.views[this._view];
-    this._settingsBtn.hidden = !isAdmin(hass);
-    this._settingsBtn.setAttribute("aria-label", t.settings);
+    // ⋮: Statistik und Etiketten für alle, Export, Schätzungen und Einstellungen nur für Administratoren
+    const admin = isAdmin(hass);
+    this._settingsBtn.hidden = false;
+    this._settingsBtn.setAttribute("aria-label", t.moreActions);
+    this._settingsBtn.title = t.moreActions;
+    for (const role of ["menu-data", "menu-estimates", "menu-settings"]) {
+      this._menu.querySelector(`[data-role="${role}"]`).hidden = !admin;
+    }
     this._menu.querySelector('[data-role="menu-estimates"]').textContent = `📋 ${t.menuEstimates}`;
     this._menu.querySelector('[data-role="menu-settings"]').textContent = `⚙ ${t.menuSettings}`;
     this._menu.querySelector('[data-role="menu-labels"]').textContent = `🖨 ${t.menuLabels}`;
@@ -1044,10 +1143,12 @@ export class LarderDashboard extends HTMLElement {
       this._selecting,
       [...this._selected],
       !!this._scan,
+      this._inventory,
       !!(this._scan && this._scan.external),
       this._scan && this._scan.mode,
       this._chosenFor,
       this._areaEdit,
+      this._plans,
       this._view === "stats" ? [this._stats, this._statsDays] : null,
       this._view === "areas" ? this._areaSig() : null,
     ]);
@@ -1159,7 +1260,8 @@ export class LarderDashboard extends HTMLElement {
   }
 
   stopSelecting() {
-    this.stopScan();
+    this.stopScan(false);
+    this._inventory = null;
     this._selecting = false;
     this._selected = new Set();
     this._update();
@@ -1191,11 +1293,15 @@ export class LarderDashboard extends HTMLElement {
   async startScan() {
     const hass = this._hass;
     if (!hass || this._scan || !isAdmin(hass)) return;
-    const scan = { unsub: null, external: null, mode: this._hasQrScanner() ? "qr" : "nfc" };
+    const scan = { unsub: null, external: null, mode: this._hasQrScanner() ? "qr" : "nfc", scanned: new Set() };
     this._scan = scan;
+    this._inventory = null;
     this._update();
     const add = (id) => {
-      if (id && this._scan === scan) this.toggleSelected(id, true);
+      if (id && this._scan === scan) {
+        scan.scanned.add(id);
+        this.toggleSelected(id, true);
+      }
     };
     try {
       if (hass.connection && hass.connection.subscribeMessage) {
@@ -1282,6 +1388,7 @@ export class LarderDashboard extends HTMLElement {
       if (!res || !res.valid) notify(t.scanInvalid);
       else if (!res.device_id) notify(t.scanUnknown);
       else {
+        if (this._scan && this._scan.scanned) this._scan.scanned.add(res.device_id);
         this.toggleSelected(res.device_id, true);
         notify(t.scanAdded(res.name || res.cc, this._selected.size));
       }
@@ -1369,10 +1476,15 @@ export class LarderDashboard extends HTMLElement {
     return btn;
   }
 
-  stopScan() {
+  stopScan(inventory = true) {
     const scan = this._scan;
     if (!scan) return;
     this._scan = null;
+    // Inventur: welche gefüllten Dosen wurden nicht gescannt (schon gegessen, aber nicht geleert?)
+    if (inventory && scan.scanned && scan.scanned.size) {
+      const missing = this._rows().filter((r) => r.content !== "" && !scan.scanned.has(r.id));
+      this._inventory = { scanned: scan.scanned.size, missing: missing.map((r) => r.id) };
+    }
     if (scan.unsub) {
       try {
         scan.unsub();
@@ -1420,6 +1532,90 @@ export class LarderDashboard extends HTMLElement {
     return box;
   }
 
+  _inventoryPanel(t) {
+    const inv = this._inventory;
+    const box = el("div", "scanpanel inventory");
+    const byId = new Map(this._rows().map((r) => [r.id, r]));
+    const missing = inv.missing.map((id) => byId.get(id)).filter((r) => r && r.content !== "");
+    box.append(el("p", "lead", t.inventoryTitle(inv.scanned)));
+    if (!missing.length) {
+      box.append(el("p", "note", t.inventoryAll));
+    } else {
+      box.append(el("p", "note", t.inventoryMissing(missing.length)));
+      const list = el("ul", "missing");
+      for (const r of missing) list.append(el("li", "", `${r.content} (${r.name})`));
+      box.append(list);
+      const pick = el("button", "", t.inventorySelect);
+      pick.type = "button";
+      pick.dataset.role = "inventory-select";
+      pick.addEventListener("click", () => {
+        this._selected = new Set(missing.map((r) => r.id));
+        this._update();
+      });
+      box.append(pick);
+    }
+    const close = el("button", "", t.inventoryClose);
+    close.type = "button";
+    close.dataset.role = "inventory-close";
+    close.addEventListener("click", () => {
+      this._inventory = null;
+      this._update();
+    });
+    box.append(close);
+    return box;
+  }
+
+  /** Gewählte gefüllte Dosen leeren; vorher fragen, ob gegessen oder weggeworfen. */
+  openEmptyDialog(ids) {
+    const t = texts(this._hass);
+    const form = this._form;
+    this._editing = null;
+    const byId = new Map(this._rows().map((r) => [r.id, r]));
+    const rows = ids.map((id) => byId.get(id)).filter((r) => r && r.content !== "");
+    if (!rows.length) return;
+    const buttons = el("div", "buttons outcome");
+    const choose = (outcome, text, role, primary = false) => {
+      const b = el("button", primary ? "submit" : "", text);
+      b.type = "button";
+      b.dataset.role = role;
+      b.addEventListener("click", () => this._emptyMany(rows.map((r) => r.id), outcome));
+      buttons.append(b);
+    };
+    const cancel = el("button", "cancel", t.cancel);
+    cancel.type = "button";
+    cancel.addEventListener("click", () => this._closeDialog());
+    buttons.append(cancel);
+    choose("thrown", t.thrown, "empty-thrown");
+    choose("eaten", t.eaten, "empty-eaten", true);
+    const list = el("ul", "missing");
+    for (const r of rows) list.append(el("li", "", `${r.content} (${r.name})`));
+    const error = el("div", "error");
+    error.setAttribute("role", "alert");
+    form.replaceChildren(el("h2", "", t.emptyTitle(rows.length)), el("p", "hint", t.emptyQuestion), list, error, buttons);
+    this._submit = null;
+    this._overlay.hidden = false;
+  }
+
+  async _emptyMany(ids, outcome) {
+    const t = texts(this._hass);
+    let failed = 0;
+    for (const id of ids) {
+      try {
+        await this._hass.callWS({ type: `${DOMAIN}/empty`, device_id: id, outcome });
+      } catch {
+        failed += 1;
+      }
+    }
+    if (failed) {
+      this._form.querySelector(".error").textContent = t.emptyFailed(failed);
+      return;
+    }
+    this._closeDialog();
+    this._selected = new Set();
+    if (this._inventory) this._inventory = { ...this._inventory, missing: this._inventory.missing.filter((id) => !ids.includes(id)) };
+    this._update();
+  }
+
   _selectBar(t, rows) {
     const bar = el("div", "selbar");
     bar.append(el("span", "count", this._selected.size ? t.selected(this._selected.size) : t.selectHint));
@@ -1446,6 +1642,10 @@ export class LarderDashboard extends HTMLElement {
     if (this._canGenerate()) {
       const filled = chosen.filter((r) => r.content !== "").length;
       button("recipes-selected", `✨ ${t.selectRecipes}`, () => this.recipesFromSelected(), { disabled: !filled });
+    }
+    if (isAdmin(this._hass)) {
+      const filled = chosen.filter((r) => r.content !== "").length;
+      button("empty-selected", `🗑 ${t.selectEmpty(filled)}`, () => this.openEmptyDialog([...this._selected]), { disabled: !filled });
     }
     button("labels-selected", `🖨 ${t.selectLabels}`, () => this.openLabelDialog([...this._selected]), { disabled: !chosen.length });
     button("select-done", t.selectDone, () => this.stopSelecting(), { primary: true });
@@ -1518,6 +1718,9 @@ export class LarderDashboard extends HTMLElement {
     if (this._filter.category !== null) {
       chip(t.filterCategory(t.categories[this._filter.category] || this._filter.category), () => (this._filter.category = null));
     }
+    if (this._filter.problem) {
+      chip(t.problems[this._filter.problem] || this._filter.problem, () => (this._filter.problem = null));
+    }
     if (!chips.length) return null;
     const box = el("div", "chips");
     box.append(...chips);
@@ -1534,6 +1737,11 @@ export class LarderDashboard extends HTMLElement {
     else if (state === "empty") rows = rows.filter((r) => r.content === "");
     if (this._filter.area !== null) rows = rows.filter((r) => (r.areaId || "") === this._filter.area);
     if (this._filter.category !== null) rows = rows.filter((r) => r.category === this._filter.category);
+    // aus den Reparaturhinweisen (Link "Mehr erfahren")
+    const problem = this._filter.problem;
+    if (problem === "noarea") rows = rows.filter((r) => !r.areaId);
+    else if (problem === "nodate") rows = rows.filter((r) => r.content !== "" && r.days === null);
+    else if (problem === "longexpired") rows = rows.filter((r) => r.content !== "" && r.days !== null && r.days <= -7);
     const q = (this._query || "").trim().toLowerCase();
     if (q) rows = rows.filter((r) => [r.name, r.content, r.areaName || ""].some((v) => v.toLowerCase().includes(q)));
     return sortRows(rows, this._opts.sort, this._lang());
@@ -1627,6 +1835,7 @@ export class LarderDashboard extends HTMLElement {
     const frag = document.createDocumentFragment();
     frag.append(bar);
     if (this._scan) frag.append(this._scanPanel(t));
+    if (this._inventory && this._selecting) frag.append(this._inventoryPanel(t));
     const chips = this._chips(t, allRows);
     if (chips) frag.append(chips);
 
@@ -2020,6 +2229,10 @@ export class LarderDashboard extends HTMLElement {
     } else {
       frag.append(el("p", "lead", t.soonNone(rows.length ? rows[0].soon : SOON_DAYS)));
     }
+    const thaw = this._thawBox(t);
+    if (thaw) frag.append(thaw);
+    const planned = this._plannedBox(t, false);
+    if (planned) frag.append(planned);
     frag.append(el("p", "lead", t.help));
     const help = el("div", "help");
     if (this._canGenerate()) {
@@ -2226,8 +2439,17 @@ export class LarderDashboard extends HTMLElement {
       }
       node.append(body);
     }
-    if (isAdmin(this._hass) && (suggestion !== null || expanded)) {
+    if (suggestion !== null || expanded) {
       const actions = el("div", "actions");
+      const plan = el("button", "", `📅 ${t.plan}`);
+      plan.type = "button";
+      plan.dataset.role = "plan";
+      plan.addEventListener("click", () => this.openPlanDialog(recipe, suggestion !== null));
+      actions.append(plan);
+      if (!isAdmin(this._hass)) {
+        node.append(actions);
+        return node;
+      }
       if (suggestion !== null) {
         const done = this._savedSuggestions.has(suggestion);
         const save = el("button", "", done ? t.saved : t.save);
@@ -2297,6 +2519,8 @@ export class LarderDashboard extends HTMLElement {
       bar.append(add);
     }
     frag.append(bar);
+    const planned = this._plannedBox(t, true);
+    if (planned) frag.append(planned);
     const ai = el("div", "bar ai");
     if (this._canGenerate()) {
       const period = this._select(
@@ -2405,6 +2629,157 @@ export class LarderDashboard extends HTMLElement {
     );
     this._overlay.hidden = false;
     title.focus();
+  }
+
+  // ----- Wochenplan -----
+
+  async loadPlans() {
+    const hass = this._hass;
+    if (!hass || !hass.callWS) return;
+    try {
+      const res = await hass.callWS({ type: `${DOMAIN}/plan_list` });
+      this._plans = { plans: (res && res.plans) || [], thaw: (res && res.thaw) || [] };
+    } catch {
+      this._plans = null;
+    }
+    this._update();
+  }
+
+  _thawBox(t) {
+    const thaw = (this._plans && this._plans.thaw) || [];
+    if (!thaw.length) return null;
+    const box = el("section", "stat thaw");
+    box.append(el("h3", "", t.thawTitle));
+    const list = el("ul", "missing");
+    for (const item of thaw) list.append(el("li", "", t.thawItem(item)));
+    const done = el("button", "", `✓ ${t.thawDone}`);
+    done.type = "button";
+    done.dataset.role = "thawed";
+    done.addEventListener("click", async () => {
+      try {
+        await this._hass.callWS({ type: `${DOMAIN}/thawed`, device_ids: thaw.map((i) => i.device_id).filter(Boolean) });
+      } catch {
+        /* bleibt stehen */
+      }
+      this.loadPlans();
+    });
+    box.append(list, done);
+    return box;
+  }
+
+  /** Geplante Gerichte; auf der Startseite die nächsten sieben Tage, auf der Rezeptseite alle mit Löschen. */
+  _plannedBox(t, withDelete) {
+    let plans = (this._plans && this._plans.plans) || [];
+    if (!withDelete) {
+      const limit = new Date();
+      limit.setDate(limit.getDate() + 7);
+      plans = plans.filter((p) => new Date(`${p.date}T00:00:00`) <= limit);
+    }
+    if (!plans.length) return null;
+    const box = el("section", "stat planned");
+    box.append(el("h3", "", t.planned));
+    const list = el("ul", "plans");
+    const lang = this._lang();
+    for (const plan of plans) {
+      const li = el("li");
+      li.dataset.plan = plan.id;
+      const used = plan.containers.map((c) => `${c.content || c.name}${c.frozen && !c.thawed ? " 🧊" : ""}`).join(", ");
+      li.append(el("span", "day", t.planDay(plan.date, lang)), el("span", "title", plan.title));
+      if (used) li.append(el("span", "used", used));
+      if (withDelete) {
+        const del = el("button", "", "✕");
+        del.type = "button";
+        del.dataset.role = "plan-delete";
+        del.setAttribute("aria-label", t.planDelete);
+        del.title = t.planDelete;
+        del.addEventListener("click", async () => {
+          try {
+            await this._hass.callWS({ type: `${DOMAIN}/plan_delete`, plan_id: plan.id });
+          } catch {
+            /* schon weg */
+          }
+          this.loadPlans();
+        });
+        li.append(del);
+      }
+      list.append(li);
+    }
+    box.append(list);
+    return box;
+  }
+
+  /** Dialog: Gericht für einen Tag einplanen, mit den Dosen, die dafür gebraucht werden. */
+  openPlanDialog(recipe, suggestion = false) {
+    const t = texts(this._hass);
+    const form = this._form;
+    this._editing = null;
+    const field = (label, control) => {
+      const wrap = el("label", "", label);
+      wrap.append(control);
+      return wrap;
+    };
+    const title = el("input");
+    title.type = "text";
+    title.maxLength = 120;
+    title.dataset.f = "title";
+    title.value = (recipe && recipe.title) || "";
+    const day = el("input");
+    day.type = "date";
+    day.dataset.f = "date";
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const pad = (n) => String(n).padStart(2, "0");
+    day.value = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`;
+    // gefüllte Dosen; vorausgewählt, was im Rezept vorkommt (bei Vorschlägen die "uses")
+    const words = ((recipe && (suggestion ? recipe.uses : recipe.ingredients)) || []).map((w) => String(w).toLowerCase());
+    const filled = sortRows(this._rows().filter((r) => r.content !== ""), "name", this._lang());
+    const boxes = el("div", "checks");
+    boxes.dataset.role = "plan-containers";
+    for (const row of filled) {
+      const wrap = el("label", "check");
+      const box = el("input");
+      box.type = "checkbox";
+      box.value = row.id;
+      const content = row.content.toLowerCase();
+      box.checked = words.some((w) => w && (w.includes(content) || content.includes(w)));
+      wrap.append(box, el("span", "", `${row.content} (${row.name})`));
+      boxes.append(wrap);
+    }
+    if (!filled.length) boxes.append(el("p", "hint", t.planNoContainers));
+    const error = el("div", "error");
+    error.setAttribute("role", "alert");
+    const buttons = el("div", "buttons");
+    const cancel = el("button", "cancel", t.cancel);
+    cancel.type = "button";
+    cancel.addEventListener("click", () => this._closeDialog());
+    const submit = el("button", "submit", `📅 ${t.plan}`);
+    submit.type = "submit";
+    buttons.append(cancel, submit);
+    const containersLabel = el("div", "hint", t.planContainers);
+    form.replaceChildren(el("h2", "", t.planTitle), field(t.planDish, title), field(t.planDate, day), containersLabel, boxes, error, buttons);
+    this._submit = async () => {
+      const name = title.value.trim();
+      if (!name) {
+        error.textContent = t.planNeedTitle;
+        return;
+      }
+      const deviceIds = [...boxes.querySelectorAll("input:checked")].map((b) => b.value);
+      try {
+        await this._hass.callWS({
+          type: `${DOMAIN}/plan_add`,
+          date: day.value,
+          title: name,
+          device_ids: deviceIds,
+          ...(recipe && recipe.id && !suggestion ? { recipe_id: recipe.id } : {}),
+        });
+      } catch {
+        error.textContent = t.planSaveFailed;
+        return;
+      }
+      this._closeDialog();
+      this.loadPlans();
+    };
+    this._overlay.hidden = false;
   }
 
   // ----- Statistik -----

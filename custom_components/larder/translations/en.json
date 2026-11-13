@@ -193,7 +193,10 @@
           "vacuum_default": "Vacuum preset for new containers",
           "nfc_notify": "NFC: notify the phone",
           "repair_hints": "Repair hints",
+          "temperature_warning": "Temperature warning",
           "todo_entity": "Shopping list for emptied containers (optional)",
+          "meal_calendar": "Calendar for the meal plan",
+          "thaw_days": "Thawing: days ahead",
           "experimental_panel": "Show “Larder experimental” in the sidebar",
           "recipe_days": "Period for recipe ideas (days)",
           "soon_days": "\"Expiring soon\" from (days)"
@@ -207,7 +210,10 @@
           "calendar_entity": "Writes each container's best-before date to this calendar as an all-day event (create, move, delete). The calendar must support creating and deleting events, e.g. Google, CalDAV or “Local Calendar”. Leave empty = off.",
           "nfc_notify": "When someone scans a linked tag, their phone (Companion app) gets a notification. Tapping it opens the container in the dashboard.",
           "repair_hints": "Shows hints under Settings → System → Repairs for containers without an area, filled containers without a best-before date and containers that expired at least 7 days ago.",
+          "temperature_warning": "Warns (repair hint and event larder_temperature_warning) when a storage place with a temperature sensor stays too warm: freezer above −12 °C for 30 minutes, fridge above 8 °C or 0 °C drawer above 6 °C for 60 minutes.",
           "todo_entity": "A to-do list of Home Assistant (e.g. “Shopping list”, Todoist, Bring!). When a container is emptied and its “Shopping list” switch is on, its contents are added to this list (not twice). Leave empty = off.",
+          "meal_calendar": "Optional: planned dishes appear there as an all-day event “🍽 …”. Without a calendar they are only in the dashboard.",
+          "thaw_days": "How many days before the planned day the summary reminds you of containers in the freezer (0 = on the day itself).",
           "experimental_panel": "Second sidebar entry for trying new features before they reach the normal dashboard. At the moment it is the same as the normal Larder dashboard.",
           "recipe_days": "Recipe ideas \"from leftovers\" use containers that expire within this many days (0 = today only). In the dashboard you can change the period for a single request or turn it off.",
           "soon_days": "From this many days left a container counts as \"expiring soon\" (hint in the dashboard, filter, sensor status and the default for the expiry overview)."
@@ -335,15 +341,55 @@
   "issues": {
     "containers_without_area": {
       "title": "Larder: containers without an area",
-      "description": "These containers have no area. Without one, the best-before estimate does not know where the food is stored (fridge, freezer …):\n\n{containers}\n\nAssign an area on the container's card in the Larder dashboard. The hint then disappears by itself."
+      "description": "These containers have no area. Without one, the best-before estimate does not know where the food is stored (fridge, freezer …):\n\n{containers}\n\nAssign an area on the container's card in the Larder dashboard. The hint then disappears by itself.",
+      "fix_flow": {
+        "step": {
+          "area": {
+            "title": "Assign areas",
+            "description": "Choose the area each container stands in. Containers left empty stay without an area."
+          }
+        },
+        "abort": {
+          "nothing_to_fix": "Nothing left to fix."
+        }
+      }
     },
     "filled_without_best_before": {
       "title": "Larder: filled containers without a best-before date",
-      "description": "These containers have contents but no best-before date, so they appear neither in the daily summary nor in the calendar:\n\n{containers}\n\nEnter a date in the Larder dashboard or use “Estimate best before”. The hint then disappears by itself."
+      "description": "These containers have contents but no best-before date, so they appear neither in the daily summary nor in the calendar:\n\n{containers}\n\nEnter a date in the Larder dashboard or use “Estimate best before”. The hint then disappears by itself.",
+      "fix_flow": {
+        "step": {
+          "estimate": {
+            "title": "Estimate best-before dates",
+            "description": "Larder estimates the best-before date of these containers:\n\n{containers}\n\nWhat the estimate does not know stays in the hint; enter it in the dashboard then."
+          }
+        },
+        "abort": {
+          "nothing_to_fix": "Nothing left to fix."
+        }
+      }
     },
     "long_expired": {
       "title": "Larder: containers expired more than {days} days ago",
-      "description": "These containers expired at least {days} days ago and should be emptied:\n\n{containers}\n\nEmpty them in the Larder dashboard (or set a new best-before date if the food is still good). The hint then disappears by itself."
+      "description": "These containers expired at least {days} days ago and should be emptied:\n\n{containers}\n\nEmpty them in the Larder dashboard (or set a new best-before date if the food is still good). The hint then disappears by itself.",
+      "fix_flow": {
+        "step": {
+          "empty": {
+            "title": "Empty expired containers",
+            "description": "The ticked containers are emptied and recorded as thrown away in the history.",
+            "data": {
+              "containers": "Containers"
+            }
+          }
+        },
+        "abort": {
+          "nothing_to_fix": "Nothing left to fix."
+        }
+      }
+    },
+    "temperature_too_high": {
+      "title": "Larder: {area} is too warm",
+      "description": "**{area}** is at {temperature} °C, above {limit} °C for at least {minutes} minutes. Affected containers:\n\n{containers}\n\nCheck whether the door is open or the appliance has failed. The hint disappears as soon as it is cold enough again."
     }
   }
 }

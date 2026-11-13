@@ -34,7 +34,7 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 - [Warum dieses Projekt?](#warum-dieses-projekt)
 - [Installation](#installation) · [Erste Schritte](#erste-schritte) · [Dose anlegen](#dose-anlegen) · [Bereiche und Labels](#bereiche-und-labels) · [Einstellungen](#einstellungen)
 - [Dashboard „Larder“](#dashboard-larder) · [Mehrere Dosen auswählen](#mehrere-dosen-auswählen) · [Dosen befüllen](#dosen-befüllen) · [Larder experimental](#larder-experimental)
-- [MHD-Schätzung](#mhd-schätzung) · [Rezepte](#rezepte) · [Tägliche Zusammenfassung](#tägliche-zusammenfassung) · [Einkaufsliste](#einkaufsliste) · [Kalender](#mhd-im-kalender) · [Export und Import](#export-und-import) · [Statistik](#statistik) · [Reparaturhinweise](#reparaturhinweise)
+- [MHD-Schätzung](#mhd-schätzung) · [Rezepte](#rezepte) · [Tägliche Zusammenfassung](#tägliche-zusammenfassung) · [Einkaufsliste](#einkaufsliste) · [Kalender](#mhd-im-kalender) · [Wochenplan](#wochenplan) · [Export und Import](#export-und-import) · [Statistik](#statistik) · [Reparaturhinweise](#reparaturhinweise)
 - [Scannen](#scannen): [in der App](#scannen-in-der-app), [eigene QR-Codes](#eigene-qr-codes), [NFC-Tags](#nfc-tags), [Zwilling-Codes (iOS-Kurzbefehl)](#ios-kurzbefehl-für-die-originalen-zwilling-codes)
 - [Referenz](#referenz): [Entitäten](#entitäten), [Dienste und Ereignisse](#dienste-und-ereignisse), [Webhook](#webhook-schnittstelle)
 - [Alternativen](#alternativen) · [Entwicklung](#entwicklung)
@@ -169,8 +169,11 @@ Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** (bei ei
 | Vakuum-Vorbelegung | an | Vorbelegung des Schalters **Vakuum** bei neuen Dosen |
 | NFC: Handy benachrichtigen | an | Benachrichtigung auf dem scannenden Handy nach einem [NFC-Scan](#nfc-tags) |
 | Reparaturhinweise | an | Hinweise unter Einstellungen → System → Reparaturen, siehe [Reparaturhinweise](#reparaturhinweise) |
+| Temperaturwarnung | an | Warnung, wenn ein Gefrier- oder Kühlschrank mit Temperatursensor zu lange zu warm ist, siehe [Reparaturhinweise](#reparaturhinweise) |
 | Kalender | keiner | [MHD im Kalender](#mhd-im-kalender) |
 | Einkaufsliste | keine | [Einkaufsliste](#einkaufsliste) für geleerte Dosen |
+| Kalender für den Wochenplan | keiner | Geplante Gerichte als ganztägige Termine, siehe [Wochenplan](#wochenplan) |
+| Auftauen: Tage vorher | 1 | Auftau-Erinnerung für Dosen im Gefrierschrank, siehe [Wochenplan](#wochenplan) |
 | Larder experimental | aus | Zweiter Eintrag in der Seitenleiste zum Ausprobieren neuer Funktionen, siehe [Larder experimental](#larder-experimental) |
 
 Der Dialog zeigt außerdem die **Webhook-URL** für den [iOS-Kurzbefehl](#ios-kurzbefehl-für-die-originalen-zwilling-codes).
@@ -198,7 +201,7 @@ Eine Leiste unten wechselt zwischen fünf Seiten:
 - **MHD schätzen** (wenn die [Schätzung](#mhd-schätzung) aktiv ist, ein Inhalt eingetragen und das MHD leer ist),
 - **Vakuum**, **Beim Leeren auf die Einkaufsliste** (sobald eine [Einkaufsliste](#einkaufsliste) gewählt ist), **Variabler Lagerort** mit **Nach dem Leeren zurück in** (siehe [Dosen befüllen](#dosen-befüllen)), der **NFC-Tag** (verknüpfen oder lösen), **Gerät öffnen** und **Behälter leeren**. Vor dem Leeren fragt die Karte **😋 Gegessen** oder **🗑 Weggeworfen**; die Antwort kommt in den **Verlauf** der Dose (aufklappbare Liste unten auf der Karte, die letzten zehn Befüllungen).
 
-**⚙** oben (Administratoren) öffnet ein Menü mit den [gemerkten Schätzungen](#gemerkte-schätzungen-verwalten) und den Einstellungen der Integration. Das ☰ ist die Seitenleiste von Home Assistant.
+**⋮** oben öffnet ein Menü: **📊 Statistik** und **🖨 QR-Etiketten drucken** für alle, **📦 Export und Import**, die [gemerkten Schätzungen](#gemerkte-schätzungen-verwalten) und die Einstellungen der Integration für Administratoren. Das ☰ links ist die Seitenleiste von Home Assistant.
 
 <p>
 <img src="docs/images/dashboard-areas-de.png" width="250" alt="Bereiche">
@@ -216,6 +219,7 @@ Das Dashboard ist für alle Nutzer sichtbar; nur **Administratoren** können Dos
 
 - **Befüllen (n)** (Administratoren): befüllt alle gewählten *leeren* Dosen auf einmal mit demselben Inhalt, Vakuum, Befüllt am und MHD, z. B. nach dem Vorkochen oder dem Einkauf. Die Menge gilt pro Dose. Ist die Schätzung aktiv, bekommt jede Dose ihre eigene.
 - **✨ Rezeptideen**: fragt die KI nach Rezepten mit genau den gewählten *befüllten* Dosen, egal wann sie ablaufen (abgelaufene bleiben trotzdem draußen).
+- **🗑 Leeren (n)** (Administratoren): leert die gewählten gefüllten Dosen, nachdem es **Gegessen** oder **Weggeworfen** gefragt hat (für den Verlauf).
 - **🖨 Etiketten**: ein [A4-Etikettenbogen](#etikettenbogen) mit den QR-Codes der gewählten Dosen.
 - **Fertig** beendet die Auswahl.
 
@@ -223,7 +227,7 @@ Das Dashboard ist für alle Nutzer sichtbar; nur **Administratoren** können Dos
 
 - **QR-Codes** in der Home-Assistant-App unter iOS und Android: Der Scanner der App öffnet sich und bleibt offen, du scannst einen Code nach dem anderen; jeder Treffer zeigt den Namen der Dose und wie viele ausgewählt sind. Eigene QR-Codes und die originalen Zwilling-Codes funktionieren beide; eine noch nicht angelegte Dose wird gemeldet. **Zu NFC wechseln** im Scanner (oder Schließen) wechselt zu NFC; der Serien-Scan läuft weiter.
 - **NFC-Tags**, die mit einer Dose verknüpft sind: **NFC** wählen (das schließt den QR-Scanner; solange die Kamera läuft, liest das iPhone keine NFC-Tags). Dann das Handy an einen Tag halten; das iPhone zeigt oben das Banner „In Home Assistant öffnen“, das antippen. Die Dose wird ausgewählt, und du bleibst auf der Seite. Android liest den Tag direkt. Während ein Serien-Scan läuft, bekommt das Handy nach einem NFC-Scan keine Larder-Benachrichtigung.
-- **⏹ Scan beenden** beendet den Serien-Scan.
+- **⏹ Scan beenden** beendet den Serien-Scan. Danach listet ein Kasten **Inventur** die gefüllten Dosen, die *nicht* gescannt wurden (vielleicht schon gegessen, aber nicht geleert); **Diese auswählen** wählt sie aus, z. B. um sie mit **🗑 Leeren** zu leeren.
 
 Danach alle auf einmal befüllen oder Rezeptideen holen. So geht eine Inventur der Gefriertruhe oder das Einräumen nach dem Einkauf schnell.
 
@@ -370,7 +374,7 @@ Die Seite **Rezepte** ist dein eigenes Rezeptbuch (liegt in Home Assistant unter
 
 ## Tägliche Zusammenfassung
 
-Das mitgelieferte Blueprint schickt eine **tägliche Zusammenfassung** dessen, was bald abläuft. Läuft nichts ab, kommt nichts. Abgelaufene Dosen werden mit ihrem Dosennamen und dem Hinweis **sollte geleert werden** genannt, damit du weißt, welche du ausräumen musst.
+Das mitgelieferte Blueprint schickt eine **tägliche Zusammenfassung** dessen, was bald abläuft. Läuft nichts ab, kommt nichts. Abgelaufene Dosen werden mit ihrem Dosennamen und dem Hinweis **sollte geleert werden** genannt, damit du weißt, welche du ausräumen musst. Dosen, die für ein [geplantes Gericht](#wochenplan) aufgetaut werden müssen, kommen zuerst, mit dem Knopf **Aufgetaut**. Für diesen Knopf das Blueprint neu importieren.
 
 [![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fexpiry_notification.yaml)
 
@@ -401,6 +405,20 @@ response_variable: result
 
 Auch `larder.suggest_recipes` liefert `speech` („Idee: …“). Für eigene Dashboards gibt es außerdem den Sensor **Tage bis MHD** an jeder Dose.
 
+## Wochenplan
+
+Ein Gericht für einen Tag einplanen: **📅 Einplanen** an einer Rezeptidee oder einem Rezept aus dem Buch (auch für Nicht-Administratoren). Der Dialog fragt das Gericht, den Tag (vorbelegt: morgen) und die **Dosen**, die dafür gebraucht werden; Dosen, deren Inhalt im Rezept vorkommt, sind schon angehakt.
+
+- Die **Startseite** zeigt, was in den nächsten sieben Tagen geplant ist, die **Rezeptseite** alle Pläne (✕ nimmt einen heraus).
+- Mit einem **Kalender für den Wochenplan** in den [Einstellungen](#einstellungen) wird jeder Plan zusätzlich ein ganztägiger Termin „🍽 Spaghetti Bolognese“; wird der Plan gelöscht, verschwindet auch der Termin.
+
+**Auftau-Erinnerung.** Steht eine Dose, die ein geplantes Gericht braucht, im **Gefrierschrank** (nach Name oder Label des Bereichs), erinnert Larder rechtzeitig daran, sie in den Kühlschrank zu stellen, standardmäßig am Vortag (Einstellung **Auftauen: Tage vorher**, 0–3):
+
+- auf der Startseite unter **🧊 Zum Auftauen in den Kühlschrank**, mit dem Knopf **✓ Aufgetaut**,
+- in der [täglichen Zusammenfassung](#tägliche-zusammenfassung) als erste Zeilen („🧊 Bolognese-Sauce (Dose 4) für Spaghetti Bolognese, morgen“) und in der Sprachausgabe; die Push-Nachricht bekommt den Knopf **Aufgetaut**. Dafür wird die Zusammenfassung auch geschickt, wenn nichts abläuft.
+
+**Aufgetaut** wirkt wie der Knopf **Aufgetaut** auf der Karte (kürzt das MHD) und stellt [variable Dosen](#dosen-befüllen) in den Kühlschrank, wenn es genau einen Kühlschrank-Bereich gibt.
+
 ## Einkaufsliste
 
 Unter Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** kannst du eine **To-do-Liste** von Home Assistant wählen, z. B. die eingebaute *Einkaufsliste*, Todoist oder Bring!. Jede Dose hat dann ein Häkchen **Beim Leeren auf die Einkaufsliste** (der Schalter `Einkaufsliste`, standardmäßig aus). Drückst du bei einer Dose mit gesetztem Häkchen **Behälter leeren**, wird ihr Inhalt auf die Liste gesetzt, z. B. „Basmati“.
@@ -420,7 +438,7 @@ Der Kalender muss Termine anlegen **und** löschen können. Reine Lese-Kalender 
 
 ## Export und Import
 
-Im Dashboard **☰ → 📦 Export und Import** (Administratoren):
+Im Dashboard **⋮ → 📦 Export und Import** (Administratoren):
 
 - **📄 Bestand als Tabelle (CSV)**: alle Dosen mit Name, ID, Bereich, Inhalt, Menge, Einheit, Eingelagert am, MHD, Tage übrig, Status und Vakuum. Auf Deutsch mit Semikolon, damit Excel sie direkt öffnet.
 - **🕘 Verlauf (CSV)**: jede geleerte Befüllung mit Dose, Inhalt, Menge, Eingelagert am, MHD, Geleert am, Tage gelagert, ob sie abgelaufen war und ob sie gegessen oder weggeworfen wurde. Ohne die Frage geleerte Dosen (Automation, Geräteseite) haben kein Ergebnis.
@@ -433,7 +451,7 @@ Für Fehlerberichte sammelt **Diagnose herunterladen** (⋮ am Eintrag einer Dos
 
 ## Statistik
 
-**☰ → 📊 Statistik** im Dashboard zeigt für die letzten 30 oder 90 Tage, ein Jahr oder alles:
+**⋮ → 📊 Statistik** im Dashboard zeigt für die letzten 30 oder 90 Tage, ein Jahr oder alles:
 
 - **Jetzt im Vorrat**: gefüllt, leer, läuft bald ab, abgelaufen (und gefüllt ohne MHD).
 - **Geleert**: wie viel gegessen und weggeworfen wurde, den Anteil weggeworfen und die durchschnittliche Lagerdauer, bis etwas gegessen wurde.
@@ -475,6 +493,16 @@ Larder zeigt unter **Einstellungen → System → Reparaturen** Hinweise, wenn D
 
 Ein Hinweis verschwindet von selbst, sobald keine Dose mehr betroffen ist (geprüft bei jeder Änderung und einmal täglich). In den [Einstellungen](#einstellungen) lassen sich die Hinweise abschalten („Reparaturhinweise“).
 
+**Beheben** öffnet einen Dialog direkt in den Reparaturen:
+
+- **ohne Bereich**: ein Bereichsfeld pro Dose, Speichern weist sie zu,
+- **ohne MHD**: schätzt das MHD für alle (was die Schätzung nicht kennt, bleibt im Hinweis),
+- **lange abgelaufen**: Dosen ankreuzen und leeren; sie kommen als weggeworfen in den Verlauf.
+
+**Mehr erfahren** öffnet das Larder-Dashboard: eine Dose direkt, mehrere auf der Behälter-Seite, gefiltert auf genau diese (`/larder?problem=noarea`, `nodate` oder `longexpired`).
+
+**Temperaturwarnung.** Hat ein Bereich einen **Temperatursensor** (Einstellungen → Bereiche → Bereich → Temperatursensor) und ist er nach Name oder Label ein Gefrierschrank, Kühlschrank oder 0-°C-Fach, warnt Larder, wenn er zu lange zu warm ist: Gefrierschrank über −12 °C für 30 Minuten, Kühlschrank über 8 °C bzw. 0-°C-Fach über 6 °C für 60 Minuten. Der Reparaturhinweis nennt die gefüllten Dosen dort; das Ereignis `larder_temperature_warning` (`area_id`, `area`, `temperature`, `limit`, `containers`) ist für eigene Push-Nachrichten oder eine Sirene, `larder_temperature_ok` folgt, wenn es wieder kalt ist (1 °C unter der Grenze). Abschalten mit der Einstellung **Temperaturwarnung**.
+
 ## Scannen
 
 Es gibt vier Wege, von einer Dose zu ihrem Eintrag im Dashboard zu kommen. Sie lassen sich beliebig mischen. Für eine Inventur wählt der [Serien-Scan](#mehrere-dosen-auswählen) viele Dosen nacheinander aus.
@@ -501,7 +529,7 @@ Dieselben Codes funktionieren im [Serien-Scan](#mehrere-dosen-auswählen) des Da
 
 #### Etikettenbogen
 
-Viele Codes auf einmal drucken: im Dashboard **☰ → 🖨 QR-Etiketten drucken** (alle Dosen) oder Dosen auswählen und **🖨 Etiketten**. Dann wählst du
+Viele Codes auf einmal drucken: im Dashboard **⋮ → 🖨 QR-Etiketten drucken** (alle Dosen) oder Dosen auswählen und **🖨 Etiketten**. Dann wählst du
 
 - den **Etikettenbogen**: A4 mit 3 × 8 (70 × 36 mm), 3 × 7 (70 × 42,3 mm) oder 2 × 4 (105 × 74 mm) Etiketten, wie es sie von Avery Zweckform, Herma und anderen gibt,
 - **Schon benutzte Etiketten überspringen**, um auf einem angebrochenen Bogen weiterzumachen,
@@ -603,7 +631,7 @@ Die Werte bleiben über Neustarts erhalten. „Behälter leeren“ ist eine norm
 | `larder.get_statistics` | Gegessen / weggeworfen, häufigste Inhalte, Lagerdauer und aktueller Bestand, siehe [Statistik](#statistik) |
 | `larder.rebuild_calendar` | [Kalender](#mhd-im-kalender) aufräumen |
 
-Das Ereignis `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) wird ausgelöst, wenn ein verknüpfter [NFC-Tag](#nfc-tags) oder einer [deiner QR-Codes](#eigene-qr-codes) gescannt wird (dann mit `source: qr`).
+Das Ereignis `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) wird ausgelöst, wenn ein verknüpfter [NFC-Tag](#nfc-tags) oder einer [deiner QR-Codes](#eigene-qr-codes) gescannt wird (dann mit `source: qr`). `larder_temperature_warning` und `larder_temperature_ok` gehören zur [Temperaturwarnung](#reparaturhinweise).
 
 ### Webhook-Schnittstelle
 

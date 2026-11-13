@@ -303,7 +303,7 @@ test("Nicht-Administrator: leere Dose öffnet die Detailansicht, kein Hinzufüge
   const el = mount(makeHass(DOSES, { admin: false }));
   await go(el, "containers");
   assert.equal($(el, '[data-role="add"]'), null);
-  assert.equal($(el, "#settings").hidden, true);
+  assert.equal($(el, '[data-role="menu-settings"]').hidden, true);
   $$(el, "main .tile").find((t) => t.dataset.id === "d5").click();
   assert.equal(el._classic.getAttribute("only"), "d5");
 });
@@ -989,6 +989,62 @@ test("Statistik: über das Menü, Zeitraum wechseln, leerer Verlauf", async () =
   assert.match($(el, "main").textContent, /Jetzt im Vorrat/);
 });
 
+test("Wochenplan: Rezept einplanen, Startseite zeigt Plan und Auftauen", async () => {
+  document.body.innerHTML = "";
+  const hass = makeHass(DOSES, { recipes: [{ id: "r1", title: "Lachs-Pasta", ingredients: ["Lachs", "Nudeln"], steps: [], source: "manual", created: "1" }] });
+  const base = hass.callWS;
+  const sent = [];
+  const iso = (n) => {
+    const d = new Date();
+    d.setDate(d.getDate() + n);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  let plans = { plans: [], thaw: [] };
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/plan_list`) return plans;
+    if (msg.type === `${D}/plan_add` || msg.type === `${D}/plan_delete` || msg.type === `${D}/thawed`) {
+      sent.push(msg);
+      return {};
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await go(el, "recipes");
+  await flush();
+  $(el, '.recipe[data-id="r1"] h3').click();
+  await flush();
+  $(el, '.recipe[data-id="r1"] [data-role="plan"]').click();
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelector('[data-f="title"]').value, "Lachs-Pasta");
+  assert.equal(form.querySelector('[data-f="date"]').value, iso(1));
+  const checked = [...form.querySelectorAll('[data-role="plan-containers"] input')].filter((b) => b.checked).map((b) => b.value);
+  assert.deepEqual(checked, ["d1"]); // Lachs aus den Zutaten
+  form.querySelector("button.submit").click();
+  await flush();
+  await flush();
+  assert.deepEqual(sent[0], { type: `${D}/plan_add`, date: iso(1), title: "Lachs-Pasta", device_ids: ["d1"], recipe_id: "r1" });
+
+  plans = {
+    plans: [{ id: "p1", date: iso(1), title: "Lachs-Pasta", containers: [{ device_id: "d1", name: "Dose 1", content: "Lachs", frozen: true, thawed: false }] }],
+    thaw: [{ cc: "D1", device_id: "d1", name: "Dose 1", content: "Lachs", plan: "Lachs-Pasta", date: iso(1), days_until: 1 }],
+  };
+  await go(el, "start");
+  await flush();
+  await flush();
+  assert.match($(el, ".stat.thaw").textContent, /Lachs \(Dose 1\) für Lachs-Pasta/);
+  assert.match($(el, ".stat.planned").textContent, /Morgen.*Lachs-Pasta.*Lachs 🧊/);
+  $(el, '[data-role="thawed"]').click();
+  await flush();
+  assert.deepEqual(sent[1], { type: `${D}/thawed`, device_ids: ["d1"] });
+  await go(el, "recipes");
+  await flush();
+  await flush();
+  $(el, '[data-role="plan-delete"]').click();
+  await flush();
+  assert.deepEqual(sent[2], { type: `${D}/plan_delete`, plan_id: "p1" });
+});
+
 test("QR-Etiketten: Dialog aus Menü und Auswahl, signierter Link zum PDF", async () => {
   const hass = makeHass(DOSES);
   const signed = [];
@@ -1041,6 +1097,74 @@ test("QR-Etiketten: Dialog aus Menü und Auswahl, signierter Link zum PDF", asyn
   await flush();
   await flush();
   assert.equal(signed[1].path, "/api/larder/labels.pdf?device=d1%2Cd3&layout=2x4&skip=0");
+});
+
+test("Inventur nach dem Serien-Scan: nicht gescannte gefüllte Dosen, auswählen und leeren", async () => {
+  document.body.innerHTML = "";
+  const hass = makeHass(DOSES);
+  let eventCb = null;
+  hass.connection = { subscribeMessage: async (cb) => ((eventCb = cb), () => {}) };
+  const base = hass.callWS;
+  const emptied = [];
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/empty`) {
+      emptied.push(msg);
+      return {};
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await go(el, "containers");
+  $(el, '[data-role="select"]').click();
+  await flush();
+  $(el, '[data-role="scan"]').click(); // NFC (kein QR-Scanner)
+  await flush();
+  await flush();
+  eventCb({ device_id: "d1" });
+  eventCb({ device_id: "d2" });
+  await flush();
+  $(el, '[data-role="scan"]').click(); // beenden
+  await flush();
+  const panel = $(el, ".inventory");
+  assert.ok(panel);
+  assert.match(panel.textContent, /Inventur: 2 gescannt/);
+  assert.match(panel.textContent, /2 gefüllte Dosen wurden nicht gescannt/);
+  assert.deepEqual([...panel.querySelectorAll("li")].map((li) => li.textContent), ["Chili (Dose 3)", "Reis (Dose 4)"]);
+  $(el, '[data-role="inventory-select"]').click();
+  await flush();
+  assert.equal($(el, ".selbar .count").textContent, "2 ausgewählt");
+  $(el, '[data-role="empty-selected"]').click();
+  assert.equal($(el, "form.dialog h2").textContent, "2 Dosen leeren");
+  $(el, '[data-role="empty-thrown"]').click();
+  await flush();
+  await flush();
+  assert.deepEqual(emptied, [
+    { type: `${D}/empty`, device_id: "d3", outcome: "thrown" },
+    { type: `${D}/empty`, device_id: "d4", outcome: "thrown" },
+  ]);
+  assert.equal($(el, ".overlay").hidden, true);
+  assert.match($(el, ".inventory").textContent, /Alle gefüllten Dosen wurden gescannt/);
+  $(el, '[data-role="inventory-close"]').click();
+  await flush();
+  assert.equal($(el, ".inventory"), null);
+});
+
+test("Links aus den Reparaturhinweisen: ?problem filtert die Behälter", async () => {
+  document.body.innerHTML = "";
+  window.history.replaceState(null, "", "/larder?problem=noarea");
+  const el = mount(makeHass([...DOSES, { id: "d6", name: "Dose 6", area: "kitchen", content: "Alt", days: -10, category: "dish" }]));
+  await flush();
+  assert.equal($(el, "h1").textContent, "Behälter");
+  assert.deepEqual(names(el), ["Leer"]);
+  assert.equal($(el, ".chip span").textContent, "Ohne Bereich");
+  el.setView("containers", { problem: "longexpired" });
+  await flush();
+  assert.deepEqual(names(el), ["Alt"]);
+  $(el, ".chip button").click();
+  await flush();
+  assert.equal(names(el).length, 6);
+  window.history.replaceState(null, "", "/");
 });
 
 test("Serien-Scan: NFC-Ereignisse und QR-Scanner der App wählen Dosen aus", async () => {
@@ -1199,7 +1323,7 @@ test("Ansicht „Karten“: alle Details über die klassische Karte, mit Filter 
   window.localStorage.clear();
 });
 
-test("⚙-Menü: gemerkte Schätzungen (nur Administratoren) und Einstellungen", async () => {
+test("⋮-Menü: gemerkte Schätzungen (nur Administratoren) und Einstellungen", async () => {
   document.body.innerHTML = "";
   const hass = makeHass(DOSES);
   const base = hass.callWS;
@@ -1224,7 +1348,12 @@ test("⚙-Menü: gemerkte Schätzungen (nur Administratoren) und Einstellungen",
   document.body.innerHTML = "";
   const user = mount(makeHass(DOSES, { admin: false }));
   await flush();
-  assert.equal($(user, "#settings").hidden, true);
+  // Nicht-Admins: ⋮ mit Statistik und Etiketten, ohne Export, Schätzungen und Einstellungen
+  assert.equal($(user, "#settings").hidden, false);
+  assert.equal($(user, "#settings").textContent, "⋮");
+  assert.equal($(user, '[data-role="menu-stats"]').hidden, false);
+  assert.equal($(user, '[data-role="menu-labels"]').hidden, false);
+  for (const role of ["menu-data", "menu-estimates", "menu-settings"]) assert.equal($(user, `[data-role="${role}"]`).hidden, true);
   user.setView("estimates");
   await flush();
   assert.equal($(user, "h1").textContent, "Larder"); // bleibt auf der Startseite

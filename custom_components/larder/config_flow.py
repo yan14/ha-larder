@@ -34,6 +34,10 @@ from .const import (
     CONF_ESTIMATE_MODE,
     CONF_NFC_NOTIFY,
     CONF_REPAIR_HINTS,
+    CONF_TEMPERATURE_WARNING,
+    CONF_MEAL_CALENDAR,
+    CONF_THAW_DAYS,
+    DEFAULT_THAW_DAYS,
     CONF_VACUUM_DEFAULT,
     CONF_OPENED_DAYS,
     CONF_RECIPE_DAYS,
@@ -233,11 +237,18 @@ class LarderOptionsFlow(OptionsFlow):
                 vol.Optional(CONF_VACUUM_DEFAULT, default=True): BooleanSelector(),
                 vol.Optional(CONF_NFC_NOTIFY, default=True): BooleanSelector(),
                 vol.Optional(CONF_REPAIR_HINTS, default=True): BooleanSelector(),
+                vol.Optional(CONF_TEMPERATURE_WARNING, default=True): BooleanSelector(),
                 vol.Optional(CONF_CALENDAR_ENTITY): EntitySelector(
                     EntitySelectorConfig(domain="calendar")
                 ),
                 vol.Optional(CONF_TODO_ENTITY): EntitySelector(
                     EntitySelectorConfig(domain="todo")
+                ),
+                vol.Optional(CONF_MEAL_CALENDAR): EntitySelector(
+                    EntitySelectorConfig(domain="calendar")
+                ),
+                vol.Optional(CONF_THAW_DAYS, default=DEFAULT_THAW_DAYS): NumberSelector(
+                    NumberSelectorConfig(min=0, max=3, step=1, mode=NumberSelectorMode.BOX)
                 ),
                 vol.Optional(CONF_EXPERIMENTAL, default=False): BooleanSelector(),
                 vol.Optional(CONF_AI_TASK_ENTITY): EntitySelector(

@@ -168,3 +168,25 @@ def test_speech_text() -> None:
     assert build_speech([], "de") == "Nichts läuft bald ab."
     two = [item("Pizza", -1), {"content": "", "name": "Dose 7", "days_left": -3}]
     assert build_speech(two, "de") == "Pizza in Dose und Dose 7 sind abgelaufen und sollten geleert werden."
+
+
+async def test_thaw_reminder_is_sent_even_without_expiring(hass: HomeAssistant, blueprint, freezer) -> None:
+    from homeassistant.helpers import area_registry as ar, device_registry as dr
+
+    from custom_components.larder.const import DOMAIN
+    from custom_components.larder.plan import async_get_plan
+
+    await _setup(hass, "AAAA")
+    calls = _notify(hass, "mobile_app_yan")
+    await _at(hass, freezer, "06:00:00", days=1)
+    area = ar.async_get(hass).async_get_or_create("Gefrierschrank")
+    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "AAAA")})
+    dr.async_get(hass).async_update_device(device.id, area_id=area.id)
+    await _fill(hass, "AAAA", "Gulasch", 120)
+    plan = await async_get_plan(hass)
+    await plan.async_add(dt_util.now().date() + timedelta(days=1), "Gulasch mit Knödeln", ["AAAA"])
+    await _automation(hass, notify_action="notify.mobile_app_yan")
+    await _at(hass, freezer, "08:00:00")
+    (push,) = calls["mobile_app_yan"]
+    assert "Gulasch (Dose AAAA)" in push["message"]
+    assert push["data"]["actions"][0] == {"action": "LARDER_THAWED", "title": "Thawed"}

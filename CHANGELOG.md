@@ -3,18 +3,28 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 2.9.0
+
+- **Meal plan:** **📅 Plan** on a recipe idea or a saved recipe puts a dish on a day, with the containers it needs (pre-ticked from the recipe). The start page shows the next seven days, the recipe page all plans. Optional calendar for the meal plan (all-day event "🍽 …", removed with the plan).
+- **Thaw reminder:** containers from the freezer needed for a planned dish appear on the start page and at the top of the daily summary (default one day ahead, setting **Thawing: days ahead**), with a **Thawed** button in the push and in the dashboard; flexible containers then move to the fridge.
+- **Inventory after a serial scan:** lists the filled containers that were not scanned; new **🗑 Empty (n)** in the selection (asks eaten / thrown away).
+- **Temperature warning:** freezer, fridge or 0 °C drawer with a temperature sensor too warm for too long → repair hint and event `larder_temperature_warning` (setting **Temperature warning**).
+- **Repairs:** hints can now be fixed in place (assign areas, estimate dates, empty expired containers); **Learn more** opens the affected containers in the dashboard.
+- **Menu:** **⋮** instead of ⚙; statistics and QR labels also for non-administrators. The selection bar now always sits at the bottom of the screen.
+- Docs: menu entries were wrongly described as ☰ → … in 2.4.0–2.8.0.
+
 ## 2.8.0
 
-- **Statistics** (dashboard **☰ → 📊 Statistics**): current stock (filled, empty, expiring soon, expired), eaten vs. thrown away with the share thrown away, average storage time until eaten, the contents thrown away and eaten most often, thrown away by area, and the last six months as bars. Period 30 / 90 days, one year or everything.
+- **Statistics** (dashboard **⋮ → 📊 Statistics**): current stock (filled, empty, expiring soon, expired), eaten vs. thrown away with the share thrown away, average storage time until eaten, the contents thrown away and eaten most often, thrown away by area, and the last six months as bars. Period 30 / 90 days, one year or everything.
 - New service `larder.get_statistics` with the same data, e.g. for template sensors (example in the README).
 
 ## 2.7.0
 
-- **History per container:** every emptying is recorded (contents, quantity, area, filled on, best before, emptied on, days stored, expired or not). The card asks **😋 Eaten / 🗑 Thrown away** before emptying (after **−1** on the last portion it counts as eaten) and shows the last ten fillings under **History**. The whole history can be downloaded as CSV under **☰ → 📦 Export and import**. Groundwork for statistics.
+- **History per container:** every emptying is recorded (contents, quantity, area, filled on, best before, emptied on, days stored, expired or not). The card asks **😋 Eaten / 🗑 Thrown away** before emptying (after **−1** on the last portion it counts as eaten) and shows the last ten fillings under **History**. The whole history can be downloaded as CSV under **⋮ → 📦 Export and import**. Groundwork for statistics.
 
 ## 2.6.0
 
-- **Export and import** (dashboard **☰ → 📦 Export and import**, administrators): the inventory as a CSV table (semicolons in German, for Excel), the remembered estimates as a JSON backup, and importing such a file (own corrections are kept; optionally replace everything).
+- **Export and import** (dashboard **⋮ → 📦 Export and import**, administrators): the inventory as a CSV table (semicolons in German, for Excel), the remembered estimates as a JSON backup, and importing such a file (own corrections are kept; optionally replace everything).
 - **Diagnostics:** "Download diagnostics" on a container's entry (without the webhook ID and without the estimates themselves).
 - **Rename a container** with **Reconfigure**; the ID, printed QR codes and NFC tags stay valid.
 
@@ -24,7 +34,7 @@ Release notes for every version, newest first. They are also used as the text of
 
 ## 2.4.0
 
-- **QR label sheet (A4):** **☰ → 🖨 Print QR labels** (all containers) or **🖨 Labels** in the selection creates a PDF with the QR codes: 3 × 8, 3 × 7 or 2 × 4 labels per sheet, skip labels already used, optionally contents and best-before date, optionally cutting lines for plain paper. The PDF opens via a signed link (valid for five minutes), also in the Home Assistant app.
+- **QR label sheet (A4):** **⋮ → 🖨 Print QR labels** (all containers) or **🖨 Labels** in the selection creates a PDF with the QR codes: 3 × 8, 3 × 7 or 2 × 4 labels per sheet, skip labels already used, optionally contents and best-before date, optionally cutting lines for plain paper. The PDF opens via a signed link (valid for five minutes), also in the Home Assistant app.
 - **Take one (−1):** on the card of a container, **−1** next to the quantity takes one portion, piece or slice. At the last one it asks whether to empty the container. Not shown for grams and milliliters.
 
 ## 2.3.0

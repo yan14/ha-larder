@@ -47,7 +47,10 @@ async def test_repair_hints_appear_and_disappear(hass: HomeAssistant) -> None:
     assert set(issues) == {ISSUE_NO_AREA, ISSUE_NO_DATE, ISSUE_LONG_EXPIRED}
     assert issues[ISSUE_LONG_EXPIRED].translation_placeholders["containers"] == "- Dose AAAA"
     assert issues[ISSUE_LONG_EXPIRED].translation_placeholders["days"] == "7"
-    assert issues[ISSUE_NO_AREA].is_fixable is False
+    assert issues[ISSUE_NO_AREA].is_fixable is True
+    # "Mehr erfahren": eine Dose direkt, sonst gefiltert (hier je eine Dose)
+    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "DDDD")})
+    assert issues[ISSUE_NO_AREA].learn_more_url == f"/larder?open={device.id}"
 
     # behoben: Bereich zugewiesen, MHD eingetragen, Dose geleert → Hinweise weg
     await _area(hass, "DDDD", "Keller")
@@ -78,3 +81,47 @@ async def test_long_list_is_shortened(hass: HomeAssistant) -> None:
     text = _issues(hass)[ISSUE_NO_AREA].translation_placeholders["containers"]
     assert text.count("\n- ") == 10  # 10 Namen + Zeile "und 2 weitere"
     assert text.endswith("2 more")
+
+
+async def test_links_filter_when_several(hass: HomeAssistant) -> None:
+    for cc in ("AAAA", "BBBB"):
+        await _setup(hass, cc)
+    repairs = await async_get_repairs(hass)
+    repairs.async_update()
+    assert _issues(hass)[ISSUE_NO_AREA].learn_more_url == "/larder?problem=noarea"
+
+
+async def test_fix_flows(hass: HomeAssistant) -> None:
+    from homeassistant.components.repairs import repairs_flow_manager
+    from homeassistant.setup import async_setup_component
+
+    from custom_components.larder.history import async_get_history
+
+    assert await async_setup_component(hass, "repairs", {})
+    for cc in ("AAAA", "BBBB", "CCCC"):
+        await _setup(hass, cc)
+    await _area(hass, "CCCC", "Keller")
+    await _fill(hass, "CCCC", "Lachs", -20)
+    repairs = await async_get_repairs(hass)
+    repairs.async_update()
+    flows = repairs_flow_manager(hass)
+
+    # ohne Bereich: Felder je Dose, Speichern weist zu
+    result = await flows.async_init(DOMAIN, data={"issue_id": ISSUE_NO_AREA})
+    assert result["step_id"] == "area"
+    assert [str(k) for k in result["data_schema"].schema] == ["Dose AAAA", "Dose BBBB"]
+    area = ar.async_get(hass).async_get_or_create("Küche")
+    result = await flows.async_configure(result["flow_id"], {"Dose AAAA": area.id})
+    assert result["type"] == "create_entry"
+    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "AAAA")})
+    assert device.area_id == area.id
+    assert [name for name in find_problems(hass)[ISSUE_NO_AREA]] == ["Dose BBBB"]
+
+    # lange abgelaufen: angehakte Dosen leeren, im Verlauf weggeworfen
+    result = await flows.async_init(DOMAIN, data={"issue_id": ISSUE_LONG_EXPIRED})
+    assert result["step_id"] == "empty"
+    result = await flows.async_configure(result["flow_id"], {"containers": ["CCCC"]})
+    assert result["type"] == "create_entry"
+    assert hass.states.get(_eid(hass, "text", "CCCC")).state == ""
+    assert (await async_get_history(hass)).list("CCCC")[0]["outcome"] == "thrown"
+    assert ISSUE_LONG_EXPIRED not in _issues(hass)

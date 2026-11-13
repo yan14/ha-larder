@@ -171,7 +171,7 @@ actions:
       include_expired: !input include_expired
     response_variable: result
   - condition: template
-    value_template: "{{ result.count > 0 }}"
+    value_template: "{{ result.count > 0 or (result.thaw | default([]) | length > 0) }}"
   - if:
       - condition: template
         value_template: "{{ recipes }}"
@@ -193,7 +193,8 @@ actions:
       push_data: >-
         {%- if buttons -%}
         {{ {'url': '/larder', 'clickAction': '/larder',
-            'actions': [
+            'actions': ([{'action': 'LARDER_THAWED', 'title': result.labels.thawed | default('Thawed')}]
+                        if result.thaw | default([]) | length > 0 else []) + [
               {'action': 'URI', 'title': result.labels.recipes | default('Recipes'), 'uri': recipes_uri},
               {'action': 'URI', 'title': result.labels.dashboard | default('Dashboard'), 'uri': '/larder'}
             ]} }}

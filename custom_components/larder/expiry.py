@@ -306,14 +306,26 @@ def async_setup_services(hass: HomeAssistant) -> None:
         return
 
     async def handle(call: ServiceCall) -> dict[str, Any]:
+        from .plan import async_get_plan, thaw_texts  # noqa: PLC0415 - plan importiert expiry nicht
+
+        language = hass.config.language
         items = collect_expiring(hass, call.data.get("days", soon_days(hass)), call.data["include_expired"])
+        thaw = (await async_get_plan(hass)).thaw_items()
+        thaw_summary, thaw_speech, thaw_button = thaw_texts(thaw, language)
+        summary = build_summary(items, language)
+        speech = build_speech(items, language)
+        if thaw:
+            # Auftau-Erinnerung zuerst; ohne ablaufende Dosen nur sie
+            summary = f"{thaw_summary}\n\n{summary}" if items else thaw_summary
+            speech = f"{thaw_speech} {speech}" if items else thaw_speech
         return {
             "count": len(items),
             "expired": sum(1 for i in items if i["status"] == STATUS_EXPIRED),
             "items": items,
-            "summary": build_summary(items, hass.config.language),
-            "speech": build_speech(items, hass.config.language),
-            "labels": LABELS["de" if hass.config.language.lower().startswith("de") else "en"],
+            "thaw": thaw,
+            "summary": summary,
+            "speech": speech,
+            "labels": {**LABELS["de" if language.lower().startswith("de") else "en"], "thawed": thaw_button},
         }
 
     hass.services.async_register(

@@ -193,7 +193,10 @@
           "vacuum_default": "Vakuum-Vorbelegung für neue Dosen",
           "nfc_notify": "NFC: Handy benachrichtigen",
           "repair_hints": "Reparaturhinweise",
+          "temperature_warning": "Temperaturwarnung",
           "todo_entity": "Einkaufsliste für geleerte Dosen (optional)",
+          "meal_calendar": "Kalender für den Wochenplan",
+          "thaw_days": "Auftauen: Tage vorher",
           "experimental_panel": "„Larder experimental“ in der Seitenleiste anzeigen",
           "recipe_days": "Zeitraum für Rezeptideen (Tage)",
           "soon_days": "„Läuft bald ab“ ab (Tage)"
@@ -207,7 +210,10 @@
           "calendar_entity": "Schreibt das MHD jeder Dose als Ganztags-Termin in diesen Kalender (anlegen, verschieben, löschen). Der Kalender muss Termine anlegen und löschen können, z. B. Google, CalDAV oder „Lokaler Kalender“. Leer lassen = aus.",
           "nfc_notify": "Scannt jemand einen verknüpften Tag, bekommt sein Handy (Companion-App) eine Benachrichtigung. Antippen öffnet die Dose im Dashboard.",
           "repair_hints": "Zeigt unter Einstellungen → System → Reparaturen Hinweise zu Dosen ohne Bereich, gefüllten Dosen ohne MHD und Dosen, die seit mindestens 7 Tagen abgelaufen sind.",
+          "temperature_warning": "Warnt (Reparaturhinweis und Ereignis larder_temperature_warning), wenn ein Lagerort mit Temperatursensor zu lange zu warm ist: Gefrierschrank über −12 °C für 30 Minuten, Kühlschrank über 8 °C bzw. 0-°C-Fach über 6 °C für 60 Minuten.",
           "todo_entity": "Eine To-do-Liste von Home Assistant (z. B. „Einkaufsliste“, Todoist, Bring!). Wird eine Dose geleert und ihr Schalter „Einkaufsliste“ ist an, kommt der Inhalt auf diese Liste (nicht doppelt). Leer = aus.",
+          "meal_calendar": "Optional: geplante Gerichte erscheinen dort als ganztägiger Termin „🍽 …“. Ohne Auswahl stehen sie nur im Dashboard.",
+          "thaw_days": "Wie viele Tage vor dem geplanten Tag die Zusammenfassung an Dosen aus dem Gefrierschrank erinnert (0 = am Tag selbst).",
           "experimental_panel": "Zweiter Eintrag in der Seitenleiste zum Ausprobieren neuer Funktionen, bevor sie ins normale Dashboard kommen. Zurzeit entspricht er dem normalen Larder-Dashboard.",
           "recipe_days": "Rezeptideen „aus Resten“ berücksichtigen Dosen, die in so vielen Tagen ablaufen (0 = nur heute). Im Dashboard lässt sich der Zeitraum für einen einzelnen Aufruf ändern oder ganz abschalten.",
           "soon_days": "Ab so vielen Resttagen gilt eine Dose als „läuft bald ab“ (Hinweis im Dashboard, Filter, Status des Sensors und Vorgabe für die Ablauf-Übersicht)."
@@ -335,15 +341,55 @@
   "issues": {
     "containers_without_area": {
       "title": "Larder: Dosen ohne Bereich",
-      "description": "Diese Dosen haben keinen Bereich. Ohne Bereich weiß die MHD-Schätzung nicht, wo das Essen lagert (Kühlschrank, Gefrierschrank …):\n\n{containers}\n\nWeise im Larder-Dashboard auf der Karte der Dose einen Bereich zu. Der Hinweis verschwindet dann von selbst."
+      "description": "Diese Dosen haben keinen Bereich. Ohne Bereich weiß die MHD-Schätzung nicht, wo das Essen lagert (Kühlschrank, Gefrierschrank …):\n\n{containers}\n\nWeise im Larder-Dashboard auf der Karte der Dose einen Bereich zu. Der Hinweis verschwindet dann von selbst.",
+      "fix_flow": {
+        "step": {
+          "area": {
+            "title": "Bereiche zuweisen",
+            "description": "Wähle für jede Dose den Bereich, in dem sie steht. Leer gelassene Dosen bleiben ohne Bereich."
+          }
+        },
+        "abort": {
+          "nothing_to_fix": "Nichts mehr zu beheben."
+        }
+      }
     },
     "filled_without_best_before": {
       "title": "Larder: Gefüllte Dosen ohne MHD",
-      "description": "Diese Dosen haben einen Inhalt, aber kein MHD. Sie tauchen deshalb weder in der täglichen Zusammenfassung noch im Kalender auf:\n\n{containers}\n\nTrage im Larder-Dashboard ein MHD ein oder nutze „MHD schätzen“. Der Hinweis verschwindet dann von selbst."
+      "description": "Diese Dosen haben einen Inhalt, aber kein MHD. Sie tauchen deshalb weder in der täglichen Zusammenfassung noch im Kalender auf:\n\n{containers}\n\nTrage im Larder-Dashboard ein MHD ein oder nutze „MHD schätzen“. Der Hinweis verschwindet dann von selbst.",
+      "fix_flow": {
+        "step": {
+          "estimate": {
+            "title": "MHD schätzen",
+            "description": "Larder schätzt das MHD für diese Dosen:\n\n{containers}\n\nWas die Schätzung nicht kennt, bleibt im Hinweis; trage es dann im Dashboard ein."
+          }
+        },
+        "abort": {
+          "nothing_to_fix": "Nichts mehr zu beheben."
+        }
+      }
     },
     "long_expired": {
       "title": "Larder: Dosen seit über {days} Tagen abgelaufen",
-      "description": "Diese Dosen sind seit mindestens {days} Tagen abgelaufen und sollten geleert werden:\n\n{containers}\n\nLeere sie im Larder-Dashboard (oder trage ein neues MHD ein, falls es noch gut ist). Der Hinweis verschwindet dann von selbst."
+      "description": "Diese Dosen sind seit mindestens {days} Tagen abgelaufen und sollten geleert werden:\n\n{containers}\n\nLeere sie im Larder-Dashboard (oder trage ein neues MHD ein, falls es noch gut ist). Der Hinweis verschwindet dann von selbst.",
+      "fix_flow": {
+        "step": {
+          "empty": {
+            "title": "Abgelaufene Dosen leeren",
+            "description": "Die angehakten Dosen werden geleert und im Verlauf als weggeworfen eingetragen.",
+            "data": {
+              "containers": "Dosen"
+            }
+          }
+        },
+        "abort": {
+          "nothing_to_fix": "Nichts mehr zu beheben."
+        }
+      }
+    },
+    "temperature_too_high": {
+      "title": "Larder: {area} ist zu warm",
+      "description": "In **{area}** sind es {temperature} °C, seit mindestens {minutes} Minuten über {limit} °C. Betroffene Dosen:\n\n{containers}\n\nPrüfe, ob die Tür offen ist oder das Gerät ausgefallen ist. Der Hinweis verschwindet, sobald es wieder kalt genug ist."
     }
   }
 }

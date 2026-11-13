@@ -107,6 +107,20 @@ const hass = {
     : { title: "Grandma's apple pie", minutes: 75, ingredients: ["Servings: 12", "500 g apples", "200 g flour", "100 g sugar"], steps: ["Knead the dough.", "Slice the apples.", "Bake for 45 minutes."], source: "photo" } }) }),
   callWS: async (msg) => {
     if (msg.type === "config/label_registry/list") return demoLabels;
+    if (msg.type === "larder/plan_list") {
+      const iso = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
+      return de ? {
+        plans: [
+          { id: "p1", date: iso(1), title: "Spaghetti Bolognese", containers: [{ device_id: "demo03", name: "Dose 4", content: "Bolognese-Sauce", frozen: true, thawed: false }] },
+          { id: "p2", date: iso(3), title: "Gulasch mit Knödeln", containers: [{ device_id: "demo04", name: "Dose 5", content: "Gulasch", frozen: true, thawed: false }] },
+        ],
+        thaw: [{ cc: "X", device_id: "demo03", name: "Dose 4", content: "Bolognese-Sauce", plan: "Spaghetti Bolognese", date: iso(1), days_until: 1 }] } : {
+        plans: [
+          { id: "p1", date: iso(1), title: "Spaghetti bolognese", containers: [{ device_id: "demo03", name: "Box 4", content: "Bolognese sauce", frozen: true, thawed: false }] },
+          { id: "p2", date: iso(3), title: "Goulash with dumplings", containers: [{ device_id: "demo04", name: "Box 5", content: "Goulash", frozen: true, thawed: false }] },
+        ],
+        thaw: [{ cc: "X", device_id: "demo03", name: "Box 4", content: "Bolognese sauce", plan: "Spaghetti bolognese", date: iso(1), days_until: 1 }] };
+    }
     if (msg.type === "larder/statistics") return de ? {
       days: 90, emptied: 23, eaten: 19, thrown: 4, unknown: 0, waste_percent: 17, avg_days_stored: 9.4,
       top_thrown: [{ content: "Käse", count: 2 }, { content: "Gekochte Eier", count: 1 }, { content: "Suppe", count: 1 }],

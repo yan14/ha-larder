@@ -13,7 +13,9 @@ from .estimate import async_get_estimator
 from .expiry import async_setup_services
 from .export import async_setup_export
 from .history import async_setup_history_websocket
+from .plan import async_get_plan, async_setup_plan_websocket
 from .stats import async_setup_statistics
+from .temperature import async_get_temperature_watch
 from .labels import async_setup_labels
 from .panel import async_setup_panel, async_sync_experimental_panel, async_teardown_panel
 from .recipe_book import async_setup_recipe_book_websocket
@@ -38,9 +40,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_export(hass)
     async_setup_history_websocket(hass)
     async_setup_statistics(hass)
+    async_setup_plan_websocket(hass)
+    (await async_get_plan(hass)).async_start()
     (await async_get_calendar_sync(hass)).async_start()
     (await async_get_nfc(hass)).async_start()
     (await async_get_repairs(hass)).async_start()
+    (await async_get_temperature_watch(hass)).async_start()
     await async_setup_webhook(hass)
     await async_setup_panel(hass)
     await async_sync_experimental_panel(hass)
@@ -80,6 +85,8 @@ async def async_unload_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> b
         (await async_get_calendar_sync(hass)).async_stop()
         (await async_get_nfc(hass)).async_stop()
         (await async_get_repairs(hass)).async_stop()
+        (await async_get_temperature_watch(hass)).async_stop()
+        (await async_get_plan(hass)).async_stop()
     return unloaded
 
 
