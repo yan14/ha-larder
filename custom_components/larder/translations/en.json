@@ -341,7 +341,6 @@
   "issues": {
     "containers_without_area": {
       "title": "Larder: containers without an area",
-      "description": "These containers have no area. Without one, the best-before estimate does not know where the food is stored (fridge, freezer …):\n\n{containers}\n\nAssign an area on the container's card in the Larder dashboard. The hint then disappears by itself.",
       "fix_flow": {
         "step": {
           "area": {
@@ -356,7 +355,6 @@
     },
     "filled_without_best_before": {
       "title": "Larder: filled containers without a best-before date",
-      "description": "These containers have contents but no best-before date, so they appear neither in the daily summary nor in the calendar:\n\n{containers}\n\nEnter a date in the Larder dashboard or use “Estimate best before”. The hint then disappears by itself.",
       "fix_flow": {
         "step": {
           "estimate": {
@@ -371,7 +369,6 @@
     },
     "long_expired": {
       "title": "Larder: containers expired more than {days} days ago",
-      "description": "These containers expired at least {days} days ago and should be emptied:\n\n{containers}\n\nEmpty them in the Larder dashboard (or set a new best-before date if the food is still good). The hint then disappears by itself.",
       "fix_flow": {
         "step": {
           "empty": {

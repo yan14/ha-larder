@@ -3,6 +3,10 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 2.9.1
+
+- Fix: translations of the fixable repair hints (hassfest check of 2.9.0 failed); no change in behaviour.
+
 ## 2.9.0
 
 - **Meal plan:** **📅 Plan** on a recipe idea or a saved recipe puts a dish on a day, with the containers it needs (pre-ticked from the recipe). The start page shows the next seven days, the recipe page all plans. Optional calendar for the meal plan (all-day event "🍽 …", removed with the plan).

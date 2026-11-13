@@ -341,7 +341,6 @@
   "issues": {
     "containers_without_area": {
       "title": "Larder: Dosen ohne Bereich",
-      "description": "Diese Dosen haben keinen Bereich. Ohne Bereich weiß die MHD-Schätzung nicht, wo das Essen lagert (Kühlschrank, Gefrierschrank …):\n\n{containers}\n\nWeise im Larder-Dashboard auf der Karte der Dose einen Bereich zu. Der Hinweis verschwindet dann von selbst.",
       "fix_flow": {
         "step": {
           "area": {
@@ -356,7 +355,6 @@
     },
     "filled_without_best_before": {
       "title": "Larder: Gefüllte Dosen ohne MHD",
-      "description": "Diese Dosen haben einen Inhalt, aber kein MHD. Sie tauchen deshalb weder in der täglichen Zusammenfassung noch im Kalender auf:\n\n{containers}\n\nTrage im Larder-Dashboard ein MHD ein oder nutze „MHD schätzen“. Der Hinweis verschwindet dann von selbst.",
       "fix_flow": {
         "step": {
           "estimate": {
@@ -371,7 +369,6 @@
     },
     "long_expired": {
       "title": "Larder: Dosen seit über {days} Tagen abgelaufen",
-      "description": "Diese Dosen sind seit mindestens {days} Tagen abgelaufen und sollten geleert werden:\n\n{containers}\n\nLeere sie im Larder-Dashboard (oder trage ein neues MHD ein, falls es noch gut ist). Der Hinweis verschwindet dann von selbst.",
       "fix_flow": {
         "step": {
           "empty": {
