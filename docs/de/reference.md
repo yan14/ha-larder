@@ -73,7 +73,7 @@ Pro Dose entsteht ein Gerät (eindeutig über die ID, den Parameter `cc` eines Z
 | **Tage bis MHD** | `sensor` | Verbleibende Tage bis zum MHD (negativ = abgelaufen). Das Attribut `status` ist `ok`, `soon` (3 Tage oder weniger, siehe [Einstellungen](#einstellungen)), `expired` oder `none` |
 | **QR-Code** | `image` | QR-Code der Dose als Bild: Scannen mit der Kamera-App öffnet die Dose im Larder-Dashboard, siehe [Eigene QR-Codes](scanning.md#eigene-qr-codes) |
 
-[Beutel](containers.md#beutel-und-packungen) haben dieselben Entitäten außer **Einkaufsliste**, **Variabler Lagerort** und **Lagerort nach dem Leeren**; [Packungen](containers.md#beutel-und-packungen) haben nur **Inhalt**, **MHD**, **Menge**, **Einheit**, **Tage bis MHD** und **Behälter leeren**. Das Attribut `kind` von **Inhalt** ist `container`, `bag` oder `pack`. **Behälter leeren** entfernt bei einem Beutel oder einer Packung das Gerät.
+[Beutel](containers.md#beutel-und-packungen) haben dieselben Entitäten außer **Einkaufsliste**, **Variabler Lagerort** und **Lagerort nach dem Leeren**; [Packungen](containers.md#beutel-und-packungen) haben nur **Inhalt**, **Fach**, **MHD**, **Menge**, **Einheit**, **Tage bis MHD** und **Behälter leeren**. Das Attribut `kind` von **Inhalt** ist `container`, `bag` oder `pack`. **Behälter leeren** entfernt bei einem Beutel oder einer Packung das Gerät.
 
 Die Werte bleiben über Neustarts erhalten. „Behälter leeren“ ist eine normale Button-Entität, lässt sich also auf Dashboards und in Automationen über `button.press` verwenden.
 

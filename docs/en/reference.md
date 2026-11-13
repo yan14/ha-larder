@@ -73,7 +73,7 @@ Every container becomes a device (identified by its ID, the `cc` parameter of a 
 | **Days until best before** | `sensor` | Days left until the best-before date (negative = expired). The attribute `status` is `ok`, `soon` (3 days or less, see [Settings](#settings)), `expired` or `none` |
 | **QR code** | `image` | The container's QR code as an image: scanning it with the camera app opens the container in the Larder dashboard, see [Your own QR codes](scanning.md#your-own-qr-codes) |
 
-[Bags](containers.md#bags-and-packs) have the same entities except **Shopping list**, **Flexible storage place** and **Storage place after emptying**; [packs](containers.md#bags-and-packs) only have **Contents**, **Best before**, **Quantity**, **Unit**, **Days until best before** and **Empty container**. The attribute `kind` of **Contents** is `container`, `bag` or `pack`. Pressing **Empty container** on a bag or pack removes its device.
+[Bags](containers.md#bags-and-packs) have the same entities except **Shopping list**, **Flexible storage place** and **Storage place after emptying**; [packs](containers.md#bags-and-packs) only have **Contents**, **Compartment**, **Best before**, **Quantity**, **Unit**, **Days until best before** and **Empty container**. The attribute `kind` of **Contents** is `container`, `bag` or `pack`. Pressing **Empty container** on a bag or pack removes its device.
 
 The values survive restarts. "Empty container" is a regular button entity, so you can use it on dashboards and in automations via `button.press`.
 

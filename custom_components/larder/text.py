@@ -9,8 +9,8 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, KIND_PACK, SIGNAL_SETTINGS_CHANGED
-from .entity import LarderConfigEntry, LarderEntity, LarderResettable, kind_of
+from .const import DOMAIN, SIGNAL_SETTINGS_CHANGED
+from .entity import LarderConfigEntry, LarderEntity, LarderResettable
 from .estimate import DATA_ESTIMATOR, async_get_estimator
 from .product import watched_allergens
 from .shelf_life import category_for
@@ -23,7 +23,7 @@ async def async_setup_entry(
 ) -> None:
     content = LarderContent(entry)
     entry.runtime_data.resettable[content._key] = content
-    async_add_entities([content] if kind_of(entry) == KIND_PACK else [content, LarderCompartment(entry)])
+    async_add_entities([content, LarderCompartment(entry)])  # Fach auch für Beutel und Packungen
 
 
 # Produktdaten und Nährwerte des Inhalts (aus dem Strichcode oder von Hand); gehören zum Inhalt

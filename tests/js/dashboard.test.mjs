@@ -1671,6 +1671,7 @@ test("Packungen: anlegen, Filter, Kennzeichen auf der Kachel und Umfüllen in ei
   const form = $(el, "form.dialog");
   assert.equal(form.querySelector('[data-i="count"]'), null);
   assert.equal(form.querySelector('[data-i="quantity"]').value, "1");
+  form.querySelector('[data-f="compartment"]').value = " Regal oben ";
   form.querySelector('[data-i="content"]').value = "Kichererbsen";
   form.querySelector('[data-i="quantity"]').value = "4";
   form.querySelector('[data-i="date"]').value = "2028-05-01";
@@ -1679,6 +1680,7 @@ test("Packungen: anlegen, Filter, Kennzeichen auf der Kachel und Umfüllen in ei
   await flush();
   const created = hass.wsCalls.find((m) => m.type === `${D}/create_items`);
   assert.deepEqual(created.items, [{ content: "Kichererbsen", quantity: 4, unit: "pieces", best_before: "2028-05-01" }]);
+  assert.equal(created.compartment, "Regal oben");
   assert.equal($(el, ".overlay").hidden, true);
   assert.match($(el, ".notice").textContent, /1 Packung angelegt/);
 

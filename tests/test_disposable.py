@@ -112,11 +112,14 @@ async def test_packs_have_few_entities_and_no_code(hass: HomeAssistant, hass_ws_
         hass_ws_client,
         type="larder/create_items",
         kind="pack",
+        compartment="Regal oben",
         items=[{"content": "Tomaten gehackt", "quantity": 3, "unit": "pieces", "best_before": day, "product": {"brand": "Mutti", "kcal_100g": 24}}],
     )
     item = res["result"]["items"][0]
     assert item["name"] == "Pack 1"
-    assert _entities(hass, item["device_id"]) == {"content", "best_before", "portions", "unit", "days_left", "empty_container"}
+    assert _entities(hass, item["device_id"]) == {"content", "compartment", "best_before", "portions", "unit", "days_left", "empty_container"}
+    comp = er.async_get(hass).async_get_entity_id("text", DOMAIN, f"{item['cc']}_compartment")
+    assert hass.states.get(comp).state == "Regal oben"
     attrs = hass.states.get(_eid(hass, "text", item["cc"])).attributes
     assert attrs["kind"] == "pack" and attrs["brand"] == "Mutti"
     # zählt bei "läuft bald ab" mit, aber nicht bei "alle Etiketten"

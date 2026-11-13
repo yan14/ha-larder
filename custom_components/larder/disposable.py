@@ -21,7 +21,7 @@ from homeassistant.components import websocket_api
 from homeassistant.config_entries import SOURCE_IMPORT
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
@@ -168,7 +168,11 @@ def next_names(hass: HomeAssistant, kind: str, count: int) -> list[str]:
 
 
 async def async_create_items(
-    hass: HomeAssistant, kind: str, items: list[dict[str, Any]], area_id: str | None = None
+    hass: HomeAssistant,
+    kind: str,
+    items: list[dict[str, Any]],
+    area_id: str | None = None,
+    compartment: str | None = None,
 ) -> list[dict[str, Any]]:
     """Beutel oder Packungen anlegen und gleich befüllen. Liefert je Eintrag device_id, cc, name."""
     if kind not in DISPOSABLE_KINDS:
@@ -207,6 +211,12 @@ async def async_create_items(
                 await ents["best_before"].async_estimate_best_before()
             except HomeAssistantError:
                 _LOGGER.debug("MHD für %s nicht geschätzt", name, exc_info=True)
+        if compartment and compartment.strip():
+            comp_id = er.async_get(hass).async_get_entity_id("text", DOMAIN, f"{entry.data[CONF_CC]}_compartment")
+            if comp_id:
+                await hass.services.async_call(
+                    "text", "set_value", {"entity_id": comp_id, "value": compartment.strip()}, blocking=True
+                )
         device = registry.async_get_device(identifiers={(DOMAIN, entry.data[CONF_CC])})
         created.append({"device_id": device.id if device else None, "cc": entry.data[CONF_CC], "name": name})
     return created
@@ -271,6 +281,7 @@ def _cc_of(hass: HomeAssistant, device_id: str) -> str | None:
         vol.Required("kind"): vol.In(DISPOSABLE_KINDS),
         vol.Required("items"): vol.All([_ITEM], vol.Length(min=1, max=MAX_ITEMS)),
         vol.Optional("area_id"): vol.Any(str, None),
+        vol.Optional("compartment"): vol.All(str, vol.Length(max=60)),
     }
 )
 @websocket_api.async_response
@@ -279,7 +290,7 @@ async def ws_create_items(
 ) -> None:
     """Beutel oder Packungen anlegen (für alle Nutzer: gehört zum Alltag wie das Befüllen)."""
     try:
-        created = await async_create_items(hass, msg["kind"], msg["items"], msg.get("area_id"))
+        created = await async_create_items(hass, msg["kind"], msg["items"], msg.get("area_id"), msg.get("compartment"))
     except HomeAssistantError as err:
         connection.send_error(msg["id"], "create_failed", str(err))
         return

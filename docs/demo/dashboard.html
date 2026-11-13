@@ -85,6 +85,9 @@ doses.forEach(([name, area, content, days, category, kind = "container"], i) => 
   states[ids.select] = { entity_id: ids.select, state: kind === "pack" ? "pieces" : "portions", attributes: { options: ["portions", "pieces", "slices", "grams", "milliliters"] } };
   states[ids.button] = { entity_id: ids.button, state: "unknown", attributes: {} };
   if (ids.image) states[ids.image] = { entity_id: ids.image, state: "x", attributes: {} };
+  const comp = `text.${id}_compartment`;
+  entities[comp] = { entity_id: comp, device_id: id, platform: "larder", translation_key: "compartment" };
+  states[comp] = { entity_id: comp, state: kind === "pack" ? (de ? "Regal oben" : "Top shelf") : "", attributes: {} };
   if (kind !== "container") return; // Beutel und Packungen haben keinen festen Platz
   // variabler Lagerort (Vakuumdosen im Kühlschrank) mit "nach dem Leeren zurück in"
   const flex = `switch.${id}_flexible`, home = `select.${id}_home_area`;

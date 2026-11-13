@@ -3,6 +3,11 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 3.0.1
+
+- **Compartment for packs:** packs now have the **Compartment** entity too (e.g. "top shelf"), on the card, tiles and in the search. Existing packs get it after the update.
+- **Compartment when adding bags and packs:** optional field in the dialog, applied to all items added at once.
+
 ## 3.0.0
 
 **Breaking changes**

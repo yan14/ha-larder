@@ -20,6 +20,8 @@ const TEXT = {
     titleBag: "Beutel anlegen",
     titlePack: "Packungen anlegen",
     area: "Bereich",
+    compartment: "Fach (optional)",
+    compartmentHint: "z. B. Schublade 2",
     noArea: "Kein Bereich",
     content: "Inhalt",
     count: "Anzahl Beutel",
@@ -74,6 +76,8 @@ const TEXT = {
     titleBag: "Add bags",
     titlePack: "Add packs",
     area: "Area",
+    compartment: "Compartment (optional)",
+    compartmentHint: "e.g. drawer 2",
     noArea: "No area",
     content: "Contents",
     count: "Number of bags",
@@ -209,6 +213,11 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN }) {
     }
     const remembered = (this._opts.itemArea || {})[kind] || "";
     if ([...area.options].some((o) => o.value === remembered)) area.value = remembered;
+    const compartment = el("input");
+    compartment.type = "text";
+    compartment.maxLength = 60;
+    compartment.dataset.f = "compartment";
+    compartment.placeholder = t.compartmentHint;
 
     const rows = el("div", "itemrows");
     const status = el("p", "hint");
@@ -319,6 +328,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN }) {
     form.replaceChildren(
       el("h2", "", bag ? t.titleBag : t.titlePack),
       field(t.area, area),
+      field(t.compartment, compartment),
       rows,
       ...extras,
       status,
@@ -348,6 +358,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN }) {
       try {
         const msg = { type: `${DOMAIN}/create_items`, kind, items };
         if (area.value) msg.area_id = area.value;
+        if (compartment.value.trim()) msg.compartment = compartment.value.trim();
         const res = await hass.callWS(msg);
         this._opts.itemArea = { ...(this._opts.itemArea || {}), [kind]: area.value };
         this._saveOptions();
