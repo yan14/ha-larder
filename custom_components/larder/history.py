@@ -86,6 +86,7 @@ def build_record(
     best_before: str | None,
     outcome: str | None,
     compartment: str | None = None,
+    product: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     now = dt_util.now()
     filled_day: date | None = None
@@ -111,6 +112,7 @@ def build_record(
         "days_stored": (now.date() - filled_day).days if filled_day else None,
         "expired": expired,
         "outcome": outcome if outcome in OUTCOMES else None,
+        **({"product": product} if product else {}),
     }
 
 

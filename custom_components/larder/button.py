@@ -80,7 +80,13 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
             best_before=value("date", "best_before"),
             outcome=outcome,
             compartment=value("text", "compartment"),
+            product=self._product_data(),
         )
+
+    def _product_data(self) -> dict | None:
+        """Produktdaten und Nährwerte des Inhalts (für Verlauf und spätere Statistik)."""
+        content = self._runtime.resettable.get("content")
+        return getattr(content, "product", None) or None
 
     def _entry_title(self) -> str:
         device = dr.async_get(self.hass).async_get_device(identifiers={(DOMAIN, self._cc)})

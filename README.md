@@ -241,7 +241,15 @@ Then fill them all at once or ask for recipe ideas, which makes an inventory of 
 
 An empty container shows a **Fill** button. It opens a small dialog: **contents** (with suggestions from what you entered before, newest first, then your remembered estimates), **quantity and unit** (optional), **vacuum**, **filled on** (preset to now), optionally a **best-before date**, and **Estimate best before automatically** (only if estimating is on and the date is empty). **Save** sets everything and estimates the date.
 
-**Bought food:** in the Home Assistant app the button **EAN** next to the contents scans the barcode on the package and fills in the product name from [Open Food Facts](https://world.openfoodfacts.org) (free product database, needs internet). The best-before date is printed on the package; enter it in the dialog. Nothing found or offline: type the contents as usual.
+**Bought food:** in the Home Assistant app the button **EAN** next to the contents scans the barcode on the package and fills in the product name from [Open Food Facts](https://world.openfoodfacts.org) (free product database, needs internet). Brand, package size, EAN and the [nutrition](#nutrition) are taken over too. The best-before date is printed on the package; enter it in the dialog. Nothing found or offline: type the contents as usual.
+
+### Nutrition
+
+The card of a filled container has a fold-out **Nutrition** section: **brand**, **package**, **kcal per 100 g**, **kcal per portion**, **Nutri-Score** (A–E), **EAN**, **allergens** and **nutrients** as free text (fat, carbohydrates, sugar, protein, salt …). After a barcode scan they come from Open Food Facts (shown as source, data under the ODbL); otherwise enter them by hand, e.g. for home-cooked food. Every field can be changed.
+
+- The **kcal** also appear on the tile and in the list (per portion if known, otherwise per 100 g).
+- The data belong to the contents: **Empty container** clears them, filling with other contents without a scan as well. They go into the [history](#export-and-import) and the inventory CSV.
+- For automations they are attributes of the **Contents** entity: `brand`, `package`, `ean`, `kcal_100g`, `kcal_portion`, `nutri_score`, `allergens`, `nutrients`, `source`.
 
 The dialog also opens by itself right after you add a new container in the dashboard (including after writing an NFC tag), so you can fill it straight away. It also opens after a scan (📷 in the app, own QR code, NFC tag, Shortcut) when the container is empty; a container that already has contents opens its card.
 
@@ -443,7 +451,7 @@ The calendar must be able to create **and** delete events. Read-only calendars (
 
 In the dashboard **⋮ → 📦 Export and import** (administrators):
 
-- **📄 Inventory as a table (CSV)**: all containers with name, ID, area, compartment, contents, quantity, unit, filled on, best before, days left, status and vacuum. In German with semicolons, so Excel opens it directly.
+- **📄 Inventory as a table (CSV)**: all containers with name, ID, area, compartment, contents, quantity, unit, filled on, best before, days left, status, vacuum and the nutrition (brand, package, EAN, kcal, Nutri-Score, allergens, nutrients). In German with semicolons, so Excel opens it directly.
 - **🕘 History (CSV)**: every emptied filling with container, contents, quantity, filled on, best before, emptied on, days stored, whether it was expired and whether it was eaten or thrown away. Containers emptied without the question (automation, device page) have no outcome.
 - **💾 Remembered estimates (backup)**: all [remembered best-before values](#managing-remembered-estimates) as a JSON file.
 - **Import estimates**: reads such a file back, for example after a reinstall or on a second Home Assistant. Your own corrections are kept when the file only has a table or AI value for the same combination; with **Delete existing estimates first** the file replaces everything. Invalid entries are skipped and counted.
@@ -608,7 +616,7 @@ Every container becomes a device (identified by its ID, the `cc` parameter of a 
 | --- | --- | --- |
 | **Filled on** | `datetime` | When was the container filled? |
 | **Best before** | `date` | Best-before date (MHD) |
-| **Contents** | `text` | What is in the container? |
+| **Contents** | `text` | What is in the container? Attributes: `category` and, if known, the [nutrition](#nutrition) (`kcal_100g`, `kcal_portion`, `nutri_score`, `allergens`, `nutrients`, `brand`, `package`, `ean`) |
 | **Compartment** | `text` | Optional place inside the area, e.g. "drawer 2". Kept when emptying; cleared when a flexible container goes back to its storage place |
 | **Empty container** | `button` | Resets the whole container: **Contents** become empty, **Best before** and **Filled on** are cleared. **Vacuum** is deliberately kept, it is a property of the container, not of its contents |
 | **Quantity** | `number` | How much is in the container, e.g. 4 (0 = not specified). Reset by **Empty container** |

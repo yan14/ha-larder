@@ -241,7 +241,15 @@ Danach alle auf einmal befüllen oder Rezeptideen holen. So geht eine Inventur d
 
 Eine leere Dose zeigt den Button **Befüllen**. Er öffnet einen kleinen Dialog: **Inhalt** (mit Vorschlägen aus früheren Eingaben, neueste zuerst, danach deine gemerkten Schätzungen), **Menge und Einheit** (optional), **Vakuum**, **Befüllt am** (vorbelegt mit jetzt), optional ein **MHD** und **MHD automatisch schätzen** (nur wenn die Schätzung aktiv und das MHD leer ist). **Speichern** setzt alles und schätzt das MHD.
 
-**Gekaufte Ware:** In der Home Assistant App scannt der Knopf **EAN** neben dem Inhalt den Strichcode auf der Packung und trägt den Produktnamen aus [Open Food Facts](https://de.openfoodfacts.org) ein (freie Produktdatenbank, braucht Internet). Das MHD steht auf der Packung; trag es im Dialog ein. Nichts gefunden oder offline: Inhalt wie gewohnt eintippen.
+**Gekaufte Ware:** In der Home Assistant App scannt der Knopf **EAN** neben dem Inhalt den Strichcode auf der Packung und trägt den Produktnamen aus [Open Food Facts](https://de.openfoodfacts.org) ein (freie Produktdatenbank, braucht Internet). Marke, Packungsgröße, EAN und die [Nährwerte](#nährwerte) werden mit übernommen. Das MHD steht auf der Packung; trag es im Dialog ein. Nichts gefunden oder offline: Inhalt wie gewohnt eintippen.
+
+### Nährwerte
+
+Die Karte einer gefüllten Dose hat einen aufklappbaren Bereich **Nährwerte**: **Marke**, **Packung**, **kcal pro 100 g**, **kcal pro Portion**, **Nutri-Score** (A–E), **EAN**, **Allergene** und **Nährwerte** als Freitext (Fett, Kohlenhydrate, Zucker, Eiweiß, Salz …). Nach einem Strichcode-Scan kommen sie aus Open Food Facts (als Quelle angezeigt, Daten unter der ODbL); sonst trägst du sie selbst ein, z. B. bei Selbstgekochtem. Jedes Feld lässt sich ändern.
+
+- Die **kcal** stehen auch auf der Kachel und in der Liste (pro Portion, wenn bekannt, sonst pro 100 g).
+- Die Angaben gehören zum Inhalt: **Behälter leeren** löscht sie, ebenso ein Befüllen mit anderem Inhalt ohne Scan. Sie kommen in den [Verlauf](#export-und-import) und in die Bestands-CSV.
+- Für Automationen sind sie Attribute der Entität **Inhalt**: `brand`, `package`, `ean`, `kcal_100g`, `kcal_portion`, `nutri_score`, `allergens`, `nutrients`, `source`.
 
 Der Dialog öffnet sich auch von selbst direkt nach dem Anlegen einer neuen Dose im Dashboard (auch nach dem Beschreiben eines NFC-Tags), sodass du sie gleich befüllen kannst. Ebenso nach einem Scan (📷 in der App, eigener QR-Code, NFC-Tag, Kurzbefehl), wenn die Dose leer ist; eine Dose mit Inhalt öffnet ihre Karte.
 
@@ -443,7 +451,7 @@ Der Kalender muss Termine anlegen **und** löschen können. Reine Lese-Kalender 
 
 Im Dashboard **⋮ → 📦 Export und Import** (Administratoren):
 
-- **📄 Bestand als Tabelle (CSV)**: alle Dosen mit Name, ID, Bereich, Fach, Inhalt, Menge, Einheit, Eingelagert am, MHD, Tage übrig, Status und Vakuum. Auf Deutsch mit Semikolon, damit Excel sie direkt öffnet.
+- **📄 Bestand als Tabelle (CSV)**: alle Dosen mit Name, ID, Bereich, Fach, Inhalt, Menge, Einheit, Eingelagert am, MHD, Tage übrig, Status, Vakuum und den Nährwerten (Marke, Packung, EAN, kcal, Nutri-Score, Allergene, Nährwerte). Auf Deutsch mit Semikolon, damit Excel sie direkt öffnet.
 - **🕘 Verlauf (CSV)**: jede geleerte Befüllung mit Dose, Inhalt, Menge, Eingelagert am, MHD, Geleert am, Tage gelagert, ob sie abgelaufen war und ob sie gegessen oder weggeworfen wurde. Ohne die Frage geleerte Dosen (Automation, Geräteseite) haben kein Ergebnis.
 - **💾 Gemerkte Schätzungen (Sicherung)**: alle [gemerkten MHD-Werte](#gemerkte-schätzungen-verwalten) als JSON-Datei.
 - **Schätzungen einlesen**: liest so eine Datei wieder ein, z. B. nach einer Neuinstallation oder auf einem zweiten Home Assistant. Eigene Korrekturen bleiben, wenn die Datei für dieselbe Kombination nur einen Tabellen- oder KI-Wert hat; mit **Vorhandene Schätzungen vorher löschen** ersetzt die Datei alles. Ungültige Einträge werden übersprungen und gezählt.
@@ -608,7 +616,7 @@ Pro Dose entsteht ein Gerät (eindeutig über die ID, den Parameter `cc` eines Z
 | --- | --- | --- |
 | **Befüllt am** | `datetime` | Wann wurde die Dose befüllt? |
 | **MHD** | `date` | Mindesthaltbarkeitsdatum |
-| **Inhalt** | `text` | Was ist in der Dose? |
+| **Inhalt** | `text` | Was ist in der Dose? Attribute: `category` und, falls bekannt, die [Nährwerte](#nährwerte) (`kcal_100g`, `kcal_portion`, `nutri_score`, `allergens`, `nutrients`, `brand`, `package`, `ean`) |
 | **Fach** | `text` | Optionaler Platz im Bereich, z. B. „Schublade 2“. Bleibt beim Leeren; wird geleert, wenn eine variable Dose an ihren Lagerort zurückkommt |
 | **Behälter leeren** | `button` | Setzt die Dose komplett zurück: **Inhalt** wird leer, **MHD** und **Befüllt am** werden gelöscht. **Vakuum** bleibt bewusst erhalten, es ist eine Eigenschaft der Dose und nicht des Inhalts |
 | **Menge** | `number` | Wie viel in der Dose ist, z. B. 4 (0 = nicht angegeben). Wird von **Behälter leeren** zurückgesetzt |

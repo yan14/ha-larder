@@ -33,8 +33,10 @@ DATA_EXPORT = "export_registered"
 EXPORT_FORMAT = 1
 
 _COLUMNS = {
-    "de": ["Name", "ID", "Bereich", "Fach", "Inhalt", "Menge", "Einheit", "Eingelagert am", "MHD", "Tage übrig", "Status", "Vakuum"],
-    "en": ["Name", "ID", "Area", "Compartment", "Contents", "Quantity", "Unit", "Filled on", "Best before", "Days left", "Status", "Vacuum"],
+    "de": ["Name", "ID", "Bereich", "Fach", "Inhalt", "Menge", "Einheit", "Eingelagert am", "MHD", "Tage übrig", "Status", "Vakuum",
+           "Marke", "Packung", "EAN", "kcal/100 g", "kcal/Portion", "Nutri-Score", "Allergene", "Nährwerte"],
+    "en": ["Name", "ID", "Area", "Compartment", "Contents", "Quantity", "Unit", "Filled on", "Best before", "Days left", "Status", "Vacuum",
+           "Brand", "Package", "EAN", "kcal/100 g", "kcal/portion", "Nutri-Score", "Allergens", "Nutrients"],
 }
 _STATUS = {
     "de": {"none": "", "ok": "gut", "soon": "läuft bald ab", "expired": "abgelaufen"},
@@ -62,6 +64,23 @@ def _value(hass: HomeAssistant, registry: er.EntityRegistry, platform: str, cc: 
     if state is None or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
         return None
     return state.state
+
+
+_PRODUCT_COLUMNS = ("brand", "package", "ean", "kcal_100g", "kcal_portion", "nutri_score", "allergens", "nutrients")
+
+
+def _product(hass: HomeAssistant, registry: er.EntityRegistry, cc: str) -> dict[str, Any]:
+    """Produktdaten und Nährwerte (Attribute der Entität "Inhalt")."""
+    entity_id = registry.async_get_entity_id("text", DOMAIN, f"{cc}_content")
+    state = hass.states.get(entity_id) if entity_id else None
+    if state is None:
+        return {}
+    value = {k: state.attributes.get(k) for k in _PRODUCT_COLUMNS if state.attributes.get(k) not in (None, "")}
+    if "kcal_100g" in value and _lang(hass) == "de":
+        value["kcal_100g"] = str(value["kcal_100g"]).replace(".", ",")
+    if "kcal_portion" in value and _lang(hass) == "de":
+        value["kcal_portion"] = str(value["kcal_portion"]).replace(".", ",")
+    return value
 
 
 def inventory_rows(hass: HomeAssistant) -> list[dict[str, Any]]:
@@ -105,6 +124,7 @@ def inventory_rows(hass: HomeAssistant) -> list[dict[str, Any]]:
                 "days_left": "" if left is None else left,
                 "status": _STATUS[lang][status_for(left, soon)],
                 "vacuum": _YES[lang][0] if vacuum == STATE_ON else _YES[lang][1],
+                **{key: _product(hass, registry, cc).get(key, "") for key in _PRODUCT_COLUMNS},
             }
         )
     rows.sort(key=lambda r: str(r["name"]).casefold())

@@ -71,6 +71,21 @@ export const STRINGS = {
     barcodeFound: (name, code) => `Gefunden: ${name} (EAN ${code}). Das MHD steht auf der Packung.`,
     barcodeNotFound: (code) => `Kein Produkt zu EAN ${code} gefunden. Bitte den Inhalt eintippen.`,
     barcodeOffline: "Open Food Facts ist gerade nicht erreichbar. Bitte den Inhalt eintippen.",
+    barcodeNutrition: "Nährwerte übernommen.",
+    offSource: "Daten: Open Food Facts (ODbL).",
+    nutrition: "Nährwerte",
+    nutritionFields: {
+      brand: "Marke",
+      package: "Packung",
+      ean: "EAN",
+      kcal_100g: "kcal pro 100 g",
+      kcal_portion: "kcal pro Portion",
+      nutri_score: "Nutri-Score",
+      allergens: "Allergene",
+      nutrients: "Nährwerte",
+    },
+    nutritionNone: "–",
+    nutrientsHint: "z. B. Fett 7 g, Kohlenhydrate 59 g, Eiweiß 14 g (pro 100 g)",
     fillSave: "Speichern",
     fillNoContent: "Bitte einen Inhalt eingeben.",
     fillFailed: "Das Speichern ist fehlgeschlagen.",
@@ -208,6 +223,21 @@ export const STRINGS = {
     barcodeFound: (name, code) => `Found: ${name} (EAN ${code}). The best-before date is printed on the package.`,
     barcodeNotFound: (code) => `No product found for EAN ${code}. Please type the contents.`,
     barcodeOffline: "Open Food Facts cannot be reached right now. Please type the contents.",
+    barcodeNutrition: "Nutrition taken over.",
+    offSource: "Data: Open Food Facts (ODbL).",
+    nutrition: "Nutrition",
+    nutritionFields: {
+      brand: "Brand",
+      package: "Package",
+      ean: "EAN",
+      kcal_100g: "kcal per 100 g",
+      kcal_portion: "kcal per portion",
+      nutri_score: "Nutri-Score",
+      allergens: "Allergens",
+      nutrients: "Nutrients",
+    },
+    nutritionNone: "–",
+    nutrientsHint: "e.g. fat 7 g, carbohydrates 59 g, protein 14 g (per 100 g)",
     fillSave: "Save",
     fillNoContent: "Please enter the contents.",
     fillFailed: "Saving failed.",
@@ -578,6 +608,15 @@ const STYLE = `
   .lastrow { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-top: -4px; }
   .lastrow[hidden] { display: none; }
   .lastrow .lasttext { flex: 1; }
+  details.nutrition { font-size: 13px; }
+  details.nutrition[hidden] { display: none; }
+  details.nutrition summary { cursor: pointer; color: var(--primary-color); }
+  details.nutrition .nutgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 8px; }
+  details.nutrition label { display: flex; flex-direction: column; gap: 2px; color: var(--secondary-text-color); min-width: 0; }
+  details.nutrition label.wide { grid-column: 1 / -1; }
+  details.nutrition input, details.nutrition select, details.nutrition textarea { font: inherit; font-size: 14px; color: var(--primary-text-color);
+    background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 6px; padding: 6px 8px; min-width: 0; box-sizing: border-box; }
+  details.nutrition .source { margin-top: 6px; color: var(--secondary-text-color); font-size: 12px; }
   .outcomerow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; }
   .outcomerow[hidden] { display: none; }
   .outcomerow .otext { flex: 1 1 100%; }
@@ -745,6 +784,19 @@ class DoseCard {
       <div class="row shoprow"><label class="check"><input type="checkbox" data-f="shopping"><span data-l="shopping"></span></label></div>
       <div class="row flexrow"><label class="check"><input type="checkbox" data-f="flexible"><span data-l="flexible"></span></label></div>
       <div class="row homerow"><label data-l="homeArea"></label><select data-f="homeArea"></select></div>
+      <details class="nutrition"><summary></summary>
+        <div class="nutgrid">
+          <label><span data-n="brand"></span><input data-p="brand" type="text" maxlength="80"></label>
+          <label><span data-n="package"></span><input data-p="package" type="text" maxlength="40"></label>
+          <label><span data-n="kcal_100g"></span><input data-p="kcal_100g" type="number" min="0" max="10000" step="any" inputmode="decimal"></label>
+          <label><span data-n="kcal_portion"></span><input data-p="kcal_portion" type="number" min="0" max="10000" step="any" inputmode="decimal"></label>
+          <label><span data-n="nutri_score"></span><select data-p="nutri_score"><option value=""></option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option></select></label>
+          <label><span data-n="ean"></span><input data-p="ean" type="text" maxlength="14" inputmode="numeric"></label>
+          <label class="wide"><span data-n="allergens"></span><input data-p="allergens" type="text" maxlength="200"></label>
+          <label class="wide"><span data-n="nutrients"></span><textarea data-p="nutrients" rows="2" maxlength="500"></textarea></label>
+        </div>
+        <div class="source" hidden></div>
+      </details>
       <div class="nfcrow"><span class="nfcstate"></span><button class="nfcbtn" type="button"></button></div>
       <div class="actions"><button class="fill" type="button"></button><button class="empty" type="button"></button><span class="spacer"></span><img class="qr" alt=""></div>
       <div class="outcomerow" hidden><span class="otext"></span><button class="eaten" type="button"></button><button class="thrown" type="button"></button><button class="ocancel" type="button"></button></div>
@@ -777,6 +829,15 @@ class DoseCard {
     this.inputs.content.addEventListener("change", () => {
       if (this.ids.text) this._call("text", "set_value", { entity_id: this.ids.text, value: this.inputs.content.value });
     });
+    for (const input of el.querySelectorAll("[data-p]")) {
+      input.addEventListener("change", () => {
+        const hass = this._panel.hass;
+        if (!hass || !hass.callWS) return;
+        hass
+          .callWS({ type: `${DOMAIN}/product_set`, device_id: this.deviceId, product: { [input.dataset.p]: input.value.trim() } })
+          .catch(() => {});
+      });
+    }
     this.q('[data-f="compartment"]').addEventListener("change", (ev) => {
       if (this.ids.compartment) this._call("text", "set_value", { entity_id: this.ids.compartment, value: ev.target.value.trim() });
     });
@@ -976,6 +1037,26 @@ class DoseCard {
     arealine.classList.toggle("hidden", admin);
     this.q(".arearow").classList.toggle("visible", admin);
     this.q('[data-l="area"]').textContent = t.area;
+    // Produktdaten und Nährwerte (Attribute der Entität "Inhalt"); nur bei gefüllter Dose
+    const contentState = states[dev.entities.text];
+    const attrs = (contentState && contentState.attributes) || {};
+    const nut = this.q("details.nutrition");
+    const filledNow = isValidState(contentState) && contentState.state.trim() !== "";
+    const decimalComma = String(hass.language || "en").toLowerCase().startsWith("de");
+    nut.hidden = !filledNow;
+    const bits = [t.nutrition];
+    if (attrs.kcal_100g !== undefined) bits.push(`${String(attrs.kcal_100g).replace(".", decimalComma ? "," : ".")} kcal/100 g`);
+    if (attrs.nutri_score) bits.push(`Nutri-Score ${attrs.nutri_score}`);
+    nut.querySelector("summary").textContent = bits.join(" · ");
+    for (const label of nut.querySelectorAll("[data-n]")) label.textContent = t.nutritionFields[label.dataset.n];
+    for (const input of nut.querySelectorAll("[data-p]")) {
+      const v = attrs[input.dataset.p];
+      this._setInput(input, v === undefined || v === null ? "" : String(v));
+    }
+    nut.querySelector('[data-p="nutrients"]').placeholder = t.nutrientsHint;
+    const source = nut.querySelector(".source");
+    source.hidden = attrs.source !== "openfoodfacts";
+    source.textContent = t.offSource;
     // Fach im Bereich (z. B. "Schublade 2")
     const comp = states[dev.entities.compartment];
     this.q(".comprow").style.display = comp ? "" : "none";
@@ -1664,6 +1745,7 @@ class LarderPanel extends HTMLElement {
     const barcodeStatus = this._fillForm.querySelector(".barcodestatus");
     barcodeStatus.hidden = true;
     barcodeStatus.textContent = "";
+    this._scannedProduct = null;
     const quantity = states[dev.entities.number];
     const nQuantity = isValidState(quantity) ? Number(quantity.state) : 0;
     f("quantity").value = nQuantity > 0 ? String(nQuantity) : "";
@@ -1790,7 +1872,8 @@ class LarderPanel extends HTMLElement {
       const input = this._fillForm.querySelector('[data-f="content"]');
       input.value = res.name;
       input.dispatchEvent(new Event("input"));
-      status.textContent = t.barcodeFound(res.name, res.code);
+      this._scannedProduct = res.product || null;
+      status.textContent = t.barcodeFound(res.name, res.code) + (res.product && res.product.kcal_100g !== undefined ? ` ${t.barcodeNutrition}` : "") + ` ${t.offSource}`;
     } else if (res && res.error === "unavailable") {
       status.textContent = t.barcodeOffline;
     } else {
@@ -1820,6 +1903,7 @@ class LarderPanel extends HTMLElement {
       bestBefore: f("bestBefore").value,
       area: this._fillForm.querySelector('[data-w="area"]').hidden ? undefined : f("area").value,
       compartment: this._fillForm.querySelector('[data-w="compartment"]').hidden ? undefined : f("compartment").value.trim(),
+      product: this._scannedProduct || null,
     };
     const wantEstimate =
       f("estimate").checked && !this._fillForm.querySelector('[data-w="estimate"]').hidden && !values.bestBefore;
@@ -1849,7 +1933,16 @@ class LarderPanel extends HTMLElement {
     const hass = this._hass;
     const states = hass.states || {};
     const ids = dev.entities;
+    const before = states[ids.text];
     await hass.callService("text", "set_value", { entity_id: ids.text, value: values.content });
+    // Produktdaten und Nährwerte: aus dem Strichcode übernehmen; bei anderem Inhalt ohne Scan die alten verwerfen
+    if (hass.callWS && (values.product || (isValidState(before) && before.state.trim() && before.state.trim() !== values.content))) {
+      try {
+        await hass.callWS({ type: `${DOMAIN}/product_set`, device_id: dev.deviceId, product: values.product || {}, replace: true });
+      } catch {
+        /* ältere Version ohne Produktdaten */
+      }
+    }
     const vac = states[ids.switch];
     if (vac && vac.state !== "unavailable") {
       await hass.callService("switch", values.vacuum ? "turn_on" : "turn_off", { entity_id: ids.switch });

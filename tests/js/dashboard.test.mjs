@@ -1074,6 +1074,19 @@ test("Fach: in Kachel und Liste, durchsuchbar, nach Bereich sortiert", async () 
   assert.ok(subs.indexOf("Dose 2 · Küche · Schublade 1") < subs.indexOf("Dose 1 · Küche · Schublade 2"));
 });
 
+test("kcal auf Kachel und in der Liste (pro Portion vor pro 100 g)", async () => {
+  document.body.innerHTML = "";
+  const hass = makeHass(DOSES);
+  hass.states["text.d1_inhalt"].attributes = { category: "fish", kcal_100g: 208, kcal_portion: 260 };
+  hass.states["text.d2_inhalt"].attributes = { category: "dairy", kcal_100g: 356.5 };
+  const el = mount(hass);
+  await flush();
+  await go(el, "containers");
+  assert.equal($(el, 'main .tile[data-id="d1"] .kcal').textContent, "260 kcal/Portion");
+  assert.equal($(el, 'main .tile[data-id="d2"] .kcal').textContent, "356,5 kcal/100 g");
+  assert.equal($(el, 'main .tile[data-id="d3"] .kcal'), null);
+});
+
 test("QR-Etiketten: Dialog aus Menü und Auswahl, signierter Link zum PDF", async () => {
   const hass = makeHass(DOSES);
   const signed = [];

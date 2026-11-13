@@ -48,7 +48,7 @@ function makeHass(doses, { areas = {}, language = "de", stateOverrides = {} } = 
       state: d.home ?? "none",
       attributes: { options: ["none", "Keller", "Küche"], area_id: null },
     };
-    states[ids.text] = { entity_id: ids.text, state: d.content ?? "unknown", attributes: {} };
+    states[ids.text] = { entity_id: ids.text, state: d.content ?? "unknown", attributes: d.product || {} };
     states[ids.date] = { entity_id: ids.date, state: d.mhd ?? "unknown", attributes: { estimates: !!d.ai } };
     states[ids.switch] = { entity_id: ids.switch, state: d.vacuum ?? "on", attributes: {} };
     states[ids.shopping] = {
@@ -1169,7 +1169,7 @@ test("Strichcode im Befüllen-Dialog: Produktname aus Open Food Facts", async ()
   hass.callWS = async (msg) => {
     if (msg.type === `${D}/product`) {
       return msg.code === "4000417025005"
-        ? { found: true, code: msg.code, name: "Zarte Haferflocken" }
+        ? { found: true, code: msg.code, name: "Zarte Haferflocken", product: { ean: msg.code, kcal_100g: 372 } }
         : { found: false, code: msg.code };
     }
     return base(msg);
@@ -1187,7 +1187,13 @@ test("Strichcode im Befüllen-Dialog: Produktname aus Open Food Facts", async ()
   assert.equal(sent[1].type, "bar_code/close");
   assert.equal(external._commandHandler, original);
   assert.equal(form.querySelector('[data-f="content"]').value, "Zarte Haferflocken");
-  assert.match(form.querySelector(".barcodestatus").textContent, /Gefunden: Zarte Haferflocken/);
+  assert.match(form.querySelector(".barcodestatus").textContent, /Gefunden: Zarte Haferflocken.*Nährwerte übernommen.*Open Food Facts/);
+  form.querySelector("button.submit").click();
+  await flush();
+  await flush();
+  const set = hass.wsCalls.find((m) => m.type === `${D}/product_set`);
+  assert.deepEqual(set, { type: `${D}/product_set`, device_id: "d1", product: { ean: "4000417025005", kcal_100g: 372 }, replace: true });
+  el.openFillDialog("d1");
   btn.click();
   external._commandHandler({ command: "bar_code/scan_result", payload: { rawValue: "12345678", format: "ean_8" } });
   await flush();
@@ -1198,6 +1204,28 @@ test("Strichcode im Befüllen-Dialog: Produktname aus Open Food Facts", async ()
   const plain = mount(adminHass([{ id: "d1", name: "A" }]));
   plain.openFillDialog("d1");
   assert.equal(plain.shadowRoot.querySelector("form.fillform button.barcode").hidden, true);
+});
+
+test("Nährwerte auf der Karte: anzeigen und einzeln ändern", async () => {
+  const hass = adminHass([{ id: "d1", name: "A", content: "Haferflocken", product: { brand: "Kölln", kcal_100g: 372, nutri_score: "A", source: "openfoodfacts" } }]);
+  const el = mount(hass);
+  const nut = $(el, ".card details.nutrition");
+  assert.equal(nut.hidden, false);
+  assert.equal(nut.querySelector("summary").textContent, "Nährwerte · 372 kcal/100 g · Nutri-Score A");
+  assert.equal(nut.querySelector('[data-p="brand"]').value, "Kölln");
+  assert.equal(nut.querySelector('[data-p="nutri_score"]').value, "A");
+  assert.equal(nut.querySelector(".source").hidden, false);
+  const portion = nut.querySelector('[data-p="kcal_portion"]');
+  portion.value = "150";
+  portion.dispatchEvent(new dom.window.Event("change"));
+  await flush();
+  assert.deepEqual(hass.wsCalls.filter((m) => m.type === `${D}/product_set`), [
+    { type: `${D}/product_set`, device_id: "d1", product: { kcal_portion: "150" } },
+  ]);
+  // leere Dose: ausgeblendet
+  document.body.innerHTML = "";
+  const empty = mount(adminHass([{ id: "d1", name: "A" }]));
+  assert.equal($(empty, ".card details.nutrition").hidden, true);
 });
 
 test("Schnellaktionen: ohne Inhalt versteckt, ohne MHD ist +1 Tag gesperrt", () => {

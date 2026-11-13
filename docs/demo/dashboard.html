@@ -68,7 +68,7 @@ doses.forEach(([name, area, content, days, category], i) => {
   devices[id] = { id, name, name_by_user: null, area_id: area };
   const ids = { text: `text.${id}_c`, date: `date.${id}_b`, datetime: `datetime.${id}_f`, button: `button.${id}_e`, image: `image.${id}_q`, switch: `switch.${id}_v`, number: `number.${id}_p`, select: `select.${id}_u` };
   for (const e of Object.values(ids)) entities[e] = { entity_id: e, device_id: id, platform: "larder" };
-  states[ids.text] = { entity_id: ids.text, state: content, attributes: { category } };
+  states[ids.text] = { entity_id: ids.text, state: content, attributes: { category, ...(/Penne/.test(content) ? { brand: "Barilla", package: "500 g", ean: "8076800195057", kcal_100g: 359, kcal_portion: 449, nutri_score: "A", allergens: de ? "Gluten" : "Gluten", nutrients: de ? "Fett 2 g, Kohlenhydrate 71 g, davon Zucker 3,5 g, Eiweiß 13 g, Salz 0,01 g (pro 100 g)" : "Fat 2 g, carbohydrates 71 g, of which sugars 3.5 g, protein 13 g, salt 0.01 g (per 100 g)", source: "openfoodfacts" } : {}) } };
   states[ids.date] = { entity_id: ids.date, state: days === null ? "unknown" : day(days), attributes: { estimates: true } };
   states[ids.datetime] = { entity_id: ids.datetime, state: "unknown", attributes: {} };
   states[ids.switch] = { entity_id: ids.switch, state: "on", attributes: {} };

@@ -30,7 +30,7 @@ async def test_inventory_csv(hass: HomeAssistant, hass_client) -> None:
     assert text.startswith("﻿Name;ID;Bereich;Fach;Inhalt;Menge;Einheit;Eingelagert am;MHD;Tage übrig;Status;Vakuum")
     lines = text.lstrip("﻿").splitlines()
     assert lines[1].startswith("Dose AAAA;AAAA;Kühlschrank;;Salami, Leberwurst;3;Scheiben;")
-    assert lines[1].endswith(";2;läuft bald ab;ja")
+    assert lines[1].endswith(";2;läuft bald ab;ja;;;;;;;;")
     assert lines[2].startswith("Dose BBBB;BBBB;;;;;;")
 
     client = await hass_client()

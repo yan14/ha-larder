@@ -95,6 +95,7 @@ export const TEXTS = {
     labelsHint: "Mit 100 % drucken (nicht „an Seite anpassen“), damit die Codes auf die Etiketten treffen.",
     selectLabels: "Etiketten",
     selectEmpty: (n) => `Leeren (${n})`,
+    kcal: (k, lang) => `${String(k.value).replace(".", ",")} kcal${k.per === "portion" ? "/Portion" : "/100 g"}`,
     plan: "Einplanen",
     planTitle: "Gericht einplanen",
     planDish: "Gericht",
@@ -328,6 +329,7 @@ export const TEXTS = {
     labelsHint: "Print at 100 % (not “fit to page”) so the codes hit the labels.",
     selectLabels: "Labels",
     selectEmpty: (n) => `Empty (${n})`,
+    kcal: (k) => `${k.value} kcal${k.per === "portion" ? "/portion" : "/100 g"}`,
     plan: "Plan",
     planTitle: "Plan a dish",
     planDish: "Dish",
@@ -527,7 +529,9 @@ export function describeDevices(hass, devices, now = new Date()) {
     const category = content ? (text.attributes && text.attributes.category) || "other" : "empty";
     const comp = states[dev.entities.compartment];
     const compartment = isValid(comp) ? comp.state.trim() : "";
-    return { dev, id: dev.deviceId, name: dev.name, content, days, soon: soonDaysOf(date), category, areaId: dev.areaId, areaName: dev.areaName, compartment };
+    const attrs = (content && text.attributes) || {};
+    const kcal = attrs.kcal_portion !== undefined ? { value: attrs.kcal_portion, per: "portion" } : attrs.kcal_100g !== undefined ? { value: attrs.kcal_100g, per: "100g" } : null;
+    return { dev, id: dev.deviceId, name: dev.name, content, days, soon: soonDaysOf(date), category, areaId: dev.areaId, areaName: dev.areaName, compartment, kcal, nutriScore: attrs.nutri_score || null };
   });
 }
 
@@ -703,6 +707,7 @@ const STYLE = `
   .tile .name { font-size: 14px; font-weight: 500; max-width: 100%; line-height: 1.2; overflow: hidden; overflow-wrap: anywhere; hyphens: auto;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .tile .sub { font-size: 11px; color: var(--secondary-text-color); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tile .kcal { font-size: 10px; color: var(--secondary-text-color); margin-top: 2px; }
   .tile.empty { opacity: .65; border-style: dashed; }
   .tile.selected, .row.selected { outline: 3px solid var(--primary-color); outline-offset: -3px; opacity: 1; }
   .tile .check, .row .check { position: absolute; top: 6px; right: 8px; font-size: 16px; color: var(--primary-color); }
@@ -1158,7 +1163,7 @@ export class LarderDashboard extends HTMLElement {
       this._filter,
       this._opts,
       t.title,
-      rows.map((r) => [r.id, r.name, r.content, r.days, r.category, r.areaId, r.areaName, r.compartment]),
+      rows.map((r) => [r.id, r.name, r.content, r.days, r.category, r.areaId, r.areaName, r.compartment, r.kcal]),
       hass.user && hass.user.name,
       isAdmin(hass),
       this._canGenerate(),
@@ -1249,6 +1254,7 @@ export class LarderDashboard extends HTMLElement {
     tile.append(el("span", "name", empty ? t.empty : row.content));
     tile.append(el("span", "sub", [row.name, showArea ? row.areaName : null, row.compartment].filter(Boolean).join(" · ")));
     if (!empty && row.days !== null) tile.append(el("span", `badge ${dayClass(row)}`, daysLabel(t, row.days)));
+    if (!empty && row.kcal) tile.append(el("span", "kcal", t.kcal(row.kcal, this._lang())));
     this._markSelected(tile, row);
     tile.addEventListener("click", () => this.openContainer(row));
     return tile;
@@ -1261,7 +1267,7 @@ export class LarderDashboard extends HTMLElement {
     btn.dataset.id = row.id;
     const text = el("span", "text");
     text.append(el("span", "name", empty ? t.empty : row.content));
-    text.append(el("span", "sub", [row.name, row.areaName, row.compartment].filter(Boolean).join(" · ")));
+    text.append(el("span", "sub", [row.name, row.areaName, row.compartment, !empty && row.kcal ? t.kcal(row.kcal, this._lang()) : null].filter(Boolean).join(" · ")));
     btn.append(el("span", "ico", CATEGORY_ICONS[row.category] || CATEGORY_ICONS.other), text);
     if (!empty && row.days !== null) btn.append(el("span", `badge ${dayClass(row)}`, daysLabel(t, row.days)));
     this._markSelected(btn, row);

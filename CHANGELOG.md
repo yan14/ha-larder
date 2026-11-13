@@ -3,6 +3,11 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 2.11.0
+
+- **Product data from the barcode:** brand, package size and EAN are kept along with the name.
+- **Nutrition per container:** kcal per 100 g and per portion, Nutri-Score, allergens and nutrients as free text. Filled from Open Food Facts after a scan (credited as source), otherwise entered by hand in the new fold-out **Nutrition** section of the card. kcal on tiles and in the list; attributes of the **Contents** entity; in the CSV and the history; cleared when emptying.
+
 ## 2.10.0
 
 - **Add container with options:** the add dialog now also sets **Vacuum**, **Add to shopping list when emptied** and **Flexible storage place** with **After emptying, back to** (also for the NFC ways).
