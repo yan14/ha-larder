@@ -32,7 +32,7 @@ function makeHass(doses, language = "de") {
     const date = `date.${d.id}_mhd`;
     entities[text] = { entity_id: text, device_id: d.id, platform: "larder" };
     entities[date] = { entity_id: date, device_id: d.id, platform: "larder" };
-    states[text] = { entity_id: text, state: d.content ?? "unknown", attributes: { category: d.category } };
+    states[text] = { entity_id: text, state: d.content ?? "unknown", attributes: { category: d.category, allergen_warning: d.allergens } };
     states[date] = { entity_id: date, state: d.mhd ?? "unknown", attributes: { soon_days: 3 } };
   }
   return { entities, devices, states, areas: { keller: { area_id: "keller", name: "Keller" } }, language };
@@ -40,7 +40,7 @@ function makeHass(doses, language = "de") {
 
 const DOSES = [
   { id: "a", name: "Dose 1", area: "keller", content: "Gulasch", mhd: iso(2), category: "dish" },
-  { id: "b", name: "Dose 2", content: "Fisch", mhd: iso(-1), category: "fish" },
+  { id: "b", name: "Dose 2", content: "Fisch", mhd: iso(-1), category: "fish", allergens: ["Fisch"] },
   { id: "c", name: "Dose 3", content: "Reis", mhd: iso(30) },
   { id: "d", name: "Dose 4", content: "", mhd: iso(1) },
 ];
@@ -69,6 +69,7 @@ test("Karte rendert Zeilen, Limit und navigiert beim Antippen", () => {
   assert.equal(rows.length, 1);
   assert.match(rows[0].textContent, /Fisch/);
   assert.match(rows[0].textContent, /seit gestern abgelaufen/);
+  assert.match(rows[0].textContent, /⚠ Fisch/);
   assert.match(root.querySelector(".more").textContent, /1 weitere/);
   let navigated = false;
   window.addEventListener("location-changed", () => (navigated = true), { once: true });

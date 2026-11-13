@@ -213,7 +213,9 @@
           "thaw_days": "Thawing: days ahead",
           "experimental_panel": "Show “Larder experimental” in the sidebar",
           "recipe_days": "Period for recipe ideas (days)",
-          "soon_days": "\"Expiring soon\" from (days)"
+          "soon_days": "\"Expiring soon\" from (days)",
+          "shopping_details": "Brand and package on the shopping list",
+          "watch_allergens": "Allergens in the household (optional)"
         },
         "data_description": {
           "vacuum_default": "New containers start with the “Vacuum” switch on or off. Existing containers keep their value. Switch it off if most of your boxes are not vacuum-sealed.",
@@ -230,7 +232,9 @@
           "thaw_days": "How many days before the planned day the summary reminds you of containers in the freezer (0 = on the day itself).",
           "experimental_panel": "Second sidebar entry for trying new features before they reach the normal dashboard. At the moment it is the same as the normal Larder dashboard.",
           "recipe_days": "Recipe ideas \"from leftovers\" use containers that expire within this many days (0 = today only). In the dashboard you can change the period for a single request or turn it off.",
-          "soon_days": "From this many days left a container counts as \"expiring soon\" (hint in the dashboard, filter, sensor status and the default for the expiry overview)."
+          "soon_days": "From this many days left a container counts as \"expiring soon\" (hint in the dashboard, filter, sensor status and the default for the expiry overview).",
+          "shopping_details": "If the brand or package size of a container is known (e.g. after a barcode scan), it goes onto the list with the contents when emptying: \"Oats (Kölln, 500 g)\".",
+          "watch_allergens": "Containers whose allergens or contents match get a ⚠ on the card and tile; recipe ideas leave them out and avoid these ingredients. Only a hint, no guarantee."
         }
       }
     },
@@ -349,6 +353,24 @@
         "table": "Table only (no AI)",
         "table_ai": "Table, otherwise AI",
         "ai": "AI only"
+      }
+    },
+    "watch_allergens": {
+      "options": {
+        "gluten": "Gluten",
+        "milk": "Milk (lactose)",
+        "eggs": "Eggs",
+        "nuts": "Tree nuts",
+        "peanuts": "Peanuts",
+        "soybeans": "Soy",
+        "fish": "Fish",
+        "crustaceans": "Crustaceans",
+        "molluscs": "Molluscs",
+        "celery": "Celery",
+        "mustard": "Mustard",
+        "sesame_seeds": "Sesame",
+        "sulphur_dioxide_and_sulphites": "Sulphites",
+        "lupin": "Lupin"
       }
     }
   },

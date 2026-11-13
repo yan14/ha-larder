@@ -1206,12 +1206,21 @@ test("Strichcode im Befüllen-Dialog: Produktname aus Open Food Facts", async ()
   assert.equal(plain.shadowRoot.querySelector("form.fillform button.barcode").hidden, true);
 });
 
+test("Allergene im Haushalt: Hinweis auf der Karte", async () => {
+  const hass = adminHass([{ id: "d1", name: "A", content: "Müsli", product: { allergen_warning: ["Gluten", "Schalenfrüchte"] } }]);
+  const el = mount(hass);
+  const warn = $(el, ".card .allergen-warning");
+  assert.equal(warn.hidden, false);
+  assert.equal(warn.textContent, "⚠ Enthält Gluten, Schalenfrüchte (Allergene im Haushalt)");
+});
+
 test("Nährwerte auf der Karte: anzeigen und einzeln ändern", async () => {
   const hass = adminHass([{ id: "d1", name: "A", content: "Haferflocken", product: { brand: "Kölln", kcal_100g: 372, nutri_score: "A", source: "openfoodfacts" } }]);
   const el = mount(hass);
   const nut = $(el, ".card details.nutrition");
   assert.equal(nut.hidden, false);
   assert.equal(nut.querySelector("summary").textContent, "Nährwerte · 372 kcal/100 g · Nutri-Score A");
+  assert.equal($(el, ".card .allergen-warning").hidden, true);
   assert.equal(nut.querySelector('[data-p="brand"]').value, "Kölln");
   assert.equal(nut.querySelector('[data-p="nutri_score"]').value, "A");
   assert.equal(nut.querySelector(".source").hidden, false);

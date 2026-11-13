@@ -3,6 +3,12 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 2.13.0
+
+- **Allergens in the household** (setting): containers whose allergens or contents match get a ⚠ on tile, list, card and Lovelace card; recipe ideas leave them out (unless picked) and avoid these allergens; attribute `allergen_warning`.
+- **Shopping list with brand and package:** "Oats (Kölln, 500 g)" when known (setting, on by default); an open item with the same name is not added twice.
+- **Labels:** contents and best-before date are now separate options, e.g. the contents permanently on a jar without a date.
+
 ## 2.12.0
 
 - **Lovelace card** `custom:larder-card`: containers that expire soon on any dashboard (options title, days, show_expired, limit, area); loaded automatically, listed in the card picker, tap opens the container.

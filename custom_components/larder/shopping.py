@@ -15,10 +15,15 @@ from homeassistant.exceptions import HomeAssistantError
 _LOGGER = logging.getLogger(__name__)
 
 
+def _base(item: str) -> str:
+    """Eintrag ohne Zusatz in Klammern: "Haferflocken (Kölln, 500 g)" gilt als "Haferflocken"."""
+    return item.split(" (", 1)[0].strip().casefold()
+
+
 async def async_add_to_shopping_list(hass: HomeAssistant, entity_id: str, item: str) -> bool:
     """Eintrag auf die To-do-Liste setzen. True, wenn ein Eintrag angelegt wurde.
 
-    Steht derselbe Eintrag (Groß-/Kleinschreibung egal) schon offen auf der Liste, wird nichts
+    Steht derselbe Eintrag (Groß-/Kleinschreibung und Zusatz in Klammern egal) schon offen auf der Liste, wird nichts
     doppelt angelegt. Fehler der Liste (nicht erreichbar, schreibgeschützt) werden nur protokolliert,
     das Leeren der Dose soll daran nicht scheitern.
     """
@@ -34,7 +39,7 @@ async def async_add_to_shopping_list(hass: HomeAssistant, entity_id: str, item: 
             return_response=True,
         )
         open_items = ((listed or {}).get(entity_id) or {}).get("items") or []
-        if any(str(i.get("summary", "")).strip().casefold() == item.casefold() for i in open_items):
+        if any(_base(str(i.get("summary", ""))) == _base(item) for i in open_items):
             return False
         await hass.services.async_call(
             "todo", "add_item", {"entity_id": entity_id, "item": item}, blocking=True

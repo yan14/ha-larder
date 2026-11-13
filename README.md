@@ -33,7 +33,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 - [Why this project?](#why-this-project)
 - [Installation](#installation) · [Getting started](#getting-started) · [Adding a container](#adding-a-container) · [Areas and labels](#areas-and-labels) · [Settings](#settings)
-- [Dashboard "Larder"](#dashboard-larder) · [Selecting several containers](#selecting-several-containers) · [Card for your dashboards](#card-for-your-dashboards) · [Filling containers](#filling-containers) · [Larder experimental](#larder-experimental)
+- [Dashboard "Larder"](#dashboard-larder) · [Selecting several containers](#selecting-several-containers) · [Card for your dashboards](#card-for-your-dashboards) · [Filling containers](#filling-containers) · [Allergens](#allergens-in-the-household) · [Larder experimental](#larder-experimental)
 - [Best-before estimate](#best-before-estimate) · [Recipes](#recipes) · [Daily summary](#daily-summary) · [Shopping list](#shopping-list) · [Calendar](#best-before-dates-in-your-calendar) · [Meal plan](#meal-plan) · [Export and import](#export-and-import) · [Statistics](#statistics) · [Repairs](#repairs)
 - [Scanning](#scanning): [in the app](#scanning-in-the-app), [own QR codes](#your-own-qr-codes), [NFC tags](#nfc-tags), [Zwilling codes (iOS Shortcut)](#ios-shortcut-for-the-original-zwilling-codes)
 - [Reference](#reference): [entities](#entities), [services and events](#services-and-events), [webhook](#webhook-interface)
@@ -173,6 +173,8 @@ Settings → Devices & services → **Larder** → **Configure** (on any contain
 | Temperature warning | on | Warning when a freezer or fridge with a temperature sensor stays too warm, see [Repairs](#repairs) |
 | Calendar | none | [Best-before dates in your calendar](#best-before-dates-in-your-calendar) |
 | Shopping list | none | [Shopping list](#shopping-list) for emptied containers |
+| Brand and package on the shopping list | on | "Oats (Kölln, 500 g)" instead of "Oats", see [Shopping list](#shopping-list) |
+| Allergens in the household | none | Warning on containers and no such containers in recipe ideas, see [Allergens in the household](#allergens-in-the-household) |
 | Calendar for the meal plan | none | Planned dishes as all-day events, see [Meal plan](#meal-plan) |
 | Thawing: days ahead | 1 | Thaw reminder for frozen containers of a planned dish, see [Meal plan](#meal-plan) |
 | Larder experimental | off | A second sidebar entry for trying new features, see [Larder experimental](#larder-experimental) |
@@ -264,7 +266,13 @@ The card of a filled container has a fold-out **Nutrition** section: **brand**, 
 
 - The **kcal** also appear on the tile and in the list (per portion if known, otherwise per 100 g).
 - The data belong to the contents: **Empty container** clears them, filling with other contents without a scan as well. They go into the [history](#export-and-import) and the inventory CSV.
-- For automations they are attributes of the **Contents** entity: `brand`, `package`, `ean`, `kcal_100g`, `kcal_portion`, `nutri_score`, `allergens`, `nutrients`, `source`.
+- For automations they are attributes of the **Contents** entity: `brand`, `package`, `ean`, `kcal_100g`, `kcal_portion`, `nutri_score`, `allergens`, `nutrients`, `source` (and `allergen_warning`, see below).
+
+### Allergens in the household
+
+In the [settings](#settings) choose the allergens your household watches out for (the 14 main allergens, e.g. gluten, milk, nuts). Containers whose **allergens** (from Open Food Facts or entered by hand) or whose **contents** match ("Hazelnut spread" → nuts, "Rice pudding" → milk) get a **⚠** with the allergen on the tile, in the list, on the card and in the [Lovelace card](#card-for-your-dashboards). [Recipe ideas](#recipe-ideas) leave such containers out (unless you picked them yourself) and the AI is told to avoid these allergens in extra ingredients. The matched allergens are in the attribute `allergen_warning` of the **Contents** entity.
+
+> Only a hint, no guarantee: recognition depends on what is entered.
 
 The dialog also opens by itself right after you add a new container in the dashboard (including after writing an NFC tag), so you can fill it straight away. It also opens after a scan (📷 in the app, own QR code, NFC tag, Shortcut) when the container is empty; a container that already has contents opens its card.
 
@@ -451,6 +459,7 @@ Plan a dish for a day: **📅 Plan** on a recipe idea or a recipe from the book 
 
 Under Settings → Devices & services → **Larder** → **Configure** you can pick a **to-do list** of Home Assistant, for example the built-in *Shopping list*, Todoist or Bring!. Each container then has a checkbox **Add to shopping list when emptied** (the `Shopping list` switch, off by default). When you press **Empty container** on a container with the checkbox on, its contents are added to the list, for example "Basmati".
 
+- **Brand and package:** if they are known (e.g. after a [barcode scan](#filling-containers)), they go onto the list too: "Oats (Kölln, 500 g)". An open "Oats" counts as the same item and is not added twice. Can be switched off in the settings; with several contents ("Salami, liver sausage") only the names are added.
 - Not everything belongs on the list: leftovers like "pizza leftovers" simply stay unchecked and are never added. The setting belongs to the container and is kept when you empty it, so rice is always bought again and pizza never.
 - An item that is already open on the list is not added twice. Items that are already checked off do not count, so you can buy the same thing again.
 - Without a chosen list nothing happens and the checkbox is hidden. If the list is unavailable, the container is still emptied.
@@ -561,7 +570,7 @@ To print many labels at once: **⋮ → 🖨 Print labels** in the dashboard (al
 
 - the **format**: an A4 sheet with 3 × 8 (70 × 36 mm), 3 × 7 (70 × 42.3 mm) or 2 × 4 (105 × 74 mm) labels, as sold by Avery Zweckform, Herma and others, or a **label printer** (62 × 29 mm like Brother DK-11209, 54 × 25 mm like Dymo 11352, 89 × 36 mm like Dymo 99012; one label per page),
 - **Skip labels already used** (A4 only), to continue on a partly used sheet,
-- **what goes on the label**, at least one of: **QR code**, **container name**, **contents and best-before date**, **nutrition** (kcal, Nutri-Score, allergens, from the [nutrition](#nutrition) of the container). Without the QR code the text is centred and larger, nice for containers with an [NFC tag](#nfc-tags). The text is sized to fill the label and wraps onto a second line instead of being cut off. Contents and date are meant for labels that do not stay on the container (e.g. freezer bags); with only the name the label stays valid when the contents change,
+- **what goes on the label**, at least one of: **QR code**, **container name**, **contents**, **best-before date**, **nutrition** (kcal, Nutri-Score, allergens, from the [nutrition](#nutrition) of the container). Without the QR code the text is centred and larger, nice for containers with an [NFC tag](#nfc-tags). The text is sized to fill the label and wraps onto a second line instead of being cut off. The contents alone suit containers that always hold the same (sugar, rice); the date is meant for labels that do not stay on the container (e.g. freezer bags); with only the name the label stays valid when the contents change,
 - the **design**: plain, frame, notched corners or **handwriting** (jar label with a handwritten font, [Kalam](https://fonts.google.com/specimen/Kalam), SIL Open Font License). Labels are always black and white,
 - **Cutting lines**, for plain paper.
 

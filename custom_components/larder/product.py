@@ -211,3 +211,47 @@ def async_setup_product_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_product)
     websocket_api.async_register_command(hass, ws_product_set)
     domain_data[DATA_WS] = True
+
+
+# Allergene im Haushalt: Begriffe, an denen ein Allergen im Feld "Allergene" (Wortanfang) oder im
+# Inhalt (Teilwort, nur längere Begriffe) erkannt wird. Nur ein Hinweis, keine Garantie.
+ALLERGEN_KEYS = tuple(key.replace("-", "_") for key in _ALLERGENS)  # Übersetzungsschlüssel ohne Bindestrich
+_ALLERGEN_TERMS: dict[str, tuple[str, ...]] = {
+    "gluten": ("gluten", "weizen", "wheat", "roggen", "rye", "gerste", "barley", "dinkel", "spelt", "hafer", "oat"),
+    "milk": ("milch", "milk", "laktose", "lactose", "sahne", "cream", "käse", "cheese", "joghurt", "yogurt", "quark"),
+    "eggs": ("eier", "eggs", "egg", "ei"),
+    "nuts": ("schalenfrüchte", "nüsse", "nuss", "nuts", "nut", "mandel", "almond", "haselnuss", "hazelnut", "walnuss", "walnut", "cashew", "pistazie", "pistachio", "pekan", "pecan", "macadamia"),
+    "peanuts": ("erdnuss", "erdnüsse", "peanut"),
+    "soybeans": ("soja", "soy", "tofu", "edamame"),
+    "fish": ("fisch", "fish", "lachs", "salmon", "thunfisch", "tuna", "forelle", "trout", "kabeljau", "hering", "sardine"),
+    "crustaceans": ("krebstiere", "crustacean", "garnele", "shrimp", "prawn", "krabbe", "crab", "hummer", "lobster", "scampi"),
+    "molluscs": ("weichtiere", "mollusc", "muschel", "mussel", "tintenfisch", "squid", "calamari", "auster", "oyster"),
+    "celery": ("sellerie", "celery"),
+    "mustard": ("senf", "mustard"),
+    "sesame_seeds": ("sesam", "sesame", "tahini"),
+    "sulphur_dioxide_and_sulphites": ("schwefeldioxid", "sulfit", "sulphite", "sulfite"),
+    "lupin": ("lupine", "lupin"),
+}
+
+
+def allergen_name(key: str, language: str) -> str:
+    names = _ALLERGENS.get(key.replace("_", "-"))
+    if not names:
+        return key
+    return names[0 if language.lower().startswith("de") else 1]
+
+
+def watched_allergens(content: str, allergens: str, watched: list[str] | tuple[str, ...], language: str) -> list[str]:
+    """Namen der beobachteten Allergene, die in einer Dose stecken (aus Allergenen und Inhalt)."""
+    found: list[str] = []
+    allergen_text = (allergens or "").casefold()
+    content_text = (content or "").casefold()
+    for key in watched:
+        terms = _ALLERGEN_TERMS.get(key, ())
+        hit = any(re.search(rf"(?<![\w]){re.escape(term)}", allergen_text) for term in terms)
+        if not hit:
+            # im Inhalt auch mitten im Wort ("Haselnusscreme"), aber nur bei längeren Begriffen
+            hit = any(len(term) >= 4 and term in content_text for term in terms)
+        if hit:
+            found.append(allergen_name(key, language))
+    return found

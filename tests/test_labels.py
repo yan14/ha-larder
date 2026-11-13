@@ -24,10 +24,16 @@ def test_pdf_pages_skip_and_text() -> None:
     assert _pages(build_pdf(labels[:23], "3x8", skip=2)) == 2
     assert _pages(build_pdf(labels[:8], "2x4", skip=99)) == 2  # skip wird auf 7 begrenzt
     # Text in Helvetica (WinAnsi): Umlaute als ein Byte, Klammern maskiert, lange Inhalte gekürzt
-    pdf = build_pdf([Label("Küche (1)", "x", "Sehr lange Bolognese-Sauce mit sehr viel Hackfleisch und Gemüse aus dem Garten", "24.12.2026")], language="de", show_content=True)
+    pdf = build_pdf([Label("Küche (1)", "x", "Sehr lange Bolognese-Sauce mit sehr viel Hackfleisch und Gemüse aus dem Garten", "24.12.2026")], language="de", show_content=True, show_best_before=True)
     assert b"K\xfcche \\(1\\)" in pdf
     assert b"MHD: 24.12.2026" in pdf
     assert b"\x85" in pdf  # … am Ende des gekürzten Inhalts (nach zwei Zeilen)
+    # Inhalt und MHD getrennt wählbar
+    jar = Label("Dose 1", "x", "Zucker", "01.12.2026")
+    only_content = build_pdf([jar], language="de", show_content=True)
+    assert b"(Zucker) Tj" in only_content and b"MHD" not in only_content
+    only_date = build_pdf([jar], language="de", show_best_before=True)
+    assert b"MHD: 01.12.2026" in only_date and b"(Zucker)" not in only_date
 
 
 def test_options_designs_and_label_printer() -> None:

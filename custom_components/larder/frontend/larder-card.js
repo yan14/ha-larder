@@ -67,6 +67,7 @@ export function expiringRows(hass, config = {}, now = new Date()) {
       content: text.state.trim(),
       icon: ICONS[(text.attributes && text.attributes.category) || "other"] || ICONS.other,
       days,
+      allergens: Array.isArray(text.attributes && text.attributes.allergen_warning) ? text.attributes.allergen_warning : [],
     });
   }
   return rows.sort((a, b) => a.days - b.days || a.content.localeCompare(b.content));
@@ -125,7 +126,7 @@ export class LarderCard extends HTMLElement {
         ${shown.length ? "" : `<div class="none">${esc(t.none)}</div>`}
         ${shown
           .map(
-            (r) => `<div class="row" data-id="${esc(r.id)}"><span class="ico">${r.icon}</span><span class="text"><div class="name">${esc(r.content)}</div><div class="sub">${esc([r.name, r.area].filter(Boolean).join(" · "))}</div></span><span class="badge${r.days < 0 ? " expired" : ""}">${esc(when(r.days))}</span></div>`,
+            (r) => `<div class="row" data-id="${esc(r.id)}"><span class="ico">${r.icon}</span><span class="text"><div class="name">${esc(r.content)}</div><div class="sub">${esc([r.name, r.area, r.allergens.length ? `⚠ ${r.allergens.join(", ")}` : ""].filter(Boolean).join(" · "))}</div></span><span class="badge${r.days < 0 ? " expired" : ""}">${esc(when(r.days))}</span></div>`,
           )
           .join("")}
         ${rows.length > shown.length ? `<div class="more">${esc(t.more(rows.length - shown.length))}</div>` : ""}

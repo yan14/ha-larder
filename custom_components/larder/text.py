@@ -6,10 +6,13 @@ from typing import Any
 
 from homeassistant.components.text import TextEntity
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
+from .const import DOMAIN, SIGNAL_SETTINGS_CHANGED
 from .entity import LarderConfigEntry, LarderEntity, LarderResettable
-from .estimate import async_get_estimator
+from .estimate import DATA_ESTIMATOR, async_get_estimator
+from .product import watched_allergens
 from .shelf_life import category_for
 
 
@@ -79,6 +82,8 @@ class LarderContent(TextEntity, LarderResettable):
         if (last := await self._async_last_state()) is not None:
             self._attr_native_value = last.state
             self._product = clean_product(dict(last.attributes))
+        # Allergene im Haushalt geändert: Warnung neu berechnen
+        self.async_on_remove(async_dispatcher_connect(self.hass, SIGNAL_SETTINGS_CHANGED, self.async_write_ha_state))
 
     @property
     def product(self) -> dict[str, Any]:
@@ -88,7 +93,14 @@ class LarderContent(TextEntity, LarderResettable):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Kategorie (für Kategorien und Symbole im Dashboard) und, falls vorhanden, Produktdaten."""
         value = self._attr_native_value or ""
-        return {"category": category_for(value) if value else None, **self._product}
+        attrs: dict[str, Any] = {"category": category_for(value) if value else None, **self._product}
+        estimator = self.hass.data.get(DOMAIN, {}).get(DATA_ESTIMATOR)
+        watched = getattr(estimator, "watch_allergens", None)
+        if value.strip() and watched:
+            warning = watched_allergens(value, self._product.get("allergens", ""), watched, self.hass.config.language or "en")
+            if warning:
+                attrs["allergen_warning"] = warning
+        return attrs
 
     async def async_set_product(self, data: dict[str, Any], replace: bool = True) -> None:
         """Produktdaten setzen (replace) oder einzelne Felder ändern; leere Werte löschen das Feld."""

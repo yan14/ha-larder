@@ -79,7 +79,8 @@ export const TEXTS = {
     labelsFor: (n) => (n === null ? "Alle Dosen" : n === 1 ? "1 ausgewählte Dose" : `${n} ausgewählte Dosen`),
     labelsLayout: "Format",
     labelsSkip: "Schon benutzte Etiketten überspringen",
-    labelsContent: "Inhalt und MHD (für Etiketten, die nicht dauerhaft bleiben)",
+    labelsContent: "Inhalt",
+    labelsBestBefore: "MHD (für Etiketten, die nicht dauerhaft bleiben)",
     labelsWhat: "Was aufs Etikett kommt (mindestens eins):",
     labelsQr: "QR-Code",
     labelsName: "Name der Dose",
@@ -320,7 +321,8 @@ export const TEXTS = {
     labelsFor: (n) => (n === null ? "All containers" : n === 1 ? "1 selected container" : `${n} selected containers`),
     labelsLayout: "Format",
     labelsSkip: "Skip labels already used",
-    labelsContent: "Contents and best-before date (for labels that will not stay)",
+    labelsContent: "Contents",
+    labelsBestBefore: "Best-before date (for labels that will not stay)",
     labelsWhat: "What goes on the label (at least one):",
     labelsQr: "QR code",
     labelsName: "Container name",
@@ -545,7 +547,7 @@ export function describeDevices(hass, devices, now = new Date()) {
     const compartment = isValid(comp) ? comp.state.trim() : "";
     const attrs = (content && text.attributes) || {};
     const kcal = attrs.kcal_portion !== undefined ? { value: attrs.kcal_portion, per: "portion" } : attrs.kcal_100g !== undefined ? { value: attrs.kcal_100g, per: "100g" } : null;
-    return { dev, id: dev.deviceId, name: dev.name, content, days, soon: soonDaysOf(date), category, areaId: dev.areaId, areaName: dev.areaName, compartment, kcal, nutriScore: attrs.nutri_score || null };
+    return { dev, id: dev.deviceId, name: dev.name, content, days, soon: soonDaysOf(date), category, areaId: dev.areaId, areaName: dev.areaName, compartment, kcal, nutriScore: attrs.nutri_score || null, allergens: Array.isArray(attrs.allergen_warning) ? attrs.allergen_warning : [] };
   });
 }
 
@@ -722,6 +724,7 @@ const STYLE = `
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
   .tile .sub { font-size: 11px; color: var(--secondary-text-color); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tile .kcal { font-size: 10px; color: var(--secondary-text-color); margin-top: 2px; }
+  .tile .allergen { font-size: 10px; color: var(--error-color, #c62828); font-weight: 600; margin-top: 2px; }
   .tile.empty { opacity: .65; border-style: dashed; }
   .tile.selected, .row.selected { outline: 3px solid var(--primary-color); outline-offset: -3px; opacity: 1; }
   .tile .check, .row .check { position: absolute; top: 6px; right: 8px; font-size: 16px; color: var(--primary-color); }
@@ -1179,7 +1182,7 @@ export class LarderDashboard extends HTMLElement {
       this._filter,
       this._opts,
       t.title,
-      rows.map((r) => [r.id, r.name, r.content, r.days, r.category, r.areaId, r.areaName, r.compartment, r.kcal]),
+      rows.map((r) => [r.id, r.name, r.content, r.days, r.category, r.areaId, r.areaName, r.compartment, r.kcal, r.allergens]),
       hass.user && hass.user.name,
       isAdmin(hass),
       this._canGenerate(),
@@ -1271,6 +1274,7 @@ export class LarderDashboard extends HTMLElement {
     tile.append(el("span", "sub", [row.name, showArea ? row.areaName : null, row.compartment].filter(Boolean).join(" · ")));
     if (!empty && row.days !== null) tile.append(el("span", `badge ${dayClass(row)}`, daysLabel(t, row.days)));
     if (!empty && row.kcal) tile.append(el("span", "kcal", t.kcal(row.kcal, this._lang())));
+    if (!empty && row.allergens.length) tile.append(el("span", "allergen", `⚠ ${row.allergens.join(", ")}`));
     this._markSelected(tile, row);
     tile.addEventListener("click", () => this.openContainer(row));
     return tile;
@@ -1283,7 +1287,7 @@ export class LarderDashboard extends HTMLElement {
     btn.dataset.id = row.id;
     const text = el("span", "text");
     text.append(el("span", "name", empty ? t.empty : row.content));
-    text.append(el("span", "sub", [row.name, row.areaName, row.compartment, !empty && row.kcal ? t.kcal(row.kcal, this._lang()) : null].filter(Boolean).join(" · ")));
+    text.append(el("span", "sub", [row.name, row.areaName, row.compartment, !empty && row.kcal ? t.kcal(row.kcal, this._lang()) : null, !empty && row.allergens.length ? `⚠ ${row.allergens.join(", ")}` : null].filter(Boolean).join(" · ")));
     btn.append(el("span", "ico", CATEGORY_ICONS[row.category] || CATEGORY_ICONS.other), text);
     if (!empty && row.days !== null) btn.append(el("span", `badge ${dayClass(row)}`, daysLabel(t, row.days)));
     this._markSelected(btn, row);
@@ -3115,6 +3119,8 @@ export class LarderDashboard extends HTMLElement {
       check(t.labelsQr, "qr", parts.qr !== false),
       check(t.labelsName, "name", parts.name !== false),
       check(t.labelsContent, "content", !!parts.content),
+      // vor 2.12.1 gab es nur "Inhalt und MHD": gespeicherte Auswahl übernimmt das MHD vom Inhalt
+      check(t.labelsBestBefore, "bestBefore", parts.bestBefore === undefined ? !!parts.content : !!parts.bestBefore),
       check(t.labelsNutrition, "nutrition", !!parts.nutrition),
     );
     const skip = el("input");
@@ -3154,7 +3160,7 @@ export class LarderDashboard extends HTMLElement {
     );
     // geänderte Optionen: alten Link verwerfen; mindestens eins von QR-Code, Name, Inhalt
     const syncParts = () => {
-      submit.disabled = !["qr", "name", "content", "nutrition"].some((f) => form.querySelector(`[data-f="${f}"]`).checked);
+      submit.disabled = !["qr", "name", "content", "bestBefore", "nutrition"].some((f) => form.querySelector(`[data-f="${f}"]`).checked);
     };
     syncParts();
     for (const control of form.querySelectorAll("[data-f]")) {
@@ -3170,12 +3176,13 @@ export class LarderDashboard extends HTMLElement {
   }
 
   /** URL des PDFs (signiert, damit sie sich ohne Anmeldung im Browser der App öffnen lässt). */
-  async labelUrl(deviceIds, { layout, skip, content, border, qr = true, name = true, nutrition = false, design = "plain" }) {
+  async labelUrl(deviceIds, { layout, skip, content, bestBefore = false, border, qr = true, name = true, nutrition = false, design = "plain" }) {
     const params = new URLSearchParams();
     if (deviceIds && deviceIds.length) params.set("device", deviceIds.join(","));
     params.set("layout", layout);
     params.set("skip", String(skip));
     if (content) params.set("content", "1");
+    if (bestBefore !== !!content) params.set("bestbefore", bestBefore ? "1" : "0"); // Standard: wie Inhalt
     if (border) params.set("border", "1");
     if (!qr) params.set("qr", "0");
     if (!name) params.set("name", "0");
@@ -3197,7 +3204,7 @@ export class LarderDashboard extends HTMLElement {
     const layout = value("layout").value;
     const per = LABEL_LAYOUTS[layout].per;
     const skip = LABEL_LAYOUTS[layout].printer ? 0 : Math.min(Math.max(parseInt(value("skip").value, 10) || 0, 0), per - 1);
-    const parts = { qr: value("qr").checked, name: value("name").checked, content: value("content").checked, nutrition: value("nutrition").checked };
+    const parts = { qr: value("qr").checked, name: value("name").checked, content: value("content").checked, bestBefore: value("bestBefore").checked, nutrition: value("nutrition").checked };
     const design = value("design").value;
     this._opts.labelLayout = layout;
     this._opts.labelDesign = design;

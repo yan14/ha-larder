@@ -33,7 +33,7 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 
 - [Warum dieses Projekt?](#warum-dieses-projekt)
 - [Installation](#installation) · [Erste Schritte](#erste-schritte) · [Dose anlegen](#dose-anlegen) · [Bereiche und Labels](#bereiche-und-labels) · [Einstellungen](#einstellungen)
-- [Dashboard „Larder“](#dashboard-larder) · [Mehrere Dosen auswählen](#mehrere-dosen-auswählen) · [Karte für deine Dashboards](#karte-für-deine-dashboards) · [Dosen befüllen](#dosen-befüllen) · [Larder experimental](#larder-experimental)
+- [Dashboard „Larder“](#dashboard-larder) · [Mehrere Dosen auswählen](#mehrere-dosen-auswählen) · [Karte für deine Dashboards](#karte-für-deine-dashboards) · [Dosen befüllen](#dosen-befüllen) · [Allergene](#allergene-im-haushalt) · [Larder experimental](#larder-experimental)
 - [MHD-Schätzung](#mhd-schätzung) · [Rezepte](#rezepte) · [Tägliche Zusammenfassung](#tägliche-zusammenfassung) · [Einkaufsliste](#einkaufsliste) · [Kalender](#mhd-im-kalender) · [Wochenplan](#wochenplan) · [Export und Import](#export-und-import) · [Statistik](#statistik) · [Reparaturhinweise](#reparaturhinweise)
 - [Scannen](#scannen): [in der App](#scannen-in-der-app), [eigene QR-Codes](#eigene-qr-codes), [NFC-Tags](#nfc-tags), [Zwilling-Codes (iOS-Kurzbefehl)](#ios-kurzbefehl-für-die-originalen-zwilling-codes)
 - [Referenz](#referenz): [Entitäten](#entitäten), [Dienste und Ereignisse](#dienste-und-ereignisse), [Webhook](#webhook-schnittstelle)
@@ -173,6 +173,8 @@ Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** (bei ei
 | Temperaturwarnung | an | Warnung, wenn ein Gefrier- oder Kühlschrank mit Temperatursensor zu lange zu warm ist, siehe [Reparaturhinweise](#reparaturhinweise) |
 | Kalender | keiner | [MHD im Kalender](#mhd-im-kalender) |
 | Einkaufsliste | keine | [Einkaufsliste](#einkaufsliste) für geleerte Dosen |
+| Marke und Packung mit auf die Einkaufsliste | an | „Haferflocken (Kölln, 500 g)“ statt „Haferflocken“, siehe [Einkaufsliste](#einkaufsliste) |
+| Allergene im Haushalt | keine | Warnung an Dosen und keine solchen Dosen in Rezeptideen, siehe [Allergene im Haushalt](#allergene-im-haushalt) |
 | Kalender für den Wochenplan | keiner | Geplante Gerichte als ganztägige Termine, siehe [Wochenplan](#wochenplan) |
 | Auftauen: Tage vorher | 1 | Auftau-Erinnerung für Dosen im Gefrierschrank, siehe [Wochenplan](#wochenplan) |
 | Larder experimental | aus | Zweiter Eintrag in der Seitenleiste zum Ausprobieren neuer Funktionen, siehe [Larder experimental](#larder-experimental) |
@@ -264,7 +266,13 @@ Die Karte einer gefüllten Dose hat einen aufklappbaren Bereich **Nährwerte**: 
 
 - Die **kcal** stehen auch auf der Kachel und in der Liste (pro Portion, wenn bekannt, sonst pro 100 g).
 - Die Angaben gehören zum Inhalt: **Behälter leeren** löscht sie, ebenso ein Befüllen mit anderem Inhalt ohne Scan. Sie kommen in den [Verlauf](#export-und-import) und in die Bestands-CSV.
-- Für Automationen sind sie Attribute der Entität **Inhalt**: `brand`, `package`, `ean`, `kcal_100g`, `kcal_portion`, `nutri_score`, `allergens`, `nutrients`, `source`.
+- Für Automationen sind sie Attribute der Entität **Inhalt**: `brand`, `package`, `ean`, `kcal_100g`, `kcal_portion`, `nutri_score`, `allergens`, `nutrients`, `source` (und `allergen_warning`, siehe unten).
+
+### Allergene im Haushalt
+
+In den [Einstellungen](#einstellungen) wählst du die Allergene, auf die ihr achtet (die 14 Hauptallergene, z. B. Gluten, Milch, Schalenfrüchte). Dosen, deren **Allergene** (aus Open Food Facts oder selbst eingetragen) oder deren **Inhalt** dazu passen („Haselnusscreme“ → Schalenfrüchte, „Milchreis“ → Milch), bekommen ein **⚠** mit dem Allergen auf der Kachel, in der Liste, auf der Karte und in der [Lovelace-Karte](#karte-für-deine-dashboards). [Rezeptideen](#rezeptideen) lassen solche Dosen weg (außer du hast sie selbst gewählt), und die KI wird angewiesen, diese Allergene bei weiteren Zutaten zu meiden. Die erkannten Allergene stehen im Attribut `allergen_warning` der Entität **Inhalt**.
+
+> Nur ein Hinweis, keine Garantie: Die Erkennung hängt davon ab, was eingetragen ist.
 
 Der Dialog öffnet sich auch von selbst direkt nach dem Anlegen einer neuen Dose im Dashboard (auch nach dem Beschreiben eines NFC-Tags), sodass du sie gleich befüllen kannst. Ebenso nach einem Scan (📷 in der App, eigener QR-Code, NFC-Tag, Kurzbefehl), wenn die Dose leer ist; eine Dose mit Inhalt öffnet ihre Karte.
 
@@ -451,6 +459,7 @@ Ein Gericht für einen Tag einplanen: **📅 Einplanen** an einer Rezeptidee ode
 
 Unter Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** kannst du eine **To-do-Liste** von Home Assistant wählen, z. B. die eingebaute *Einkaufsliste*, Todoist oder Bring!. Jede Dose hat dann ein Häkchen **Beim Leeren auf die Einkaufsliste** (der Schalter `Einkaufsliste`, standardmäßig aus). Drückst du bei einer Dose mit gesetztem Häkchen **Behälter leeren**, wird ihr Inhalt auf die Liste gesetzt, z. B. „Basmati“.
 
+- **Marke und Packung:** Sind sie bekannt (z. B. nach einem [Strichcode-Scan](#dosen-befüllen)), kommen sie mit auf die Liste: „Haferflocken (Kölln, 500 g)“. Ein offenes „Haferflocken“ gilt als derselbe Eintrag und kommt nicht doppelt. Abschaltbar in den Einstellungen; bei mehreren Inhalten („Salami, Leberwurst“) kommen nur die Namen.
 - Nicht alles gehört auf die Liste: Reste wie „Pizza-Reste“ lässt du einfach ohne Häkchen, sie werden nie eingetragen. Die Einstellung gehört zur Dose und bleibt beim Leeren erhalten. So wird Reis immer nachgekauft und Pizza nie.
 - Steht ein Eintrag schon offen auf der Liste, wird er nicht doppelt angelegt. Bereits abgehakte Einträge zählen nicht, du kannst dasselbe also erneut einkaufen.
 - Ohne gewählte Liste passiert nichts, und das Häkchen ist ausgeblendet. Ist die Liste nicht erreichbar, wird die Dose trotzdem geleert.
@@ -561,7 +570,7 @@ Viele Etiketten auf einmal drucken: im Dashboard **⋮ → 🖨 Etiketten drucke
 
 - das **Format**: einen A4-Bogen mit 3 × 8 (70 × 36 mm), 3 × 7 (70 × 42,3 mm) oder 2 × 4 (105 × 74 mm) Etiketten, wie es sie von Avery Zweckform, Herma und anderen gibt, oder einen **Etikettendrucker** (62 × 29 mm wie Brother DK-11209, 54 × 25 mm wie Dymo 11352, 89 × 36 mm wie Dymo 99012; ein Etikett pro Seite),
 - **Schon benutzte Etiketten überspringen** (nur A4), um auf einem angebrochenen Bogen weiterzumachen,
-- **was aufs Etikett kommt**, mindestens eins von: **QR-Code**, **Name der Dose**, **Inhalt und MHD**, **Nährwerte** (kcal, Nutri-Score, Allergene, aus den [Nährwerten](#nährwerte) der Dose). Ohne QR-Code steht der Text größer in der Mitte, schön für Dosen mit [NFC-Tag](#nfc-tags). Die Schrift wird so groß wie möglich gesetzt und bricht in eine zweite Zeile um statt abgeschnitten zu werden. Inhalt und MHD sind für Etiketten gedacht, die nicht dauerhaft bleiben (z. B. Gefrierbeutel); nur mit dem Namen bleibt das Etikett gültig, wenn sich der Inhalt ändert,
+- **was aufs Etikett kommt**, mindestens eins von: **QR-Code**, **Name der Dose**, **Inhalt**, **MHD**, **Nährwerte** (kcal, Nutri-Score, Allergene, aus den [Nährwerten](#nährwerte) der Dose). Ohne QR-Code steht der Text größer in der Mitte, schön für Dosen mit [NFC-Tag](#nfc-tags). Die Schrift wird so groß wie möglich gesetzt und bricht in eine zweite Zeile um statt abgeschnitten zu werden. Nur der Inhalt passt für Dosen, in denen immer dasselbe ist (Zucker, Reis); das MHD ist für Etiketten gedacht, die nicht dauerhaft bleiben (z. B. Gefrierbeutel); nur mit dem Namen bleibt das Etikett gültig, wenn sich der Inhalt ändert,
 - das **Design**: schlicht, Rahmen, eingekerbte Ecken oder **Handschrift** (Glas-Etikett mit Handschrift-Font [Kalam](https://fonts.google.com/specimen/Kalam), SIL Open Font License). Etiketten sind immer schwarz-weiß,
 - **Schnittlinien**, für normales Papier.
 

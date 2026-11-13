@@ -213,7 +213,9 @@
           "thaw_days": "Auftauen: Tage vorher",
           "experimental_panel": "„Larder experimental“ in der Seitenleiste anzeigen",
           "recipe_days": "Zeitraum für Rezeptideen (Tage)",
-          "soon_days": "„Läuft bald ab“ ab (Tage)"
+          "soon_days": "„Läuft bald ab“ ab (Tage)",
+          "shopping_details": "Marke und Packung mit auf die Einkaufsliste",
+          "watch_allergens": "Allergene im Haushalt (optional)"
         },
         "data_description": {
           "vacuum_default": "Neue Dosen starten mit eingeschaltetem oder ausgeschaltetem Schalter „Vakuum“. Bestehende Dosen behalten ihren Wert. Schalte es aus, wenn die meisten deiner Boxen nicht vakuumiert sind.",
@@ -230,7 +232,9 @@
           "thaw_days": "Wie viele Tage vor dem geplanten Tag die Zusammenfassung an Dosen aus dem Gefrierschrank erinnert (0 = am Tag selbst).",
           "experimental_panel": "Zweiter Eintrag in der Seitenleiste zum Ausprobieren neuer Funktionen, bevor sie ins normale Dashboard kommen. Zurzeit entspricht er dem normalen Larder-Dashboard.",
           "recipe_days": "Rezeptideen „aus Resten“ berücksichtigen Dosen, die in so vielen Tagen ablaufen (0 = nur heute). Im Dashboard lässt sich der Zeitraum für einen einzelnen Aufruf ändern oder ganz abschalten.",
-          "soon_days": "Ab so vielen Resttagen gilt eine Dose als „läuft bald ab“ (Hinweis im Dashboard, Filter, Status des Sensors und Vorgabe für die Ablauf-Übersicht)."
+          "soon_days": "Ab so vielen Resttagen gilt eine Dose als „läuft bald ab“ (Hinweis im Dashboard, Filter, Status des Sensors und Vorgabe für die Ablauf-Übersicht).",
+          "shopping_details": "Sind Marke oder Packungsgröße einer Dose bekannt (z. B. nach einem Strichcode-Scan), kommen sie beim Leeren mit auf die Liste: „Haferflocken (Kölln, 500 g)“.",
+          "watch_allergens": "Dosen, deren Allergene oder Inhalt dazu passen, bekommen ein ⚠ auf Karte und Kachel; Rezeptideen lassen sie weg und meiden diese Zutaten. Nur ein Hinweis, keine Garantie."
         }
       }
     },
@@ -349,6 +353,24 @@
         "table": "Nur Tabelle (ohne KI)",
         "table_ai": "Tabelle, sonst KI",
         "ai": "Nur KI"
+      }
+    },
+    "watch_allergens": {
+      "options": {
+        "gluten": "Gluten",
+        "milk": "Milch (Laktose)",
+        "eggs": "Eier",
+        "nuts": "Schalenfrüchte (Nüsse)",
+        "peanuts": "Erdnüsse",
+        "soybeans": "Soja",
+        "fish": "Fisch",
+        "crustaceans": "Krebstiere",
+        "molluscs": "Weichtiere",
+        "celery": "Sellerie",
+        "mustard": "Senf",
+        "sesame_seeds": "Sesam",
+        "sulphur_dioxide_and_sulphites": "Schwefeldioxid/Sulfite",
+        "lupin": "Lupinen"
       }
     }
   },

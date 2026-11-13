@@ -30,6 +30,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from . import shelf_life
+from .product import ALLERGEN_KEYS
 from .const import (
     CONF_AI_ENABLED,
     CONF_AI_TASK_ENTITY,
@@ -45,6 +46,8 @@ from .const import (
     MAX_SOON_DAYS,
     SOON_DAYS,
     CONF_VACUUM_DEFAULT,
+    CONF_WATCH_ALLERGENS,
+    CONF_SHOPPING_DETAILS,
     CONF_OPENED_DAYS,
     CONF_RECIPE_DAYS,
     CONF_THAWED_DAYS,
@@ -254,6 +257,12 @@ def _entity(value: Any, default: None) -> str | None:
     return str(value) if value else None
 
 
+def _allergen_keys(value: Any, default: list[str]) -> list[str]:
+    if not isinstance(value, (list, tuple)):
+        return list(default)
+    return [key for key in ALLERGEN_KEYS if key in value]
+
+
 def _mode(value: Any, default: str) -> str:
     return value if value in ESTIMATE_MODES else default
 
@@ -274,6 +283,8 @@ SETTINGS: dict[str, tuple[str, Any, Any]] = {
     CONF_MEAL_CALENDAR: ("meal_calendar", None, _entity),
     CONF_THAW_DAYS: ("thaw_days", DEFAULT_THAW_DAYS, _number(0, 3)),
     CONF_VACUUM_DEFAULT: ("vacuum_default", True, _flag),
+    CONF_WATCH_ALLERGENS: ("watch_allergens", [], _allergen_keys),
+    CONF_SHOPPING_DETAILS: ("shopping_details", True, _flag),
     CONF_AI_TASK_ENTITY: ("ai_task_entity", None, _entity),
 }
 

@@ -47,6 +47,8 @@ from .const import (
     CONF_THAWED_DAYS,
     CONF_EXPERIMENTAL,
     CONF_TODO_ENTITY,
+    CONF_WATCH_ALLERGENS,
+    CONF_SHOPPING_DETAILS,
     DEFAULT_OPENED_DAYS,
     DEFAULT_RECIPE_DAYS,
     MAX_RECIPE_DAYS,
@@ -69,6 +71,7 @@ from .const import (
 from .calendar_sync import async_get_calendar_sync
 from .panel import async_sync_experimental_panel
 from .estimate import SETTINGS, async_get_estimator
+from .product import ALLERGEN_KEYS
 from .qr import generate_code, parse_qr
 from .scan import async_get_webhook_id, webhook_urls
 
@@ -264,6 +267,15 @@ class LarderOptionsFlow(OptionsFlow):
                 ),
                 vol.Optional(CONF_TODO_ENTITY): EntitySelector(
                     EntitySelectorConfig(domain="todo")
+                ),
+                vol.Optional(CONF_SHOPPING_DETAILS, default=True): BooleanSelector(),
+                vol.Optional(CONF_WATCH_ALLERGENS): SelectSelector(
+                    SelectSelectorConfig(
+                        options=list(ALLERGEN_KEYS),
+                        translation_key=CONF_WATCH_ALLERGENS,
+                        multiple=True,
+                        mode=SelectSelectorMode.DROPDOWN,
+                    )
                 ),
                 vol.Optional(CONF_MEAL_CALENDAR): EntitySelector(
                     EntitySelectorConfig(domain="calendar")

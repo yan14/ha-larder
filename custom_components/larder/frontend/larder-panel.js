@@ -78,6 +78,7 @@ export const STRINGS = {
     contentPhotoFailed: "Auf dem Foto wurde nichts erkannt.",
     offSource: "Daten: Open Food Facts (ODbL).",
     nutrition: "Nährwerte",
+    allergenWarning: (names) => `⚠ Enthält ${names} (Allergene im Haushalt)`,
     nutritionFields: {
       brand: "Marke",
       package: "Packung",
@@ -234,6 +235,7 @@ export const STRINGS = {
     contentPhotoFailed: "Nothing was recognised in the photo.",
     offSource: "Data: Open Food Facts (ODbL).",
     nutrition: "Nutrition",
+    allergenWarning: (names) => `⚠ Contains ${names} (household allergens)`,
     nutritionFields: {
       brand: "Brand",
       package: "Package",
@@ -616,6 +618,8 @@ const STYLE = `
   .lastrow { display: flex; align-items: center; gap: 8px; font-size: 13px; margin-top: -4px; }
   .lastrow[hidden] { display: none; }
   .lastrow .lasttext { flex: 1; }
+  .allergen-warning { font-size: 13px; font-weight: 600; color: var(--error-color, #c62828); }
+  .allergen-warning[hidden] { display: none; }
   details.nutrition { font-size: 13px; }
   details.nutrition[hidden] { display: none; }
   details.nutrition summary { cursor: pointer; color: var(--primary-color); }
@@ -794,6 +798,7 @@ class DoseCard {
       <div class="row shoprow"><label class="check"><input type="checkbox" data-f="shopping"><span data-l="shopping"></span></label></div>
       <div class="row flexrow"><label class="check"><input type="checkbox" data-f="flexible"><span data-l="flexible"></span></label></div>
       <div class="row homerow"><label data-l="homeArea"></label><select data-f="homeArea"></select></div>
+      <div class="allergen-warning" role="note" hidden></div>
       <details class="nutrition"><summary></summary>
         <div class="nutgrid">
           <label><span data-n="brand"></span><input data-p="brand" type="text" maxlength="80"></label>
@@ -1054,6 +1059,10 @@ class DoseCard {
     const filledNow = isValidState(contentState) && contentState.state.trim() !== "";
     const decimalComma = String(hass.language || "en").toLowerCase().startsWith("de");
     nut.hidden = !filledNow;
+    const warn = this.q(".allergen-warning");
+    const warned = filledNow && Array.isArray(attrs.allergen_warning) && attrs.allergen_warning.length > 0;
+    warn.hidden = !warned;
+    warn.textContent = warned ? t.allergenWarning(attrs.allergen_warning.join(", ")) : "";
     const bits = [t.nutrition];
     if (attrs.kcal_100g !== undefined) bits.push(`${String(attrs.kcal_100g).replace(".", decimalComma ? "," : ".")} kcal/100 g`);
     if (attrs.nutri_score) bits.push(`Nutri-Score ${attrs.nutri_score}`);

@@ -299,7 +299,7 @@ def _text_line(text: str, x: float, y: float, size: float, font: str) -> bytes:
 
 def _layout_text(
     label: Label, show_name: bool, show_content: bool, show_nutrition: bool, width: float, height: float,
-    language: str, bold: str, regular: str, big: bool,
+    language: str, bold: str, regular: str, big: bool, show_best_before: bool = False,
 ) -> list[tuple[str, float, str]]:
     """Zeilen (Text, Größe, Schrift) so groß wie möglich, die in width × height passen.
 
@@ -311,7 +311,7 @@ def _layout_text(
     if content and content.casefold() == main.casefold():
         content = ""  # Name und Inhalt gleich ("Zucker"): nicht doppelt drucken
     extras: list[str] = []
-    if show_content and label.best_before:
+    if show_best_before and label.best_before:
         extras.append(f"{_TEXT[language]['best_before']}: {label.best_before}")
     if show_nutrition and label.nutrition:
         extras.append(label.nutrition)
@@ -355,6 +355,7 @@ def _label_ops(
     show_content: bool = False,
     design: str = "plain",
     show_nutrition: bool = False,
+    show_best_before: bool = False,
 ) -> list[bytes]:
     col, row = index % layout.cols, index // layout.cols
     x_mm = layout.left + col * (layout.width + layout.gap_x)
@@ -371,7 +372,7 @@ def _label_ops(
     if border:
         ops += [b"0.6 G 0.3 w", f"{x:.3f} {y:.3f} {w:.3f} {h:.3f} re S".encode(), b"0 G"]
 
-    has_text = show_name or show_content or show_nutrition or not show_qr
+    has_text = show_name or show_content or show_best_before or show_nutrition or not show_qr
     if show_qr:
         qr_size = min(h - 2 * pad_y, w * 0.38) if has_text else min(w - 2 * pad_x, h - 2 * pad_y)
         qr_x = x + pad_x if has_text else x + (w - qr_size) / 2
@@ -383,7 +384,8 @@ def _label_ops(
     text_h = h - 2 * pad_y
     if has_text:
         lines = _layout_text(
-            label, show_name, show_content, show_nutrition, text_w, text_h, language, bold, regular, not show_qr
+            label, show_name, show_content, show_nutrition, text_w, text_h, language, bold, regular, not show_qr,
+            show_best_before,
         )
         total = sum(size * 1.18 for _, size, _ in lines)
         cursor = y + h / 2 + total / 2
@@ -409,6 +411,7 @@ def build_pdf(
     show_content: bool = False,
     design: str = "plain",
     show_nutrition: bool = False,
+    show_best_before: bool = False,
 ) -> bytes:
     """PDF mit allen Etiketten; `skip` lässt am Anfang schon benutzte Felder eines Bogens frei."""
     if design == "vintage":
@@ -423,7 +426,8 @@ def build_pdf(
         for i, label in enumerate(slots[start : start + layout.per_page]):
             if label is not None:
                 ops += _label_ops(
-                    label, layout, i, border, language, show_qr, show_name, show_content, design, show_nutrition
+                    label, layout, i, border, language, show_qr, show_name, show_content, design, show_nutrition,
+                    show_best_before,
                 )
         pages.append(ops)
 
@@ -519,7 +523,11 @@ def nutrition_line(attrs: dict, language: str) -> str:
 
 
 def collect_labels(
-    hass: HomeAssistant, codes: list[str] | None, with_content: bool, with_nutrition: bool = False
+    hass: HomeAssistant,
+    codes: list[str] | None,
+    with_content: bool,
+    with_nutrition: bool = False,
+    with_best_before: bool | None = None,
 ) -> list[Label]:
     """Etiketten der gewünschten Dosen (alle, wenn `codes` leer ist), alphabetisch nach Name."""
     registry = er.async_get(hass)
@@ -536,8 +544,11 @@ def collect_labels(
             state = hass.states.get(entity_id) if entity_id else None
             if state is not None:
                 nutrition = nutrition_line(dict(state.attributes), language)
-        if with_content:
-            for platform, key in (("text", "content"), ("date", "best_before")):
+        wanted_parts = [("text", "content")] if with_content else []
+        if with_content if with_best_before is None else with_best_before:
+            wanted_parts.append(("date", "best_before"))
+        if wanted_parts:
+            for platform, key in wanted_parts:
                 entity_id = registry.async_get_entity_id(platform, DOMAIN, f"{cc}_{key}")
                 state = hass.states.get(entity_id) if entity_id else None
                 value = state.state if state and state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE) else ""
@@ -551,7 +562,7 @@ def collect_labels(
 
 
 class LabelSheetView(HomeAssistantView):
-    """GET /api/larder/labels.pdf?device=<id>,<id>&layout=3x8&skip=0&content=1&border=0 (oder cc=A,B; ohne: alle)"""
+    """GET /api/larder/labels.pdf?device=<id>,<id>&layout=3x8&skip=0&content=1&bestbefore=1&border=0 (oder cc=A,B; ohne: alle)"""
 
     url = URL
     name = f"api:{DOMAIN}:labels"
@@ -568,7 +579,9 @@ class LabelSheetView(HomeAssistantView):
             return self.json_message("no containers", HTTPStatus.NOT_FOUND)
         show_content = query.get("content") == "1"
         show_nutrition = query.get("nutrition") == "1"
-        labels = collect_labels(hass, codes, show_content, show_nutrition)
+        # Inhalt und MHD getrennt (seit 2.12.1); alte Links mit nur content=1 drucken beides
+        show_best_before = query.get("bestbefore", "1" if show_content else "0") == "1"
+        labels = collect_labels(hass, codes, show_content, show_nutrition, show_best_before)
         if not labels:
             return self.json_message("no containers", HTTPStatus.NOT_FOUND)
         try:
@@ -590,6 +603,7 @@ class LabelSheetView(HomeAssistantView):
                 show_content=show_content,
                 design=design if design in DESIGNS else "plain",
                 show_nutrition=show_nutrition,
+                show_best_before=show_best_before,
             )
         )
         return web.Response(

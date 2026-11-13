@@ -1094,6 +1094,17 @@ test("kcal auf Kachel und in der Liste (pro Portion vor pro 100 g)", async () =>
   assert.equal($(el, 'main .tile[data-id="d3"] .kcal'), null);
 });
 
+test("Allergene im Haushalt: Warnung auf Kachel und in der Liste", async () => {
+  document.body.innerHTML = "";
+  const hass = makeHass(DOSES);
+  hass.states["text.d1_inhalt"].attributes = { category: "fish", allergen_warning: ["Fisch"] };
+  const el = mount(hass);
+  await flush();
+  await go(el, "containers");
+  assert.equal($(el, 'main .tile[data-id="d1"] .allergen').textContent, "⚠ Fisch");
+  assert.equal($(el, 'main .tile[data-id="d2"] .allergen'), null);
+});
+
 test("QR-Etiketten: Dialog aus Menü und Auswahl, signierter Link zum PDF", async () => {
   const hass = makeHass(DOSES);
   const signed = [];
@@ -1146,6 +1157,22 @@ test("QR-Etiketten: Dialog aus Menü und Auswahl, signierter Link zum PDF", asyn
   await flush();
   await flush();
   assert.equal(signed[1].path, "/api/larder/labels.pdf?device=d1%2Cd3&layout=2x4&skip=0");
+
+  // Inhalt und MHD getrennt: nur Inhalt (dauerhaft in der Dose)
+  $(el, '[data-role="labels-selected"]').click();
+  assert.equal(form.querySelector('[data-f="bestBefore"]').checked, false);
+  form.querySelector('[data-f="content"]').checked = true;
+  form.querySelector("button.submit").click();
+  await flush();
+  await flush();
+  assert.equal(signed[2].path, "/api/larder/labels.pdf?device=d1%2Cd3&layout=2x4&skip=0&content=1&bestbefore=0");
+  // nur MHD
+  form.querySelector('[data-f="content"]').checked = false;
+  form.querySelector('[data-f="bestBefore"]').checked = true;
+  form.querySelector("button.submit").click();
+  await flush();
+  await flush();
+  assert.equal(signed[3].path, "/api/larder/labels.pdf?device=d1%2Cd3&layout=2x4&skip=0&bestbefore=1");
 });
 
 test("Inventur nach dem Serien-Scan: nicht gescannte gefüllte Dosen, auswählen und leeren", async () => {
@@ -1246,7 +1273,7 @@ test("QR-Etiketten: was aufs Etikett kommt, Design und Etikettendrucker", async 
   form.querySelector("button.submit").click();
   await flush();
   await flush();
-  assert.equal(signed[0].path, "/api/larder/labels.pdf?layout=62x29&skip=0&content=1&qr=0&name=0&design=handwritten");
+  assert.equal(signed[0].path, "/api/larder/labels.pdf?layout=62x29&skip=0&content=1&bestbefore=0&qr=0&name=0&design=handwritten");
   // wird gemerkt
   $(el, ".overlay").click();
   el.openLabelDialog();

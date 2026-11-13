@@ -11,11 +11,12 @@ import voluptuous as vol
 from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError
 
-from homeassistant.helpers import config_validation as cv, device_registry as dr
+from homeassistant.helpers import config_validation as cv, device_registry as dr, entity_registry as er
 
 from .const import DOMAIN, MAX_RECIPE_DAYS, SERVICE_SUGGEST_RECIPES
 from .estimate import EstimateError, async_get_estimator
 from .expiry import _TEXT, collect_expiring, quantity_text
+from .product import allergen_name
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -61,6 +62,8 @@ def _describe(item: dict[str, Any], language: str) -> str:
         parts.append("use up today" if days <= 0 else f"must be used within {days} day{'s' if days != 1 else ''}")
     if item.get("area"):
         parts.append(f"stored: {item['area']}")
+    if item.get("allergen_warning"):
+        parts.append("contains: " + ", ".join(item["allergen_warning"]))
     return " | ".join(parts)
 
 
@@ -72,6 +75,7 @@ def build_instructions(
     max_recipes: int,
     all_containers: bool = False,
     chosen: bool = False,
+    avoid: list[str] | None = None,
 ) -> str:
     lines = [
         "You suggest simple home-cooking ideas that use up food before it spoils.",
@@ -96,10 +100,25 @@ def build_instructions(
             if servings
             else "Portion size is not specified; assume 2 people."
         ),
+        *(
+            [
+                f"The household avoids these allergens: {', '.join(avoid)}. Do not add extra ingredients "
+                "that contain them, and say so in the steps if a listed item contains one."
+            ]
+            if avoid
+            else []
+        ),
         "For `uses` name only items from the list above, as written in the list.",
         f"Write all texts in the language with code '{language}'. Keep steps short.",
     ]
     return "\n".join(lines)
+
+
+def _allergen_warning(hass: HomeAssistant, cc: str) -> list[str]:
+    """Beobachtete Allergene einer Dose (Attribut `allergen_warning` der Inhalts-Entität)."""
+    entity_id = er.async_get(hass).async_get_entity_id("text", DOMAIN, f"{cc}_content")
+    state = hass.states.get(entity_id) if entity_id else None
+    return list(state.attributes.get("allergen_warning") or []) if state else []
 
 
 def _container_ccs(hass: HomeAssistant, containers: list[str]) -> set[str]:
@@ -197,11 +216,16 @@ async def async_suggest_recipes(
         days = None
     elif days is None:
         days = estimator.recipe_days
-    items = [
-        item
-        for item in collect_expiring(hass, days, include_expired=False, include_undated=all_containers)
-        if (item["content"] or "").strip() and (chosen is None or item["cc"] in chosen)
-    ][:MAX_INGREDIENTS]
+    items = []
+    for item in collect_expiring(hass, days, include_expired=False, include_undated=all_containers):
+        if not (item["content"] or "").strip() or (chosen is not None and item["cc"] not in chosen):
+            continue
+        if warning := _allergen_warning(hass, item["cc"]):
+            if chosen is None:
+                continue  # Allergene im Haushalt: von selbst nie vorschlagen, nur wenn ausdrücklich gewählt
+            item = {**item, "allergen_warning": warning}
+        items.append(item)
+    items = items[:MAX_INGREDIENTS]
     if not items:
         return {"count": 0, "days": days, "ingredients": [], "recipes": [], "summary": "", "speech": ""}
     if not hass.services.has_service("ai_task", "generate_data"):
@@ -217,6 +241,7 @@ async def async_suggest_recipes(
             max_recipes=max_recipes,
             all_containers=all_containers,
             chosen=chosen is not None,
+            avoid=[allergen_name(key, "en") for key in estimator.watch_allergens],
         ),
         "structure": STRUCTURE,
     }

@@ -42,6 +42,7 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
                 translation_key="nothing_to_reset",
             )
         item = self._shopping_item()
+        details = self._shopping_details() if item else ""  # vor dem Leeren, danach sind die Produktdaten weg
         history = await async_get_history(self.hass)
         record = self._history_record(history.pop_pending(self._cc))
         for entity in entities:
@@ -50,8 +51,11 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
         if record is not None:
             history.add(record)
         if item:
-            for part in split_items(item[1]):  # "Salami, Leberwurst" → zwei Einträge
-                await async_add_to_shopping_list(self.hass, item[0], part)
+            parts = split_items(item[1])  # "Salami, Leberwurst" → zwei Einträge
+            for part in parts:
+                # Marke/Packung nur bei einem Inhalt, bei "Salami, Leberwurst" gehören sie zu keinem bestimmt
+                text = f"{part} ({details})" if details and len(parts) == 1 else part
+                await async_add_to_shopping_list(self.hass, item[0], text)
 
     def _history_record(self, outcome: str | None) -> dict | None:
         """Was gerade drin ist, für den Verlauf (None bei leerer Dose)."""
@@ -113,6 +117,14 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
                 await self.hass.services.async_call(
                     "text", "set_value", {"entity_id": compartment.entity_id, "value": ""}, blocking=True
                 )
+
+    def _shopping_details(self) -> str:
+        """Marke und Packung für die Einkaufsliste ("Kölln, 500 g"), wenn bekannt und eingeschaltet."""
+        estimator = self.hass.data.get(DOMAIN, {}).get("estimator")
+        if not getattr(estimator, "shopping_details", True):
+            return ""
+        product = self._product_data() or {}
+        return ", ".join(str(product[k]).strip() for k in ("brand", "package") if str(product.get(k) or "").strip())
 
     def _shopping_item(self) -> tuple[str, str] | None:
         """(To-do-Liste, Eintrag), wenn die Dose beim Leeren etwas auf die Liste setzen soll."""
