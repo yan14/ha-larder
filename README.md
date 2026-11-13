@@ -34,7 +34,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 - [Why this project?](#why-this-project)
 - [Installation](#installation) · [Getting started](#getting-started) · [Adding a container](#adding-a-container) · [Areas and labels](#areas-and-labels) · [Settings](#settings)
 - [Dashboard "Larder"](#dashboard-larder) · [Selecting several containers](#selecting-several-containers) · [Filling containers](#filling-containers) · [Larder experimental](#larder-experimental)
-- [Best-before estimate](#best-before-estimate) · [Recipes](#recipes) · [Daily summary](#daily-summary) · [Shopping list](#shopping-list) · [Calendar](#best-before-dates-in-your-calendar) · [Export and import](#export-and-import) · [Repairs](#repairs)
+- [Best-before estimate](#best-before-estimate) · [Recipes](#recipes) · [Daily summary](#daily-summary) · [Shopping list](#shopping-list) · [Calendar](#best-before-dates-in-your-calendar) · [Export and import](#export-and-import) · [Statistics](#statistics) · [Repairs](#repairs)
 - [Scanning](#scanning): [in the app](#scanning-in-the-app), [own QR codes](#your-own-qr-codes), [NFC tags](#nfc-tags), [Zwilling codes (iOS Shortcut)](#ios-shortcut-for-the-original-zwilling-codes)
 - [Reference](#reference): [entities](#entities), [services and events](#services-and-events), [webhook](#webhook-interface)
 - [Alternatives](#alternatives) · [Development](#development)
@@ -431,6 +431,38 @@ The downloads open via a link that is valid for five minutes, also in the Home A
 
 For bug reports, **Download diagnostics** (⋮ on a container's entry under Settings → Devices & services → Larder) collects the settings, the container and its entities. The secret webhook ID and the remembered estimates themselves are not included.
 
+## Statistics
+
+**☰ → 📊 Statistics** in the dashboard shows, for the last 30 or 90 days, a year or everything:
+
+- **In stock now**: filled, empty, expiring soon, expired (and filled without a date).
+- **Emptied**: how many were eaten and thrown away, the share thrown away and the average storage time until eaten.
+- **Thrown away most often**, **eaten most often** (with [several contents](#several-contents-in-one-container) each item counts) and **thrown away by area**.
+- **Last months** as bars: eaten (green) and thrown away (red).
+
+The numbers come from the [history](#export-and-import), so they grow as you empty containers with **Eaten** or **Thrown away**. Containers emptied without an answer count as thrown away if they had expired.
+
+For your own dashboards and automations the service `larder.get_statistics` returns the same data (`days` optional). A template sensor, for example:
+
+```yaml
+template:
+  - triggers:
+      - trigger: time_pattern
+        hours: "/1"
+    actions:
+      - action: larder.get_statistics
+        data:
+          days: 30
+        response_variable: stats
+    sensor:
+      - name: Larder thrown away (30 days)
+        state: "{{ stats.waste_percent if stats.waste_percent is not none else 0 }}"
+        unit_of_measurement: "%"
+        attributes:
+          filled: "{{ stats.containers.filled }}"
+          expired: "{{ stats.containers.expired }}"
+```
+
 ## Repairs
 
 Larder shows hints under **Settings → System → Repairs** when containers need attention. There is one hint per kind (listing up to ten containers), not one per container:
@@ -568,6 +600,7 @@ The values survive restarts. "Empty container" is a regular button entity, so yo
 | `larder.mark_opened` / `larder.mark_thawed` | Shorten the best-before date after opening or thawing (`days` optional) |
 | `larder.get_expiring` | List what expires soon, with a ready-made text, see [Daily summary](#daily-summary) |
 | `larder.suggest_recipes` | [Recipe ideas](#recipe-ideas) from what expires soon, from all or from selected containers |
+| `larder.get_statistics` | Eaten / thrown away, most frequent contents, storage time and current stock, see [Statistics](#statistics) |
 | `larder.rebuild_calendar` | Clean up the [calendar](#best-before-dates-in-your-calendar) |
 
 The event `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) fires when a linked [NFC tag](#nfc-tags) or one of [your own QR codes](#your-own-qr-codes) is scanned (then with `source: qr`).

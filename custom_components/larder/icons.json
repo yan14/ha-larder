@@ -85,6 +85,9 @@
     },
     "rebuild_calendar": {
       "service": "mdi:calendar-sync"
+    },
+    "get_statistics": {
+      "service": "mdi:chart-bar"
     }
   }
 }

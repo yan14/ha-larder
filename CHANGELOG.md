@@ -3,6 +3,11 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 2.8.0
+
+- **Statistics** (dashboard **☰ → 📊 Statistics**): current stock (filled, empty, expiring soon, expired), eaten vs. thrown away with the share thrown away, average storage time until eaten, the contents thrown away and eaten most often, thrown away by area, and the last six months as bars. Period 30 / 90 days, one year or everything.
+- New service `larder.get_statistics` with the same data, e.g. for template sensors (example in the README).
+
 ## 2.7.0
 
 - **History per container:** every emptying is recorded (contents, quantity, area, filled on, best before, emptied on, days stored, expired or not). The card asks **😋 Eaten / 🗑 Thrown away** before emptying (after **−1** on the last portion it counts as eaten) and shows the last ten fillings under **History**. The whole history can be downloaded as CSV under **☰ → 📦 Export and import**. Groundwork for statistics.

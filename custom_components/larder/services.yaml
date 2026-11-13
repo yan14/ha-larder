@@ -108,3 +108,13 @@ suggest_recipes:
           min: 1
           max: 5
           mode: box
+
+get_statistics:
+  fields:
+    days:
+      required: false
+      selector:
+        number:
+          min: 1
+          max: 3650
+          mode: box

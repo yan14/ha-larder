@@ -39,6 +39,27 @@ export const TEXTS = {
     menuEstimates: "Gemerkte Schätzungen",
     menuLabels: "QR-Etiketten drucken",
     menuData: "Export und Import",
+    menuStats: "Statistik",
+    statsPeriod: "Zeitraum",
+    statsPeriods: { 30: "30 Tage", 90: "90 Tage", 365: "1 Jahr", all: "Alles" },
+    statsNow: "Jetzt im Vorrat",
+    statsFilled: "gefüllt",
+    statsEmpty: "leer",
+    statsExpired: "abgelaufen",
+    statsSoon: "läuft bald ab",
+    statsUndated: "ohne MHD",
+    statsEmptied: "Geleert",
+    statsEaten: "gegessen",
+    statsThrown: "weggeworfen",
+    statsUnknown: "ohne Angabe",
+    statsWaste: (p) => `${p} % weggeworfen`,
+    statsAvg: (d) => `Ø ${String(d).replace(".", ",")} Tage gelagert, bis es gegessen wurde`,
+    statsTopThrown: "Am häufigsten weggeworfen",
+    statsTopEaten: "Am häufigsten gegessen",
+    statsByArea: "Weggeworfen nach Bereich",
+    statsMonths: "Letzte Monate",
+    statsNone: "Noch kein Verlauf. Die Statistik füllt sich, sobald du Dosen leerst (mit „Gegessen“ oder „Weggeworfen“).",
+    statsHint: "Ohne Angabe geleerte Dosen, die abgelaufen waren, zählen als weggeworfen.",
     dataTitle: "Export und Import",
     dataExport: "Herunterladen",
     dataInventory: "📄 Bestand als Tabelle (CSV)",
@@ -209,6 +230,27 @@ export const TEXTS = {
     menuEstimates: "Remembered estimates",
     menuLabels: "Print QR labels",
     menuData: "Export and import",
+    menuStats: "Statistics",
+    statsPeriod: "Period",
+    statsPeriods: { 30: "30 days", 90: "90 days", 365: "1 year", all: "All" },
+    statsNow: "In stock now",
+    statsFilled: "filled",
+    statsEmpty: "empty",
+    statsExpired: "expired",
+    statsSoon: "expiring soon",
+    statsUndated: "without date",
+    statsEmptied: "Emptied",
+    statsEaten: "eaten",
+    statsThrown: "thrown away",
+    statsUnknown: "not answered",
+    statsWaste: (p) => `${p} % thrown away`,
+    statsAvg: (d) => `⌀ ${d} days stored until eaten`,
+    statsTopThrown: "Thrown away most often",
+    statsTopEaten: "Eaten most often",
+    statsByArea: "Thrown away by area",
+    statsMonths: "Last months",
+    statsNone: "No history yet. The statistics fill up as you empty containers (with “Eaten” or “Thrown away”).",
+    statsHint: "Containers emptied without an answer that had expired count as thrown away.",
     dataTitle: "Export and import",
     dataExport: "Download",
     dataInventory: "📄 Inventory as a table (CSV)",
@@ -373,7 +415,7 @@ export const CATEGORY_ICONS = {
 };
 
 const VIEWS = ["start", "containers", "recipes", "areas", "categories"];
-const ALL_VIEWS = [...VIEWS, "estimates"]; // "estimates" erreicht man über ⚙ (nur Administratoren)
+const ALL_VIEWS = [...VIEWS, "estimates", "stats"]; // "estimates" und "stats" erreicht man über ☰/⚙
 const MODES = ["grid", "list", "cards"];
 const VIEW_ICONS = { start: "🏠", containers: "🫙", recipes: "📖", areas: "📍", categories: "🏷️" };
 
@@ -634,6 +676,26 @@ const STYLE = `
   .dialog .hint { margin: 0; font-size: 12px; color: var(--secondary-text-color); }
   .dialog a.pdf { align-self: stretch; text-align: center; padding: 12px; border-radius: 10px; font-size: 16px; text-decoration: none;
     background: var(--primary-color); color: var(--text-primary-color, #fff); }
+  .stat { background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 12px; padding: 12px 14px; margin-bottom: 12px; }
+  .stat h3 { margin: 0 0 8px; font-size: 14px; font-weight: 500; color: var(--secondary-text-color); }
+  .stat .figs { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+  .stat .fig { display: flex; flex-direction: column; min-width: 64px; }
+  .stat .fig .num { font-size: 26px; font-weight: 500; line-height: 1.1; }
+  .stat .fig .lbl { font-size: 12px; color: var(--secondary-text-color); }
+  .stat .fig.eaten .num { color: var(--success-color, #2e7d32); }
+  .stat .fig.soon .num { color: var(--warning-color, #f57c00); }
+  .stat .fig.expired .num { color: var(--error-color, #c62828); }
+  .stat .lead { margin: 10px 0 0; }
+  .stat .note { margin: 4px 0 0; }
+  .stat ol.rank { margin: 0; padding-left: 20px; }
+  .stat ol.rank li { margin: 2px 0; }
+  .stat ol.rank .count { color: var(--secondary-text-color); margin-left: 8px; font-size: 13px; }
+  .months { display: flex; align-items: flex-end; gap: 10px; height: 120px; }
+  .month { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; }
+  .month .stack { flex: 1; width: 100%; max-width: 34px; display: flex; flex-direction: column; justify-content: flex-end; }
+  .month .seg.eaten { background: var(--success-color, #43a047); border-radius: 0 0 4px 4px; }
+  .month .seg.thrown { background: var(--error-color, #e53935); border-radius: 4px 4px 0 0; }
+  .month .lbl { font-size: 11px; color: var(--secondary-text-color); margin-top: 4px; }
   .dialog .download { display: flex; flex-direction: column; gap: 4px; }
   .dialog .download a.pdf { text-align: left; font-size: 15px; }
   .dialog input[type="file"] { font: inherit; font-size: 13px; }
@@ -673,7 +735,7 @@ export class LarderDashboard extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>${STYLE}</style>
       <header><button id="menu" type="button" aria-label="Menu">☰</button><h1></h1><button id="settings" type="button" hidden>⚙</button></header>
-      <div class="menu" hidden><button type="button" data-role="menu-estimates"></button><button type="button" data-role="menu-labels"></button><button type="button" data-role="menu-data"></button><button type="button" data-role="menu-settings"></button></div>
+      <div class="menu" hidden><button type="button" data-role="menu-estimates"></button><button type="button" data-role="menu-labels"></button><button type="button" data-role="menu-data"></button><button type="button" data-role="menu-stats"></button><button type="button" data-role="menu-settings"></button></div>
       <div class="notice" role="alert" hidden></div>
       <main></main>
       <nav></nav>
@@ -711,6 +773,10 @@ export class LarderDashboard extends HTMLElement {
     this._menu.querySelector('[data-role="menu-labels"]').addEventListener("click", () => {
       this._menu.hidden = true;
       this.openLabelDialog();
+    });
+    this._menu.querySelector('[data-role="menu-stats"]').addEventListener("click", () => {
+      this._menu.hidden = true;
+      this.setView("stats");
     });
     this._menu.querySelector('[data-role="menu-data"]').addEventListener("click", () => {
       this._menu.hidden = true;
@@ -877,6 +943,7 @@ export class LarderDashboard extends HTMLElement {
       this._selecting = false;
     }
     this._view = view;
+    if (view === "stats") this.loadStats();
     const { soon, ...rest } = filter || {};
     this._filter = { area: null, category: null, state: soon ? "soon" : null, ...rest };
     this._openRecipe = null;
@@ -944,13 +1011,20 @@ export class LarderDashboard extends HTMLElement {
     if (detail) return;
 
     this._title.textContent =
-      this._view === "start" ? this.constructor.appTitle : this._view === "estimates" ? t.estimates : t.views[this._view];
+      this._view === "start"
+        ? this.constructor.appTitle
+        : this._view === "estimates"
+          ? t.estimates
+          : this._view === "stats"
+            ? t.menuStats
+            : t.views[this._view];
     this._settingsBtn.hidden = !isAdmin(hass);
     this._settingsBtn.setAttribute("aria-label", t.settings);
     this._menu.querySelector('[data-role="menu-estimates"]').textContent = `📋 ${t.menuEstimates}`;
     this._menu.querySelector('[data-role="menu-settings"]').textContent = `⚙ ${t.menuSettings}`;
     this._menu.querySelector('[data-role="menu-labels"]').textContent = `🖨 ${t.menuLabels}`;
     this._menu.querySelector('[data-role="menu-data"]').textContent = `📦 ${t.menuData}`;
+    this._menu.querySelector('[data-role="menu-stats"]').textContent = `📊 ${t.menuStats}`;
 
     const rows = this._rows();
     const sig = JSON.stringify([
@@ -974,6 +1048,7 @@ export class LarderDashboard extends HTMLElement {
       this._scan && this._scan.mode,
       this._chosenFor,
       this._areaEdit,
+      this._view === "stats" ? [this._stats, this._statsDays] : null,
       this._view === "areas" ? this._areaSig() : null,
     ]);
     if (sig === this._sig) return;
@@ -996,6 +1071,9 @@ export class LarderDashboard extends HTMLElement {
         break;
       case "estimates":
         this._main.replaceChildren();
+        break;
+      case "stats":
+        this._renderStats(t);
         break;
       default:
         this._renderStart(t, rows);
@@ -2327,6 +2405,129 @@ export class LarderDashboard extends HTMLElement {
     );
     this._overlay.hidden = false;
     title.focus();
+  }
+
+  // ----- Statistik -----
+
+  async loadStats() {
+    const hass = this._hass;
+    if (!hass || !hass.callWS) return;
+    const days = this._statsDays === undefined ? 90 : this._statsDays;
+    this._statsDays = days;
+    try {
+      this._stats = await hass.callWS({ type: `${DOMAIN}/statistics`, ...(days ? { days } : {}) });
+    } catch {
+      this._stats = null;
+    }
+    this._update();
+  }
+
+  _renderStats(t) {
+    const frag = document.createDocumentFragment();
+    const bar = el("div", "bar");
+    bar.append(
+      this._select(
+        Object.entries(t.statsPeriods).map(([k, v]) => [k, v]),
+        String(this._statsDays || "all"),
+        (value) => {
+          this._statsDays = value === "all" ? null : Number(value);
+          this.loadStats();
+        },
+        t.statsPeriod,
+      ),
+      el("span", "grow"),
+    );
+    frag.append(bar);
+    const st = this._stats;
+    if (!st) {
+      this._main.replaceChildren(frag);
+      return;
+    }
+    const box = (title, ...children) => {
+      const card = el("section", "stat");
+      if (title) card.append(el("h3", "", title));
+      card.append(...children);
+      return card;
+    };
+    const figure = (value, label, cls = "") => {
+      const f = el("div", `fig ${cls}`.trim());
+      f.append(el("span", "num", String(value)), el("span", "lbl", label));
+      return f;
+    };
+    const figs = (...items) => {
+      const row = el("div", "figs");
+      row.append(...items);
+      return row;
+    };
+    const c = st.containers;
+    frag.append(
+      box(
+        t.statsNow,
+        figs(
+          figure(c.filled, t.statsFilled),
+          figure(c.empty, t.statsEmpty),
+          figure(c.soon, t.statsSoon, c.soon ? "soon" : ""),
+          figure(c.expired, t.statsExpired, c.expired ? "expired" : ""),
+          ...(c.undated ? [figure(c.undated, t.statsUndated)] : []),
+        ),
+      ),
+    );
+    if (!st.emptied) {
+      frag.append(el("p", "note", t.statsNone));
+      this._main.replaceChildren(frag);
+      return;
+    }
+    const summary = [];
+    if (st.waste_percent !== null && st.waste_percent !== undefined) summary.push(el("p", "lead", t.statsWaste(st.waste_percent)));
+    if (st.avg_days_stored !== null && st.avg_days_stored !== undefined) summary.push(el("p", "note", t.statsAvg(st.avg_days_stored)));
+    frag.append(
+      box(
+        `${t.statsEmptied}: ${st.emptied}`,
+        figs(
+          figure(st.eaten, t.statsEaten, "eaten"),
+          figure(st.thrown, t.statsThrown, st.thrown ? "expired" : ""),
+          ...(st.unknown ? [figure(st.unknown, t.statsUnknown)] : []),
+        ),
+        ...summary,
+      ),
+    );
+    const ranking = (title, items, key, role) => {
+      if (!items || !items.length) return null;
+      const list = el("ol", "rank");
+      list.dataset.role = role;
+      for (const item of items) {
+        const li = el("li");
+        li.append(el("span", "name", item[key]), el("span", "count", `${item.count}×`));
+        list.append(li);
+      }
+      return box(title, list);
+    };
+    for (const node of [
+      ranking(t.statsTopThrown, st.top_thrown, "content", "top-thrown"),
+      ranking(t.statsTopEaten, st.top_eaten, "content", "top-eaten"),
+      ranking(t.statsByArea, st.thrown_by_area, "area", "by-area"),
+    ]) {
+      if (node) frag.append(node);
+    }
+    // Monate als einfache Balken (gegessen grün, weggeworfen rot)
+    const max = Math.max(1, ...st.months.map((m) => m.eaten + m.thrown));
+    const chart = el("div", "months");
+    const lang = this._lang();
+    for (const m of st.months) {
+      const col = el("div", "month");
+      const stack = el("div", "stack");
+      const thrown = el("div", "seg thrown");
+      thrown.style.height = `${(100 * m.thrown) / max}%`;
+      const eaten = el("div", "seg eaten");
+      eaten.style.height = `${(100 * m.eaten) / max}%`;
+      stack.append(thrown, eaten);
+      stack.title = `${m.eaten} ${t.statsEaten}, ${m.thrown} ${t.statsThrown}`;
+      const [y, mo] = m.month.split("-").map(Number);
+      col.append(stack, el("span", "lbl", new Date(y, mo - 1, 1).toLocaleDateString(lang, { month: "short" })));
+      chart.append(col);
+    }
+    frag.append(box(t.statsMonths, chart), el("p", "note", t.statsHint));
+    this._main.replaceChildren(frag);
   }
 
   // ----- Export und Import -----

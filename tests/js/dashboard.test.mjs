@@ -941,6 +941,54 @@ test("Export und Import: signierte Downloads und Einlesen der Schätzungen", asy
   assert.equal(form.querySelector(".error").textContent, "Das ist keine Datei mit Larder-Schätzungen.");
 });
 
+test("Statistik: über das Menü, Zeitraum wechseln, leerer Verlauf", async () => {
+  const hass = makeHass(DOSES);
+  const base = hass.callWS;
+  const asked = [];
+  const STATS = {
+    emptied: 3, eaten: 2, thrown: 1, unknown: 0, waste_percent: 33, avg_days_stored: 4.5,
+    top_thrown: [{ content: "Käse", count: 1 }], top_eaten: [{ content: "Lachs", count: 2 }], thrown_by_area: [{ area: "Küche", count: 1 }],
+    months: [{ month: "2026-10", eaten: 1, thrown: 1 }, { month: "2026-11", eaten: 1, thrown: 0 }],
+    containers: { total: 5, filled: 4, empty: 1, expired: 1, soon: 1, undated: 0 },
+  };
+  let empty = false;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/statistics`) {
+      asked.push(msg);
+      return empty ? { ...STATS, emptied: 0, eaten: 0, thrown: 0, top_thrown: [], top_eaten: [], thrown_by_area: [] } : STATS;
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  $(el, "#settings").click();
+  $(el, '[data-role="menu-stats"]').click();
+  await flush();
+  await flush();
+  assert.equal($(el, "h1").textContent, "Statistik");
+  assert.deepEqual(asked[0], { type: `${D}/statistics`, days: 90 });
+  const text = $(el, "main").textContent;
+  assert.match(text, /33 % weggeworfen/);
+  assert.match(text, /Ø 4,5 Tage gelagert/);
+  assert.equal($(el, '[data-role="top-thrown"] li .name').textContent, "Käse");
+  assert.equal($$(el, ".months .month").length, 2);
+  // Zeitraum "Alles": ohne days
+  const period = $(el, "main .bar select");
+  period.value = "all";
+  period.dispatchEvent(new Event("change"));
+  await flush();
+  await flush();
+  assert.deepEqual(asked[1], { type: `${D}/statistics` });
+  // kein Verlauf: Hinweis, Bestand trotzdem
+  empty = true;
+  period.value = "30";
+  $(el, "main .bar select").dispatchEvent(new Event("change"));
+  await flush();
+  await flush();
+  assert.match($(el, "main").textContent, /Noch kein Verlauf/);
+  assert.match($(el, "main").textContent, /Jetzt im Vorrat/);
+});
+
 test("QR-Etiketten: Dialog aus Menü und Auswahl, signierter Link zum PDF", async () => {
   const hass = makeHass(DOSES);
   const signed = [];

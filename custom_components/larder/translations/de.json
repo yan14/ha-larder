@@ -310,6 +310,16 @@
           "description": "Löscht zusätzlich Termine ohne Larder-Kennung, die wie „MHD: …“ oder „Best before: …“ heißen (z. B. wenn der Kalender Beschreibungen verwirft). Danach werden alle Termine neu angelegt."
         }
       }
+    },
+    "get_statistics": {
+      "name": "Statistik abfragen",
+      "description": "Liefert die Statistik aus dem Verlauf (gegessen, weggeworfen, Anteil weggeworfen, häufigste Inhalte, Lagerdauer) und den aktuellen Bestand.",
+      "fields": {
+        "days": {
+          "name": "Tage",
+          "description": "Nur Leerungen der letzten so vielen Tage. Ohne Angabe: alle."
+        }
+      }
     }
   },
   "selector": {

@@ -310,6 +310,16 @@
           "description": "Additionally removes events without a Larder marker that are titled \"MHD: …\" or \"Best before: …\" (e.g. when the calendar drops descriptions). All events are then recreated."
         }
       }
+    },
+    "get_statistics": {
+      "name": "Get statistics",
+      "description": "Returns statistics from the history (eaten, thrown away, share thrown away, most frequent contents, storage time) and the current inventory.",
+      "fields": {
+        "days": {
+          "name": "Days",
+          "description": "Only emptyings of the last so many days. Empty: all."
+        }
+      }
     }
   },
   "selector": {

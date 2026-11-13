@@ -34,7 +34,7 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 - [Warum dieses Projekt?](#warum-dieses-projekt)
 - [Installation](#installation) · [Erste Schritte](#erste-schritte) · [Dose anlegen](#dose-anlegen) · [Bereiche und Labels](#bereiche-und-labels) · [Einstellungen](#einstellungen)
 - [Dashboard „Larder“](#dashboard-larder) · [Mehrere Dosen auswählen](#mehrere-dosen-auswählen) · [Dosen befüllen](#dosen-befüllen) · [Larder experimental](#larder-experimental)
-- [MHD-Schätzung](#mhd-schätzung) · [Rezepte](#rezepte) · [Tägliche Zusammenfassung](#tägliche-zusammenfassung) · [Einkaufsliste](#einkaufsliste) · [Kalender](#mhd-im-kalender) · [Export und Import](#export-und-import) · [Reparaturhinweise](#reparaturhinweise)
+- [MHD-Schätzung](#mhd-schätzung) · [Rezepte](#rezepte) · [Tägliche Zusammenfassung](#tägliche-zusammenfassung) · [Einkaufsliste](#einkaufsliste) · [Kalender](#mhd-im-kalender) · [Export und Import](#export-und-import) · [Statistik](#statistik) · [Reparaturhinweise](#reparaturhinweise)
 - [Scannen](#scannen): [in der App](#scannen-in-der-app), [eigene QR-Codes](#eigene-qr-codes), [NFC-Tags](#nfc-tags), [Zwilling-Codes (iOS-Kurzbefehl)](#ios-kurzbefehl-für-die-originalen-zwilling-codes)
 - [Referenz](#referenz): [Entitäten](#entitäten), [Dienste und Ereignisse](#dienste-und-ereignisse), [Webhook](#webhook-schnittstelle)
 - [Alternativen](#alternativen) · [Entwicklung](#entwicklung)
@@ -431,6 +431,38 @@ Die Downloads öffnen sich über einen Link, der fünf Minuten gilt, auch in der
 
 Für Fehlerberichte sammelt **Diagnose herunterladen** (⋮ am Eintrag einer Dose unter Einstellungen → Geräte & Dienste → Larder) die Einstellungen, die Dose und ihre Entitäten. Die geheime Webhook-ID und die gemerkten Schätzungen selbst sind nicht enthalten.
 
+## Statistik
+
+**☰ → 📊 Statistik** im Dashboard zeigt für die letzten 30 oder 90 Tage, ein Jahr oder alles:
+
+- **Jetzt im Vorrat**: gefüllt, leer, läuft bald ab, abgelaufen (und gefüllt ohne MHD).
+- **Geleert**: wie viel gegessen und weggeworfen wurde, den Anteil weggeworfen und die durchschnittliche Lagerdauer, bis etwas gegessen wurde.
+- **Am häufigsten weggeworfen**, **am häufigsten gegessen** (bei [mehreren Inhalten](#mehrere-inhalte-in-einer-dose) zählt jeder einzeln) und **weggeworfen nach Bereich**.
+- **Letzte Monate** als Balken: gegessen (grün) und weggeworfen (rot).
+
+Die Zahlen kommen aus dem [Verlauf](#export-und-import), sie wachsen also, wenn du Dosen mit **Gegessen** oder **Weggeworfen** leerst. Ohne Angabe geleerte Dosen zählen als weggeworfen, wenn sie abgelaufen waren.
+
+Für eigene Dashboards und Automationen liefert der Service `larder.get_statistics` dieselben Daten (`days` optional). Zum Beispiel als Template-Sensor:
+
+```yaml
+template:
+  - triggers:
+      - trigger: time_pattern
+        hours: "/1"
+    actions:
+      - action: larder.get_statistics
+        data:
+          days: 30
+        response_variable: stats
+    sensor:
+      - name: Larder weggeworfen (30 Tage)
+        state: "{{ stats.waste_percent if stats.waste_percent is not none else 0 }}"
+        unit_of_measurement: "%"
+        attributes:
+          gefuellt: "{{ stats.containers.filled }}"
+          abgelaufen: "{{ stats.containers.expired }}"
+```
+
 ## Reparaturhinweise
 
 Larder zeigt unter **Einstellungen → System → Reparaturen** Hinweise, wenn Dosen Aufmerksamkeit brauchen. Es gibt einen Hinweis pro Art (mit bis zu zehn Dosen), nicht einen pro Dose:
@@ -568,6 +600,7 @@ Die Werte bleiben über Neustarts erhalten. „Behälter leeren“ ist eine norm
 | `larder.mark_opened` / `larder.mark_thawed` | MHD nach dem Öffnen oder Auftauen kürzen (`days` optional) |
 | `larder.get_expiring` | Liste, was bald abläuft, mit fertigem Text, siehe [Tägliche Zusammenfassung](#tägliche-zusammenfassung) |
 | `larder.suggest_recipes` | [Rezeptideen](#rezeptideen) aus dem, was bald abläuft, aus allen oder aus gewählten Dosen |
+| `larder.get_statistics` | Gegessen / weggeworfen, häufigste Inhalte, Lagerdauer und aktueller Bestand, siehe [Statistik](#statistik) |
 | `larder.rebuild_calendar` | [Kalender](#mhd-im-kalender) aufräumen |
 
 Das Ereignis `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) wird ausgelöst, wenn ein verknüpfter [NFC-Tag](#nfc-tags) oder einer [deiner QR-Codes](#eigene-qr-codes) gescannt wird (dann mit `source: qr`).

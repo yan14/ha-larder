@@ -107,6 +107,19 @@ const hass = {
     : { title: "Grandma's apple pie", minutes: 75, ingredients: ["Servings: 12", "500 g apples", "200 g flour", "100 g sugar"], steps: ["Knead the dough.", "Slice the apples.", "Bake for 45 minutes."], source: "photo" } }) }),
   callWS: async (msg) => {
     if (msg.type === "config/label_registry/list") return demoLabels;
+    if (msg.type === "larder/statistics") return de ? {
+      days: 90, emptied: 23, eaten: 19, thrown: 4, unknown: 0, waste_percent: 17, avg_days_stored: 9.4,
+      top_thrown: [{ content: "Käse", count: 2 }, { content: "Gekochte Eier", count: 1 }, { content: "Suppe", count: 1 }],
+      top_eaten: [{ content: "Bolognese-Sauce", count: 5 }, { content: "Gulasch", count: 3 }, { content: "Lachs", count: 3 }],
+      thrown_by_area: [{ area: "Küche", count: 3 }, { area: "Keller", count: 1 }],
+      months: [["2026-06", 2, 1], ["2026-07", 4, 0], ["2026-08", 3, 1], ["2026-09", 5, 1], ["2026-10", 6, 1], ["2026-11", 3, 0]].map(([month, eaten, thrown]) => ({ month, eaten, thrown })),
+      containers: { total: 10, filled: 9, empty: 1, expired: 1, soon: 3, undated: 0 } } : {
+      days: 90, emptied: 23, eaten: 19, thrown: 4, unknown: 0, waste_percent: 17, avg_days_stored: 9.4,
+      top_thrown: [{ content: "Cheese", count: 2 }, { content: "Boiled eggs", count: 1 }, { content: "Soup", count: 1 }],
+      top_eaten: [{ content: "Bolognese sauce", count: 5 }, { content: "Goulash", count: 3 }, { content: "Salmon", count: 3 }],
+      thrown_by_area: [{ area: "Kitchen", count: 3 }, { area: "Basement", count: 1 }],
+      months: [["2026-06", 2, 1], ["2026-07", 4, 0], ["2026-08", 3, 1], ["2026-09", 5, 1], ["2026-10", 6, 1], ["2026-11", 3, 0]].map(([month, eaten, thrown]) => ({ month, eaten, thrown })),
+      containers: { total: 10, filled: 9, empty: 1, expired: 1, soon: 3, undated: 0 } };
     if (msg.type === "larder/recipes") return { recipes };
     if (msg.type === "larder/settings") return { recipe_days: 3, soon_days: 3, main_panel: "experimental" };
     if (msg.type === "larder/estimates") return { mode: "table", entries: de ? [
