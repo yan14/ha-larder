@@ -106,10 +106,12 @@ async def test_takes_are_logged_and_feed_the_stock_view(hass: HomeAssistant, has
     assert ketchup["value"] == round(ketchup["count"] * 1.99, 2) and res["result"]["value"] == ketchup["value"]
 
     # ohne eigenen Preis, aber mit Strichcode: Open Prices im Hintergrund
-    await _packs(hass, hass_ws_client, [{"content": "Senf", "quantity": 2, "unit": "pieces", "product": {"ean": "4000000000002"}}])
+    senf_pack = (await _packs(hass, hass_ws_client, [{"content": "Senf", "quantity": 2, "unit": "pieces", "product": {"ean": "4000000000002"}}]))[0]
     await _ws(hass, hass_ws_client, type="larder/stock")
     await hass.async_block_till_done()
     assert stock.prices["senf"]["source"] == "openprices" and stock.prices["senf"]["price"] == 2.29
+    attrs = hass.states.get(_eid(hass, "text", senf_pack["cc"])).attributes
+    assert attrs["price_remembered"] == 2.29 and attrs["price_remembered_source"] == "openprices"
     res = await _ws(hass, hass_ws_client, type="larder/stock")
     senf = next(p for p in res["result"]["products"] if p["key"] == "senf")
     assert senf["price"]["source"] == "openprices" and senf["price"]["count"] == 1 and senf["value"] == 4.58

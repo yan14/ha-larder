@@ -76,6 +76,10 @@ export const STRINGS = {
       const s = span < 60 ? `${Math.round(span / 7)} Wochen` : `${Math.round(span / 30)} Monaten`;
       return `📉 Reicht noch ca. ${d} (aus ${takes} Entnahmen in ${s})`;
     },
+    priceLine: (price, estimate, value) => {
+      const m = (v) => `${v.toFixed(2).replace(".", ",")} €`;
+      return `💶 ${estimate ? "ca. " : ""}${m(price)} je Packung${estimate ? " (Open Prices)" : ""}${value ? ` · alle zusammen ca. ${m(value)}` : ""}`;
+    },
     openPack: "Anbrechen",
     openedSince: (d) => `🔓 Angebrochen am ${String(d || "").split("-").reverse().join(".")}`,
     olderElsewhere: (place, d) => `Ältere Packung in ${place} (MHD ${String(d || "").split("-").reverse().join(".")}) – die zuerst nehmen.`,
@@ -252,6 +256,10 @@ export const STRINGS = {
       const d = days < 14 ? `${days} days` : days < 60 ? `${Math.round(days / 7)} weeks` : `${Math.round(days / 30)} months`;
       const s = span < 60 ? `${Math.round(span / 7)} weeks` : `${Math.round(span / 30)} months`;
       return `📉 Lasts about ${d} (from ${takes} takes in ${s})`;
+    },
+    priceLine: (price, estimate, value) => {
+      const m = (v) => `€${v.toFixed(2)}`;
+      return `💶 ${estimate ? "about " : ""}${m(price)} per pack${estimate ? " (Open Prices)" : ""}${value ? ` · all together about ${m(value)}` : ""}`;
     },
     openPack: "Open",
     openedSince: (d) => `🔓 Opened on ${d}`,

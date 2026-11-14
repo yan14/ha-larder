@@ -108,6 +108,7 @@ class LarderContent(TextEntity, LarderResettable):
                 attrs["consumption_basis"] = {"takes": usage["takes"], "days": usage["days"]}
             if "price" not in self._product and (price := stock.prices.get(product_key(value))):
                 attrs["price_remembered"] = price["price"]
+                attrs["price_remembered_source"] = price.get("source")
         if value.strip() and watched:
             warning = watched_allergens(value, self._product.get("allergens", ""), watched, self.hass.config.language or "en")
             if warning:

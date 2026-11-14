@@ -2004,7 +2004,7 @@ test("Karte einer Packung: Anbrechen und Kennzeichen 'angebrochen'", async () =>
 test("Karte einer Packung: reicht noch (alle Orte) und gemerkter Preis als Platzhalter", async () => {
   const hass = adminHass([
     { id: "d1", name: "Packung 1", content: "Ketchup", portions: 2, product: { kind: "pack", consumption_per_week: 0.5, consumption_basis: { takes: 4, days: 180 }, price_remembered: 1.99 } },
-    { id: "d2", name: "Packung 2", content: "ketchup", portions: 1, product: { kind: "pack" } },
+    { id: "d2", name: "Packung 2", content: "ketchup", portions: 1, product: { kind: "pack", price: 2.49 } },
   ]);
   for (const id of ["d1", "d2"]) hass.states[`select.${id}_einheit`].state = "pieces";
   const el = mount(hass);
@@ -2013,4 +2013,18 @@ test("Karte einer Packung: reicht noch (alle Orte) und gemerkter Preis als Platz
   assert.equal(line.hidden, false);
   assert.equal(line.textContent, "📉 Reicht noch ca. 6 Wochen (aus 4 Entnahmen in 6 Monaten)");
   assert.equal(card.querySelector('[data-p="price"]').placeholder, "1.99");
+  // Preiszeile: gemerkter Preis; Wert über beide Packungen (2 × 1,99 + 1 × 2,49)
+  assert.equal(card.querySelector(".priceline").textContent, "💶 1,99 € je Packung · alle zusammen ca. 6,47 €");
+});
+
+test("Karte einer Packung: Preisschätzung von Open Prices, ohne Preis keine Zeile", async () => {
+  const hass = adminHass([
+    { id: "d1", name: "Packung 1", content: "Tomaten", portions: 1, product: { kind: "pack", price_remembered: 1.49, price_remembered_source: "openprices" } },
+    { id: "d2", name: "Packung 2", content: "Senf", portions: 1, product: { kind: "pack" } },
+  ]);
+  for (const id of ["d1", "d2"]) hass.states[`select.${id}_einheit`].state = "pieces";
+  const el = mount(hass);
+  const card = (n) => $$(el, ".card").find((c) => c.querySelector(".name").textContent === n);
+  assert.equal(card("Packung 1").querySelector(".priceline").textContent, "💶 ca. 1,49 € je Packung (Open Prices)");
+  assert.equal(card("Packung 2").querySelector(".priceline").hidden, true);
 });

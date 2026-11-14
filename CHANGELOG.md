@@ -3,6 +3,10 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 3.5.1
+
+- The card of a pack shows the price per pack (own, remembered or the Open Prices estimate, marked as such) and, with several packs, what they are worth together.
+
 ## 3.5.0
 
 - **How long it lasts:** every pack taken (−1, emptying, stocktake) is counted, moving and opening are not. The stock view and the card of a pack show *lasts about … · from n takes in …*; the forecast uses 90 days, widens to 180 or 365 when there are fewer than 3 takes and weights recent takes more.

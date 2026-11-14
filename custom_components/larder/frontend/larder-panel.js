@@ -384,6 +384,7 @@ class DoseCard {
       <div class="row homerow"><label data-l="homeArea"></label><select data-f="homeArea"></select></div>
       <div class="openedline" role="note" hidden></div>
       <div class="usageline" role="note" hidden></div>
+      <div class="priceline" role="note" hidden></div>
       <div class="olderhint" role="note" hidden></div>
       <div class="row minrow" hidden><label data-l="minStock"></label><input data-f="minStock" type="number" min="0" max="999" step="1" inputmode="numeric"><span class="stockinfo"></span></div>
       <div class="allergen-warning" role="note" hidden></div>
@@ -813,24 +814,43 @@ class DoseCard {
         older.textContent = t.olderElsewhere(best.place, best.date);
       }
     }
-    // Verbrauch: reicht der Bestand dieses Produkts (alle Orte) noch wie lange?
-    const usageLine = this.q(".usageline");
-    const perWeek = kind === "pack" && hasContentNow && text.attributes ? Number(text.attributes.consumption_per_week) : 0;
-    usageLine.hidden = !(perWeek > 0);
-    if (perWeek > 0) {
+    // Packungen desselben Produkts (alle Orte): Anzahl und Wert
+    const isPack = kind === "pack" && hasContentNow && text.attributes;
+    const priceOf = (attrs) => {
+      if (!attrs) return null;
+      if (Number(attrs.price) > 0) return { price: Number(attrs.price), source: attrs.price_source || "own" };
+      if (Number(attrs.price_remembered) > 0) return { price: Number(attrs.price_remembered), source: attrs.price_remembered_source || "own" };
+      return null;
+    };
+    let total = 0;
+    let value = 0;
+    if (isPack) {
       const key = text.state.trim().toLowerCase();
-      let total = 0;
       for (const other of this._panel._devices || []) {
         const ot = states[other.entities.text];
         if (!isValidState(ot) || (ot.attributes && ot.attributes.kind) !== "pack" || ot.state.trim().toLowerCase() !== key) continue;
         const q = states[other.entities.number];
         const u = states[other.entities.select];
         const n = isValidState(q) ? Number(q.state) : 0;
-        total += n > 0 && (!u || ["pieces", "portions"].includes(u.state)) ? n : 1;
+        const count = n > 0 && (!u || ["pieces", "portions"].includes(u.state)) ? n : 1;
+        total += count;
+        const p = priceOf(ot.attributes);
+        if (p) value += count * p.price;
       }
+    }
+    // Verbrauch: reicht der Bestand dieses Produkts (alle Orte) noch wie lange?
+    const usageLine = this.q(".usageline");
+    const perWeek = isPack ? Number(text.attributes.consumption_per_week) : 0;
+    usageLine.hidden = !(perWeek > 0);
+    if (perWeek > 0) {
       const basis = text.attributes.consumption_basis || {};
       usageLine.textContent = t.usageLine(Math.round((total / perWeek) * 7), basis.takes || 0, basis.days || 0);
     }
+    // Preis je Packung und Wert aller Packungen dieses Produkts
+    const priceLine = this.q(".priceline");
+    const ownPrice = isPack ? priceOf(text.attributes) : null;
+    priceLine.hidden = !ownPrice;
+    if (ownPrice) priceLine.textContent = t.priceLine(ownPrice.price, ownPrice.source === "openprices", total > 1 ? value : null);
     const priceInput = this.q('[data-p="price"]');
     priceInput.placeholder = text && text.attributes && text.attributes.price_remembered ? String(text.attributes.price_remembered) : "";
     const minRow = this.q(".minrow");

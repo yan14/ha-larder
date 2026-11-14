@@ -159,6 +159,8 @@ export const STYLE = `
   .actions button.openpack[hidden], .openedline[hidden] { display: none; }
   .usageline { font-size: 13px; color: var(--secondary-text-color); }
   .usageline[hidden] { display: none; }
+  .priceline { font-size: 13px; color: var(--secondary-text-color); }
+  .priceline[hidden] { display: none; }
   .openedline { font-size: 13px; font-weight: 500; color: var(--primary-color); }
   .actions button.move[hidden], .row.minrow[hidden] { display: none; }
   .actions { flex-wrap: wrap; }
