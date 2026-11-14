@@ -80,6 +80,8 @@ Ein Beutel funktioniert wie eine Dose (scannen, Portion entnehmen, **Geöffnet**
 
 **📷 Kassenbon** (mit eingerichteter [KI](best-before.md#ki-optional)) liest ein Foto deines Kassenbons: Die Lebensmittel mit Anzahl erscheinen als Zeilen, Nicht-Lebensmittel, Pfand und Summen bleiben weg. Prüfen, MHD ergänzen (oder leer lassen) und **Anlegen** drücken. Das optionale **Fach** im Dialog gilt für alle Zeilen.
 
+**Fach-Vorschläge:** Überall, wo du ein Fach einträgst (Beutel und Packungen anlegen, Verschieben, Karte, Befüll-Dialog), erscheinen die im gewählten Bereich schon benutzten Fächer als Chips unter dem Feld, die häufigsten zuerst; antippen statt tippen. Tippen filtert die Chips, und früher eingetragene Fächer merkt sich das Gerät, auch wenn dort gerade nichts liegt.
+
 - **−1** auf der Karte entnimmt eine Packung; die letzte entfernt den Eintrag.
 - **Verschieben / aufteilen** bringt einen Teil oder alle Packungen eines Eintrags in einen anderen Bereich und ein anderes Fach (z. B. 2 von 5 Ketchup nach *Vorrat · Schrank*). Liegt dort schon dieselbe Ware mit demselben MHD, werden die Packungen zusammengelegt; sonst entsteht ein neuer Eintrag mit denselben Daten.
 - **Mindestbestand** auf der Karte (z. B. mindestens 4 Ketchup) gilt für das Produkt, also für alle Packungen mit diesem Inhalt an allen Orten, und bleibt gemerkt, auch wenn die letzte Packung weg ist. Sobald weniger da ist, kommt das Produkt auf die [Einkaufsliste](kitchen.md#einkaufsliste) (mit Marke und Packung, nicht doppelt).

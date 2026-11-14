@@ -216,7 +216,7 @@ export function buildItems(kind, rows, vacuum = true) {
   return items;
 }
 
-export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN }) {
+export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment }) {
   const proto = Dashboard.prototype;
 
   const fmtDate = (hass, iso) => {
@@ -482,6 +482,8 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN }) {
       error,
       buttonsRow(button("cancel", t.cancel, () => this._closeDialog()), submit),
     );
+    const refreshMoveChips = attachCompartmentChips(compartment, () => knownCompartments(hass, this._classic._devices, area.value), () => {});
+    area.addEventListener("change", refreshMoveChips);
     this._submit = async () => {
       const n = Math.max(1, Math.min(total, parseInt(count.value, 10) || total));
       submit.disabled = true;
@@ -490,6 +492,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN }) {
         const msg = { type: `${DOMAIN}/pack_move`, device_id: deviceId, count: n, compartment: compartment.value.trim() };
         msg.area_id = area.value || null;
         await hass.callWS(msg);
+        rememberCompartment(area.value, msg.compartment);
         const place = [area.value ? area.options[area.selectedIndex].textContent : t.noArea, compartment.value.trim()].filter(Boolean).join(" · ");
         this._closeDialog();
         this.showNotice(t.moveDone(n, place));
@@ -728,6 +731,9 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN }) {
       error,
       buttonsRow(button("cancel", t.cancel, () => this._closeDialog()), submit),
     );
+    const chipsFor = () => knownCompartments(hass, this._classic._devices, area.value);
+    const refreshChips = attachCompartmentChips(compartment, chipsFor, () => {});
+    area.addEventListener("change", refreshChips);
     this._submit = async () => {
       const data = [...rows.children].map((row) => {
         const v = (name) => {
@@ -750,7 +756,10 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN }) {
       try {
         const msg = { type: `${DOMAIN}/create_items`, kind, items };
         if (area.value) msg.area_id = area.value;
-        if (compartment.value.trim()) msg.compartment = compartment.value.trim();
+        if (compartment.value.trim()) {
+          msg.compartment = compartment.value.trim();
+          rememberCompartment(area.value, msg.compartment);
+        }
         const res = await hass.callWS(msg);
         this._opts.itemArea = { ...(this._opts.itemArea || {}), [kind]: area.value };
         this._saveOptions();

@@ -1940,3 +1940,23 @@ test("Packung: Hinweis auf eine ältere Packung an einem anderen Ort", async () 
   assert.match(newer.querySelector(".olderhint").textContent, /Ältere Packung in .*01\.12\.2026/);
   assert.equal(older.querySelector(".olderhint").hidden, true);
 });
+
+test("Karte: Fach-Vorschläge aus dem gleichen Bereich, Antippen speichert", async () => {
+  const hass = adminHass([
+    { id: "d1", name: "A", area: "kitchen", content: "Reis" },
+    { id: "d2", name: "B", area: "kitchen", content: "Nudeln" },
+    { id: "d3", name: "C", area: "cellar", content: "Mehl" },
+  ]);
+  const compId = (id) => `text.${id}_fach`;
+  for (const [id, comp] of [["d1", ""], ["d2", "Schublade 2"], ["d3", "Regal"]]) {
+    hass.entities[compId(id)] = { entity_id: compId(id), device_id: id, platform: D, translation_key: "compartment" };
+    hass.states[compId(id)] = { entity_id: compId(id), state: comp, attributes: {} };
+  }
+  const el = mount(hass);
+  el.hass = { ...hass };
+  const card = $$(el, ".card").find((c) => c.querySelector(".name").textContent === "A");
+  const chips = [...card.querySelectorAll(".compchip")];
+  assert.deepEqual(chips.map((c) => c.textContent), ["Schublade 2"]);
+  chips[0].click();
+  assert.deepEqual(hass.calls.at(-1), { domain: "text", service: "set_value", data: { entity_id: compId("d1"), value: "Schublade 2" } });
+});

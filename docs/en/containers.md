@@ -80,6 +80,8 @@ A bag works like a container (scan it, take a portion, **Opened**, **Thawed**, r
 
 **📷 Receipt** (with an [AI](best-before.md#ai-optional) set up) reads a photo of your shopping receipt: the food items and their count appear as rows, non-food lines, deposits and totals are left out. Check them, add the best-before dates (or leave them empty) and press **Add**. The optional **compartment** in the dialog applies to all rows.
 
+**Compartment suggestions:** wherever you enter a compartment (adding bags and packs, moving, the card, the fill dialog), the compartments already used in the chosen area appear as chips below the field, the most used first; tap one instead of typing. Typing filters the chips, and compartments you entered before are remembered on the device even when nothing is left in them.
+
 - **−1** on the card takes one pack; the last one removes the entry.
 - **Move / split** brings some or all packs of an entry to another area and compartment (e.g. 2 of 5 ketchup to *Pantry · Cupboard*). If the same food with the same best-before date is already there, the packs are merged; otherwise a new entry with the same data is created.
 - **Minimum stock** on the card (e.g. at least 4 ketchup) applies to the product, i.e. to all packs with this contents in every place, and is kept when the last pack is gone. As soon as there are fewer, the product goes onto the [shopping list](kitchen.md#shopping-list) (with brand and package, not twice).

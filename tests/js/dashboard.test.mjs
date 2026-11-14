@@ -1908,3 +1908,48 @@ test("Eingekauft: Startseite bietet abgehakte Einträge an, Anlegen übernimmt O
   assert.deepEqual(created.items, [{ content: "Senf", quantity: 2, unit: "pieces", product: { brand: "Develey" } }]);
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/bought_dismiss`), { type: `${D}/bought_dismiss`, item_id: "b1" });
 });
+
+test("Fach vorschlagen: Chips je Bereich aus vorhandenen und zuletzt benutzten Fächern", async () => {
+  const hass = makeHass(DOSES);
+  for (const [id, comp] of [["d1", "Tür"], ["d2", "Tür"], ["d3", "Regal oben"], ["d4", "Regal unten"]]) {
+    const eid = `text.${id}_fach`;
+    hass.entities[eid] = { entity_id: eid, device_id: id, platform: D, translation_key: "compartment" };
+    hass.states[eid] = { entity_id: eid, state: comp, attributes: {} };
+  }
+  dom.window.localStorage.setItem("larder.compartments", JSON.stringify({ cellar: ["Kiste"] }));
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/create_items`) {
+      hass.wsCalls.push(msg);
+      return { items: [{ device_id: "p1", cc: "HA-1", name: "Packung 1" }] };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await go(el, "containers");
+  $(el, '[data-role="add"]').click();
+  $(el, '[data-role="add-pack"]').click();
+  const form = $(el, "form.dialog");
+  const chips = () => [...form.querySelectorAll('[data-role="compartment-chips"] .compchip')].map((c) => c.textContent);
+  const area = form.querySelector('[data-f="area"]');
+  area.value = "cellar";
+  area.dispatchEvent(new dom.window.Event("change"));
+  assert.deepEqual(chips(), ["Regal oben", "Regal unten", "Kiste"]);
+  area.value = "kitchen";
+  area.dispatchEvent(new dom.window.Event("change"));
+  assert.deepEqual(chips(), ["Tür"]);
+  area.value = "cellar";
+  area.dispatchEvent(new dom.window.Event("change"));
+  const input = form.querySelector('[data-f="compartment"]');
+  input.value = "unten";
+  input.dispatchEvent(new dom.window.Event("input"));
+  assert.deepEqual(chips(), ["Regal unten"]);
+  form.querySelector('[data-role="compartment-chips"] .compchip').click();
+  assert.equal(input.value, "Regal unten");
+  form.querySelector('[data-i="content"]').value = "Bohnen";
+  form.querySelector("button.submit").click();
+  await flush();
+  await flush();
+  assert.equal(hass.wsCalls.find((m) => m.type === `${D}/create_items`).compartment, "Regal unten");
+  assert.deepEqual(JSON.parse(dom.window.localStorage.getItem("larder.compartments")).cellar, ["Regal unten", "Kiste"]);
+});

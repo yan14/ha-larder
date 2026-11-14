@@ -7,7 +7,9 @@
  */
 // Mit derselben Versionsangabe laden wie dieses Modul, damit nie eine ältere Kopie aus dem Cache benutzt wird.
 const VERSION_QUERY = new URL(import.meta.url).search;
-const { collectDevices, daysUntil, isLarderLabel, listAreas, soonDaysOf, SOON_DAYS } = await import(`./larder-panel.js${VERSION_QUERY}`);
+const { attachCompartmentChips, collectDevices, daysUntil, isLarderLabel, knownCompartments, listAreas, rememberCompartment, soonDaysOf, SOON_DAYS } = await import(
+  `./larder-panel.js${VERSION_QUERY}`
+);
 const { installItems } = await import(`./larder-dashboard-items.js${VERSION_QUERY}`);
 
 const DOMAIN = "larder";
@@ -2686,7 +2688,7 @@ export class LarderDashboard extends HTMLElement {
   }
 }
 
-installItems(LarderDashboard, { el, isAdmin, listAreas, DOMAIN });
+installItems(LarderDashboard, { el, isAdmin, listAreas, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment });
 
 if (!customElements.get("larder-dashboard")) {
   customElements.define("larder-dashboard", LarderDashboard);

@@ -14,6 +14,101 @@ const VERSION_QUERY = new URL(import.meta.url).search;
 const { STRINGS } = await import(`./larder-panel-strings.js${VERSION_QUERY}`);
 export { STRINGS };
 
+// ----- Fächer vorschlagen -----
+
+const COMPARTMENT_KEY = `${DOMAIN}.compartments`;
+const MAX_COMPARTMENT_CHIPS = 8;
+
+function loadCompartmentMemory() {
+  try {
+    const raw = JSON.parse(window.localStorage.getItem(COMPARTMENT_KEY) || "{}");
+    return raw && typeof raw === "object" ? raw : {};
+  } catch {
+    return {};
+  }
+}
+
+/** Benutztes Fach merken (je Bereich, die zuletzt benutzten zuerst), auch wenn die Dose später weg ist. */
+export function rememberCompartment(areaId, value) {
+  const text = String(value || "").trim();
+  if (!text) return;
+  const memory = loadCompartmentMemory();
+  const key = areaId || "";
+  memory[key] = [text, ...(memory[key] || []).filter((v) => v.toLowerCase() !== text.toLowerCase())].slice(0, 20);
+  try {
+    window.localStorage.setItem(COMPARTMENT_KEY, JSON.stringify(memory));
+  } catch {
+    /* Speicher voll oder gesperrt: dann eben ohne */
+  }
+}
+
+/**
+ * Fächer, die in einem Bereich schon benutzt werden oder wurden: aus den Dosen, Beuteln und Packungen dort
+ * (am häufigsten zuerst) und aus den zuletzt eingetragenen. Ohne Bereich: alle Fächer.
+ */
+export function knownCompartments(hass, devices, areaId) {
+  const states = (hass && hass.states) || {};
+  const counts = new Map();
+  const add = (value, weight) => {
+    const text = String(value || "").trim();
+    if (!text) return;
+    const key = text.toLowerCase();
+    const entry = counts.get(key) || { text, n: 0 };
+    entry.n += weight;
+    counts.set(key, entry);
+  };
+  for (const dev of devices || []) {
+    if (areaId && (dev.areaId || "") !== areaId) continue;
+    const comp = states[dev.entities.compartment];
+    if (comp && comp.state && !["unknown", "unavailable"].includes(comp.state)) add(comp.state, 1);
+  }
+  const memory = loadCompartmentMemory();
+  const remembered = areaId ? memory[areaId] || [] : Object.values(memory).flat();
+  remembered.forEach((value, i) => add(value, 0.5 + (remembered.length - i) / 100));
+  return [...counts.values()].sort((a, b) => b.n - a.n || a.text.localeCompare(b.text)).map((e) => e.text);
+}
+
+/**
+ * Vorschläge als antippbare Chips unter einem Fach-Feld. `getList` liefert die Fächer (z. B. je nach Bereich);
+ * `refresh()` zeichnet sie neu, etwa wenn der Bereich gewechselt wurde. Getipptes filtert die Chips.
+ */
+export function attachCompartmentChips(input, getList, onPick = null) {
+  let box = input.nextElementSibling;
+  if (!box || !box.classList || !box.classList.contains("compchips")) {
+    box = document.createElement("div");
+    box.className = "compchips";
+    box.dataset.role = "compartment-chips";
+    input.after(box);
+  }
+  const refresh = () => {
+    const typed = input.value.trim().toLowerCase();
+    const list = getList().filter((v) => v.toLowerCase() !== typed && (!typed || v.toLowerCase().includes(typed)));
+    box.replaceChildren(
+      ...list.slice(0, MAX_COMPARTMENT_CHIPS).map((value) => {
+        const chip = document.createElement("button");
+        chip.type = "button";
+        chip.className = "compchip";
+        chip.textContent = value;
+        chip.addEventListener("click", () => {
+          input.value = value;
+          refresh();
+          if (onPick) onPick(value);
+          else input.dispatchEvent(new Event("change"));
+        });
+        return chip;
+      }),
+    );
+    box.hidden = !box.children.length;
+  };
+  if (!input.dataset.chips) {
+    input.dataset.chips = "1";
+    input.addEventListener("input", refresh);
+  }
+  input._refreshChips = refresh;
+  refresh();
+  return refresh;
+}
+
 /** Beschriftung der Quelle eines Schätzwerts (Tabelle, KI oder vom Nutzer korrigiert, mit Ursprung). */
 export function sourceLabel(t, source, origin) {
   if (source === "learned") {
@@ -345,7 +440,9 @@ class DoseCard {
       });
     }
     this.q('[data-f="compartment"]').addEventListener("change", (ev) => {
-      if (this.ids.compartment) this._call("text", "set_value", { entity_id: this.ids.compartment, value: ev.target.value.trim() });
+      if (!this.ids.compartment) return;
+      this._call("text", "set_value", { entity_id: this.ids.compartment, value: ev.target.value.trim() });
+      rememberCompartment(this._areaId, ev.target.value);
     });
     this.inputs.bestBefore.addEventListener("change", () => {
       const v = this.inputs.bestBefore.value;
@@ -588,6 +685,8 @@ class DoseCard {
     this.q('[data-l="compartment"]').textContent = t.compartment;
     const compInput = this.q('[data-f="compartment"]');
     compInput.placeholder = t.compartmentHint;
+    this._areaId = dev.areaId || "";
+    if (comp) attachCompartmentChips(compInput, () => knownCompartments(hass, this._panel._devices, this._areaId));
     compInput.disabled = !comp || comp.state === "unavailable";
     this._setInput(compInput, isValidState(comp) ? comp.state : "");
     if (admin) {
@@ -1346,6 +1445,9 @@ class LarderPanel extends HTMLElement {
       const comp = states[flexible[0].entities.compartment];
       f("compartment").value = isValidState(comp) ? comp.state : "";
       f("compartment").placeholder = t.compartmentHint;
+      // Fächer des gewählten Bereichs vorschlagen (wechselt mit dem Bereich)
+      const refresh = attachCompartmentChips(f("compartment"), () => knownCompartments(hass, this._devices, f("area").value), () => {});
+      f("area").onchange = refresh;
     }
     const shop = states[dev.entities.shopping];
     f("shopping").checked = !!shop && shop.state === "on";
@@ -1573,6 +1675,7 @@ class LarderPanel extends HTMLElement {
     }
     if (values.compartment !== undefined && flex && flex.state === "on" && ids.compartment) {
       await hass.callService("text", "set_value", { entity_id: ids.compartment, value: values.compartment });
+      rememberCompartment(values.area !== undefined ? values.area : dev.areaId, values.compartment);
     }
   }
 

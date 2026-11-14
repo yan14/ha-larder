@@ -164,6 +164,10 @@ export const STYLE = `
   .boughtrow:first-of-type { border-top: 0; }
   .boughtrow .name { flex: 1; min-width: 0; }
   .boughtrow button[data-role="bought-dismiss"] { border: 0; color: var(--secondary-text-color); padding: 6px 8px; }
+  .dialog .compchips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .dialog .compchips[hidden] { display: none; }
+  .dialog .compchip { font: inherit; font-size: 13px; padding: 4px 10px; border-radius: 14px; cursor: pointer;
+    border: 1px solid var(--divider-color); background: none; color: var(--primary-text-color); }
   .stocklist { display: flex; flex-direction: column; gap: 8px; }
   .stockitem { background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 12px; padding: 10px 12px; }
   .stockitem.low { border-color: var(--error-color, #c62828); }

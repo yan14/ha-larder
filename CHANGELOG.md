@@ -3,6 +3,10 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 3.2.1
+
+- **Compartment suggestions:** the compartments already used in the chosen area appear as chips below every compartment field (adding bags and packs, moving, card, fill dialog), most used first; typing filters them, and compartments entered before are remembered on the device.
+
 ## 3.2.0
 
 - **Take a pack by barcode:** scan the barcode of a pack (📷 on the start and containers page, 📷 Barcode in the stock view). Larder shows every place of the product with count and best-before date, the oldest first; **−1** takes one from the place you choose. Unknown products can be added as a pack right away.

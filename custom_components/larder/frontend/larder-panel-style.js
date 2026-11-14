@@ -99,6 +99,10 @@ export const STYLE = `
   .lastrow .lasttext { flex: 1; }
   .allergen-warning { font-size: 13px; font-weight: 600; color: var(--error-color, #c62828); }
   .allergen-warning[hidden] { display: none; }
+  .compchips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; grid-column: 1 / -1; }
+  .compchips[hidden] { display: none; }
+  .compchip { font: inherit; font-size: 13px; padding: 4px 10px; border-radius: 14px; cursor: pointer;
+    border: 1px solid var(--divider-color); background: none; color: var(--primary-text-color); }
   .olderhint { font-size: 13px; color: var(--warning-color, #f57c00); font-weight: 500; }
   .olderhint[hidden] { display: none; }
   details.nutrition { font-size: 13px; }
