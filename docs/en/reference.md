@@ -98,7 +98,7 @@ The values survive restarts. "Empty container" is a regular button entity, so yo
 
 Items of `larder.get_expiring` carry `kind` (`container`, `bag`, `pack`). If the sticker of a bag that was already emptied is scanned, `larder_dose_scanned` fires with `retired: true` and a `message` instead of `cc` and `device_id`.
 
-The event `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) fires when a linked [NFC tag](scanning.md#nfc-tags) or one of [your own QR codes](scanning.md#your-own-qr-codes) is scanned (then with `source: qr`). `larder_temperature_warning` and `larder_temperature_ok` belong to the [temperature warning](#repairs), `larder_running_low` and `larder_recall` to [running low and recalls](kitchen.md#running-low-and-recalls).
+The event `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) fires when a linked [NFC tag](scanning.md#nfc-tags) or one of [your own QR codes](scanning.md#your-own-qr-codes) is scanned (then with `source: qr`). `larder_temperature_warning` and `larder_temperature_ok` belong to the [temperature warning](#repairs), `larder_compartment_scanned` to [compartments](scanning.md#compartments), `larder_running_low` and `larder_recall` to [running low and recalls](kitchen.md#running-low-and-recalls).
 
 ### Webhook interface
 

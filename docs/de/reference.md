@@ -98,7 +98,7 @@ Die Werte bleiben über Neustarts erhalten. „Behälter leeren“ ist eine norm
 
 Die Einträge von `larder.get_expiring` tragen `kind` (`container`, `bag`, `pack`). Wird der Sticker eines schon geleerten Beutels gescannt, kommt `larder_dose_scanned` mit `retired: true` und einer `message` statt `cc` und `device_id`.
 
-Das Ereignis `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) wird ausgelöst, wenn ein verknüpfter [NFC-Tag](scanning.md#nfc-tags) oder einer [deiner QR-Codes](scanning.md#eigene-qr-codes) gescannt wird (dann mit `source: qr`). `larder_temperature_warning` und `larder_temperature_ok` gehören zur [Temperaturwarnung](#reparaturhinweise), `larder_running_low` und `larder_recall` zu [Bald leer und Rückrufe](kitchen.md#bald-leer-und-rückrufe).
+Das Ereignis `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) wird ausgelöst, wenn ein verknüpfter [NFC-Tag](scanning.md#nfc-tags) oder einer [deiner QR-Codes](scanning.md#eigene-qr-codes) gescannt wird (dann mit `source: qr`). `larder_temperature_warning` und `larder_temperature_ok` gehören zur [Temperaturwarnung](#reparaturhinweise), `larder_compartment_scanned` zu den [Fächern](scanning.md#fächer), `larder_running_low` und `larder_recall` zu [Bald leer und Rückrufe](kitchen.md#bald-leer-und-rückrufe).
 
 ### Webhook-Schnittstelle
 

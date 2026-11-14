@@ -41,6 +41,17 @@ const ALL_VIEWS = [...VIEWS, "estimates", "stats", "stock", "stocktake"]; // "es
 const MODES = ["grid", "list", "cards"];
 const VIEW_ICONS = { start: "🏠", containers: "🫙", recipes: "📖", areas: "📍", categories: "🏷️" };
 
+/** QR-Etikett eines Fachs (…/larder?place=<Bereich>&compartment=<Fach>) erkennen. */
+export function placeFromCode(code) {
+  const text = String(code || "").trim();
+  const at = text.indexOf("?");
+  if (at < 0 || !/larder$/.test(text.slice(0, at).replace(/\/+$/, ""))) return null;
+  const params = new URLSearchParams(text.slice(at + 1));
+  if (!params.has("place")) return null;
+  const area = params.get("place");
+  return { areaId: area === "-" ? "" : area, compartment: params.get("compartment") || "" };
+}
+
 export function texts(hass) {
   const lang = String((hass && hass.language) || "en").toLowerCase().split("-")[0];
   return TEXTS[lang] || TEXTS.en;
@@ -182,6 +193,7 @@ function loadOptions() {
       labelLayout: LABEL_LAYOUTS[raw.labelLayout] ? raw.labelLayout : "3x8",
       labelDesign: raw.labelDesign === "vintage" ? "handwritten" : LABEL_DESIGNS.includes(raw.labelDesign) ? raw.labelDesign : "plain",
       labelParts: raw.labelParts && typeof raw.labelParts === "object" ? raw.labelParts : { qr: true, name: true, content: false },
+      labelLook: raw.labelLook && typeof raw.labelLook === "object" ? raw.labelLook : { color: "black", inverted: false, logo: false },
       itemArea: raw.itemArea && typeof raw.itemArea === "object" ? raw.itemArea : {},
     };
   } catch {
@@ -337,6 +349,14 @@ export class LarderDashboard extends HTMLElement {
       }
       this._scanUnsub = null;
     }
+    if (this._placeUnsub) {
+      try {
+        this._placeUnsub();
+      } catch {
+        /* Verbindung schon weg */
+      }
+      this._placeUnsub = null;
+    }
   }
 
   get hass() {
@@ -428,6 +448,12 @@ export class LarderDashboard extends HTMLElement {
         if (this._view !== "containers") this.setView("containers");
         this.openContainer(row);
       }, `${DOMAIN}_dose_scanned`);
+      // NFC-Tag eines Fachs (nicht über das Dashboard gemeldet: source nfc)
+      this._placeUnsub = await hass.connection.subscribeEvents((ev) => {
+        const d = (ev && ev.data) || {};
+        if (!d.place || d.source !== "nfc" || this._scan || this._selecting || !this.isConnected) return;
+        this.openPlace(d.area_id || "", d.compartment || "");
+      }, `${DOMAIN}_compartment_scanned`);
     } catch {
       this._scanUnsub = null;
     }
@@ -441,12 +467,17 @@ export class LarderDashboard extends HTMLElement {
     const add = params.get("add");
     const cc = params.get("cc");
     const problem = params.get("problem");
-    if (!view && !open && !add && !cc && !problem && !params.has("recipes")) return;
+    const place = params.get("place");
+    if (!view && !open && !add && !cc && !problem && !place && !params.has("recipes")) return;
     window.history.replaceState(null, "", window.location.pathname);
     if (params.has("recipes")) this.setView("recipes");
     else if (problem && ["noarea", "nodate", "longexpired"].includes(problem)) this.setView("containers", { problem });
     else if (view && ALL_VIEWS.includes(view)) this.setView(view);
-    if (cc) {
+    if (place) {
+      // NFC-Tag oder QR-Etikett eines Fachs: Fach-Ansicht
+      this.setView("containers");
+      this.openPlace(place === "-" ? "" : place, params.get("compartment") || "");
+    } else if (cc) {
       this._openScanned(cc);
     } else if (open) {
       // Scan (Kurzbefehl, NFC-Benachrichtigung): Dose öffnen, eine leere gleich befüllen
@@ -926,6 +957,12 @@ export class LarderDashboard extends HTMLElement {
   /** Gescannten Code auswerten; false, wenn es kein Larder-Code ist. */
   async _resolveSingle(code) {
     const hass = this._hass;
+    const place = placeFromCode(code);
+    if (place) {
+      hass.callWS({ type: `${DOMAIN}/report_place_scan`, area_id: place.areaId, compartment: place.compartment }).catch(() => {});
+      this.openPlace(place.areaId, place.compartment);
+      return true;
+    }
     let res;
     try {
       res = await hass.callWS({ type: `${DOMAIN}/resolve_code`, code });
@@ -2532,7 +2569,7 @@ export class LarderDashboard extends HTMLElement {
   // ----- QR-Etiketten -----
 
   /** Dialog für den Etikettenbogen; ohne IDs für alle Dosen. */
-  openLabelDialog(deviceIds = null) {
+  openLabelDialog(deviceIds = null, places = null) {
     const hass = this._hass;
     const t = texts(hass);
     const form = this._form;
@@ -2574,6 +2611,26 @@ export class LarderDashboard extends HTMLElement {
     }
     design.value = this._opts.labelDesign;
     const parts = this._opts.labelParts;
+    const look = this._opts.labelLook || {};
+    const color = el("select");
+    color.dataset.f = "color";
+    for (const key of ["black", "blue", "green", "red", "brown"]) {
+      const o = el("option", "", t.labelsColors[key]);
+      o.value = key;
+      color.append(o);
+    }
+    color.value = look.color || "black";
+    const inverted = check(t.labelsInverted, "inverted", !!look.inverted);
+    const logo = check(t.labelsLogo, "logo", !!look.logo);
+    const invertedHint = el("p", "hint", t.labelsInvertedHint);
+    invertedHint.dataset.role = "inverted-hint";
+    const syncInverted = () => {
+      const on = inverted.querySelector("input").checked;
+      invertedHint.hidden = !on;
+      color.disabled = on;
+    };
+    inverted.querySelector("input").addEventListener("change", syncInverted);
+    syncInverted();
     const what = el("div", "checks");
     what.dataset.role = "label-parts";
     what.append(
@@ -2606,14 +2663,19 @@ export class LarderDashboard extends HTMLElement {
     const submit = el("button", "submit", t.labelsCreate);
     submit.type = "submit";
     buttons.append(cancel, submit);
+    if (places) what.hidden = true; // Fach-Etikett: Name des Fachs und QR-Code
     form.replaceChildren(
-      el("h2", "", t.labelsTitle),
-      el("p", "hint", t.labelsFor(deviceIds ? deviceIds.length : null)),
+      el("h2", "", places ? t.labelsPlaceTitle : t.labelsTitle),
+      el("p", "hint", places ? t.labelsForPlaces(places.map((p) => p.name).join(", ")) : t.labelsFor(deviceIds ? deviceIds.length : null)),
       field(t.labelsLayout, layout),
       skipField,
-      el("div", "hint", t.labelsWhat),
+      ...(places ? [] : [el("div", "hint", t.labelsWhat)]),
       what,
       field(t.labelsDesign, design),
+      field(t.labelsColor, color),
+      inverted,
+      invertedHint,
+      logo,
       check(t.labelsBorder, "border"),
       el("p", "hint", t.labelsHint),
       error,
@@ -2621,7 +2683,7 @@ export class LarderDashboard extends HTMLElement {
     );
     // geänderte Optionen: alten Link verwerfen; mindestens eins von QR-Code, Name, Inhalt
     const syncParts = () => {
-      submit.disabled = !["qr", "name", "content", "bestBefore", "nutrition"].some((f) => form.querySelector(`[data-f="${f}"]`).checked);
+      submit.disabled = !places && !["qr", "name", "content", "bestBefore", "nutrition"].some((f) => form.querySelector(`[data-f="${f}"]`).checked);
     };
     syncParts();
     for (const control of form.querySelectorAll("[data-f]")) {
@@ -2632,14 +2694,15 @@ export class LarderDashboard extends HTMLElement {
         syncParts();
       });
     }
-    this._submit = () => this._openLabels(deviceIds);
+    this._submit = () => this._openLabels(deviceIds, places);
     this._overlay.hidden = false;
   }
 
   /** URL des PDFs (signiert, damit sie sich ohne Anmeldung im Browser der App öffnen lässt). */
-  async labelUrl(deviceIds, { layout, skip, content, bestBefore = false, border, qr = true, name = true, nutrition = false, design = "plain" }) {
+  async labelUrl(deviceIds, { layout, skip, content, bestBefore = false, border, qr = true, name = true, nutrition = false, design = "plain", color = "black", inverted = false, logo = false, places = null }) {
     const params = new URLSearchParams();
-    if (deviceIds && deviceIds.length) params.set("device", deviceIds.join(","));
+    if (places && places.length) for (const p of places) params.append("place", `${p.areaId || ""}|${p.compartment || ""}`);
+    else if (deviceIds && deviceIds.length) params.set("device", deviceIds.join(","));
     params.set("layout", layout);
     params.set("skip", String(skip));
     if (content) params.set("content", "1");
@@ -2649,6 +2712,9 @@ export class LarderDashboard extends HTMLElement {
     if (!name) params.set("name", "0");
     if (nutrition) params.set("nutrition", "1");
     if (design !== "plain") params.set("design", design);
+    if (inverted) params.set("inverted", "1");
+    else if (color && color !== "black") params.set("color", color);
+    if (logo) params.set("logo", "1");
     const path = `/api/${DOMAIN}/labels.pdf?${params}`;
     const signed = await this._hass.callWS({ type: "auth/sign_path", path, expires: 300 });
     return this._hass.hassUrl ? this._hass.hassUrl(signed.path) : signed.path;
@@ -2658,24 +2724,27 @@ export class LarderDashboard extends HTMLElement {
    * Link zum PDF erzeugen und im Dialog zeigen. Antippen öffnet es (ein echter Link funktioniert auch
    * in der App und ohne Pop-up-Sperre; in der App öffnet es sich im Browser zum Teilen und Drucken).
    */
-  async _openLabels(deviceIds) {
+  async _openLabels(deviceIds, places = null) {
     const t = texts(this._hass);
     const form = this._form;
     const value = (name) => form.querySelector(`[data-f="${name}"]`);
     const layout = value("layout").value;
     const per = LABEL_LAYOUTS[layout].per;
     const skip = LABEL_LAYOUTS[layout].printer ? 0 : Math.min(Math.max(parseInt(value("skip").value, 10) || 0, 0), per - 1);
-    const parts = { qr: value("qr").checked, name: value("name").checked, content: value("content").checked, bestBefore: value("bestBefore").checked, nutrition: value("nutrition").checked };
+    const chosen = { qr: value("qr").checked, name: value("name").checked, content: value("content").checked, bestBefore: value("bestBefore").checked, nutrition: value("nutrition").checked };
+    const parts = places ? { qr: true, name: true, content: false, bestBefore: false, nutrition: false } : chosen;
     const design = value("design").value;
+    const look = { color: value("color").value, inverted: value("inverted").checked, logo: value("logo").checked };
     this._opts.labelLayout = layout;
     this._opts.labelDesign = design;
-    this._opts.labelParts = parts;
+    if (!places) this._opts.labelParts = chosen;
+    this._opts.labelLook = look;
     saveOptions(this._opts);
     const error = form.querySelector(".error");
     error.textContent = "";
     let url;
     try {
-      url = await this.labelUrl(deviceIds, { layout, skip, border: value("border").checked, ...parts, design });
+      url = await this.labelUrl(deviceIds, { layout, skip, border: value("border").checked, ...parts, design, ...look, places });
     } catch {
       error.textContent = t.labelsFailed;
       return;

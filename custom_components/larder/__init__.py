@@ -18,6 +18,7 @@ from .labels import async_setup_labels
 from .learning import async_setup_learning_websocket
 from .nfc import async_get_nfc
 from .panel import async_setup_panel, async_teardown_panel
+from .places import async_get_places, async_setup_place_websocket
 from .plan import async_get_plan, async_setup_plan_websocket
 from .product import async_setup_product_websocket
 from .recall import async_get_recalls, async_setup_recall_websocket
@@ -55,6 +56,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     await async_get_retired(hass)
     async_setup_stock_websocket(hass)
     async_setup_recall_websocket(hass)
+    async_setup_place_websocket(hass)
+    await async_get_places(hass)
     async_setup_learning_websocket(hass)
     (await async_get_stock(hass)).async_start()
     (await async_get_recalls(hass)).async_start()

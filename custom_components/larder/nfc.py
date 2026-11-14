@@ -131,6 +131,11 @@ class NfcTags:
         tag_id = tag_id.strip()
         if not tag_id:
             raise NfcError("nfc_no_tag")
+        places = self.hass.data.get(DOMAIN, {}).get("places")
+        if places is not None and (place := places.by_tag(tag_id)):
+            from .places import place_name  # noqa: PLC0415
+
+            raise NfcError("nfc_tag_in_use", name=place_name(self.hass, place.get("area_id"), place.get("compartment")))
         owner = self._tags.get(tag_id)
         if owner and owner != cc:
             entry = self._entry(owner)
@@ -167,6 +172,12 @@ class NfcTags:
         tag_id = str(event.data.get("tag_id", ""))
         cc = self._tags.get(tag_id)
         if cc is None:
+            from .places import async_get_places  # noqa: PLC0415 - vermeidet einen Import-Kreis
+
+            place = (await async_get_places(self.hass)).by_tag(tag_id)
+            if place is not None:
+                await self._place_scanned(place, event.data.get("device_id"))
+                return
             await self._retired_scanned(tag_id, event.data.get("device_id"))
             return
         entry = self._entry(cc)
@@ -194,6 +205,36 @@ class NfcTags:
                     "title": entry.title,
                     "message": self._message(cc),
                     "data": {"url": url, "clickAction": url, "tag": f"{DOMAIN}_{cc}"},
+                },
+                blocking=True,
+            )
+        except HomeAssistantError:
+            _LOGGER.debug("Benachrichtigung an %s fehlgeschlagen", service, exc_info=True)
+
+    async def _place_scanned(self, place: dict[str, str], scanner: str | None) -> None:
+        """Tag eines Fachs: Ereignis, an ein offenes Dashboard melden oder das Handy benachrichtigen."""
+        from .places import EVENT_COMPARTMENT_SCANNED, async_get_places, place_path  # noqa: PLC0415
+
+        places = await async_get_places(self.hass)
+        data = places.scan_data(place, scanner)
+        self.hass.bus.async_fire(EVENT_COMPARTMENT_SCANNED, data)
+        if self._sessions:
+            for forward in list(self._sessions):
+                forward(data)
+            return
+        estimator = await async_get_estimator(self.hass)
+        service = self._notify_service(scanner) if estimator.nfc_notify else None
+        if service is None:
+            return
+        url = place_path(data["area_id"], data["compartment"])
+        try:
+            await self.hass.services.async_call(
+                "notify",
+                service,
+                {
+                    "title": data["name"],
+                    "message": places.message(data),
+                    "data": {"url": url, "clickAction": url, "tag": f"{DOMAIN}_place"},
                 },
                 blocking=True,
             )

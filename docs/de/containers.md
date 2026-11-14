@@ -133,7 +133,7 @@ Ein Treffer ist ein Hinweis, keine Gewissheit: Charge und MHD stehen in der Orig
 - **Weg** → gegessen oder weggeworfen (kommt in den Verlauf),
 - **Woanders** stellt es in einen anderen Bereich oder ein anderes Fach (Dosen nur für Administratoren).
 
-**📷 Scannen** (Home Assistant App) hakt ab, was du scannst, QR-Codes von Dosen und Strichcodes von Packungen; auch NFC-Tags haken ab, solange die Inventur offen ist. **＋ Packung, die fehlt** legt an, was da ist, aber nicht in Larder steht. **Fertig** zeigt eine kurze Zusammenfassung.
+**📷 Scannen** (Home Assistant App) hakt ab, was du scannst, QR-Codes von Dosen und Strichcodes von Packungen; auch NFC-Tags haken ab, solange die Inventur offen ist. **＋ Packung, die fehlt** legt an, was da ist, aber nicht in Larder steht. **Fertig** zeigt eine kurze Zusammenfassung. **🏷 Fach-Tag** gibt dem Fach einen eigenen [NFC-Tag oder ein QR-Etikett](scanning.md#fächer): Später scannen öffnet das Fach, um etwas zu entnehmen oder die Inventur zu starten.
 
 <p align="center"><img src="../images/dashboard-stocktake-de.png" width="250" alt="Inventur"></p>
 

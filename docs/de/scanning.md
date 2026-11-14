@@ -35,7 +35,8 @@ Viele Etiketten auf einmal drucken: im Dashboard **⋮ → 🖨 Etiketten drucke
 - das **Format**: einen A4-Bogen mit 3 × 8 (70 × 36 mm), 3 × 7 (70 × 42,3 mm) oder 2 × 4 (105 × 74 mm) Etiketten, wie es sie von Avery Zweckform, Herma und anderen gibt, oder einen **Etikettendrucker** (62 × 29 mm wie Brother DK-11209, 54 × 25 mm wie Dymo 11352, 89 × 36 mm wie Dymo 99012; ein Etikett pro Seite),
 - **Schon benutzte Etiketten überspringen** (nur A4), um auf einem angebrochenen Bogen weiterzumachen,
 - **was aufs Etikett kommt**, mindestens eins von: **QR-Code**, **Name der Dose**, **Inhalt**, **MHD**, **Nährwerte** (kcal, Nutri-Score, Allergene, aus den [Nährwerten](containers.md#nährwerte) der Dose). Ohne QR-Code steht der Text größer in der Mitte, schön für Dosen mit [NFC-Tag](#nfc-tags). Die Schrift wird so groß wie möglich gesetzt und bricht in eine zweite Zeile um statt abgeschnitten zu werden. Nur der Inhalt passt für Dosen, in denen immer dasselbe ist (Zucker, Reis); das MHD ist für Etiketten gedacht, die nicht dauerhaft bleiben (z. B. Gefrierbeutel); nur mit dem Namen bleibt das Etikett gültig, wenn sich der Inhalt ändert,
-- das **Design**: schlicht, Rahmen, eingekerbte Ecken oder **Handschrift** (Glas-Etikett mit Handschrift-Font [Kalam](https://fonts.google.com/specimen/Kalam), SIL Open Font License). Etiketten sind immer schwarz-weiß,
+- das **Design**: schlicht, Rahmen, eingekerbte Ecken oder **Handschrift** (Glas-Etikett mit Handschrift-Font [Kalam](https://fonts.google.com/specimen/Kalam), SIL Open Font License). die **Schriftfarbe** (Schwarz, Dunkelblau, Dunkelgrün, Dunkelrot oder Braun; QR-Code und Rahmen bleiben schwarz) oder **invertiert** (Tafel-Look: schwarzes Etikett mit weißer Schrift und weißem Rahmen, der QR-Code auf einem weißen Feld, damit er sicher lesbar ist; braucht viel Tinte, und ein normaler Drucker kann kein Weiß auf schwarzes Papier drucken),
+- **Larder-Symbol in der Mitte des QR-Codes** (höchste Fehlerkorrektur; auf sehr kleinen Etiketten weggelassen, weil es dort das Scannen unsicher macht),
 - **Schnittlinien**, für normales Papier.
 
 **PDF erstellen** erzeugt einen Link, dann **PDF öffnen** antippen. In der Home Assistant App öffnet es sich im Browser, von dort druckst oder teilst du es. Mit **100 %** drucken (nicht „an Seite anpassen“), damit die Codes auf die Etiketten treffen. Der Link gilt fünf Minuten. Deine Auswahl merkt sich das Gerät.
@@ -54,6 +55,17 @@ Hast du schon einen mit der Home-Assistant-App beschriebenen Tag (Einstellungen 
 2. **Später scannen.** Ist das Dashboard offen, öffnet es die Dose (eine leere mit dem Befüll-Dialog). Sonst bekommt das scannende Handy (Companion-App) eine Benachrichtigung, deren Antippen das Dashboard bei dieser Dose öffnet. Das iPhone zeigt nach dem Lesen eines Tags ein eigenes Banner, das zuerst angetippt wird.
 
 Für eigene Automationen löst ein verknüpfter Scan das Ereignis `larder_dose_scanned` aus (`cc`, `device_id`, `name`, `scanned_by`). Die Benachrichtigung lässt sich in den Einstellungen abschalten („NFC: Handy benachrichtigen“). Eine Dose hat höchstens einen Tag, und ein Tag gehört zu genau einer Dose.
+
+### Fächer
+
+<p align="center"><img src="../images/dashboard-place-de.png" width="250" alt="Fach"></p>
+
+Ein **Fach** (Bereich mit Fach, z. B. *Keller · Regal oben*, oder ein ganzer Bereich) kann einen eigenen NFC-Tag oder ein QR-Etikett bekommen. Scannen öffnet das Fach: alles, was dort liegt, das älteste MHD zuerst, mit **−1** bei Packungen und **Öffnen** bei Dosen und Beuteln, dazu **📋 Inventur** genau für dieses Fach.
+
+- **Einrichten:** In der [Inventur](containers.md#inventur) Bereich und Fach wählen und **🏷 Fach-Tag** drücken. Dort verknüpft **📡 NFC-Tag** einen schon beschriebenen Tag (Handy daran halten) oder **✍ Sticker beschreiben** beschreibt einen leeren; **🖨 Etikett** druckt ein QR-Etikett für das Fach. Das kann jeder im Haushalt.
+- **Scannen:** Ist das Dashboard offen, zeigt es das Fach sofort; sonst bekommt das scannende Handy eine Benachrichtigung, die es öffnet (Einstellung *NFC: Handy benachrichtigen*). Ein QR-Etikett scannst du mit **📷** im Dashboard oder mit der Handykamera.
+- Das Ereignis `larder_compartment_scanned` (`area_id`, `compartment`, `name`, `items`, `source`) ist für eigene Automationen.
+- Der Tag hängt am Namen des Fachs: Benennst du das Fach der Einträge um, verknüpfe den Tag neu.
 
 ## iOS-Kurzbefehl für die originalen Zwilling-Codes
 

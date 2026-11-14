@@ -203,6 +203,15 @@
     },
     "open_invalid": {
       "message": "Only an unopened pack can be opened."
+    },
+    "place_unknown_area": {
+      "message": "This area does not exist."
+    },
+    "place_tag_container": {
+      "message": "This tag already belongs to a container, bag or pack."
+    },
+    "place_tag_in_use": {
+      "message": "This tag already belongs to the compartment {name}."
     }
   },
   "options": {

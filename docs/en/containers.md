@@ -133,7 +133,7 @@ A match is a hint, not a certainty: batch and best-before date are in the origin
 - **Gone** → eaten or thrown away (goes into the history),
 - **Elsewhere** moves it to another area or compartment (containers only for administrators).
 
-**📷 Scan** (Home Assistant app) ticks off what you scan, QR codes of containers and barcodes of packs; NFC tags tick off too while the stocktake is open. **＋ Missing pack** adds what is there but not in Larder. **Done** shows a short summary.
+**📷 Scan** (Home Assistant app) ticks off what you scan, QR codes of containers and barcodes of packs; NFC tags tick off too while the stocktake is open. **＋ Missing pack** adds what is there but not in Larder. **Done** shows a short summary. **🏷 Compartment tag** gives the compartment its own [NFC tag or QR label](scanning.md#compartments): scanning it later opens the compartment to take something or start the stocktake.
 
 <p align="center"><img src="../images/dashboard-stocktake-en.png" width="250" alt="Stocktake"></p>
 

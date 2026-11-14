@@ -160,6 +160,8 @@ export const STYLE = `
     border: 1px solid var(--primary-color); background: none; color: var(--primary-color); }
   .dialog .coderow button.primary, .boughtrow button.primary { background: var(--primary-color); color: var(--text-primary-color, #fff); }
   .dialog p.lead { margin: 0; font-size: 15px; }
+  .placetag { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .placetag button { font: inherit; padding: 6px 12px; border-radius: 8px; cursor: pointer; border: 1px solid var(--divider-color); background: none; color: inherit; }
   .boughtrow { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--divider-color); }
   .boughtrow:first-of-type { border-top: 0; }
   .boughtrow .name { flex: 1; min-width: 0; }

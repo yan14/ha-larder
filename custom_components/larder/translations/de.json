@@ -203,6 +203,15 @@
     },
     "open_invalid": {
       "message": "Anbrechen geht nur bei einer ungeöffneten Packung."
+    },
+    "place_unknown_area": {
+      "message": "Diesen Bereich gibt es nicht."
+    },
+    "place_tag_container": {
+      "message": "Dieser Tag gehört schon zu einer Dose, einem Beutel oder einer Packung."
+    },
+    "place_tag_in_use": {
+      "message": "Dieser Tag gehört schon zum Fach {name}."
     }
   },
   "options": {

@@ -40,6 +40,25 @@ const TEXT = {
     opened: (date) => `Angebrochen, MHD jetzt ${date}.`,
     openFailed: "Anbrechen fehlgeschlagen.",
     relocateTitle: "Dose woanders",
+    placeEmpty: "Hier liegt laut Larder nichts.",
+    placeTake: "−1",
+    placeTakeLabel: "Eine entnehmen",
+    placeOpen: "Öffnen",
+    placeStocktake: "📋 Inventur",
+    placeLabel: "🖨 Etikett",
+    placeTag: "📡 NFC-Tag",
+    placeTagLinked: "📡 NFC-Tag verknüpft",
+    placeTagHint: "Halte das Handy an einen schon beschriebenen NFC-Tag, um ihn mit diesem Fach zu verknüpfen.",
+    placeTagWrite: "✍ Sticker beschreiben",
+    placeTagHold: "Halte das Handy jetzt an den leeren Sticker.",
+    placeTagDone: "NFC-Tag mit dem Fach verknüpft.",
+    placeTagUnlink: "Tag lösen",
+    placeTagFailed: "Verknüpfen fehlgeschlagen.",
+    placeTaken: (name) => `${name}: eine entnommen.`,
+    placeButton: "🏷 Fach-Tag",
+    close: "Schließen",
+    noDate: "ohne MHD",
+    bestBefore: (d) => `MHD ${d}`,
   },
   en: {
     title: "Stocktake",
@@ -76,6 +95,25 @@ const TEXT = {
     opened: (date) => `Opened, best before now ${date}.`,
     openFailed: "Opening failed.",
     relocateTitle: "Container elsewhere",
+    placeEmpty: "According to Larder there is nothing here.",
+    placeTake: "−1",
+    placeTakeLabel: "Take one",
+    placeOpen: "Open",
+    placeStocktake: "📋 Stocktake",
+    placeLabel: "🖨 Label",
+    placeTag: "📡 NFC tag",
+    placeTagLinked: "📡 NFC tag linked",
+    placeTagHint: "Hold your phone to an NFC tag that is already written to link it to this compartment.",
+    placeTagWrite: "✍ Write sticker",
+    placeTagHold: "Now hold your phone to the blank sticker.",
+    placeTagDone: "NFC tag linked to the compartment.",
+    placeTagUnlink: "Unlink tag",
+    placeTagFailed: "Linking failed.",
+    placeTaken: (name) => `${name}: took one.`,
+    placeButton: "🏷 Compartment tag",
+    close: "Close",
+    noDate: "no best-before date",
+    bestBefore: (d) => `best before ${d}`,
   },
 };
 
@@ -169,6 +207,149 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, DOMAIN, attachC
         submit.disabled = false;
       }
     };
+    this._overlay.hidden = false;
+  };
+
+  // ---------- Fach (NFC-Tag / QR-Etikett) ----------
+
+  proto._placeName = function _placeName(areaId, compartment) {
+    const hass = this._hass;
+    const area = areaId ? ((hass.areas || {})[areaId] || {}).name || areaId : careTexts(hass).noArea;
+    return [area, compartment].filter(Boolean).join(" · ");
+  };
+
+  /** Fach-Ansicht: was dort liegt (ältestes zuerst), −1 bzw. öffnen, Inventur, Etikett, NFC-Tag. */
+  proto.openPlace = async function openPlace(areaId, compartment, message = "") {
+    const hass = this._hass;
+    const t = careTexts(hass);
+    const states = hass.states || {};
+    const classic = this._classic;
+    areaId = areaId || "";
+    compartment = String(compartment || "").trim();
+    let links = [];
+    try {
+      links = ((await hass.callWS({ type: `${DOMAIN}/place_tags` })) || {}).links || [];
+    } catch {
+      links = [];
+    }
+    const lower = compartment.toLowerCase();
+    const linked = links.find((l) => (l.area_id || "") === areaId && String(l.compartment || "").toLowerCase() === lower);
+    const rows = rowsAtPlace(this._rows(), areaId, compartment).sort(
+      (a, b) => (b.opened ? 1 : 0) - (a.opened ? 1 : 0) || (a.days === null) - (b.days === null) || (a.days || 0) - (b.days || 0),
+    );
+    const list = el("div", "codelist placelist");
+    if (!rows.length) list.append(el("p", "hint", t.placeEmpty));
+    for (const row of rows) {
+      const line = el("div", "coderow");
+      line.dataset.id = row.id;
+      const qtyState = states[row.dev.entities.number];
+      const unit = (states[row.dev.entities.select] || {}).state;
+      const count = qtyState && ["pieces", "portions"].includes(unit) ? Number(qtyState.state) || 1 : 1;
+      const best = states[row.dev.entities.date];
+      const date = best && best.state && best.state !== "unknown" && best.state !== "unavailable" ? fmt(hass, best.state) : "";
+      const text = el("span", "text");
+      text.append(
+        el("span", "name", `${CATEGORY_ICONS[row.category] || CATEGORY_ICONS.other} ${row.content}${row.kind === "pack" && count > 1 ? ` · ${count}` : ""}`),
+        el("span", "sub", [row.opened ? "🔓" : null, row.name, date ? t.bestBefore(date) : t.noDate, !compartment && row.compartment ? row.compartment : null].filter(Boolean).join(" · ")),
+      );
+      line.append(text);
+      if (row.kind === "pack") {
+        const take = button("primary", t.placeTake, async () => {
+          take.disabled = true;
+          await this._takeOne({ device_id: row.id, count });
+          this.showNotice(t.placeTaken(row.content));
+          setTimeout(() => this.openPlace(areaId, compartment), 300);
+        });
+        take.dataset.role = "place-take";
+        take.title = t.placeTakeLabel;
+        take.setAttribute("aria-label", t.placeTakeLabel);
+        line.append(take);
+      } else {
+        const open = button("", t.placeOpen, () => {
+          this._closeDialog();
+          if (this._view !== "containers") this.setView("containers");
+          this.openContainer(row);
+        });
+        open.dataset.role = "place-open";
+        line.append(open);
+      }
+      list.append(line);
+    }
+    const status = el("p", "hint", message);
+    status.dataset.role = "place-status";
+    status.setAttribute("role", "status");
+    const stocktake = button("", t.placeStocktake, () => {
+      this._closeDialog();
+      this._take = { areaId, compartment, started: true, status: new Map() };
+      this._take.items = this._takeRows();
+      this.setView("stocktake");
+    });
+    stocktake.dataset.role = "place-stocktake";
+    const label = button("", t.placeLabel, () => this.openLabelDialog(null, [{ areaId, compartment, name: this._placeName(areaId, compartment) }]));
+    label.dataset.role = "place-label";
+    const link = async (tagId) => {
+      await hass.callWS({ type: `${DOMAIN}/place_link`, tag_id: tagId, area_id: areaId, compartment });
+    };
+    const tagRow = el("div", "placetag");
+    if (linked) {
+      tagRow.append(el("span", "", t.placeTagLinked));
+      const unlink = button("", t.placeTagUnlink, async () => {
+        await hass.callWS({ type: `${DOMAIN}/place_unlink`, area_id: areaId, compartment }).catch(() => {});
+        this.openPlace(areaId, compartment);
+      });
+      unlink.dataset.role = "place-unlink";
+      tagRow.append(unlink);
+    } else {
+      const tag = button("", t.placeTag, () => {
+        status.textContent = t.placeTagHint;
+        classic.cancelCapture("place");
+        classic.startCapture(
+          async (tagId) => {
+            try {
+              await link(tagId);
+            } catch (err) {
+              status.textContent = (err && err.message) || t.placeTagFailed;
+              return false;
+            }
+            classic.cancelCapture("place");
+            this.openPlace(areaId, compartment, t.placeTagDone);
+            return true;
+          },
+          "place",
+          null,
+        );
+        const ext = hass.auth && hass.auth.external;
+        if (ext && typeof ext.fireMessage === "function" && ext.config && ext.config.canWriteTag && !tagRow.querySelector('[data-role="place-write"]')) {
+          const write = button("", t.placeTagWrite, async () => {
+            const tagId = classic._newTagId();
+            try {
+              await link(tagId);
+              await classic._writeNewTag(tagId, this._placeName(areaId, compartment));
+            } catch (err) {
+              status.textContent = (err && err.message) || t.placeTagFailed;
+              return;
+            }
+            status.textContent = t.placeTagHold;
+          });
+          write.dataset.role = "place-write";
+          tagRow.append(write);
+        }
+      });
+      tag.dataset.role = "place-tag";
+      tagRow.append(tag);
+    }
+    const close = button("cancel", t.close, () => {
+      classic.cancelCapture("place");
+      this._closeDialog();
+    });
+    this._form.replaceChildren(
+      el("h2", "", this._placeName(areaId, compartment)),
+      list,
+      tagRow,
+      status,
+      buttonsRow(close, label, stocktake),
+    );
+    this._submit = null;
     this._overlay.hidden = false;
   };
 
@@ -279,6 +460,9 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, DOMAIN, attachC
     const areaName = take.areaId ? ((hass.areas || {})[take.areaId] || {}).name || take.areaId : t.noArea;
     const head = el("div", "bar");
     head.append(el("span", "grow takeplace", [areaName, take.compartment].filter(Boolean).join(" · ")));
+    const placeBtn = button("", t.placeButton, () => this.openPlace(take.areaId, take.compartment));
+    placeBtn.dataset.role = "take-place";
+    head.append(placeBtn);
     if (this._classic._hasBarcodeScanner && this._classic._hasBarcodeScanner()) {
       const scan = button("", t.scan, () => this._classic.scanBarcodeRaw((code) => this.stocktakeScan(code)));
       scan.dataset.role = "take-scan";

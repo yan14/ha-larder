@@ -3,6 +3,11 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 3.7.0
+
+- **Compartment tags:** a compartment (or a whole area) can get its own NFC tag or QR label (**🏷 Compartment tag** in the stocktake). Scanning it opens the compartment: everything there, oldest best-before date first, **−1** for packs, **Open** for containers and bags, and **📋 Stocktake** for exactly this compartment. Notification on the scanning phone, event `larder_compartment_scanned`.
+- **Labels:** text colour (dark blue, dark green, dark red, brown; QR code and frame stay black), **inverted** chalkboard look (QR code on a white patch) and the **Larder symbol in the middle of the QR code** (highest error correction, left out on very small labels).
+
 ## 3.6.0
 
 - **Running low:** products with a minimum stock that will only last the *days until the next shopping trip* according to the forecast appear on the start page under **⏳ Running low**, before they drop below the minimum. **🛒 Shopping list** or hide for a week; new setting *Running low: add to the shopping list right away*. Event `larder_running_low`.

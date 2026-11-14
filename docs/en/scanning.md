@@ -35,7 +35,8 @@ To print many labels at once: **⋮ → 🖨 Print labels** in the dashboard (al
 - the **format**: an A4 sheet with 3 × 8 (70 × 36 mm), 3 × 7 (70 × 42.3 mm) or 2 × 4 (105 × 74 mm) labels, as sold by Avery Zweckform, Herma and others, or a **label printer** (62 × 29 mm like Brother DK-11209, 54 × 25 mm like Dymo 11352, 89 × 36 mm like Dymo 99012; one label per page),
 - **Skip labels already used** (A4 only), to continue on a partly used sheet,
 - **what goes on the label**, at least one of: **QR code**, **container name**, **contents**, **best-before date**, **nutrition** (kcal, Nutri-Score, allergens, from the [nutrition](containers.md#nutrition) of the container). Without the QR code the text is centred and larger, nice for containers with an [NFC tag](#nfc-tags). The text is sized to fill the label and wraps onto a second line instead of being cut off. The contents alone suit containers that always hold the same (sugar, rice); the date is meant for labels that do not stay on the container (e.g. freezer bags); with only the name the label stays valid when the contents change,
-- the **design**: plain, frame, notched corners or **handwriting** (jar label with a handwritten font, [Kalam](https://fonts.google.com/specimen/Kalam), SIL Open Font License). Labels are always black and white,
+- the **design**: plain, frame, notched corners or **handwriting** (jar label with a handwritten font, [Kalam](https://fonts.google.com/specimen/Kalam), SIL Open Font License). the **text colour** (black, dark blue, dark green, dark red or brown; QR code and frame stay black) or **inverted** (chalkboard look: black label with white text and frame, the QR code on a white patch so it scans reliably; uses a lot of ink, and a normal printer cannot print white on black paper),
+- **Larder symbol in the middle of the QR code** (highest error correction; left out on very small labels where it would make scanning unreliable),
 - **Cutting lines**, for plain paper.
 
 **Create PDF** makes a link; tap **Open PDF**. In the Home Assistant app it opens in the browser, from where you print or share it. Print at **100 %** (not "fit to page") so the codes hit the labels. The link is valid for five minutes. Your choices are remembered on the device.
@@ -54,6 +55,17 @@ If you already have a tag written with the Home Assistant app (Settings → Comp
 2. **Scan it later.** If the dashboard is open, it opens the container (an empty one with the fill dialog). Otherwise the scanning phone (Companion app) gets a notification, and tapping it opens the dashboard on that container. iPhones show their own banner after reading a tag, tap it first.
 
 For your own automations a linked scan fires the event `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`). The notification can be switched off in the settings ("NFC: notify the phone"). One container has at most one tag, and a tag belongs to one container.
+
+### Compartments
+
+<p align="center"><img src="../images/dashboard-place-en.png" width="250" alt="Compartment"></p>
+
+A **compartment** (an area with a compartment, e.g. *Cellar · top shelf*, or a whole area) can get its own NFC tag or QR label. Scanning it opens the compartment: everything that is there, the oldest best-before date first, with **−1** for packs and **Open** for containers and bags, plus **📋 Stocktake** for exactly this compartment.
+
+- **Set up:** in the [stocktake](containers.md#stocktake) choose the area and compartment and press **🏷 Compartment tag**. There **📡 NFC tag** links a tag that is already written (hold the phone to it) or **✍ Write sticker** writes a blank one; **🖨 Label** prints a QR label for the compartment. Everyone in the household can do this.
+- **Scan:** with the dashboard open it shows the compartment right away; otherwise the scanning phone gets a notification that opens it (setting *NFC: notify the phone*). A QR label is scanned with **📷** in the dashboard or the phone camera.
+- The event `larder_compartment_scanned` (`area_id`, `compartment`, `name`, `items`, `source`) is for your own automations.
+- The tag belongs to the compartment name: if you rename the compartment of the entries, link the tag again.
 
 ## iOS Shortcut for the original Zwilling codes
 

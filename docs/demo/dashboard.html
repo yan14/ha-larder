@@ -157,6 +157,7 @@ const hass = {
       { key: "b", content: "Boiled eggs", area: "Fridge", vacuum: false, days: 7, tip: "", source: "table" },
       { key: "c", content: "Salmon", area: "Fridge", vacuum: true, days: 2, tip: "", source: "learned", origin: "ai" } ] };
     if (msg.type === "larder/nfc_tags") return { links: {}, by_device: {} };
+    if (msg.type === "larder/place_tags") return { links: [{ tag_id: "t", area_id: "cellar", compartment: de ? "Regal oben" : "Top shelf" }] };
     if (msg.type === "larder/running_low") return { shopping_list: true, items: q.get("alerts") ? [{ key: "m", name: de ? "Milch" : "Milk", count: 2, min: 1, lasts_days: 4 }] : [] };
     if (msg.type === "larder/recalls") return { items: q.get("alerts") ? [{ id: "r1", title: de ? "Tomatenketchup 500 ml, Marke Heinz" : "Tomato ketchup 500 ml, brand Heinz", reason: de ? "Glassplitter können nicht ausgeschlossen werden" : "Glass fragments cannot be ruled out", date: day(-2), link: "https://www.lebensmittelwarnung.de", items: [{ cc: "P", device_id: "demo12", content: "Ketchup", brand: "Heinz", area: de ? "Küche" : "Kitchen", compartment: de ? "Tür" : "Door", via: "brand" }] }] : [] };
     if (msg.type === "larder/recall_read") return { items: [] };
@@ -230,6 +231,7 @@ if (q.get("dialog") === "transfer") el.openTransferDialog("demo12");
 if (q.get("dialog") === "move") el.openMoveDialog("demo12");
 if (q.get("dialog") === "code") await el.takeByCode("4000000000001");
 if (q.get("dialog") === "open") el.openOpenDialog("demo12");
+if (q.get("dialog") === "place") await el.openPlace("cellar", de ? "Regal oben" : "Top shelf");
 if (q.get("take")) {
   el._take = { areaId: q.get("take"), compartment: "", started: true, status: new Map() };
   el._take.items = el._takeRows();

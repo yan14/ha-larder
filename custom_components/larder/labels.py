@@ -26,6 +26,7 @@ from homeassistant.helpers import device_registry as dr, entity_registry as er
 
 from .const import DOMAIN, KIND_PACK, scan_app_url
 from .entity import kind_of
+from .places import place_app_url, place_name
 
 URL = f"/api/{DOMAIN}/labels.pdf"
 DATA_VIEW = "labels_view"
@@ -63,6 +64,15 @@ LAYOUTS: dict[str, Layout] = {
     "89x36": Layout(1, 1, 89.0, 36.0, 0.0, 0.0, page=(89.0, 36.0)),
 }
 DESIGNS = ("plain", "frame", "notched", "handwritten")
+# Schriftfarben (dunkel und gut lesbar); QR-Code und Rahmen bleiben schwarz
+COLORS: dict[str, tuple[float, float, float]] = {
+    "black": (0.0, 0.0, 0.0),
+    "blue": (0.06, 0.2, 0.45),
+    "green": (0.08, 0.33, 0.18),
+    "red": (0.5, 0.08, 0.08),
+    "brown": (0.38, 0.22, 0.1),
+}
+LOGO_MIN_QR = 22 * 72 / 25.4  # kleiner als 22 mm: kein Symbol in der Mitte (Scannen wird unsicher)
 _K = 0.5523  # Bézier-Annäherung eines Viertelkreises
 FONT_FILE = Path(__file__).parent / "fonts" / "Kalam-Bold.ttf"
 DEFAULT_LAYOUT = "3x8"
@@ -89,9 +99,28 @@ def _pdf_text(value: str) -> bytes:
     return raw.replace(b"\\", b"\\\\").replace(b"(", b"\\(").replace(b")", b"\\)")
 
 
-def _qr_ops(content: str, x: float, y: float, size: float) -> list[bytes]:
-    """QR-Code als gefüllte Rechtecke; (x, y) = linke untere Ecke, size = Kantenlänge in pt (ohne Ruhezone)."""
-    matrix = segno.make_qr(content, error="m").matrix
+def _logo_ops(cx: float, cy: float, s: float) -> list[bytes]:
+    """Larder-Symbol (Dose mit Deckel und Clips) in Schwarz auf weißem Feld, Mitte (cx, cy), Kantenlänge s."""
+    box = s * 1.0
+    ops = [b"1 g", _rounded(cx - box / 2, cy - box / 2, box, box, box * 0.18) + b" f", b"0 g"]
+    lid_w, lid_h = s * 0.7, s * 0.17
+    lid_y = cy + s * 0.12
+    ops.append(_rounded(cx - lid_w / 2, lid_y, lid_w, lid_h, lid_h * 0.4) + b" f")
+    clip_w, clip_h = s * 0.08, s * 0.14
+    ops.append(_rounded(cx - lid_w / 2 - clip_w * 0.6, lid_y - clip_h * 0.55, clip_w, clip_h, clip_w * 0.35) + b" f")
+    ops.append(_rounded(cx + lid_w / 2 - clip_w * 0.4, lid_y - clip_h * 0.55, clip_w, clip_h, clip_w * 0.35) + b" f")
+    body_w, body_h = s * 0.62, s * 0.34
+    ops.append(_rounded(cx - body_w / 2, cy - s * 0.3, body_w, body_h, s * 0.1) + b" f")
+    return ops
+
+
+def _qr_ops(content: str, x: float, y: float, size: float, logo: bool = False) -> list[bytes]:
+    """QR-Code als gefüllte Rechtecke; (x, y) = linke untere Ecke, size = Kantenlänge in pt (ohne Ruhezone).
+
+    Mit `logo` (und groß genug) höchste Fehlerkorrektur und das Larder-Symbol in der Mitte (ca. 20 %).
+    """
+    logo = logo and size >= LOGO_MIN_QR
+    matrix = segno.make_qr(content, error="h" if logo else "m").matrix
     count = len(matrix)
     module = size / count
     ops: list[bytes] = []
@@ -109,6 +138,8 @@ def _qr_ops(content: str, x: float, y: float, size: float) -> list[bytes]:
             else:
                 c += 1
     ops.append(b"f")
+    if logo:
+        ops += _logo_ops(x + size / 2, y + size / 2, size * 0.22)
     return ops
 
 
@@ -356,6 +387,9 @@ def _label_ops(
     design: str = "plain",
     show_nutrition: bool = False,
     show_best_before: bool = False,
+    color: str = "black",
+    inverted: bool = False,
+    logo: bool = False,
 ) -> list[bytes]:
     col, row = index % layout.cols, index // layout.cols
     x_mm = layout.left + col * (layout.width + layout.gap_x)
@@ -371,12 +405,27 @@ def _label_ops(
     ops: list[bytes] = [b"q 0 g 0 G"]
     if border:
         ops += [b"0.6 G 0.3 w", f"{x:.3f} {y:.3f} {w:.3f} {h:.3f} re S".encode(), b"0 G"]
+    if inverted:
+        # Tafel-Look: Etikett schwarz gefüllt, Schrift und Rahmen weiß, QR-Code auf weißem Feld (sicher lesbar)
+        m = 0.8 * MM
+        ops += [b"0 g", _rounded(x + m, y + m, w - 2 * m, h - 2 * m, 3 * MM) + b" f"]
+        frame = [op.replace(b"0 G", b"1 G") if op.startswith(b"0 G") else op for op in frame]
+    if inverted:
+        text_color = b"1 g"
+    elif color in COLORS and color != "black":
+        text_color = ("%.3f %.3f %.3f rg" % COLORS[color]).encode()  # noqa: UP031
+    else:
+        text_color = b"0 g"
 
     has_text = show_name or show_content or show_best_before or show_nutrition or not show_qr
     if show_qr:
         qr_size = min(h - 2 * pad_y, w * 0.38) if has_text else min(w - 2 * pad_x, h - 2 * pad_y)
         qr_x = x + pad_x if has_text else x + (w - qr_size) / 2
-        ops += _qr_ops(label.qr, qr_x, y + (h - qr_size) / 2, qr_size)
+        qr_y = y + (h - qr_size) / 2
+        if inverted:
+            q = 1.2 * MM
+            ops += [b"1 g", _rounded(qr_x - q, qr_y - q, qr_size + 2 * q, qr_size + 2 * q, 1.5 * MM) + b" f", b"0 g"]
+        ops += _qr_ops(label.qr, qr_x, qr_y, qr_size, logo)
         text_x = qr_x + qr_size + 2.5 * MM
         text_w = x + w - pad_x - text_x
     else:
@@ -389,6 +438,7 @@ def _label_ops(
         )
         total = sum(size * 1.18 for _, size, _ in lines)
         cursor = y + h / 2 + total / 2
+        ops.append(text_color)
         for text, size, font in lines:
             cursor -= size * 0.95
             line_x = text_x if show_qr else text_x + max(0.0, (text_w - _measure(text, font, size)) / 2)
@@ -412,6 +462,9 @@ def build_pdf(
     design: str = "plain",
     show_nutrition: bool = False,
     show_best_before: bool = False,
+    color: str = "black",
+    inverted: bool = False,
+    logo: bool = False,
 ) -> bytes:
     """PDF mit allen Etiketten; `skip` lässt am Anfang schon benutzte Felder eines Bogens frei."""
     if design == "vintage":
@@ -427,7 +480,7 @@ def build_pdf(
             if label is not None:
                 ops += _label_ops(
                     label, layout, i, border, language, show_qr, show_name, show_content, design, show_nutrition,
-                    show_best_before,
+                    show_best_before, color if color in COLORS else "black", inverted, logo,
                 )
         pages.append(ops)
 
@@ -583,7 +636,13 @@ class LabelSheetView(HomeAssistantView):
         show_nutrition = query.get("nutrition") == "1"
         # Inhalt und MHD getrennt (seit 2.12.1); alte Links mit nur content=1 drucken beides
         show_best_before = query.get("bestbefore", "1" if show_content else "0") == "1"
-        labels = collect_labels(hass, codes, show_content, show_nutrition, show_best_before)
+        places = [p.split("|", 1) for p in query.getall("place", []) if "|" in p]
+        if places:
+            # Etiketten für Fächer: Name des Orts und QR-Code, der das Fach öffnet
+            labels = [Label(place_name(hass, a or None, c), place_app_url(a or None, c)) for a, c in places]
+            show_content = show_nutrition = show_best_before = False
+        else:
+            labels = collect_labels(hass, codes, show_content, show_nutrition, show_best_before)
         if not labels:
             return self.json_message("no containers", HTTPStatus.NOT_FOUND)
         try:
@@ -606,6 +665,9 @@ class LabelSheetView(HomeAssistantView):
                 design=design if design in DESIGNS else "plain",
                 show_nutrition=show_nutrition,
                 show_best_before=show_best_before,
+                color=query.get("color", "black"),
+                inverted=query.get("inverted") == "1",
+                logo=query.get("logo") == "1",
             )
         )
         return web.Response(

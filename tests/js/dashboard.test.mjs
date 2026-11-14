@@ -2215,3 +2215,104 @@ test("Startseite: Rückrufwarnung oben, mit Ort, Übereinstimmung, Link und Gele
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/recall_read`), { type: `${D}/recall_read`, recall_id: "abc123" });
   assert.equal($(el, ".stat.recall"), null);
 });
+
+// ---------- Block 13: Fach-Tags und Etiketten ----------
+
+test("QR-Etikett eines Fachs wird erkannt", () => {
+  assert.deepEqual(mod.placeFromCode("homeassistant://navigate/larder?place=cellar&compartment=Regal+oben"), { areaId: "cellar", compartment: "Regal oben" });
+  assert.deepEqual(mod.placeFromCode("homeassistant://navigate/larder?place=-&compartment="), { areaId: "", compartment: "" });
+  assert.equal(mod.placeFromCode("homeassistant://navigate/larder?cc=HA-1"), null);
+  assert.equal(mod.placeFromCode("4000000000017"), null);
+});
+
+test("Fach per Link (NFC-Benachrichtigung): Liste ältestes zuerst, −1, Tag verknüpfen, Inventur", async () => {
+  document.body.innerHTML = "";
+  window.history.replaceState(null, "", "/larder?place=cellar&compartment=");
+  const hass = makeHass([...DOSES, { id: "p1", name: "Packung 1", area: "cellar", content: "Tomaten", days: 200, category: "produce" }]);
+  hass.states["text.p1_inhalt"].attributes.kind = "pack";
+  hass.states["number.p1_portionen"].state = "3";
+  hass.states["select.p1_einheit"].state = "pieces";
+  let links = [];
+  let capture = null;
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/place_tags`) return { links };
+    if (msg.type === `${D}/place_link`) {
+      hass.wsCalls.push(msg);
+      links = [{ tag_id: msg.tag_id, area_id: msg.area_id, compartment: msg.compartment }];
+      return { links };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await flush();
+  el._classic.startCapture = (cb) => {
+    capture = cb;
+  };
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelector("h2").textContent, "Keller");
+  assert.deepEqual([...form.querySelectorAll(".placelist .name")].map((n) => n.textContent.replace(/^\S+ /, "")), ["Chili", "Reis", "Tomaten · 3"]);
+  // Packung: −1
+  form.querySelector('.coderow[data-id="p1"] [data-role="place-take"]').click();
+  await flush();
+  assert.ok(hass.calls.some((c) => c.service === "set_value" && c.data.value === 2));
+  // Dose: öffnen statt −1
+  assert.ok(form.querySelector('.coderow[data-id="d3"] [data-role="place-open"]'));
+  // Tag verknüpfen: vorhandenen Tag scannen
+  form.querySelector('[data-role="place-tag"]').click();
+  assert.match(form.querySelector('[data-role="place-status"]').textContent, /NFC-Tag/);
+  await capture("tag-xyz");
+  await flush();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/place_link`), { type: `${D}/place_link`, tag_id: "tag-xyz", area_id: "cellar", compartment: "" });
+  assert.ok($(el, "form.dialog").textContent.includes("NFC-Tag verknüpft"));
+  // Inventur genau für dieses Fach
+  $(el, '[data-role="place-stocktake"]').click();
+  await flush();
+  assert.equal($(el, "h1").textContent, "Inventur");
+  assert.deepEqual($$(el, ".takerow .name").map((n) => n.textContent).sort(), ["Chili", "Reis", "Tomaten"]);
+  assert.ok($(el, '[data-role="take-place"]'));
+  window.history.replaceState(null, "", "/");
+});
+
+test("Fach-Etikett und Look-Optionen im PDF-Link", async () => {
+  document.body.innerHTML = "";
+  dom.window.localStorage.clear();
+  const hass = makeHass(DOSES);
+  const signed = [];
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/place_tags`) return { links: [] };
+    if (msg.type === "auth/sign_path") {
+      signed.push(msg.path);
+      return { path: msg.path };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await el.openPlace("kitchen", "Tür");
+  $(el, '[data-role="place-label"]').click();
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelector("h2").textContent, "Fach-Etikett");
+  assert.match(form.textContent, /Küche · Tür/);
+  assert.equal(form.querySelector('[data-role="label-parts"]').hidden, true);
+  form.querySelector('[data-f="logo"]').checked = true;
+  form.querySelector('[data-f="color"]').value = "green";
+  form.querySelector("button.submit").click();
+  await flush();
+  await flush();
+  assert.equal(signed[0], "/api/larder/labels.pdf?place=kitchen%7CT%C3%BCr&layout=3x8&skip=0&color=green&logo=1");
+  // invertiert: Hinweis, Farbe gesperrt, kein color-Parameter
+  const inv = form.querySelector('[data-f="inverted"]');
+  inv.checked = true;
+  inv.dispatchEvent(new Event("change"));
+  assert.equal(form.querySelector('[data-role="inverted-hint"]').hidden, false);
+  assert.equal(form.querySelector('[data-f="color"]').disabled, true);
+  form.querySelector("button.submit").click();
+  await flush();
+  await flush();
+  assert.equal(signed[1], "/api/larder/labels.pdf?place=kitchen%7CT%C3%BCr&layout=3x8&skip=0&inverted=1&logo=1");
+  dom.window.localStorage.clear();
+});
