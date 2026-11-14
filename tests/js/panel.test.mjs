@@ -2000,3 +2000,17 @@ test("Karte einer Packung: Anbrechen und Kennzeichen 'angebrochen'", async () =>
   card("Packung 1").querySelector("button.openpack").click();
   assert.equal(asked, "d1");
 });
+
+test("Karte einer Packung: reicht noch (alle Orte) und gemerkter Preis als Platzhalter", async () => {
+  const hass = adminHass([
+    { id: "d1", name: "Packung 1", content: "Ketchup", portions: 2, product: { kind: "pack", consumption_per_week: 0.5, consumption_basis: { takes: 4, days: 180 }, price_remembered: 1.99 } },
+    { id: "d2", name: "Packung 2", content: "ketchup", portions: 1, product: { kind: "pack" } },
+  ]);
+  for (const id of ["d1", "d2"]) hass.states[`select.${id}_einheit`].state = "pieces";
+  const el = mount(hass);
+  const card = $$(el, ".card").find((c) => c.querySelector(".name").textContent === "Packung 1");
+  const line = card.querySelector(".usageline");
+  assert.equal(line.hidden, false);
+  assert.equal(line.textContent, "📉 Reicht noch ca. 6 Wochen (aus 4 Entnahmen in 6 Monaten)");
+  assert.equal(card.querySelector('[data-p="price"]').placeholder, "1.99");
+});

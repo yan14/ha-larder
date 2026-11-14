@@ -3,6 +3,13 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 3.5.0
+
+- **How long it lasts:** every pack taken (−1, emptying, stocktake) is counted, moving and opening are not. The stock view and the card of a pack show *lasts about … · from n takes in …*; the forecast uses 90 days, widens to 180 or 365 when there are fewer than 3 takes and weights recent takes more.
+- **Suggested minimum stock:** *Suggestion: at least n* in the stock view, based on your use during the new setting *Lead time for minimum stock* (7 days). Applied only with a tap.
+- **Prices:** price per pack in the pack dialog, on the card and from the receipt photo; remembered per product. Without one, packs with a barcode get an estimate from [Open Prices](https://prices.openfoodfacts.org) (Open Food Facts, ODbL), marked as such.
+- **Value:** price and value per product and the total value of the stock; the statistics and the monthly report show about how much was thrown away in euros.
+
 ## 3.4.0
 
 - **Stocktake** (⋮ → 📋 Stocktake, for all users): go through an area or compartment, tick off, correct counts, remove what is gone (eaten / thrown away) or move it elsewhere; scanning QR codes, barcodes and NFC tags ticks off; summary at the end.

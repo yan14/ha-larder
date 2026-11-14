@@ -91,7 +91,7 @@ At the top: the **report of the previous month** (see [Monthly report](kitchen.m
 **⋮ → 📊 Statistics** in the dashboard shows, for the last 30 or 90 days, a year or everything:
 
 - **In stock now**: filled, empty, expiring soon, expired (and filled without a date).
-- **Emptied**: how many were eaten and thrown away, the share thrown away and the average storage time until eaten.
+- **Emptied**: how many were eaten and thrown away, the share thrown away, the value thrown away (packs with a price) and the average storage time until eaten.
 - **Thrown away most often**, **eaten most often** (with [several contents](containers.md#several-contents-in-one-container) each item counts) and **thrown away by area**.
 - **Last months** as bars: eaten (green) and thrown away (red).
 

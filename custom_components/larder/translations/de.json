@@ -226,7 +226,8 @@
           "recipe_days": "Zeitraum für Rezeptideen (Tage)",
           "soon_days": "„Läuft bald ab“ ab (Tage)",
           "shopping_details": "Marke und Packung mit auf die Einkaufsliste",
-          "watch_allergens": "Allergene im Haushalt (optional)"
+          "watch_allergens": "Allergene im Haushalt (optional)",
+          "stock_lead_days": "Vorrat: Tage bis zum nächsten Einkauf"
         },
         "data_description": {
           "vacuum_default": "Neue Dosen starten mit eingeschaltetem oder ausgeschaltetem Schalter „Vakuum“. Bestehende Dosen behalten ihren Wert. Schalte es aus, wenn die meisten deiner Boxen nicht vakuumiert sind.",
@@ -244,7 +245,8 @@
           "recipe_days": "Rezeptideen „aus Resten“ berücksichtigen Dosen, die in so vielen Tagen ablaufen (0 = nur heute). Im Dashboard lässt sich der Zeitraum für einen einzelnen Aufruf ändern oder ganz abschalten.",
           "soon_days": "Ab so vielen Resttagen gilt eine Dose als „läuft bald ab“ (Hinweis im Dashboard, Filter, Status des Sensors und Vorgabe für die Ablauf-Übersicht).",
           "shopping_details": "Sind Marke oder Packungsgröße einer Dose bekannt (z. B. nach einem Strichcode-Scan), kommen sie beim Leeren mit auf die Liste: „Haferflocken (Kölln, 500 g)“.",
-          "watch_allergens": "Dosen, deren Allergene oder Inhalt dazu passen, bekommen ein ⚠ auf Karte und Kachel; Rezeptideen lassen sie weg und meiden diese Zutaten. Nur ein Hinweis, keine Garantie."
+          "watch_allergens": "Dosen, deren Allergene oder Inhalt dazu passen, bekommen ein ⚠ auf Karte und Kachel; Rezeptideen lassen sie weg und meiden diese Zutaten. Nur ein Hinweis, keine Garantie.",
+          "stock_lead_days": "Für den Vorschlag zum Mindestbestand: so viele Packungen, wie in dieser Zeit verbraucht werden."
         }
       }
     },

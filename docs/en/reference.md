@@ -26,6 +26,7 @@ Settings → Devices & services → **Larder** → **Configure** (on any contain
 | Allergens in the household | none | Warning on containers and no such containers in recipe ideas, see [Allergens in the household](containers.md#allergens-in-the-household) |
 | Calendar for the meal plan | none | Planned dishes as all-day events, see [Meal plan](kitchen.md#meal-plan) |
 | Thawing: days ahead | 1 | Thaw reminder for frozen containers of a planned dish, see [Meal plan](kitchen.md#meal-plan) |
+| Lead time for minimum stock | 7 days | How many days of use the suggested minimum stock covers, see [Stock](containers.md#stock) |
 
 The dialog also shows the **webhook URL** for the [iOS Shortcut](scanning.md#ios-shortcut-for-the-original-zwilling-codes).
 

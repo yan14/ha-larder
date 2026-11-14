@@ -91,7 +91,7 @@ Ganz oben steht der **Bericht des Vormonats** (siehe [Monatsbericht](kitchen.md#
 **⋮ → 📊 Statistik** im Dashboard zeigt für die letzten 30 oder 90 Tage, ein Jahr oder alles:
 
 - **Jetzt im Vorrat**: gefüllt, leer, läuft bald ab, abgelaufen (und gefüllt ohne MHD).
-- **Geleert**: wie viel gegessen und weggeworfen wurde, den Anteil weggeworfen und die durchschnittliche Lagerdauer, bis etwas gegessen wurde.
+- **Geleert**: wie viel gegessen und weggeworfen wurde, den Anteil weggeworfen, den Wert des Weggeworfenen (bei Packungen mit Preis) und die durchschnittliche Lagerdauer, bis etwas gegessen wurde.
 - **Am häufigsten weggeworfen**, **am häufigsten gegessen** (bei [mehreren Inhalten](containers.md#mehrere-inhalte-in-einer-dose) zählt jeder einzeln) und **weggeworfen nach Bereich**.
 - **Letzte Monate** als Balken: gegessen (grün) und weggeworfen (rot).
 

@@ -2091,3 +2091,64 @@ test("Inventur: Ort wählen, abhaken, Anzahl korrigieren, austragen, scannen, Zu
   $(el, '[data-role="take-finish"]').click();
   assert.match($(el, "form.dialog").textContent, /2 bestätigt \(1 korrigiert\), 1 ausgetragen, 0 verschoben, 0 nicht geprüft/);
 });
+
+// ---------- Block 15: Verbrauch und Kosten ----------
+
+const { spanText, money } = await import("../../custom_components/larder/frontend/larder-dashboard-items.js");
+
+test("Vorrat: reicht noch, Vorschlag Mindestbestand, Preis und Wert; Preis im Packungs-Dialog", async () => {
+  assert.equal(spanText(5, true), "5 Tage");
+  assert.equal(spanText(42, true), "6 Wochen");
+  assert.equal(spanText(180, true, true), "6 Monaten");
+  assert.equal(spanText(30, false), "4 weeks");
+  assert.equal(money(1.5, true), "1,50");
+  const hass = makeHass(DOSES);
+  let products = [
+    { key: "ketchup", name: "Ketchup", count: 3, min: 1, low: false, places: [], usage: { per_week: 0.5, lasts_days: 42, takes: 4, days: 180 }, suggested_min: 2, price: { price: 1.99, source: "receipt" }, value: 5.97 },
+    { key: "senf", name: "Senf", count: 2, min: 0, low: false, places: [], usage: null, suggested_min: null, price: { price: 2.29, source: "openprices" }, value: 4.58 },
+  ];
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/stock`) return { products, shopping_list: true, value: 10.55, valued: 2, lead_days: 7 };
+    if (msg.type === `${D}/stock_min`) {
+      hass.wsCalls.push(msg);
+      products = products.map((p) => (p.name === msg.content ? { ...p, min: msg.min } : p));
+      return { products };
+    }
+    if (msg.type === `${D}/create_items`) {
+      hass.wsCalls.push(msg);
+      return { items: [{ device_id: "p1", cc: "HA-1", name: "Packung 1" }] };
+    }
+    return base(msg);
+  };
+  hass.fetchWithAuth = async () => ({ ok: true, json: async () => ({ items: [{ name: "Ketchup", count: 2, price: 1.99 }] }) });
+  const el = mount(hass);
+  el.setView("stock");
+  await flush();
+  await flush();
+  assert.match($(el, '[data-role="stock-value"]').textContent, /Vorrat im Wert von ca\. 10,55 € \(2 Produkte mit Preis\)/);
+  const [ketchup, senf] = $$(el, ".stockitem");
+  assert.equal(ketchup.querySelector('[data-role="stock-usage"]').textContent, "reicht noch ca. 6 Wochen · aus 4 Entnahmen in 6 Monaten");
+  assert.match(ketchup.querySelector(".price").textContent, /1,99 € je Packung · Wert ca\. 5,97 €/);
+  assert.match(senf.querySelector(".price").textContent, /ca\. 2,29 € je Packung \(Open Prices\)/);
+  assert.equal(senf.querySelector('[data-role="stock-usage"]'), null);
+  ketchup.querySelector('[data-role="stock-suggest"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/stock_min`), { type: `${D}/stock_min`, content: "Ketchup", min: 2 });
+
+  // Kassenbon füllt den Preis, der landet in den Produktdaten
+  $(el, "#settings").click();
+  el.openItemsDialog("pack");
+  const form = $(el, "form.dialog");
+  const file = form.querySelector('[data-role="receipt-file"]');
+  Object.defineProperty(file, "files", { value: [new File(["x"], "bon.jpg", { type: "image/jpeg" })], configurable: true });
+  file.dispatchEvent(new dom.window.Event("change"));
+  await flush();
+  await flush();
+  assert.equal(form.querySelector('[data-i="price"]').value, "1,99");
+  form.querySelector("button.submit").click();
+  await flush();
+  await flush();
+  const created = hass.wsCalls.find((m) => m.type === `${D}/create_items`);
+  assert.deepEqual(created.items[0].product, { price: 1.99, price_source: "receipt" });
+});

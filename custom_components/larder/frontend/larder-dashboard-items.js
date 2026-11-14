@@ -64,6 +64,13 @@ const TEXT = {
     transferDone: (name, left) => `Umgefüllt in ${name}.${left ? ` Noch ${left} im Vorrat.` : ""}`,
     transferFailed: "Umfüllen fehlgeschlagen.",
     stockTitle: "Vorrat",
+    usageLasts: (weeks, takes, months) => `reicht noch ca. ${weeks} · aus ${takes} Entnahmen in ${months}`,
+    usageNone: "noch zu wenig Entnahmen für eine Prognose",
+    suggestMin: (n) => `Vorschlag: mindestens ${n}`,
+    priceEach: (p, est) => `${est ? "ca. " : ""}${p} € je Packung${est ? " (Open Prices)" : ""}`,
+    valueOf: (v) => `Wert ca. ${v} €`,
+    stockValue: (v, n) => `Vorrat im Wert von ca. ${v} € (${n} Produkte mit Preis)`,
+    price: "€",
     againTitle: "💡 Mal wieder …?",
     againItem: (n) => `${n}× in den letzten 90 Tagen gegessen, gerade nicht da`,
     againShop: "🛒 Einkaufsliste",
@@ -161,6 +168,13 @@ const TEXT = {
     transferDone: (name, left) => `Moved into ${name}.${left ? ` ${left} left in stock.` : ""}`,
     transferFailed: "Moving failed.",
     stockTitle: "Stock",
+    usageLasts: (weeks, takes, months) => `lasts about ${weeks} · from ${takes} takes in ${months}`,
+    usageNone: "not enough takes for a forecast yet",
+    suggestMin: (n) => `Suggested: at least ${n}`,
+    priceEach: (p, est) => `${est ? "approx. " : ""}€${p} per pack${est ? " (Open Prices)" : ""}`,
+    valueOf: (v) => `value approx. €${v}`,
+    stockValue: (v, n) => `Stock worth approx. €${v} (${n} products with a price)`,
+    price: "€",
     againTitle: "💡 Time for … again?",
     againItem: (n) => `eaten ${n}× in the last 90 days, none left`,
     againShop: "🛒 Shopping list",
@@ -205,6 +219,25 @@ const TEXT = {
   },
 };
 
+/** Dauer in Worten: "3 Tage", "2 Wochen", "4 Monate" (bzw. englisch). */
+export function spanText(days, de, dative = false) {
+  const d = Math.max(0, Math.round(days));
+  if (d < 14) return de ? `${d} ${d === 1 ? "Tag" : dative ? "Tagen" : "Tage"}` : `${d} day${d === 1 ? "" : "s"}`;
+  if (d < 60) {
+    const w = Math.round(d / 7);
+    return de ? `${w} Wochen` : `${w} weeks`;
+  }
+  const m = Math.round(d / 30);
+  if (!de) return `${m} month${m === 1 ? "" : "s"}`;
+  return `${m} ${m === 1 ? "Monat" : dative ? "Monaten" : "Monate"}`;
+}
+
+/** Betrag mit zwei Nachkommastellen, auf Deutsch mit Komma. */
+export function money(value, de) {
+  const text = Number(value).toFixed(2);
+  return de ? text.replace(".", ",") : text;
+}
+
 export function itemTexts(hass) {
   return String((hass && hass.language) || "en").toLowerCase().startsWith("de") ? TEXT.de : TEXT.en;
 }
@@ -223,6 +256,8 @@ export function buildItems(kind, rows, vacuum = true) {
     }
     if (/^\d{4}-\d{2}-\d{2}$/.test(row.date || "")) item.best_before = row.date;
     if (row.product) item.product = row.product;
+    const price = parseFloat(String(row.price || "").replace(",", "."));
+    if (price > 0) item.product = { ...(item.product || {}), price: Math.round(price * 100) / 100, price_source: row.priceSource || "own" };
     if (kind === "bag") item.vacuum = !!vacuum;
     const copies = kind === "bag" ? Math.max(1, parseInt(row.count, 10) || 1) : 1;
     for (let i = 0; i < copies; i++) items.push({ ...item });
@@ -477,6 +512,12 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
       frag.append(bar);
     }
     frag.append(el("p", "note", t.stockIntro));
+    if (data.value) {
+      const de = String(hass.language || "").toLowerCase().startsWith("de");
+      const total = el("p", "note", t.stockValue(money(data.value, de), data.valued));
+      total.dataset.role = "stock-value";
+      frag.append(total);
+    }
     if (!data.shopping_list && data.products.some((p) => p.min > 0)) frag.append(el("p", "note warn", t.stockNoList));
     if (!data.products.length) frag.append(el("p", "note", t.stockEmpty));
     const list = el("div", "stocklist");
@@ -510,8 +551,27 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
       minWrap.append(min);
       head.append(minWrap);
       item.append(head);
+      const de = String(hass.language || "").toLowerCase().startsWith("de");
       const sub = [p.brand, p.package, p.earliest ? t.stockEarliest(fmtDate(hass, p.earliest)) : null].filter(Boolean).join(" · ");
       if (sub) item.append(el("div", "sub", sub));
+      if (p.usage) {
+        const line = el("div", "usage", t.usageLasts(spanText(p.usage.lasts_days, de), p.usage.takes, spanText(p.usage.days, de, true)));
+        line.dataset.role = "stock-usage";
+        item.append(line);
+      }
+      if (p.suggested_min && p.suggested_min !== p.min) {
+        const suggest = button("link", t.suggestMin(p.suggested_min), async () => {
+          min.value = String(p.suggested_min);
+          min.dispatchEvent(new Event("change"));
+        });
+        suggest.dataset.role = "stock-suggest";
+        item.append(suggest);
+      }
+      if (p.price) {
+        const parts = [t.priceEach(money(p.price.price, de), p.price.source === "openprices")];
+        if (p.value) parts.push(t.valueOf(money(p.value, de)));
+        item.append(el("div", "sub price", parts.join(" · ")));
+      }
       const places = el("div", "places");
       for (const place of p.places) {
         const date = (place.best_before ? ` · ${fmtDate(hass, place.best_before)}` : "") + (place.opened ? " · 🔓" : "");
@@ -713,7 +773,20 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
       }
       const dateLabel = el("label", "datelabel", bag ? t.bestBeforeBag : t.bestBefore);
       dateLabel.append(date);
-      second.append(quantity, unit, dateLabel);
+      second.append(quantity, unit);
+      if (!bag) {
+        const price = input("price", "text", t.price);
+        price.inputMode = "decimal";
+        price.className = "price";
+        price.title = t.price;
+        if (values.price) {
+          price.value = money(values.price, String(hass.language || "").startsWith("de"));
+          price.dataset.source = values.priceSource || "own";
+        }
+        price.addEventListener("input", () => delete price.dataset.source);
+        second.append(price);
+      }
+      second.append(dateLabel);
       const remove = button("remove", "✕", () => {
         if (rows.children.length > 1) row.remove();
         else content.value = "";
@@ -783,6 +856,11 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
             const row = free || addRow();
             row.querySelector('[data-i="content"]').value = item.name;
             row.querySelector('[data-i="quantity"]').value = String(item.count || 1);
+            const priceInput = row.querySelector('[data-i="price"]');
+            if (priceInput && item.price) {
+              priceInput.value = money(item.price, String(hass.language || "").startsWith("de"));
+              priceInput.dataset.source = "receipt";
+            }
             row._product = null;
           }
           status.textContent = t.receiptDone(data.items.length);
@@ -830,7 +908,11 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
           const node = row.querySelector(`[data-i="${name}"]`);
           return node ? node.value : "";
         };
-        return { content: v("content"), quantity: v("quantity"), unit: v("unit"), date: v("date"), count: v("count"), product: row._product };
+        const priceNode = row.querySelector('[data-i="price"]');
+        return {
+          content: v("content"), quantity: v("quantity"), unit: v("unit"), date: v("date"), count: v("count"), product: row._product,
+          price: v("price"), priceSource: priceNode && priceNode.dataset.source,
+        };
       });
       const items = buildItems(kind, data, vacuum ? vacuum.querySelector("input").checked : true);
       error.textContent = "";

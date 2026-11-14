@@ -196,6 +196,9 @@ export const STYLE = `
   .takerow .acts button.primary { background: var(--primary-color); color: var(--text-primary-color, #fff); }
   .takerow .state { font-size: 13px; color: var(--secondary-text-color); }
   .takerow.ok .state, .takerow.changed .state { color: var(--success-color, #2e7d32); font-weight: 500; }
+  .stockitem .usage { font-size: 12px; color: var(--secondary-text-color); margin-top: 2px; }
+  .stockitem button.link { font: inherit; font-size: 13px; background: none; border: 0; padding: 4px 0; cursor: pointer; color: var(--primary-color); }
+  .dialog .itemsub input.price { width: 72px; min-width: 0; }
   .stocklist { display: flex; flex-direction: column; gap: 8px; }
   .stockitem { background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 12px; padding: 10px 12px; }
   .stockitem.low { border-color: var(--error-color, #c62828); }

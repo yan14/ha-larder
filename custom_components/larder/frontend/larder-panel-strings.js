@@ -71,6 +71,11 @@ export const STRINGS = {
     nutrition: "Nährwerte",
     transfer: "In Dose umfüllen",
     movePack: "Verschieben / aufteilen",
+    usageLine: (days, takes, span) => {
+      const d = days < 14 ? `${days} Tage` : days < 60 ? `${Math.round(days / 7)} Wochen` : `${Math.round(days / 30)} Monate`;
+      const s = span < 60 ? `${Math.round(span / 7)} Wochen` : `${Math.round(span / 30)} Monaten`;
+      return `📉 Reicht noch ca. ${d} (aus ${takes} Entnahmen in ${s})`;
+    },
     openPack: "Anbrechen",
     openedSince: (d) => `🔓 Angebrochen am ${String(d || "").split("-").reverse().join(".")}`,
     olderElsewhere: (place, d) => `Ältere Packung in ${place} (MHD ${String(d || "").split("-").reverse().join(".")}) – die zuerst nehmen.`,
@@ -85,6 +90,7 @@ export const STRINGS = {
       kcal_portion: "kcal pro Portion",
       nutri_score: "Nutri-Score",
       allergens: "Allergene",
+      price: "Preis je Packung (€)",
       nutrients: "Nährwerte",
     },
     nutritionNone: "–",
@@ -242,6 +248,11 @@ export const STRINGS = {
     nutrition: "Nutrition",
     transfer: "Move into a container",
     movePack: "Move / split",
+    usageLine: (days, takes, span) => {
+      const d = days < 14 ? `${days} days` : days < 60 ? `${Math.round(days / 7)} weeks` : `${Math.round(days / 30)} months`;
+      const s = span < 60 ? `${Math.round(span / 7)} weeks` : `${Math.round(span / 30)} months`;
+      return `📉 Lasts about ${d} (from ${takes} takes in ${s})`;
+    },
     openPack: "Open",
     openedSince: (d) => `🔓 Opened on ${d}`,
     olderElsewhere: (place, d) => `Older pack in ${place} (best before ${d}) – take that one first.`,
@@ -256,6 +267,7 @@ export const STRINGS = {
       kcal_portion: "kcal per portion",
       nutri_score: "Nutri-Score",
       allergens: "Allergens",
+      price: "Price per pack (€)",
       nutrients: "Nutrients",
     },
     nutritionNone: "–",

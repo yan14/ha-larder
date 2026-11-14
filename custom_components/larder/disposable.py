@@ -148,6 +148,10 @@ async def async_dispose(hass: HomeAssistant, entry_id: str, content: str = "", r
     if tag_id:
         await async_delete_ha_tag(hass, tag_id)
     pack = kind_of(entry) == KIND_PACK
+    if pack and content and remember is not False:
+        stock = hass.data.get(DOMAIN, {}).get("stock")
+        if stock is not None:
+            stock.log_take(content)  # letzte Packung entnommen
     await hass.config_entries.async_remove(entry_id)  # async_remove_entry löst NFC-Verknüpfung und Kalendertermin
     if pack and content:
         from .stock import async_check_stock  # noqa: PLC0415 - vermeidet einen Import-Kreis
@@ -256,6 +260,8 @@ async def async_transfer(hass: HomeAssistant, pack_cc: str, target_cc: str) -> d
     if left >= 1:
         await source["portions"].async_set_native_value(float(left))
     else:
+        if (stock := hass.data.get(DOMAIN, {}).get("stock")) is not None:
+            stock.log_take(content)  # umgefüllt: zählt als Verbrauch
         await async_dispose(hass, pack.entry_id, content, remember=False)
     return {"left": max(left, 0), "best_before": best.isoformat() if best else None}
 

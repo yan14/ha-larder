@@ -94,7 +94,7 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
             best_before=value("date", "best_before"),
             outcome=outcome,
             compartment=value("text", "compartment"),
-            product=self._product_data(),
+            product=self._product_with_price(content),
             kind=self._kind,
             vacuum=None if (vac := self._sibling_state("switch", "vacuum")) is None else vac.state == STATE_ON,
         )
@@ -103,6 +103,18 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
         """Produktdaten und Nährwerte des Inhalts (für Verlauf und spätere Statistik)."""
         content = self._runtime.resettable.get("content")
         return getattr(content, "product", None) or None
+
+    def _product_with_price(self, content: str) -> dict | None:
+        """Produktdaten für den Verlauf; ohne eigenen Preis den gemerkten Preis des Produkts (für "weggeworfen in €")."""
+        product = dict(self._product_data() or {})
+        stock = self.hass.data.get(DOMAIN, {}).get(DATA_STOCK)
+        if "price" not in product and stock is not None and self._kind != "container":
+            from .stock import product_key  # noqa: PLC0415 - vermeidet einen Import-Kreis
+
+            if remembered := stock.prices.get(product_key(content)):
+                product["price"] = remembered["price"]
+                product["price_source"] = remembered.get("source")
+        return product or None
 
     def _entry_title(self) -> str:
         device = dr.async_get(self.hass).async_get_device(identifiers={(DOMAIN, self._cc)})

@@ -26,6 +26,7 @@ Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** (bei ei
 | Allergene im Haushalt | keine | Warnung an Dosen und keine solchen Dosen in Rezeptideen, siehe [Allergene im Haushalt](containers.md#allergene-im-haushalt) |
 | Kalender für den Wochenplan | keiner | Geplante Gerichte als ganztägige Termine, siehe [Wochenplan](kitchen.md#wochenplan) |
 | Auftauen: Tage vorher | 1 | Auftau-Erinnerung für Dosen im Gefrierschrank, siehe [Wochenplan](kitchen.md#wochenplan) |
+| Vorlaufzeit für den Mindestbestand | 7 Tage | Für wie viele Tage Verbrauch der vorgeschlagene Mindestbestand reicht, siehe [Vorrat](containers.md#vorrat) |
 
 Der Dialog zeigt außerdem die **Webhook-URL** für den [iOS-Kurzbefehl](scanning.md#ios-kurzbefehl-für-die-originalen-zwilling-codes).
 

@@ -78,7 +78,7 @@ A bag works like a container (scan it, take a portion, **Opened**, **Thawed**, r
 
 **Packs.** One row per product with the **count** and the best-before date printed on the package; **📷 Scan barcode** (Home Assistant app) fills in the name, brand and [nutrition](#nutrition) from Open Food Facts. Packs have no code and only a few entities (contents, compartment, quantity, unit, best-before date, days left, empty), so even many of them stay light. They show up everywhere containers do: expiring soon, [daily summary](kitchen.md#daily-summary), [recipes](kitchen.md#recipes), [statistics](dashboard.md#statistics), the filter **Packs** on the containers page (📦 on the tile).
 
-**📷 Receipt** (with an [AI](best-before.md#ai-optional) set up) reads a photo of your shopping receipt: the food items and their count appear as rows, non-food lines, deposits and totals are left out. Check them, add the best-before dates (or leave them empty) and press **Add**. The optional **compartment** in the dialog applies to all rows.
+**📷 Receipt** (with an [AI](best-before.md#ai-optional) set up) reads a photo of your shopping receipt: the food items and their count appear as rows, non-food lines, deposits and totals are left out, and the price of one pack goes into the price field. Check them, add the best-before dates (or leave them empty) and press **Add**. The optional **compartment** in the dialog applies to all rows.
 
 **Compartment suggestions:** wherever you enter a compartment (adding bags and packs, moving, the card, the fill dialog), the compartments already used in the chosen area appear as chips below the field, the most used first; tap one instead of typing. Typing filters the chips, and compartments you entered before are remembered on the device even when nothing is left in them.
 
@@ -100,6 +100,10 @@ A bag works like a container (scan it, take a portion, **Opened**, **Thawed**, r
 </p>
 
 **⋮ → 🥫 Stock** in the dashboard lists all packs by product, summed over every place, with brand, package and where they are (tap a place to open the pack). Set the **minimum stock** of every product right there; products below it are marked *too few* or *none left*. Products with a minimum stay in the list even when none are left. **Oldest first:** the places of a product are sorted by best-before date, the earliest one is shown next to the product, and the card of a pack warns when an older pack of the same food lies somewhere else.
+
+**How long it lasts.** Every pack you take (−1, emptying, stocktake) is counted; moving or opening a pack is not. From that, the stock view and the card of a pack show **lasts about 6 weeks · from 4 takes in 6 months**. The forecast looks at the last 90 days and widens to 180 or 365 days when there are fewer than 3 takes; recent takes count more. Below the line, **Suggestion: at least 2** sets the minimum stock to what you use during the *lead time for minimum stock* (setting, 7 days by default) – with a tap, nothing changes by itself.
+
+**Prices and value.** A pack can have a **price** (one pack): in the pack dialog, on the card, or read from the **📷 Receipt**. Larder remembers it per product. Without a price of your own, packs with a barcode get an estimate from [Open Prices](https://prices.openfoodfacts.org) (Open Food Facts, ODbL): the median of the last year in euro, marked *(Open Prices)*. The stock view shows the price per pack, the value of each product and the **total value**; the statistics and the monthly report add **about €X thrown away**.
 
 **Take by barcode.** Scan the barcode of a pack with **📷** (start page, containers page) or **📷 Barcode** in the stock view (Home Assistant app). Larder shows every place where this product is, with count and best-before date, the **oldest first**. If you are holding a newer one, take it from its own place with **−1**; the last pack of an entry empties it. A product that is not in stock can be added as a pack right away.
 

@@ -27,6 +27,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import CONF_CC, DATA_STOCK, DOMAIN, KIND_BAG, KIND_PACK, SIGNAL_STOCK_CHANGED
+from .consumption import async_open_prices, forecast, price_of, suggested_minimum
 from .entity import kind_of
 from .estimate import async_get_estimator, storage_context
 from .shopping import async_add_to_shopping_list
@@ -38,8 +39,11 @@ DATA_WS = "stock_ws_registered"
 STORAGE_KEY = f"{DOMAIN}.stock"
 STORAGE_VERSION = 1
 MAX_MIN = 999
+DATA_QUIET = "stock_quiet"  # Packungen, deren Anzahl gerade umgeräumt wird (zählt nicht als Verbrauch)
 TRACK_DAYS = 60  # so lange wartet Larder darauf, dass ein Eintrag auf der Einkaufsliste abgehakt wird
 MAX_BOUGHT = 30
+MAX_TAKES = 5000
+MAX_TAKE_AGE = 400  # Tage (das längste Prognose-Fenster ist ein Jahr)
 AGAIN_DAYS = 90  # "oft gegessen": in den letzten so vielen Tagen
 AGAIN_MIN = 3  # mindestens so oft
 AGAIN_SNOOZE = 30  # "✕" blendet einen Vorschlag so viele Tage aus
@@ -61,6 +65,8 @@ class Stock:
         self.tracked: dict[str, dict[str, Any]] = {}
         self.bought: list[dict[str, Any]] = []
         self.snoozed: dict[str, str] = {}  # Produkt → bis wann "Mal wieder …?" nicht vorgeschlagen wird
+        self.takes: list[dict[str, Any]] = []  # Entnahmen von Packungen: {"key", "day", "n"} (für den Verbrauch)
+        self.prices: dict[str, dict[str, Any]] = {}  # Produkt → zuletzt bekannter Preis je Packung
         self._unsub = None
 
     async def async_load(self) -> None:
@@ -69,9 +75,49 @@ class Stock:
         self.tracked = {k: v for k, v in (data.get("tracked") or {}).items() if isinstance(v, dict)}
         self.bought = [b for b in data.get("bought") or [] if isinstance(b, dict)]
         self.snoozed = {str(k): str(v) for k, v in (data.get("snoozed") or {}).items()}
+        self.takes = [t for t in data.get("takes") or [] if isinstance(t, dict)]
+        self.prices = {k: v for k, v in (data.get("prices") or {}).items() if isinstance(v, dict)}
 
     def _data(self) -> dict[str, Any]:
-        return {"minimums": self.minimums, "tracked": self.tracked, "bought": self.bought, "snoozed": self.snoozed}
+        return {
+            "minimums": self.minimums,
+            "tracked": self.tracked,
+            "bought": self.bought,
+            "snoozed": self.snoozed,
+            "takes": self.takes,
+            "prices": self.prices,
+        }
+
+    # ----- Verbrauch und Preise -----
+
+    def log_take(self, content: str, n: int = 1) -> None:
+        """Entnahme einer Packung festhalten (für "reicht noch …" und den Vorschlag zum Mindestbestand)."""
+        key = product_key(content)
+        if not key or n <= 0:
+            return
+        today = dt_util.now().date()
+        self.takes.append({"key": key, "day": today.isoformat(), "n": int(n)})
+        cutoff = (today - timedelta(days=MAX_TAKE_AGE)).isoformat()
+        self.takes = [t for t in self.takes if t.get("day", "") >= cutoff][-MAX_TAKES:]
+        self._save()
+        async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
+
+    def usage(self, content: str | None) -> dict[str, Any] | None:
+        key = product_key(content)
+        return forecast([t for t in self.takes if t.get("key") == key], 0) if key else None
+
+    def remember_price(self, content: str, price: float, source: str = "own") -> None:
+        key = product_key(content)
+        if not key or not price:
+            return
+        current = self.prices.get(key)
+        if source == "openprices" and current and current.get("source") != "openprices":
+            return  # eigene Preise haben Vorrang vor Schätzungen
+        entry = {"price": round(float(price), 2), "source": source, "day": dt_util.now().date().isoformat()}
+        if current and {k: current.get(k) for k in ("price", "source")} == {k: entry[k] for k in ("price", "source")}:
+            return
+        self.prices[key] = entry
+        self._save()
 
     def snooze(self, content: str) -> None:
         self.snoozed[product_key(content)] = (dt_util.now().date() + timedelta(days=AGAIN_SNOOZE)).isoformat()
@@ -222,20 +268,30 @@ def pack_entries(hass: HomeAssistant, exclude: set[str] | None = None) -> list[d
                 "package": attrs.get("package"),
                 "ean": attrs.get("ean"),
                 "opened": attrs.get("opened"),
+                "price": attrs.get("price"),
+                "price_source": attrs.get("price_source"),
             }
         )
     return out
 
 
-def stock_overview(hass: HomeAssistant, minimums: dict[str, dict[str, Any]]) -> list[dict[str, Any]]:
-    """Produkte mit Bestand (Summe aller Orte), Mindestbestand und Orten, alphabetisch."""
+def stock_overview(hass: HomeAssistant, minimums: dict[str, dict[str, Any]], stock: Stock | None = None) -> list[dict[str, Any]]:
+    """Produkte mit Bestand (Summe aller Orte), Mindestbestand und Orten, alphabetisch.
+
+    Mit `stock` auch Verbrauch ("reicht noch …"), Vorschlag für den Mindestbestand, Preis und Wert.
+    """
     products: dict[str, dict[str, Any]] = {}
+    value_parts: dict[str, list[tuple[int, dict[str, Any] | None]]] = {}
     for item in pack_entries(hass):
         key = product_key(item["content"])
         product = products.setdefault(
             key, {"key": key, "name": item["content"], "count": 0, "places": [], "brand": None, "package": None}
         )
         product["count"] += item["count"]
+        value_parts.setdefault(key, []).append(
+            (item["count"], {"price": item["price"], "price_source": item.get("price_source")} if item["price"] else None)
+        )
+        product["ean"] = product.get("ean") or item.get("ean")
         product["brand"] = product["brand"] or item["brand"]
         product["package"] = product["package"] or item["package"]
         product["places"].append(
@@ -259,6 +315,24 @@ def stock_overview(hass: HomeAssistant, minimums: dict[str, dict[str, Any]]) -> 
         product["places"].sort(key=lambda p: (not p["opened"], p["best_before"] or "9999", str(p["area"] or "￿").casefold(), p["compartment"].casefold()))
         product["opened"] = sum(p["count"] for p in product["places"] if p["opened"])
         product["earliest"] = next((p["best_before"] for p in product["places"] if p["best_before"]), None)
+        if stock is not None:
+            usage = forecast([t for t in stock.takes if t.get("key") == product["key"]], product["count"])
+            product["usage"] = usage
+            lead = int(getattr(hass.data.get(DOMAIN, {}).get("estimator"), "stock_lead_days", 7) or 7)
+            product["suggested_min"] = suggested_minimum(usage["per_week"] if usage else None, lead)
+            remembered = stock.prices.get(product["key"])
+            own = next((p for _, p in value_parts.get(product["key"], []) if p), None)
+            product["price"] = price_of(own or {}, remembered)
+            if product["price"] and product["price"]["source"] == "openprices" and remembered:
+                product["price"]["count"] = remembered.get("count")
+            total: float | None = 0.0 if product["count"] else None
+            for count, pack_price in value_parts.get(product["key"], []):
+                price = price_of(pack_price or {}, remembered)
+                if price is None:
+                    total = None
+                    break
+                total += count * price["price"]
+            product["value"] = round(total, 2) if total is not None else None
         rows.append(product)
     rows.sort(key=lambda p: p["name"].casefold())
     return rows
@@ -344,7 +418,10 @@ async def async_open_pack(hass: HomeAssistant, cc: str, area_id: str | None = No
         if source["best_before"]:
             item["best_before"] = date.fromisoformat(source["best_before"])
         created = await async_create_items(hass, KIND_PACK, [item], target_area, target_comp)
+        quiet = hass.data.setdefault(DOMAIN, {}).setdefault(DATA_QUIET, set())
+        quiet.add(cc)  # Anbrechen ist (noch) kein Verbrauch
         await ents["portions"].async_set_native_value(float(source["count"] - 1))
+        quiet.discard(cc)
         opened_cc = created[0]["cc"]
     else:
         await ents["content"].async_set_product(product)
@@ -395,6 +472,7 @@ async def async_move_packs(
         raise HomeAssistantError(translation_domain=DOMAIN, translation_key="move_invalid")
     compartment = (compartment or "").strip()
     count = max(1, min(int(count), source["count"]))
+    quiet: set[str] = hass.data.setdefault(DOMAIN, {}).setdefault(DATA_QUIET, set())
     if (source["area_id"] or None) == (area_id or None) and source["compartment"] == compartment:
         return {"moved": 0, "merged": False, "device_id": source["device_id"]}
     ents = entry.runtime_data.resettable
@@ -418,7 +496,9 @@ async def async_move_packs(
         if all_of_them:
             await async_dispose(hass, entry.entry_id, remember=False)
         else:
+            quiet.add(cc)  # Umräumen ist kein Verbrauch
             await ents["portions"].async_set_native_value(float(source["count"] - count))
+            quiet.discard(cc)
         return {"moved": count, "merged": True, "device_id": target["device_id"]}
     if all_of_them:
         await _async_relocate(hass, cc, area_id, compartment)
@@ -432,7 +512,9 @@ async def async_move_packs(
     if source["best_before"]:
         item["best_before"] = date.fromisoformat(source["best_before"])
     created = await async_create_items(hass, KIND_PACK, [item], area_id, compartment)
+    quiet.add(cc)
     await ents["portions"].async_set_native_value(float(source["count"] - count))
+    quiet.discard(cc)
     return {"moved": count, "merged": False, "device_id": created[0]["device_id"]}
 
 
@@ -488,6 +570,23 @@ async def async_cook_again(hass: HomeAssistant) -> list[dict[str, Any]]:
     return build_cook_again(history.records, present_products(hass), stock.snoozed)
 
 
+async def _async_fill_open_prices(hass: HomeAssistant, stock: Stock, products: list[dict[str, Any]]) -> None:
+    changed = False
+    for product in products:
+        try:
+            result = await async_open_prices(hass, product["ean"])
+        except Exception:  # noqa: BLE001 - Hintergrund: eine fehlende Schätzung darf nichts stören
+            _LOGGER.debug("Open Prices für %s fehlgeschlagen", product["ean"], exc_info=True)
+            continue
+        if result:
+            stock.remember_price(product["name"], result["price"], "openprices")
+            if product["key"] in stock.prices:
+                stock.prices[product["key"]]["count"] = result["count"]
+            changed = True
+    if changed:
+        async_dispatcher_send(hass, SIGNAL_STOCK_CHANGED)
+
+
 # ---------- Strichcode ----------
 
 
@@ -532,9 +631,22 @@ def _cc_of(hass: HomeAssistant, device_id: str) -> str | None:
 async def ws_stock(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
     stock = await async_get_stock(hass)
     estimator = await async_get_estimator(hass)
+    products = stock_overview(hass, stock.minimums, stock)
+    valued = [p["value"] for p in products if p.get("value")]
     connection.send_result(
-        msg["id"], {"products": stock_overview(hass, stock.minimums), "shopping_list": bool(estimator.todo_entity)}
+        msg["id"],
+        {
+            "products": products,
+            "shopping_list": bool(estimator.todo_entity),
+            "value": round(sum(valued), 2) if valued else None,
+            "valued": len(valued),
+            "lead_days": estimator.stock_lead_days,
+        },
     )
+    # Packungen mit Strichcode, aber ohne Preis: im Hintergrund in Open Prices nachsehen (höchstens 5 je Aufruf)
+    missing = [p for p in products if p.get("ean") and p["count"] and not p.get("price") and p["key"] not in stock.prices][:5]
+    if missing:
+        hass.async_create_task(_async_fill_open_prices(hass, stock, missing), f"{DOMAIN}_open_prices")
 
 
 @websocket_api.websocket_command(
@@ -552,7 +664,7 @@ async def ws_stock_min(hass: HomeAssistant, connection: websocket_api.ActiveConn
     except HomeAssistantError as err:
         connection.send_error(msg["id"], "stock_failed", str(err))
         return
-    connection.send_result(msg["id"], {"products": stock_overview(hass, stock.minimums)})
+    connection.send_result(msg["id"], {"products": stock_overview(hass, stock.minimums, stock)})
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/stock_code", vol.Required("code"): str})

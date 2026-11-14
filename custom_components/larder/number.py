@@ -49,6 +49,9 @@ class LarderPortions(NumberEntity, LarderResettable):
 
             content = self._sibling_state("text", "content")
             if content is not None:
+                domain_data = self.hass.data.get(DOMAIN, {})
+                if self._cc not in domain_data.get("stock_quiet", set()) and (stock := domain_data.get("stock")):
+                    stock.log_take(content.state, int(round((before or 0) - value)))
                 self.hass.async_create_task(async_check_stock(self.hass, content.state), f"{DOMAIN}_stock_{self._cc}")
 
     async def async_reset(self) -> None:

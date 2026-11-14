@@ -170,7 +170,7 @@ const hass = {
     if (msg.type === "larder/stock_code") return de
       ? { code: msg.code, name: "Ketchup", entries: [{ device_id: "demo12", area: "Küche", compartment: "Tür", count: 1, best_before: day(25) }, { device_id: "demo12", area: "Vorratskammer", compartment: "Schrank", count: 2, best_before: day(240) }] }
       : { code: msg.code, name: "Ketchup", entries: [{ device_id: "demo12", area: "Kitchen", compartment: "Door", count: 1, best_before: day(25) }, { device_id: "demo12", area: "Pantry", compartment: "Cupboard", count: 2, best_before: day(240) }] };
-    if (msg.type === "larder/stock") return { shopping_list: true, products: de ? [
+    if (msg.type === "larder/stock") return { shopping_list: true, value: 28.38, valued: 3, lead_days: 7, products: (de ? [
       { key: "haselnusscreme", name: "Haselnusscreme", count: 3, min: 2, low: false, brand: "Nutella", package: "450 g", places: [{ device_id: "demo13", area: "Keller", compartment: "Regal oben", count: 3 }] },
       { key: "ketchup", name: "Ketchup", count: 3, min: 4, low: true, brand: "Heinz", package: "500 ml", earliest: day(25), places: [{ device_id: "demo12", area: "Küche", compartment: "Tür", count: 1, best_before: day(25) }, { device_id: "demo12", area: "Vorratskammer", compartment: "Schrank", count: 2, best_before: day(240) }] },
       { key: "senf", name: "Senf", count: 0, min: 1, low: true, places: [] },
@@ -180,7 +180,13 @@ const hass = {
       { key: "hazelnut spread", name: "Hazelnut spread", count: 3, min: 2, low: false, brand: "Nutella", package: "450 g", places: [{ device_id: "demo13", area: "Basement", compartment: "Top shelf", count: 3 }] },
       { key: "ketchup", name: "Ketchup", count: 3, min: 4, low: true, brand: "Heinz", package: "500 ml", earliest: day(25), places: [{ device_id: "demo12", area: "Kitchen", compartment: "Door", count: 1, best_before: day(25) }, { device_id: "demo12", area: "Pantry", compartment: "Cupboard", count: 2, best_before: day(240) }] },
       { key: "mustard", name: "Mustard", count: 0, min: 1, low: true, places: [] },
-    ] };
+    ]).map((p) => ({ ...p, ...({
+      ketchup: { usage: { per_week: 0.5, lasts_days: 42, takes: 4, days: 180 }, suggested_min: 2, price: { price: 1.99, source: "receipt" }, value: 5.97 },
+      haselnusscreme: { usage: { per_week: 0.4, lasts_days: 52, takes: 5, days: 90 }, price: { price: 4.49, source: "own" }, value: 13.47 },
+      "hazelnut spread": { usage: { per_week: 0.4, lasts_days: 52, takes: 5, days: 90 }, price: { price: 4.49, source: "own" }, value: 13.47 },
+      "tomaten gehackt": { price: { price: 1.49, source: "openprices", count: 7 }, value: 8.94 },
+      "chopped tomatoes": { price: { price: 1.49, source: "openprices", count: 7 }, value: 8.94 },
+    }[p.key] || {}) })) };
     if (msg.type === "call_service") return { response: { recipes: suggestions } };
     return {};
   },

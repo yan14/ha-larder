@@ -42,6 +42,7 @@ from .const import (
     CONF_REPAIR_HINTS,
     CONF_SHOPPING_DETAILS,
     CONF_SOON_DAYS,
+    CONF_STOCK_LEAD_DAYS,
     CONF_TEMPERATURE_WARNING,
     CONF_THAW_DAYS,
     CONF_THAWED_DAYS,
@@ -283,6 +284,7 @@ SETTINGS: dict[str, tuple[str, Any, Any]] = {
     CONF_VACUUM_DEFAULT: ("vacuum_default", True, _flag),
     CONF_WATCH_ALLERGENS: ("watch_allergens", [], _allergen_keys),
     CONF_SHOPPING_DETAILS: ("shopping_details", True, _flag),
+    CONF_STOCK_LEAD_DAYS: ("stock_lead_days", 7, _number(1, 60)),
     CONF_AI_TASK_ENTITY: ("ai_task_entity", None, _entity),
 }
 

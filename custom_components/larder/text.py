@@ -14,6 +14,7 @@ from .entity import LarderConfigEntry, LarderEntity, LarderResettable
 from .estimate import DATA_ESTIMATOR, async_get_estimator
 from .product import watched_allergens
 from .shelf_life import category_for
+from .stock import product_key
 
 
 async def async_setup_entry(
@@ -38,6 +39,8 @@ PRODUCT_FIELDS: dict[str, type] = {
     "allergens": str,
     "source": str,  # "openfoodfacts" oder leer (von Hand)
     "opened": str,  # Packung angebrochen am (ISO-Datum)
+    "price": float,  # Preis je Packung in Euro
+    "price_source": str,  # "receipt", "own" oder "openprices" (Schätzung)
 }
 _MAX_TEXT = 500
 
@@ -51,7 +54,7 @@ def clean_product(data: dict[str, Any]) -> dict[str, Any]:
             continue
         if kind is float:
             try:
-                number = round(float(str(value).replace(",", ".")), 1)
+                number = round(float(str(value).replace(",", ".")), 2 if key == "price" else 1)
             except ValueError:
                 continue
             if 0 <= number <= 10000:
@@ -100,6 +103,11 @@ class LarderContent(TextEntity, LarderResettable):
         watched = getattr(estimator, "watch_allergens", None)
         if self._kind == KIND_PACK and (stock := self.hass.data.get(DOMAIN, {}).get(DATA_STOCK)) is not None:
             attrs["min_stock"] = stock.minimum(value)  # Mindestbestand des Produkts (für die Karte)
+            if (usage := stock.usage(value)) is not None:
+                attrs["consumption_per_week"] = usage["per_week"]  # Verbrauch des Produkts (für "reicht noch …")
+                attrs["consumption_basis"] = {"takes": usage["takes"], "days": usage["days"]}
+            if "price" not in self._product and (price := stock.prices.get(product_key(value))):
+                attrs["price_remembered"] = price["price"]
         if value.strip() and watched:
             warning = watched_allergens(value, self._product.get("allergens", ""), watched, self.hass.config.language or "en")
             if warning:
@@ -114,6 +122,10 @@ class LarderContent(TextEntity, LarderResettable):
             merged = {**self._product, **data}
             self._product = clean_product({k: v for k, v in merged.items() if v not in (None, "")})
         self.async_write_ha_state()
+        stock = self.hass.data.get(DOMAIN, {}).get(DATA_STOCK)
+        if stock is not None and self._kind == KIND_PACK and self._product.get("price") and self._attr_native_value:
+            # Preis für den nächsten Einkauf dieses Produkts merken (Schätzungen aus Open Prices nur, wenn nichts da ist)
+            stock.remember_price(self._attr_native_value, self._product["price"], self._product.get("price_source") or "own")
 
     async def async_set_value(self, value: str) -> None:
         self._attr_native_value = value

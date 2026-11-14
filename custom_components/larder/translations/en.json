@@ -226,7 +226,8 @@
           "recipe_days": "Period for recipe ideas (days)",
           "soon_days": "\"Expiring soon\" from (days)",
           "shopping_details": "Brand and package on the shopping list",
-          "watch_allergens": "Allergens in the household (optional)"
+          "watch_allergens": "Allergens in the household (optional)",
+          "stock_lead_days": "Stock: days until the next shopping trip"
         },
         "data_description": {
           "vacuum_default": "New containers start with the “Vacuum” switch on or off. Existing containers keep their value. Switch it off if most of your boxes are not vacuum-sealed.",
@@ -244,7 +245,8 @@
           "recipe_days": "Recipe ideas \"from leftovers\" use containers that expire within this many days (0 = today only). In the dashboard you can change the period for a single request or turn it off.",
           "soon_days": "From this many days left a container counts as \"expiring soon\" (hint in the dashboard, filter, sensor status and the default for the expiry overview).",
           "shopping_details": "If the brand or package size of a container is known (e.g. after a barcode scan), it goes onto the list with the contents when emptying: \"Oats (Kölln, 500 g)\".",
-          "watch_allergens": "Containers whose allergens or contents match get a ⚠ on the card and tile; recipe ideas leave them out and avoid these ingredients. Only a hint, no guarantee."
+          "watch_allergens": "Containers whose allergens or contents match get a ⚠ on the card and tile; recipe ideas leave them out and avoid these ingredients. Only a hint, no guarantee.",
+          "stock_lead_days": "For the suggested minimum stock: as many packs as are used up in this time."
         }
       }
     },

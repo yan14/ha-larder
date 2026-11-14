@@ -48,6 +48,7 @@ from .const import (
     CONF_SIZE,
     CONF_SOON_DAYS,
     CONF_SOURCE,
+    CONF_STOCK_LEAD_DAYS,
     CONF_TC,
     CONF_TEMPERATURE_WARNING,
     CONF_THAW_DAYS,
@@ -289,6 +290,9 @@ class LarderOptionsFlow(OptionsFlow):
                     EntitySelectorConfig(domain="todo")
                 ),
                 vol.Optional(CONF_SHOPPING_DETAILS, default=True): BooleanSelector(),
+                vol.Optional(CONF_STOCK_LEAD_DAYS, default=7): NumberSelector(
+                    NumberSelectorConfig(min=1, max=60, step=1, mode=NumberSelectorMode.BOX)
+                ),
                 vol.Optional(CONF_WATCH_ALLERGENS): SelectSelector(
                     SelectSelectorConfig(
                         options=list(ALLERGEN_KEYS),

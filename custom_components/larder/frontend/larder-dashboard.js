@@ -2389,6 +2389,7 @@ export class LarderDashboard extends HTMLElement {
     const summary = [];
     if (st.waste_percent !== null && st.waste_percent !== undefined) summary.push(el("p", "lead", t.statsWaste(st.waste_percent)));
     if (st.avg_days_stored !== null && st.avg_days_stored !== undefined) summary.push(el("p", "note", t.statsAvg(st.avg_days_stored)));
+    if (st.thrown_value) summary.push(el("p", "note", t.statsThrownValue(st.thrown_value, st.thrown_priced)));
     frag.append(
       box(
         `${t.statsEmptied}: ${st.emptied}`,

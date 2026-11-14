@@ -38,6 +38,23 @@ def _emptied_day(record: dict[str, Any]) -> date | None:
     return dt_util.as_local(parsed).date() if parsed else None
 
 
+def record_value(records: list[dict[str, Any]]) -> tuple[float | None, int]:
+    """Summe der Preise (Preis je Packung × Anzahl bei Packungen) und wie viele Einträge einen Preis hatten."""
+    total, priced = 0.0, 0
+    for r in records:
+        price = (r.get("product") or {}).get("price")
+        try:
+            price = float(price)
+        except (TypeError, ValueError):
+            continue
+        if price <= 0:
+            continue
+        count = r.get("quantity") if r.get("kind") == "pack" and r.get("unit") in ("pieces", "portions") and r.get("quantity") else 1
+        total += price * count
+        priced += 1
+    return (round(total, 2) if priced else None), priced
+
+
 def build_statistics(hass: HomeAssistant, records: list[dict[str, Any]], days: int | None = None) -> dict[str, Any]:
     today = dt_util.now().date()
     since = today - timedelta(days=days) if days else None
@@ -59,6 +76,7 @@ def build_statistics(hass: HomeAssistant, records: list[dict[str, Any]], days: i
         return [{"content": names[k], "count": n} for k, n in counter.most_common(TOP)]
 
     stored = [r["days_stored"] for r in eaten if isinstance(r.get("days_stored"), int)]
+    thrown_value, thrown_priced = record_value(wasted)
     by_area: Counter[str] = Counter(r.get("area") or "" for r in wasted)
 
     # Monate (neueste zuletzt): gegessen und weggeworfen
@@ -91,6 +109,8 @@ def build_statistics(hass: HomeAssistant, records: list[dict[str, Any]], days: i
         "unknown": len(unknown),
         "waste_percent": round(100 * len(wasted) / decided) if decided else None,
         "avg_days_stored": round(sum(stored) / len(stored), 1) if stored else None,
+        "thrown_value": thrown_value,
+        "thrown_priced": thrown_priced,
         "top_thrown": top(wasted),
         "top_eaten": top(eaten),
         "thrown_by_area": [{"area": a, "count": n} for a, n in by_area.most_common() if a],
@@ -166,6 +186,7 @@ def build_monthly_report(
                 counter[part.casefold()] += 1
                 names.setdefault(part.casefold(), part)
     top = [{"content": names[k], "count": n} for k, n in counter.most_common(3)]
+    thrown_value, _priced = record_value([r for r in items if _was_wasted(r)])
     year, mon = (int(x) for x in month.split("-"))
     label = f"{_MONTHS[lang][mon - 1]} {year}"
     de = lang == "de"
@@ -180,6 +201,9 @@ def build_monthly_report(
             trend = "better" if waste < waste_before else "worse" if waste > waste_before else "same"
             line += f" (Vormonat {waste_before} %)" if de else f" (previous month {waste_before} %)"
         lines.append(line)
+    if thrown_value:
+        money = f"{thrown_value:.2f}".replace(".", ",") if de else f"{thrown_value:.2f}"
+        lines.append(f"💶 ca. {money} € weggeworfen" if de else f"💶 about €{money} thrown away")
     if top:
         joined = ", ".join(f"{t['content']} ({t['count']}×)" for t in top)
         lines.append(f"Am häufigsten weggeworfen: {joined}" if de else f"Thrown away most: {joined}")
@@ -189,6 +213,8 @@ def build_monthly_report(
             speech += {"better": f" Das sind {waste} Prozent, weniger als im Vormonat mit {waste_before} Prozent.",
                        "worse": f" Das sind {waste} Prozent, mehr als im Vormonat mit {waste_before} Prozent.",
                        "same": f" Das sind {waste} Prozent, genauso viel wie im Vormonat."}[trend]
+        if thrown_value:
+            speech += f" Das waren etwa {round(thrown_value)} Euro."
         if top:
             speech += f" Am häufigsten weggeworfen: {top[0]['content']}."
     else:
@@ -197,6 +223,8 @@ def build_monthly_report(
             speech += {"better": f" That is {waste} percent, less than {waste_before} percent the month before.",
                        "worse": f" That is {waste} percent, more than {waste_before} percent the month before.",
                        "same": f" That is {waste} percent, the same as the month before."}[trend]
+        if thrown_value:
+            speech += f" That was about {round(thrown_value)} euros."
         if top:
             speech += f" Thrown away most: {top[0]['content']}."
     return {
@@ -211,6 +239,7 @@ def build_monthly_report(
         "previous_waste_percent": waste_before,
         "trend": trend,
         "top_thrown": top,
+        "thrown_value": thrown_value,
         "summary": "\n".join(lines),
         "speech": speech,
         "empty": not filled and not items,

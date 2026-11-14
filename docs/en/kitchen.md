@@ -76,7 +76,7 @@ response_variable: result
 
 ### Monthly report
 
-A second blueprint sends a **monthly report** for the previous month on the day you choose: containers filled and emptied, eaten and thrown away, the share thrown away compared with the month before, and what was thrown away most. As a push (tapping it opens the statistics) and optionally read out loud. Nothing is sent for a month without activity. The same report is at the top of the [statistics](dashboard.md#statistics) and comes from the service `larder.get_monthly_report` (`month`: `YYYY-MM`, default the previous month).
+A second blueprint sends a **monthly report** for the previous month on the day you choose: containers filled and emptied, eaten and thrown away, the share thrown away compared with the month before, what was thrown away most and – for packs with a price – about how many euros. As a push (tapping it opens the statistics) and optionally read out loud. Nothing is sent for a month without activity. The same report is at the top of the [statistics](dashboard.md#statistics) and comes from the service `larder.get_monthly_report` (`month`: `YYYY-MM`, default the previous month).
 
 [![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fmonthly_report.yaml)
 

@@ -383,6 +383,7 @@ class DoseCard {
       <div class="row flexrow"><label class="check"><input type="checkbox" data-f="flexible"><span data-l="flexible"></span></label></div>
       <div class="row homerow"><label data-l="homeArea"></label><select data-f="homeArea"></select></div>
       <div class="openedline" role="note" hidden></div>
+      <div class="usageline" role="note" hidden></div>
       <div class="olderhint" role="note" hidden></div>
       <div class="row minrow" hidden><label data-l="minStock"></label><input data-f="minStock" type="number" min="0" max="999" step="1" inputmode="numeric"><span class="stockinfo"></span></div>
       <div class="allergen-warning" role="note" hidden></div>
@@ -394,6 +395,7 @@ class DoseCard {
           <label><span data-n="kcal_portion"></span><input data-p="kcal_portion" type="number" min="0" max="10000" step="any" inputmode="decimal"></label>
           <label><span data-n="nutri_score"></span><select data-p="nutri_score"><option value=""></option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option></select></label>
           <label><span data-n="ean"></span><input data-p="ean" type="text" maxlength="14" inputmode="numeric"></label>
+          <label><span data-n="price"></span><input data-p="price" type="number" min="0" max="10000" step="0.01" inputmode="decimal"></label>
           <label class="wide"><span data-n="allergens"></span><input data-p="allergens" type="text" maxlength="200"></label>
           <label class="wide"><span data-n="nutrients"></span><textarea data-p="nutrients" rows="2" maxlength="500"></textarea></label>
         </div>
@@ -811,6 +813,26 @@ class DoseCard {
         older.textContent = t.olderElsewhere(best.place, best.date);
       }
     }
+    // Verbrauch: reicht der Bestand dieses Produkts (alle Orte) noch wie lange?
+    const usageLine = this.q(".usageline");
+    const perWeek = kind === "pack" && hasContentNow && text.attributes ? Number(text.attributes.consumption_per_week) : 0;
+    usageLine.hidden = !(perWeek > 0);
+    if (perWeek > 0) {
+      const key = text.state.trim().toLowerCase();
+      let total = 0;
+      for (const other of this._panel._devices || []) {
+        const ot = states[other.entities.text];
+        if (!isValidState(ot) || (ot.attributes && ot.attributes.kind) !== "pack" || ot.state.trim().toLowerCase() !== key) continue;
+        const q = states[other.entities.number];
+        const u = states[other.entities.select];
+        const n = isValidState(q) ? Number(q.state) : 0;
+        total += n > 0 && (!u || ["pieces", "portions"].includes(u.state)) ? n : 1;
+      }
+      const basis = text.attributes.consumption_basis || {};
+      usageLine.textContent = t.usageLine(Math.round((total / perWeek) * 7), basis.takes || 0, basis.days || 0);
+    }
+    const priceInput = this.q('[data-p="price"]');
+    priceInput.placeholder = text && text.attributes && text.attributes.price_remembered ? String(text.attributes.price_remembered) : "";
     const minRow = this.q(".minrow");
     minRow.hidden = !(kind === "pack" && hasContentNow);
     this.q('[data-l="minStock"]').textContent = t.minStock;

@@ -60,6 +60,7 @@ DEFAULT_THAW_DAYS = 1
 CONF_TEMPERATURE_WARNING = "temperature_warning"  # Warnung, wenn ein Lagerort mit Sensor zu warm ist
 CONF_REPAIR_HINTS = "repair_hints"  # Reparaturhinweise für Dosen ohne Bereich, ohne MHD, lange abgelaufen
 CONF_WATCH_ALLERGENS = "watch_allergens"  # Allergene, auf die der Haushalt achtet
+CONF_STOCK_LEAD_DAYS = "stock_lead_days"  # Tage bis zum nächsten Einkauf (Vorschlag Mindestbestand)
 CONF_SHOPPING_DETAILS = "shopping_details"  # Marke und Packung mit auf die Einkaufsliste
 CONF_VACUUM_DEFAULT = "vacuum_default"  # Vorbelegung des Schalters "Vakuum" bei neuen Dosen
 EVENT_DOSE_SCANNED = f"{DOMAIN}_dose_scanned"  # verknüpfter NFC-Tag wurde gescannt
