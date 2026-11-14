@@ -2028,3 +2028,17 @@ test("Karte einer Packung: Preisschätzung von Open Prices, ohne Preis keine Zei
   assert.equal(card("Packung 1").querySelector(".priceline").textContent, "💶 ca. 1,49 € je Packung (Open Prices)");
   assert.equal(card("Packung 2").querySelector(".priceline").hidden, true);
 });
+
+test("Karte: Rückrufwarnung mit Link, ohne Warnung keine Zeile", async () => {
+  const hass = adminHass([
+    { id: "d1", name: "Packung 1", content: "Ketchup", portions: 1, product: { kind: "pack", recall: { id: "x", title: "Heinz Ketchup", reason: "Glassplitter", link: "https://www.lebensmittelwarnung.de/meldung/1" } } },
+    { id: "d2", name: "Packung 2", content: "Senf", portions: 1, product: { kind: "pack" } },
+  ]);
+  const el = mount(hass);
+  const card = (n) => $$(el, ".card").find((c) => c.querySelector(".name").textContent === n);
+  const line = card("Packung 1").querySelector(".recallline");
+  assert.equal(line.hidden, false);
+  assert.match(line.textContent, /Rückrufwarnung: Heinz Ketchup – Glassplitter/);
+  assert.equal(line.querySelector("a").href, "https://www.lebensmittelwarnung.de/meldung/1");
+  assert.equal(card("Packung 2").querySelector(".recallline").hidden, true);
+});

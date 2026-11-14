@@ -353,6 +353,8 @@ export class LarderDashboard extends HTMLElement {
       this.loadPlans();
       this.loadBought();
       this.loadCookAgain();
+      this.loadRunningLow();
+      this.loadRecalls();
       this.loadSettings();
       this._handleViewParam();
       this._subscribeScans();
@@ -484,6 +486,8 @@ export class LarderDashboard extends HTMLElement {
     if (view === "start") {
       this.loadBought();
       this.loadCookAgain();
+      this.loadRunningLow();
+      this.loadRecalls();
     }
     if (view === "stats") this.loadReport();
     const { soon, ...rest } = filter || {};
@@ -611,6 +615,8 @@ export class LarderDashboard extends HTMLElement {
       this._plans,
       this._bought,
       this._again,
+      this._low,
+      this._recalls,
       this._view === "stats" ? this._report : null,
       this._view === "stats" ? [this._stats, this._statsDays] : null,
       this._view === "stock" ? this._stock : null,
@@ -1726,6 +1732,10 @@ export class LarderDashboard extends HTMLElement {
     } else {
       frag.append(el("p", "lead", t.soonNone(rows.length ? rows[0].soon : SOON_DAYS)));
     }
+    const recall = this._recallBox();
+    if (recall) frag.insertBefore(recall, frag.childNodes[1] || null);
+    const low = this._lowBox();
+    if (low) frag.append(low);
     const bought = this._boughtBox();
     if (bought) frag.append(bought);
     const again = this._againBox();

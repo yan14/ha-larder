@@ -42,7 +42,10 @@ from .const import (
     CONF_NFC_NOTIFY,
     CONF_OPENED_DAYS,
     CONF_QR_CODE,
+    CONF_RECALL_CHECK,
+    CONF_RECALL_STATE,
     CONF_RECIPE_DAYS,
+    CONF_REORDER_SHOPPING,
     CONF_REPAIR_HINTS,
     CONF_SHOPPING_DETAILS,
     CONF_SIZE,
@@ -67,6 +70,7 @@ from .const import (
     KIND_BAG,
     MAX_RECIPE_DAYS,
     MAX_SOON_DAYS,
+    RECALL_STATES,
     SIGNAL_SETTINGS_CHANGED,
     SOON_DAYS,
     SOURCE_GENERATED,
@@ -292,6 +296,11 @@ class LarderOptionsFlow(OptionsFlow):
                 vol.Optional(CONF_SHOPPING_DETAILS, default=True): BooleanSelector(),
                 vol.Optional(CONF_STOCK_LEAD_DAYS, default=7): NumberSelector(
                     NumberSelectorConfig(min=1, max=60, step=1, mode=NumberSelectorMode.BOX)
+                ),
+                vol.Optional(CONF_REORDER_SHOPPING, default=False): BooleanSelector(),
+                vol.Optional(CONF_RECALL_CHECK, default=True): BooleanSelector(),
+                vol.Optional(CONF_RECALL_STATE): SelectSelector(
+                    SelectSelectorConfig(options=list(RECALL_STATES), mode=SelectSelectorMode.DROPDOWN)
                 ),
                 vol.Optional(CONF_WATCH_ALLERGENS): SelectSelector(
                     SelectSelectorConfig(

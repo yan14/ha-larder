@@ -26,7 +26,10 @@ Settings → Devices & services → **Larder** → **Configure** (on any contain
 | Allergens in the household | none | Warning on containers and no such containers in recipe ideas, see [Allergens in the household](containers.md#allergens-in-the-household) |
 | Calendar for the meal plan | none | Planned dishes as all-day events, see [Meal plan](kitchen.md#meal-plan) |
 | Thawing: days ahead | 1 | Thaw reminder for frozen containers of a planned dish, see [Meal plan](kitchen.md#meal-plan) |
-| Lead time for minimum stock | 7 days | How many days of use the suggested minimum stock covers, see [Stock](containers.md#stock) |
+| Stock: days until the next shopping trip | 7 days | How many days of use the suggested minimum stock covers and when a product is *running low*, see [Stock](containers.md#stock) |
+| Running low: add to the shopping list right away | off | Products running low go onto the shopping list at once, see [Stock](containers.md#stock) |
+| Recall warnings (lebensmittelwarnung.de) | on | Compare public recalls with the stock, see [Recall warnings](containers.md#recall-warnings) |
+| Recall warnings: only for this German state | all | Only warnings that concern this state |
 
 The dialog also shows the **webhook URL** for the [iOS Shortcut](scanning.md#ios-shortcut-for-the-original-zwilling-codes).
 
@@ -95,7 +98,7 @@ The values survive restarts. "Empty container" is a regular button entity, so yo
 
 Items of `larder.get_expiring` carry `kind` (`container`, `bag`, `pack`). If the sticker of a bag that was already emptied is scanned, `larder_dose_scanned` fires with `retired: true` and a `message` instead of `cc` and `device_id`.
 
-The event `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) fires when a linked [NFC tag](scanning.md#nfc-tags) or one of [your own QR codes](scanning.md#your-own-qr-codes) is scanned (then with `source: qr`). `larder_temperature_warning` and `larder_temperature_ok` belong to the [temperature warning](#repairs).
+The event `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) fires when a linked [NFC tag](scanning.md#nfc-tags) or one of [your own QR codes](scanning.md#your-own-qr-codes) is scanned (then with `source: qr`). `larder_temperature_warning` and `larder_temperature_ok` belong to the [temperature warning](#repairs), `larder_running_low` and `larder_recall` to [running low and recalls](kitchen.md#running-low-and-recalls).
 
 ### Webhook interface
 

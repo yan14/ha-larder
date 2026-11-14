@@ -161,6 +161,9 @@ export const STYLE = `
   .usageline[hidden] { display: none; }
   .priceline { font-size: 13px; color: var(--secondary-text-color); }
   .priceline[hidden] { display: none; }
+  .recallline { font-size: 13px; color: var(--error-color, #db4437); border: 1px solid var(--error-color, #db4437); border-radius: 8px; padding: 6px 8px; }
+  .recallline[hidden] { display: none; }
+  .recallline a { color: inherit; font-weight: 500; }
   .openedline { font-size: 13px; font-weight: 500; color: var(--primary-color); }
   .actions button.move[hidden], .row.minrow[hidden] { display: none; }
   .actions { flex-wrap: wrap; }

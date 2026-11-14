@@ -48,6 +48,8 @@ AGAIN_DAYS = 90  # "oft gegessen": in den letzten so vielen Tagen
 AGAIN_MIN = 3  # mindestens so oft
 AGAIN_SNOOZE = 30  # "✕" blendet einen Vorschlag so viele Tage aus
 AGAIN_MAX = 3
+REORDER_SNOOZE = 7  # "✕" bei "Bald leer" blendet ein Produkt so viele Tage aus
+EVENT_RUNNING_LOW = f"{DOMAIN}_running_low"
 
 
 def product_key(content: str | None) -> str:
@@ -67,6 +69,10 @@ class Stock:
         self.snoozed: dict[str, str] = {}  # Produkt → bis wann "Mal wieder …?" nicht vorgeschlagen wird
         self.takes: list[dict[str, Any]] = []  # Entnahmen von Packungen: {"key", "day", "n"} (für den Verbrauch)
         self.prices: dict[str, dict[str, Any]] = {}  # Produkt → zuletzt bekannter Preis je Packung
+        self.reorder_snoozed: dict[str, str] = {}  # Produkt → bis wann "Bald leer" es nicht zeigt
+        self.reorder_notified: list[str] = []  # Produkte, für die "Bald leer" schon gemeldet wurde
+        self.recalls_read: list[str] = []  # gelesene Rückrufwarnungen
+        self.recalls_sent: list[str] = []  # schon gemeldete Rückrufwarnungen (Ereignis nur einmal)
         self._unsub = None
 
     async def async_load(self) -> None:
@@ -77,6 +83,10 @@ class Stock:
         self.snoozed = {str(k): str(v) for k, v in (data.get("snoozed") or {}).items()}
         self.takes = [t for t in data.get("takes") or [] if isinstance(t, dict)]
         self.prices = {k: v for k, v in (data.get("prices") or {}).items() if isinstance(v, dict)}
+        self.reorder_snoozed = {str(k): str(v) for k, v in (data.get("reorder_snoozed") or {}).items()}
+        self.reorder_notified = [str(k) for k in data.get("reorder_notified") or []]
+        self.recalls_read = [str(k) for k in data.get("recalls_read") or []]
+        self.recalls_sent = [str(k) for k in data.get("recalls_sent") or []]
 
     def _data(self) -> dict[str, Any]:
         return {
@@ -86,6 +96,10 @@ class Stock:
             "snoozed": self.snoozed,
             "takes": self.takes,
             "prices": self.prices,
+            "reorder_snoozed": self.reorder_snoozed,
+            "reorder_notified": self.reorder_notified,
+            "recalls_read": self.recalls_read,
+            "recalls_sent": self.recalls_sent,
         }
 
     # ----- Verbrauch und Preise -----
@@ -101,6 +115,27 @@ class Stock:
         self.takes = [t for t in self.takes if t.get("day", "") >= cutoff][-MAX_TAKES:]
         self._save()
         async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
+        self.hass.async_create_task(async_check_running_low(self.hass, content), f"{DOMAIN}_running_low")
+
+    def snooze_reorder(self, content: str) -> None:
+        today = dt_util.now().date()
+        self.reorder_snoozed[product_key(content)] = (today + timedelta(days=REORDER_SNOOZE)).isoformat()
+        self.reorder_snoozed = {k: v for k, v in self.reorder_snoozed.items() if v > today.isoformat()}
+        self._save()
+
+    def mark_recall_read(self, recall_id: str) -> None:
+        if recall_id not in self.recalls_read:
+            self.recalls_read = [*self.recalls_read, recall_id][-500:]
+            self._save()
+            async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
+
+    def recalls_notified(self) -> list[str]:
+        return self.recalls_sent
+
+    def remember_recall_notified(self, recall_id: str) -> None:
+        if recall_id not in self.recalls_sent:
+            self.recalls_sent = [*self.recalls_sent, recall_id][-500:]
+            self._save()
 
     def usage(self, content: str | None) -> dict[str, Any] | None:
         key = product_key(content)
@@ -341,6 +376,96 @@ def stock_overview(hass: HomeAssistant, minimums: dict[str, dict[str, Any]], sto
 def shopping_text(product: dict[str, Any], with_details: bool) -> str:
     details = ", ".join(str(product[k]).strip() for k in ("brand", "package") if str(product.get(k) or "").strip())
     return f"{product['name']} ({details})" if details and with_details else product["name"]
+
+
+def running_low(hass: HomeAssistant, stock: Stock, include_snoozed: bool = False) -> list[dict[str, Any]]:
+    """Produkte mit Mindestbestand, die laut Prognose bald darunter fallen (noch nicht darunter).
+
+    "Bald" = reicht noch höchstens die Vorlaufzeit für den Mindestbestand. Nur mit genug Entnahmen (Prognose).
+    """
+    lead = int(getattr(hass.data.get(DOMAIN, {}).get("estimator"), "stock_lead_days", 7) or 7)
+    today = dt_util.now().date().isoformat()
+    out = []
+    for product in stock_overview(hass, stock.minimums, stock):
+        usage = product.get("usage")
+        if not product["min"] or product["low"] or not product["count"] or not usage or usage.get("lasts_days") is None:
+            continue
+        if usage["lasts_days"] > lead:
+            continue
+        if not include_snoozed and stock.reorder_snoozed.get(product["key"], "") > today:
+            continue
+        out.append(
+            {
+                "key": product["key"],
+                "name": product["name"],
+                "count": product["count"],
+                "min": product["min"],
+                "lasts_days": usage["lasts_days"],
+                "brand": product["brand"],
+                "package": product["package"],
+            }
+        )
+    out.sort(key=lambda p: p["lasts_days"])
+    return out
+
+
+async def async_check_running_low(hass: HomeAssistant, content: str | None = None) -> list[dict[str, Any]]:
+    """Neu "bald leere" Produkte melden (Ereignis `larder_running_low`, einmal je Produkt) und, wenn eingestellt,
+    gleich auf die Einkaufsliste setzen. Produkte, die wieder reichen, werden zurückgesetzt."""
+    stock = hass.data.get(DOMAIN, {}).get(DATA_STOCK)
+    if stock is None:
+        return []
+    estimator = await async_get_estimator(hass)
+    low = running_low(hass, stock, include_snoozed=True)
+    keys = {p["key"] for p in low}
+    new = [p for p in low if p["key"] not in stock.reorder_notified and (content is None or p["key"] == product_key(content))]
+    notified = [k for k in stock.reorder_notified if k in keys] + [p["key"] for p in new]
+    if notified != stock.reorder_notified:
+        stock.reorder_notified = notified
+        stock._save()  # noqa: SLF001
+    de = (hass.config.language or "en").lower().startswith("de")
+    for product in new:
+        days = product["lasts_days"]
+        message = (
+            f"{product['name']}: noch {product['count']}, reicht ca. {days} {'Tag' if days == 1 else 'Tage'}."
+            if de
+            else f"{product['name']}: {product['count']} left, lasts about {days} {'day' if days == 1 else 'days'}."
+        )
+        hass.bus.async_fire(
+            EVENT_RUNNING_LOW,
+            {
+                **{k: product[k] for k in ("name", "count", "min", "lasts_days", "brand", "package")},
+                "title": "🛒 Bald leer" if de else "🛒 Running low",
+                "message": message,
+            },
+        )
+        if getattr(estimator, "reorder_shopping", False) and estimator.todo_entity:
+            await async_shop_product(hass, product["name"])
+    return new
+
+
+async def async_shop_product(hass: HomeAssistant, content: str) -> tuple[bool, str]:
+    """Produkt des Vorrats (mit Marke und Packung) auf die Einkaufsliste setzen und für "eingekauft" merken."""
+    estimator = await async_get_estimator(hass)
+    if not estimator.todo_entity:
+        raise HomeAssistantError("no shopping list chosen in the settings")
+    stock = await async_get_stock(hass)
+    key = product_key(content)
+    product = next((p for p in stock_overview(hass, stock.minimums) if p["key"] == key), None) or {"name": content}
+    product = {**(stock.minimums.get(key, {}).get("product") or {}), **{k: v for k, v in product.items() if v}}
+    text = shopping_text(product, getattr(estimator, "shopping_details", True))
+    added = await async_add_to_shopping_list(hass, estimator.todo_entity, text)
+    if added:
+        places = product.get("places") or []
+        stock.track(text, {
+            "content": product["name"],
+            "product": {k: product[k] for k in ("brand", "package") if product.get(k)},
+            "area_id": places[0].get("area_id") if places else None,
+            "compartment": places[0].get("compartment", "") if places else "",
+            "count": max(1, int(product.get("min") or 1) - int(product.get("count") or 0)),
+            "source": "minimum",
+        })
+    return added, text
 
 
 async def async_check_stock(hass: HomeAssistant, content: str | None, exclude: set[str] | None = None) -> bool:
@@ -722,23 +847,38 @@ async def ws_stock_shop(hass: HomeAssistant, connection: websocket_api.ActiveCon
     if not estimator.todo_entity:
         connection.send_error(msg["id"], "no_shopping_list", "no shopping list chosen in the settings")
         return
-    stock = await async_get_stock(hass)
-    key = product_key(msg["content"])
-    product = next((p for p in stock_overview(hass, stock.minimums) if p["key"] == key), None) or {"name": msg["content"]}
-    product = {**(stock.minimums.get(key, {}).get("product") or {}), **{k: v for k, v in product.items() if v}}
-    text = shopping_text(product, getattr(estimator, "shopping_details", True))
-    added = await async_add_to_shopping_list(hass, estimator.todo_entity, text)
-    if added:
-        places = product.get("places") or []
-        stock.track(text, {
-            "content": product["name"],
-            "product": {k: product[k] for k in ("brand", "package") if product.get(k)},
-            "area_id": places[0].get("area_id") if places else None,
-            "compartment": places[0].get("compartment", "") if places else "",
-            "count": max(1, int(product.get("min") or 1) - int(product.get("count") or 0)),
-            "source": "minimum",
-        })
+    added, text = await async_shop_product(hass, msg["content"])
     connection.send_result(msg["id"], {"added": added, "item": text})
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/running_low"})
+@websocket_api.async_response
+async def ws_running_low(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    stock = await async_get_stock(hass)
+    estimator = await async_get_estimator(hass)
+    connection.send_result(msg["id"], {"items": running_low(hass, stock), "shopping_list": bool(estimator.todo_entity)})
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/running_low_action",
+        vol.Required("content"): vol.All(str, vol.Length(min=1, max=255)),
+        vol.Required("action"): vol.In(("shop", "dismiss")),
+    }
+)
+@websocket_api.async_response
+async def ws_running_low_action(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """"Bald leer": auf die Einkaufsliste setzen oder ausblenden (beides blendet es für eine Woche aus)."""
+    stock = await async_get_stock(hass)
+    added = False
+    if msg["action"] == "shop":
+        try:
+            added, _text = await async_shop_product(hass, msg["content"])
+        except HomeAssistantError:
+            connection.send_error(msg["id"], "no_shopping_list", "no shopping list chosen in the settings")
+            return
+    stock.snooze_reorder(msg["content"])
+    connection.send_result(msg["id"], {"added": added, "items": running_low(hass, stock)})
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/cook_again"})
@@ -811,4 +951,6 @@ def async_setup_stock_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_pack_open)
     websocket_api.async_register_command(hass, ws_stock_shop)
     websocket_api.async_register_command(hass, ws_cook_again_action)
+    websocket_api.async_register_command(hass, ws_running_low)
+    websocket_api.async_register_command(hass, ws_running_low_action)
     domain_data[DATA_WS] = True

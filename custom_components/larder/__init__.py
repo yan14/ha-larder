@@ -20,6 +20,7 @@ from .nfc import async_get_nfc
 from .panel import async_setup_panel, async_teardown_panel
 from .plan import async_get_plan, async_setup_plan_websocket
 from .product import async_setup_product_websocket
+from .recall import async_get_recalls, async_setup_recall_websocket
 from .receipt_photo import async_setup_receipt_photo
 from .recipe_book import async_setup_recipe_book_websocket
 from .recipe_photo import async_setup_recipe_photo
@@ -53,8 +54,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_disposable_websocket(hass)
     await async_get_retired(hass)
     async_setup_stock_websocket(hass)
+    async_setup_recall_websocket(hass)
     async_setup_learning_websocket(hass)
     (await async_get_stock(hass)).async_start()
+    (await async_get_recalls(hass)).async_start()
     (await async_get_plan(hass)).async_start()
     (await async_get_calendar_sync(hass)).async_start()
     (await async_get_nfc(hass)).async_start()
@@ -101,6 +104,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> b
         (await async_get_temperature_watch(hass)).async_stop()
         (await async_get_plan(hass)).async_stop()
         (await async_get_stock(hass)).async_stop()
+        (await async_get_recalls(hass)).async_stop()
     return unloaded
 
 

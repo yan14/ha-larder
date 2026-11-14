@@ -227,7 +227,10 @@
           "soon_days": "\"Expiring soon\" from (days)",
           "shopping_details": "Brand and package on the shopping list",
           "watch_allergens": "Allergens in the household (optional)",
-          "stock_lead_days": "Stock: days until the next shopping trip"
+          "stock_lead_days": "Stock: days until the next shopping trip",
+          "reorder_shopping": "Running low: add to the shopping list right away",
+          "recall_check": "Recall warnings (lebensmittelwarnung.de)",
+          "recall_state": "Recall warnings: only for this German state"
         },
         "data_description": {
           "vacuum_default": "New containers start with the “Vacuum” switch on or off. Existing containers keep their value. Switch it off if most of your boxes are not vacuum-sealed.",
@@ -246,7 +249,10 @@
           "soon_days": "From this many days left a container counts as \"expiring soon\" (hint in the dashboard, filter, sensor status and the default for the expiry overview).",
           "shopping_details": "If the brand or package size of a container is known (e.g. after a barcode scan), it goes onto the list with the contents when emptying: \"Oats (Kölln, 500 g)\".",
           "watch_allergens": "Containers whose allergens or contents match get a ⚠ on the card and tile; recipe ideas leave them out and avoid these ingredients. Only a hint, no guarantee.",
-          "stock_lead_days": "For the suggested minimum stock: as many packs as are used up in this time."
+          "stock_lead_days": "For the suggested minimum stock: as many packs as are used up in this time.",
+          "reorder_shopping": "When a product with a minimum stock will only last the “days until the next shopping trip” according to the forecast, the start page lists it under “Running low” (event larder_running_low). With this on, it also goes onto the shopping list right away (once, not twice).",
+          "recall_check": "Every 6 hours, compares the public recalls of the German portal lebensmittelwarnung.de with the brand and contents of your containers, bags and packs. Matches appear on the start page and the card; event larder_recall for notifications. Only the public feed is fetched, nothing is sent.",
+          "recall_state": "Empty = warnings for all German states."
         }
       }
     },

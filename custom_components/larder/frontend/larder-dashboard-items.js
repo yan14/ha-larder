@@ -76,6 +76,16 @@ const TEXT = {
     againShop: "🛒 Einkaufsliste",
     againShopped: (c) => `${c} steht auf der Einkaufsliste.`,
     againDismiss: "Nicht jetzt",
+    lowTitle: "⏳ Bald leer",
+    lowItem: (n, days) => `noch ${n}, reicht ca. ${days} ${days === 1 ? "Tag" : "Tage"}`,
+    lowShopped: (c) => `${c} steht auf der Einkaufsliste.`,
+    lowDismiss: "Eine Woche ausblenden",
+    recallTitle: "⚠️ Rückrufwarnung",
+    recallIn: (list) => `Im Vorrat: ${list}`,
+    recallVia: { barcode: "Strichcode", brand: "Marke und Name", name: "Name" },
+    recallMatched: (via) => `Übereinstimmung: ${via} – bitte Packung prüfen`,
+    recallOpen: "Zur Warnung",
+    recallRead: "Gelesen",
     reportTitle: (label) => `📅 ${label}`,
     codeTitle: "Strichcode",
     openedMark: "🔓 angebrochen",
@@ -180,6 +190,16 @@ const TEXT = {
     againShop: "🛒 Shopping list",
     againShopped: (c) => `${c} is on the shopping list.`,
     againDismiss: "Not now",
+    lowTitle: "⏳ Running low",
+    lowItem: (n, days) => `${n} left, lasts about ${days} ${days === 1 ? "day" : "days"}`,
+    lowShopped: (c) => `${c} is on the shopping list.`,
+    lowDismiss: "Hide for a week",
+    recallTitle: "⚠️ Recall warning",
+    recallIn: (list) => `In stock: ${list}`,
+    recallVia: { barcode: "barcode", brand: "brand and name", name: "name" },
+    recallMatched: (via) => `Matched by ${via} – please check the pack`,
+    recallOpen: "Open warning",
+    recallRead: "Read",
     reportTitle: (label) => `📅 ${label}`,
     codeTitle: "Barcode",
     openedMark: "🔓 opened",
@@ -450,6 +470,113 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
       drop.title = t.againDismiss;
       row.append(drop);
       box.append(row);
+    }
+    return box;
+  };
+
+  proto.loadRunningLow = async function loadRunningLow() {
+    const hass = this._hass;
+    if (!hass || !hass.callWS) return;
+    try {
+      this._low = await hass.callWS({ type: `${DOMAIN}/running_low` });
+    } catch {
+      this._low = null;
+    }
+    this._sig = "";
+    this._update();
+  };
+
+  /** Startseite: Produkte mit Mindestbestand, die laut Prognose bald leer sind. */
+  proto._lowBox = function _lowBox() {
+    const data = this._low;
+    if (!data || !data.items || !data.items.length) return null;
+    const hass = this._hass;
+    const t = itemTexts(hass);
+    const box = el("section", "stat low");
+    box.append(el("h3", "", t.lowTitle));
+    for (const item of data.items) {
+      const row = el("div", "boughtrow");
+      row.dataset.key = item.key;
+      const text = el("span", "name");
+      text.append(el("span", "", item.name), el("span", "sub", t.lowItem(item.count, item.lasts_days)));
+      row.append(text);
+      const act = async (action) => {
+        try {
+          const res = await hass.callWS({ type: `${DOMAIN}/running_low_action`, content: item.name, action });
+          this._low = { ...this._low, items: res.items || [] };
+          if (action === "shop") this.showNotice(t.lowShopped(item.name));
+        } catch {
+          /* bleibt stehen */
+        }
+        this._sig = "";
+        this._update();
+      };
+      if (data.shopping_list) {
+        const shop = button("primary", t.againShop, () => act("shop"));
+        shop.dataset.role = "low-shop";
+        row.append(shop);
+      }
+      const drop = button("", "✕", () => act("dismiss"));
+      drop.dataset.role = "low-dismiss";
+      drop.setAttribute("aria-label", t.lowDismiss);
+      drop.title = t.lowDismiss;
+      row.append(drop);
+      box.append(row);
+    }
+    return box;
+  };
+
+  proto.loadRecalls = async function loadRecalls() {
+    const hass = this._hass;
+    if (!hass || !hass.callWS) return;
+    try {
+      this._recalls = ((await hass.callWS({ type: `${DOMAIN}/recalls` })) || {}).items || [];
+    } catch {
+      this._recalls = [];
+    }
+    this._sig = "";
+    this._update();
+  };
+
+  /** Startseite: Rückrufwarnungen mit Treffern im Vorrat, bis "Gelesen". */
+  proto._recallBox = function _recallBox() {
+    const items = this._recalls || [];
+    if (!items.length) return null;
+    const hass = this._hass;
+    const t = itemTexts(hass);
+    const de = String(hass.language || "en").toLowerCase().startsWith("de");
+    const box = el("section", "stat recall");
+    box.setAttribute("role", "alert");
+    box.append(el("h3", "", t.recallTitle));
+    for (const w of items) {
+      const card = el("div", "recallitem");
+      card.dataset.id = w.id;
+      const date = w.date ? (de ? w.date.split("-").reverse().join(".") : w.date) : "";
+      card.append(el("div", "title", w.title));
+      if (w.reason) card.append(el("div", "sub", w.reason));
+      const places = w.items.map((i) => [i.content, [i.area, i.compartment].filter(Boolean).join(" · ")].filter(Boolean).join(" – "));
+      card.append(el("div", "sub in", t.recallIn([...new Set(places)].join("; "))));
+      const via = [...new Set(w.items.map((i) => t.recallVia[i.via] || i.via))].join(", ");
+      card.append(el("div", "sub via", `${t.recallMatched(via)}${date ? ` · ${date}` : ""}`));
+      const actions = el("div", "actions");
+      const open = el("a", "link", t.recallOpen);
+      open.href = w.link;
+      open.target = "_blank";
+      open.rel = "noopener noreferrer";
+      open.dataset.role = "recall-open";
+      const read = button("primary", t.recallRead, async () => {
+        try {
+          this._recalls = ((await hass.callWS({ type: `${DOMAIN}/recall_read`, recall_id: w.id })) || {}).items || [];
+        } catch {
+          this._recalls = this._recalls.filter((r) => r.id !== w.id);
+        }
+        this._sig = "";
+        this._update();
+      });
+      read.dataset.role = "recall-read";
+      actions.append(open, read);
+      card.append(actions);
+      box.append(card);
     }
     return box;
   };

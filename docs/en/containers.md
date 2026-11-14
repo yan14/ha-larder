@@ -101,7 +101,7 @@ A bag works like a container (scan it, take a portion, **Opened**, **Thawed**, r
 
 **⋮ → 🥫 Stock** in the dashboard lists all packs by product, summed over every place, with brand, package and where they are (tap a place to open the pack). Set the **minimum stock** of every product right there; products below it are marked *too few* or *none left*. Products with a minimum stay in the list even when none are left. **Oldest first:** the places of a product are sorted by best-before date, the earliest one is shown next to the product, and the card of a pack warns when an older pack of the same food lies somewhere else.
 
-**How long it lasts.** Every pack you take (−1, emptying, stocktake) is counted; moving or opening a pack is not. From that, the stock view and the card of a pack show **lasts about 6 weeks · from 4 takes in 6 months**. The forecast looks at the last 90 days and widens to 180 or 365 days when there are fewer than 3 takes; recent takes count more. Below the line, **Suggestion: at least 2** sets the minimum stock to what you use during the *lead time for minimum stock* (setting, 7 days by default) – with a tap, nothing changes by itself.
+**How long it lasts.** Every pack you take (−1, emptying, stocktake) is counted; moving or opening a pack is not. From that, the stock view and the card of a pack show **lasts about 6 weeks · from 4 takes in 6 months**. The forecast looks at the last 90 days and widens to 180 or 365 days when there are fewer than 3 takes; recent takes count more. Below the line, **Suggestion: at least 2** sets the minimum stock to what you use during the *Stock: days until the next shopping trip* (setting, 7 days by default) – with a tap, nothing changes by itself.
 
 **Prices and value.** A pack can have a **price** (one pack): in the pack dialog, on the card, or read from the **📷 Receipt**. Larder remembers it per product. Without a price of your own, packs with a barcode get an estimate from [Open Prices](https://prices.openfoodfacts.org) (Open Food Facts, ODbL): the median of the last year in euro, marked *(Open Prices)*. The card of a pack and the stock view show the price per pack, the value of each product and the **total value**; the statistics and the monthly report add **about €X thrown away**.
 
@@ -113,7 +113,17 @@ A bag works like a container (scan it, take a portion, **Opened**, **Thawed**, r
 
 <p align="center"><img src="../images/dashboard-open-en.png" width="250" alt="Open a pack"></p>
 
+**Running low.** When a product with a minimum stock will only last the *days until the next shopping trip* according to the forecast, the start page lists it under **⏳ Running low** – before it drops below the minimum. **🛒 Shopping list** adds it to the list, **✕** hides it for a week. With the setting *Running low: add to the shopping list right away* it goes onto the list at once. For a push notification there is the blueprint [Running low and recalls](kitchen.md#running-low-and-recalls) (event `larder_running_low`).
+
 **From the shopping list back into the stock.** When you tick off an item on your shopping list that Larder put there (minimum stock or an emptied container), the start page asks **🛒 Bought – add to the stock?**. **Add to stock** opens the pack dialog with the contents, brand, count and the place where the product usually is; **✕** drops the hint.
+
+### Recall warnings
+
+<p align="center"><img src="../images/dashboard-alerts-en.png" width="250" alt="Recall warning and running low"></p>
+
+Every 6 hours Larder fetches the public recalls of the last 30 days from [lebensmittelwarnung.de](https://www.lebensmittelwarnung.de) (the German states' and BVL's portal) and compares them with your containers, bags and packs. A match needs the **barcode**, or the **brand and a word of the contents**, or – without a brand – **every word** of contents with several words. The warning then sits at the top of the start page: product, reason, where it is in stock and how Larder matched it, with a link to the original warning. **Read** hides it for good. The card of the entry shows the hint too.
+
+A match is a hint, not a certainty: batch and best-before date are in the original warning, please check there. Only the public feed is fetched, Larder sends nothing. Switch it off or limit it to one German state in the [settings](reference.md#settings); as a push with the blueprint [Running low and recalls](kitchen.md#running-low-and-recalls) (event `larder_recall`).
 
 ### Stocktake
 

@@ -2152,3 +2152,66 @@ test("Vorrat: reicht noch, Vorschlag Mindestbestand, Preis und Wert; Preis im Pa
   const created = hass.wsCalls.find((m) => m.type === `${D}/create_items`);
   assert.deepEqual(created.items[0].product, { price: 1.99, price_source: "receipt" });
 });
+
+// ---------- Block 16: Bald leer und Rückrufwarnungen ----------
+
+test("Startseite: Bald leer mit Einkaufsliste und Ausblenden", async () => {
+  const hass = makeHass(DOSES);
+  let items = [{ key: "milch", name: "Milch", count: 2, min: 1, lasts_days: 4 }];
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/running_low`) return { items, shopping_list: true };
+    if (msg.type === `${D}/running_low_action`) {
+      hass.wsCalls.push(msg);
+      items = [];
+      return { added: msg.action === "shop", items };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await flush();
+  const box = $(el, ".stat.low");
+  assert.match(box.textContent, /Bald leer/);
+  assert.match(box.textContent, /Milch.*noch 2, reicht ca\. 4 Tage/);
+  box.querySelector('[data-role="low-shop"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/running_low_action`), { type: `${D}/running_low_action`, content: "Milch", action: "shop" });
+  assert.equal($(el, ".stat.low"), null);
+  assert.match($(el, ".notice").textContent, /Milch steht auf der Einkaufsliste/);
+});
+
+test("Startseite: Rückrufwarnung oben, mit Ort, Übereinstimmung, Link und Gelesen", async () => {
+  const hass = makeHass(DOSES);
+  let items = [{
+    id: "abc123", title: "Heinz Tomato Ketchup 500 ml", reason: "Glassplitter nicht ausgeschlossen", date: "2026-11-12",
+    link: "https://www.lebensmittelwarnung.de/meldung/1",
+    items: [{ cc: "P1", device_id: "d1", content: "Ketchup", brand: "Heinz", area: "Küche", compartment: "Tür", via: "brand" }],
+  }];
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/recalls`) return { items };
+    if (msg.type === `${D}/recall_read`) {
+      hass.wsCalls.push(msg);
+      items = [];
+      return { items };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await flush();
+  const box = $(el, ".stat.recall");
+  assert.ok(box);
+  // direkt unter der Begrüßung, vor allem anderen
+  assert.equal(box.previousElementSibling.className, "hello");
+  assert.match(box.textContent, /Rückrufwarnung/);
+  assert.match(box.textContent, /Glassplitter/);
+  assert.match(box.textContent, /Im Vorrat: Ketchup – Küche · Tür/);
+  assert.match(box.textContent, /Übereinstimmung: Marke und Name.*12\.11\.2026/);
+  assert.equal(box.querySelector('[data-role="recall-open"]').href, "https://www.lebensmittelwarnung.de/meldung/1");
+  box.querySelector('[data-role="recall-read"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/recall_read`), { type: `${D}/recall_read`, recall_id: "abc123" });
+  assert.equal($(el, ".stat.recall"), null);
+});

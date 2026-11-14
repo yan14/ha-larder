@@ -76,6 +76,8 @@ export const STRINGS = {
       const s = span < 60 ? `${Math.round(span / 7)} Wochen` : `${Math.round(span / 30)} Monaten`;
       return `📉 Reicht noch ca. ${d} (aus ${takes} Entnahmen in ${s})`;
     },
+    recallLine: (title, reason) => `⚠️ Rückrufwarnung: ${title}${reason ? ` – ${reason}` : ""}. Bitte Packung prüfen.`,
+    recallLink: "Zur Warnung",
     priceLine: (price, estimate, value) => {
       const m = (v) => `${v.toFixed(2).replace(".", ",")} €`;
       return `💶 ${estimate ? "ca. " : ""}${m(price)} je Packung${estimate ? " (Open Prices)" : ""}${value ? ` · alle zusammen ca. ${m(value)}` : ""}`;
@@ -257,6 +259,8 @@ export const STRINGS = {
       const s = span < 60 ? `${Math.round(span / 7)} weeks` : `${Math.round(span / 30)} months`;
       return `📉 Lasts about ${d} (from ${takes} takes in ${s})`;
     },
+    recallLine: (title, reason) => `⚠️ Recall warning: ${title}${reason ? ` – ${reason}` : ""}. Please check the pack.`,
+    recallLink: "Open warning",
     priceLine: (price, estimate, value) => {
       const m = (v) => `€${v.toFixed(2)}`;
       return `💶 ${estimate ? "about " : ""}${m(price)} per pack${estimate ? " (Open Prices)" : ""}${value ? ` · all together about ${m(value)}` : ""}`;

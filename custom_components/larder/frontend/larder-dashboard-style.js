@@ -169,6 +169,17 @@ export const STYLE = `
   .dialog .compchip { font: inherit; font-size: 13px; padding: 4px 10px; border-radius: 14px; cursor: pointer;
     border: 1px solid var(--divider-color); background: none; color: var(--primary-text-color); }
   .boughtrow .name .sub { display: block; font-size: 12px; color: var(--secondary-text-color); }
+  .boughtrow button[data-role="low-dismiss"] { border: 0; color: var(--secondary-text-color); padding: 6px 8px; }
+  .stat.recall { border: 2px solid var(--error-color, #db4437); }
+  .stat.recall h3 { color: var(--error-color, #db4437); }
+  .recallitem { padding: 8px 0; border-top: 1px solid var(--divider-color); }
+  .recallitem:first-of-type { border-top: 0; }
+  .recallitem .title { font-weight: 500; }
+  .recallitem .sub { font-size: 13px; color: var(--secondary-text-color); margin-top: 2px; }
+  .recallitem .actions { display: flex; gap: 12px; align-items: center; justify-content: flex-end; margin-top: 6px; }
+  .recallitem .actions a { color: var(--primary-color); }
+  .recallitem .actions button { font: inherit; padding: 6px 14px; border-radius: 8px; cursor: pointer; border: 0;
+    background: var(--primary-color); color: var(--text-primary-color, #fff); }
   .stat.report p.line { margin: 2px 0; font-size: 14px; }
   .takeform { display: flex; flex-direction: column; gap: 10px; }
   .takeform label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--secondary-text-color); }

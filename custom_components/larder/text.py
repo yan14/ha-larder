@@ -109,6 +109,11 @@ class LarderContent(TextEntity, LarderResettable):
             if "price" not in self._product and (price := stock.prices.get(product_key(value))):
                 attrs["price_remembered"] = price["price"]
                 attrs["price_remembered_source"] = price.get("source")
+        recalls = self.hass.data.get(DOMAIN, {}).get("recalls")
+        stock_data = self.hass.data.get(DOMAIN, {}).get(DATA_STOCK)
+        if recalls is not None and stock_data is not None and value.strip() and recalls.found:
+            if warning := recalls.for_cc(self._cc, stock_data.recalls_read):
+                attrs["recall"] = warning  # ungelesene Rückrufwarnung (Hinweis auf der Karte)
         if value.strip() and watched:
             warning = watched_allergens(value, self._product.get("allergens", ""), watched, self.hass.config.language or "en")
             if warning:

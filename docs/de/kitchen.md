@@ -80,6 +80,12 @@ Ein zweiter Blueprint schickt am gewählten Tag einen **Monatsbericht** für den
 
 [![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fmonthly_report.yaml)
 
+### Bald leer und Rückrufe
+
+Ein dritter Blueprint schickt einen Push, wenn ein Produkt [bald leer](containers.md#vorrat) ist und wenn eine [Rückrufwarnung](containers.md#rückrufwarnungen) zu etwas im Vorrat passt; beides lässt sich einzeln ein- und ausschalten. Antippen öffnet die Startseite von Larder. Die Ereignisse `larder_running_low` (`name`, `count`, `min`, `lasts_days`, `message`) und `larder_recall` (`title`, `reason`, `link`, `products`, `places`, `message`) gehen auch für eigene Automationen.
+
+[![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fstock_alerts.yaml)
+
 ## Wochenplan
 
 Ein Gericht für einen Tag einplanen: **📅 Einplanen** an einer Rezeptidee oder einem Rezept aus dem Buch (auch für Nicht-Administratoren). Der Dialog fragt das Gericht, den Tag (vorbelegt: morgen) und die **Dosen**, die dafür gebraucht werden; Dosen, deren Inhalt im Rezept vorkommt, sind schon angehakt.

@@ -80,6 +80,12 @@ A second blueprint sends a **monthly report** for the previous month on the day 
 
 [![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fmonthly_report.yaml)
 
+### Running low and recalls
+
+A third blueprint sends a push when a product will soon [run low](containers.md#stock) and when a [recall warning](containers.md#recall-warnings) matches something in stock; both can be switched on or off. Tapping it opens the Larder start page. The events `larder_running_low` (`name`, `count`, `min`, `lasts_days`, `message`) and `larder_recall` (`title`, `reason`, `link`, `products`, `places`, `message`) work for your own automations too.
+
+[![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fstock_alerts.yaml)
+
 ## Meal plan
 
 Plan a dish for a day: **📅 Plan** on a recipe idea or a recipe from the book (also for non-administrators). The dialog takes the dish, the day (preset: tomorrow) and the **containers** it needs; the containers whose contents appear in the recipe are already ticked.

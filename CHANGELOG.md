@@ -3,6 +3,12 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 3.6.0
+
+- **Running low:** products with a minimum stock that will only last the *days until the next shopping trip* according to the forecast appear on the start page under **⏳ Running low**, before they drop below the minimum. **🛒 Shopping list** or hide for a week; new setting *Running low: add to the shopping list right away*. Event `larder_running_low`.
+- **Recall warnings:** every 6 hours Larder compares the public recalls of [lebensmittelwarnung.de](https://www.lebensmittelwarnung.de) (last 30 days, optionally one German state) with brand, contents and barcode of everything in stock. Matches sit at the top of the start page with reason, place, how they matched and a link; **Read** hides them. The card of the entry shows the hint. Event `larder_recall`; settings to switch it off or limit it to one state.
+- **New blueprint *Running low and recalls*** for push notifications of both.
+
 ## 3.5.1
 
 - The card of a pack shows the price per pack (own, remembered or the Open Prices estimate, marked as such) and, with several packs, what they are worth together.
@@ -10,7 +16,7 @@ Release notes for every version, newest first. They are also used as the text of
 ## 3.5.0
 
 - **How long it lasts:** every pack taken (−1, emptying, stocktake) is counted, moving and opening are not. The stock view and the card of a pack show *lasts about … · from n takes in …*; the forecast uses 90 days, widens to 180 or 365 when there are fewer than 3 takes and weights recent takes more.
-- **Suggested minimum stock:** *Suggestion: at least n* in the stock view, based on your use during the new setting *Lead time for minimum stock* (7 days). Applied only with a tap.
+- **Suggested minimum stock:** *Suggestion: at least n* in the stock view, based on your use during the new setting *Stock: days until the next shopping trip* (7 days). Applied only with a tap.
 - **Prices:** price per pack in the pack dialog, on the card and from the receipt photo; remembered per product. Without one, packs with a barcode get an estimate from [Open Prices](https://prices.openfoodfacts.org) (Open Food Facts, ODbL), marked as such.
 - **Value:** price and value per product and the total value of the stock; the statistics and the monthly report show about how much was thrown away in euros.
 

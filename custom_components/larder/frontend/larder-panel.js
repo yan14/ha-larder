@@ -382,6 +382,7 @@ class DoseCard {
       <div class="row shoprow"><label class="check"><input type="checkbox" data-f="shopping"><span data-l="shopping"></span></label></div>
       <div class="row flexrow"><label class="check"><input type="checkbox" data-f="flexible"><span data-l="flexible"></span></label></div>
       <div class="row homerow"><label data-l="homeArea"></label><select data-f="homeArea"></select></div>
+      <div class="recallline" role="alert" hidden><span class="txt"></span> <a target="_blank" rel="noopener noreferrer"></a></div>
       <div class="openedline" role="note" hidden></div>
       <div class="usageline" role="note" hidden></div>
       <div class="priceline" role="note" hidden></div>
@@ -813,6 +814,16 @@ class DoseCard {
         older.hidden = false;
         older.textContent = t.olderElsewhere(best.place, best.date);
       }
+    }
+    // Rückrufwarnung zu diesem Inhalt (ungelesen)
+    const recallLine = this.q(".recallline");
+    const recall = hasContentNow && text && text.attributes ? text.attributes.recall : null;
+    recallLine.hidden = !recall;
+    if (recall) {
+      recallLine.querySelector(".txt").textContent = t.recallLine(recall.title, recall.reason);
+      const link = recallLine.querySelector("a");
+      link.textContent = t.recallLink;
+      link.href = recall.link;
     }
     // Packungen desselben Produkts (alle Orte): Anzahl und Wert
     const isPack = kind === "pack" && hasContentNow && text.attributes;

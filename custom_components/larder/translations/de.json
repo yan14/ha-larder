@@ -227,7 +227,10 @@
           "soon_days": "„Läuft bald ab“ ab (Tage)",
           "shopping_details": "Marke und Packung mit auf die Einkaufsliste",
           "watch_allergens": "Allergene im Haushalt (optional)",
-          "stock_lead_days": "Vorrat: Tage bis zum nächsten Einkauf"
+          "stock_lead_days": "Vorrat: Tage bis zum nächsten Einkauf",
+          "reorder_shopping": "Bald leer: gleich auf die Einkaufsliste",
+          "recall_check": "Rückrufwarnungen (lebensmittelwarnung.de)",
+          "recall_state": "Rückrufwarnungen: nur für dieses Bundesland"
         },
         "data_description": {
           "vacuum_default": "Neue Dosen starten mit eingeschaltetem oder ausgeschaltetem Schalter „Vakuum“. Bestehende Dosen behalten ihren Wert. Schalte es aus, wenn die meisten deiner Boxen nicht vakuumiert sind.",
@@ -246,7 +249,10 @@
           "soon_days": "Ab so vielen Resttagen gilt eine Dose als „läuft bald ab“ (Hinweis im Dashboard, Filter, Status des Sensors und Vorgabe für die Ablauf-Übersicht).",
           "shopping_details": "Sind Marke oder Packungsgröße einer Dose bekannt (z. B. nach einem Strichcode-Scan), kommen sie beim Leeren mit auf die Liste: „Haferflocken (Kölln, 500 g)“.",
           "watch_allergens": "Dosen, deren Allergene oder Inhalt dazu passen, bekommen ein ⚠ auf Karte und Kachel; Rezeptideen lassen sie weg und meiden diese Zutaten. Nur ein Hinweis, keine Garantie.",
-          "stock_lead_days": "Für den Vorschlag zum Mindestbestand: so viele Packungen, wie in dieser Zeit verbraucht werden."
+          "stock_lead_days": "Für den Vorschlag zum Mindestbestand: so viele Packungen, wie in dieser Zeit verbraucht werden.",
+          "reorder_shopping": "Reicht ein Produkt mit Mindestbestand laut Prognose nur noch die „Tage bis zum nächsten Einkauf“, steht es auf der Startseite unter „Bald leer“ (Ereignis larder_running_low). Ist das an, kommt es zusätzlich gleich auf die Einkaufsliste (einmal, nicht doppelt).",
+          "recall_check": "Gleicht alle 6 Stunden die öffentlichen Rückrufe von lebensmittelwarnung.de mit Marke und Inhalt deiner Dosen, Beutel und Packungen ab. Treffer stehen auf der Startseite und der Karte; Ereignis larder_recall für Benachrichtigungen. Abgerufen wird nur der öffentliche Feed, es werden keine Daten gesendet.",
+          "recall_state": "Leer = Warnungen für alle Bundesländer."
         }
       }
     },

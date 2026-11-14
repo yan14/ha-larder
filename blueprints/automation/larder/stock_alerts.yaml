@@ -1,0 +1,63 @@
+blueprint:
+  name: Larder – running low and recalls
+  description: >
+    Push notification when a product with a minimum stock will run out soon according to the forecast
+    (event larder_running_low) and when a public recall (lebensmittelwarnung.de) matches something in
+    stock (event larder_recall). Tapping the notification opens the Larder start page.
+    Bald leer und Rückrufwarnungen als Push.
+  domain: automation
+  source_url: https://github.com/yan14/ha-larder/blob/main/blueprints/automation/larder/stock_alerts.yaml
+  input:
+    notify_action:
+      name: Push notification
+      description: >
+        Notify action(s), for example notify.mobile_app_your_iphone or a notify group.
+        Several are separated by commas.
+      selector:
+        text:
+    running_low:
+      name: Running low
+      description: Notify when a product will run out soon.
+      default: true
+      selector:
+        boolean:
+    recalls:
+      name: Recalls
+      description: Notify when a recall matches something in stock.
+      default: true
+      selector:
+        boolean:
+
+mode: queued
+max_exceeded: silent
+
+variables:
+  notify_action: !input notify_action
+  running_low: !input running_low
+  recalls: !input recalls
+  push_targets: "{{ (notify_action or '') | string | lower | regex_findall('[a-z0-9_]+[.][a-z0-9_]+') }}"
+
+triggers:
+  - trigger: event
+    event_type: larder_running_low
+    id: running_low
+  - trigger: event
+    event_type: larder_recall
+    id: recall
+
+conditions:
+  - condition: template
+    value_template: "{{ (trigger.id == 'running_low' and running_low) or (trigger.id == 'recall' and recalls) }}"
+
+actions:
+  - repeat:
+      for_each: "{{ push_targets }}"
+      sequence:
+        - action: "{{ repeat.item }}"
+          data:
+            title: "{{ trigger.event.data.notification_title if trigger.id == 'recall' else trigger.event.data.title }}"
+            message: "{{ trigger.event.data.message }}"
+            data:
+              url: /larder
+              clickAction: /larder
+          continue_on_error: true

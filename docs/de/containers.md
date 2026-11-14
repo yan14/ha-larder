@@ -101,7 +101,7 @@ Ein Beutel funktioniert wie eine Dose (scannen, Portion entnehmen, **Geöffnet**
 
 **⋮ → 🥫 Vorrat** im Dashboard zeigt alle Packungen nach Produkt, über alle Orte zusammengezählt, mit Marke, Packung und wo sie liegen (Antippen eines Orts öffnet die Packung). Den **Mindestbestand** jedes Produkts stellst du direkt dort ein; was darunter liegt, ist mit *zu wenig* oder *keine mehr da* markiert. Produkte mit Mindestbestand bleiben in der Liste, auch wenn keins mehr da ist. **Ältestes zuerst:** Die Orte eines Produkts sind nach MHD sortiert, das früheste steht beim Produkt, und die Karte einer Packung warnt, wenn dieselbe Ware woanders mit früherem MHD liegt.
 
-**Wie lange es reicht.** Jede entnommene Packung (−1, Leeren, Inventur) wird gezählt; Umlagern und Anbrechen nicht. Daraus zeigen die Vorrats-Ansicht und die Karte einer Packung **reicht noch ca. 6 Wochen · aus 4 Entnahmen in 6 Monaten**. Die Prognose schaut auf die letzten 90 Tage und weitet sich auf 180 oder 365 Tage, wenn es weniger als 3 Entnahmen gibt; jüngere Entnahmen zählen mehr. Darunter setzt **Vorschlag: mindestens 2** den Mindestbestand auf das, was du in der *Vorlaufzeit für den Mindestbestand* (Einstellung, Standard 7 Tage) verbrauchst – per Antippen, von selbst ändert sich nichts.
+**Wie lange es reicht.** Jede entnommene Packung (−1, Leeren, Inventur) wird gezählt; Umlagern und Anbrechen nicht. Daraus zeigen die Vorrats-Ansicht und die Karte einer Packung **reicht noch ca. 6 Wochen · aus 4 Entnahmen in 6 Monaten**. Die Prognose schaut auf die letzten 90 Tage und weitet sich auf 180 oder 365 Tage, wenn es weniger als 3 Entnahmen gibt; jüngere Entnahmen zählen mehr. Darunter setzt **Vorschlag: mindestens 2** den Mindestbestand auf das, was du in der *Vorrat: Tage bis zum nächsten Einkauf* (Einstellung, Standard 7 Tage) verbrauchst – per Antippen, von selbst ändert sich nichts.
 
 **Preise und Wert.** Eine Packung kann einen **Preis** haben (eine Packung): im Packungs-Dialog, auf der Karte oder vom **📷 Kassenbon** gelesen. Larder merkt ihn sich je Produkt. Ohne eigenen Preis bekommen Packungen mit Strichcode eine Schätzung von [Open Prices](https://prices.openfoodfacts.org) (Open Food Facts, ODbL): den Median des letzten Jahres in Euro, markiert mit *(Open Prices)*. Die Karte einer Packung und die Vorrats-Ansicht zeigen den Preis je Packung, den Wert jedes Produkts und den **Gesamtwert**; Statistik und Monatsbericht ergänzen **ca. X € weggeworfen**.
 
@@ -113,7 +113,17 @@ Ein Beutel funktioniert wie eine Dose (scannen, Portion entnehmen, **Geöffnet**
 
 <p align="center"><img src="../images/dashboard-open-de.png" width="250" alt="Packung anbrechen"></p>
 
+**Bald leer.** Reicht ein Produkt mit Mindestbestand laut Prognose nur noch die *Tage bis zum nächsten Einkauf*, steht es auf der Startseite unter **⏳ Bald leer** – bevor der Mindestbestand unterschritten ist. **🛒 Einkaufsliste** setzt es auf die Liste, **✕** blendet es eine Woche aus. Mit der Einstellung *Bald leer: gleich auf die Einkaufsliste* kommt es sofort auf die Liste. Für eine Push-Nachricht gibt es den Blueprint [Bald leer und Rückrufe](kitchen.md#bald-leer-und-rückrufe) (Ereignis `larder_running_low`).
+
 **Von der Einkaufsliste zurück in den Vorrat.** Hakst du auf der Einkaufsliste etwas ab, das Larder dort eingetragen hat (Mindestbestand oder geleerte Dose), fragt die Startseite **🛒 Eingekauft – in den Vorrat?**. **In den Vorrat** öffnet den Packungs-Dialog mit Inhalt, Marke, Anzahl und dem Ort, an dem das Produkt sonst liegt; **✕** verwirft den Hinweis.
+
+### Rückrufwarnungen
+
+<p align="center"><img src="../images/dashboard-alerts-de.png" width="250" alt="Rückrufwarnung und Bald leer"></p>
+
+Alle 6 Stunden holt Larder die öffentlichen Rückrufe von [lebensmittelwarnung.de](https://www.lebensmittelwarnung.de) (Portal der Bundesländer und des BVL) der letzten 30 Tage und gleicht sie mit Dosen, Beuteln und Packungen ab. Ein Treffer braucht den **Strichcode**, oder **Marke und ein Wort des Inhalts**, oder – ohne Marke – **alle Wörter** eines mehrteiligen Inhalts. Die Warnung steht dann ganz oben auf der Startseite: Produkt, Grund, wo es im Vorrat liegt und woran Larder es erkannt hat, mit Link zur Originalmeldung. **Gelesen** blendet sie dauerhaft aus. Auch die Karte des Eintrags zeigt den Hinweis.
+
+Ein Treffer ist ein Hinweis, keine Gewissheit: Charge und MHD stehen in der Originalmeldung, bitte dort prüfen. Abgerufen wird nur der öffentliche Feed, Larder sendet keine Daten. Ausschalten oder auf ein Bundesland beschränken in den [Einstellungen](reference.md#einstellungen); als Push mit dem Blueprint [Bald leer und Rückrufe](kitchen.md#bald-leer-und-rückrufe) (Ereignis `larder_recall`).
 
 ### Inventur
 

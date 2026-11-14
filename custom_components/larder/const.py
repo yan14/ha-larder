@@ -61,6 +61,14 @@ CONF_TEMPERATURE_WARNING = "temperature_warning"  # Warnung, wenn ein Lagerort m
 CONF_REPAIR_HINTS = "repair_hints"  # Reparaturhinweise für Dosen ohne Bereich, ohne MHD, lange abgelaufen
 CONF_WATCH_ALLERGENS = "watch_allergens"  # Allergene, auf die der Haushalt achtet
 CONF_STOCK_LEAD_DAYS = "stock_lead_days"  # Tage bis zum nächsten Einkauf (Vorschlag Mindestbestand)
+CONF_REORDER_SHOPPING = "reorder_shopping"  # "Bald leer" gleich auf die Einkaufsliste
+CONF_RECALL_CHECK = "recall_check"  # Rückrufwarnungen (lebensmittelwarnung.de) abgleichen
+CONF_RECALL_STATE = "recall_state"  # nur Warnungen für dieses Bundesland (leer = alle)
+RECALL_STATES = (
+    "Baden-Württemberg", "Bayern", "Berlin", "Brandenburg", "Bremen", "Hamburg", "Hessen",
+    "Mecklenburg-Vorpommern", "Niedersachsen", "Nordrhein-Westfalen", "Rheinland-Pfalz", "Saarland",
+    "Sachsen", "Sachsen-Anhalt", "Schleswig-Holstein", "Thüringen",
+)
 CONF_SHOPPING_DETAILS = "shopping_details"  # Marke und Packung mit auf die Einkaufsliste
 CONF_VACUUM_DEFAULT = "vacuum_default"  # Vorbelegung des Schalters "Vakuum" bei neuen Dosen
 EVENT_DOSE_SCANNED = f"{DOMAIN}_dose_scanned"  # verknüpfter NFC-Tag wurde gescannt
