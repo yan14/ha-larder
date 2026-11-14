@@ -30,6 +30,8 @@ Settings → Devices & services → **Larder** → **Configure** (on any contain
 | Running low: add to the shopping list right away | off | Products running low go onto the shopping list at once, see [Stock](containers.md#stock) |
 | Recall warnings (lebensmittelwarnung.de) | on | Compare public recalls with the stock, see [Recall warnings](containers.md#recall-warnings) |
 | Recall warnings: only for this German state | all | Only warnings that concern this state |
+| Week plan suggestion: source | Recipe book, otherwise AI | Where the dishes of the [week suggestion](kitchen.md#week-suggestion) come from |
+| Week plan suggestion: days | 5 | How many days the suggestion covers |
 
 The dialog also shows the **webhook URL** for the [iOS Shortcut](scanning.md#ios-shortcut-for-the-original-zwilling-codes).
 

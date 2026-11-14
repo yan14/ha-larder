@@ -63,6 +63,9 @@ CONF_WATCH_ALLERGENS = "watch_allergens"  # Allergene, auf die der Haushalt acht
 CONF_STOCK_LEAD_DAYS = "stock_lead_days"  # Tage bis zum nächsten Einkauf (Vorschlag Mindestbestand)
 CONF_REORDER_SHOPPING = "reorder_shopping"  # "Bald leer" gleich auf die Einkaufsliste
 CONF_RECALL_CHECK = "recall_check"  # Rückrufwarnungen (lebensmittelwarnung.de) abgleichen
+CONF_PLAN_SOURCE = "plan_source"  # Wochenplan-Vorschlag: Rezeptbuch, KI, Rezeptbuch sonst KI, beides
+CONF_PLAN_DAYS = "plan_days"  # Wochenplan-Vorschlag: so viele Tage
+PLAN_SOURCES = ("book", "ai", "book_ai", "both")
 CONF_RECALL_STATE = "recall_state"  # nur Warnungen für dieses Bundesland (leer = alle)
 RECALL_STATES = (
     "Baden-Württemberg", "Bayern", "Berlin", "Brandenburg", "Bremen", "Hamburg", "Hessen",

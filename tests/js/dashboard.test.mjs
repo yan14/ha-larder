@@ -2356,3 +2356,130 @@ test("Fach: Sticker beschreiben verknüpft den Tag sofort", async () => {
   assert.match(form.querySelector('[data-role="place-status"]').textContent, /Verknüpft\. Halte das Handy/);
   assert.equal(form.querySelector('[data-role="place-write"]'), null);
 });
+
+// ---------- Block 10: Vorkochen und Planen ----------
+
+const cook = await import("../../custom_components/larder/frontend/larder-dashboard-cook.js");
+
+test("Aufteilen und passende Dosen vorschlagen", () => {
+  assert.equal(cook.litres("500 ml"), 0.5);
+  assert.equal(cook.litres("1,5 l"), 1.5);
+  assert.equal(cook.litres("groß"), null);
+  assert.deepEqual(cook.splitAmount(3000, "milliliters", ["1 l", "1 l", "1,5 l"]), [1000, 1000, 1000]);
+  assert.deepEqual(cook.splitAmount(1500, "milliliters", ["1 l"]), [1000]); // Rest passt nicht
+  assert.deepEqual(cook.splitAmount(7, "portions", [null, null, null]), [3, 2, 2]);
+  assert.deepEqual(cook.splitAmount(0, "portions", [null]), [0]);
+  const options = [{ size: "0,5 l" }, { size: "1 l" }, { size: "2 l" }, { size: "1 l" }];
+  assert.deepEqual(cook.suggestContainers(3000, options).map((o) => o.size), ["2 l", "1 l"]);
+  assert.deepEqual(cook.suggestContainers(2400, options).map((o) => o.size), ["2 l", "0,5 l"]);
+});
+
+test("Lager: freie Behälter je Größe; Behältergrößen-Dialog speichert lose Behälter", async () => {
+  document.body.innerHTML = "";
+  const hass = makeHass(DOSES);
+  let sizes = { overview: [{ size: "0,5 l", total: 1, filled: 1, free: 0 }, { size: "1 l", total: 4, filled: 1, free: 3 }], loose: { "1 l": 2 }, known: ["1 l"] };
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/sizes`) return sizes;
+    if (msg.type === `${D}/loose_set`) {
+      hass.wsCalls.push(msg);
+      sizes = { ...sizes, loose: msg.loose };
+      return sizes;
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await go(el, "containers");
+  await flush();
+  assert.equal($(el, '[data-role="free-sizes"]').textContent, "Frei: 3 × 1 l");
+  $(el, '[data-role="free-sizes"]').click();
+  await flush();
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelector("h2").textContent, "Behältergrößen");
+  assert.equal(form.querySelector('[data-f="loose-size"]').value, "1 l");
+  form.querySelector('[data-role="loose-add"]').click();
+  const rows = form.querySelectorAll(".looserow");
+  rows[1].querySelector('[data-f="loose-size"]').value = "2 l";
+  rows[1].querySelector('[data-f="loose-count"]').value = "3";
+  form.querySelector('[data-role="loose-save"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/loose_set`, loose: { "1 l": 2, "2 l": 3 } });
+});
+
+test("Vorkochen: Gericht, Menge, Dosen vorschlagen, weiter zum Befüllen mit Menge je Dose", async () => {
+  document.body.innerHTML = "";
+  const hass = makeHass([...DOSES, { id: "d6", name: "Dose 6", area: "kitchen" }, { id: "d7", name: "Dose 7", area: "kitchen" }]);
+  hass.states["text.d5_inhalt"].attributes = { kind: "container", size_fixed: "1 l" };
+  hass.states["text.d6_inhalt"].attributes = { kind: "container", size_fixed: "2 l" };
+  hass.states["text.d7_inhalt"].attributes = { kind: "container", size_fixed: "0,5 l" };
+  const base = hass.callWS;
+  hass.callWS = async (msg) => (msg.type === `${D}/sizes` ? { overview: [], loose: {}, known: [] } : base(msg));
+  const el = mount(hass);
+  await flush();
+  let opened = null;
+  el._classic.openFillDialog = (ids, preset) => {
+    opened = { ids, preset };
+    return true;
+  };
+  $(el, "#settings").click();
+  $(el, '[data-role="menu-batch"]').click();
+  await flush();
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelector("h2").textContent, "Vorkochen");
+  assert.equal(form.querySelectorAll(".batchrow").length, 3);
+  form.querySelector('[data-f="batch-dish"]').value = "Chili";
+  form.querySelector('[data-f="batch-total"]').value = "2500";
+  form.querySelector('[data-f="batch-unit"]').value = "milliliters";
+  form.querySelector('[data-f="batch-unit"]').dispatchEvent(new Event("change"));
+  form.querySelector('[data-role="batch-suggest"]').click();
+  assert.match(form.querySelector('[data-role="batch-preview"]').textContent, /2 Dosen: 2000 ml, 500 ml/);
+  form.querySelector('[data-role="batch-next"]').click();
+  assert.deepEqual(opened.ids, ["d6", "d7"]);
+  assert.deepEqual(opened.preset, { content: "Chili", quantities: { d6: 2000, d7: 500 }, unit: "milliliters", sizes: {} });
+});
+
+test("Wochenplan vorschlagen: Tage anzeigen, entfernen, übernehmen", async () => {
+  document.body.innerHTML = "";
+  const hass = makeHass(DOSES);
+  const base = hass.callWS;
+  const added = [];
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/plan_suggest`) {
+      return {
+        source: "book_ai",
+        error: null,
+        days: [
+          { date: "2026-11-15", title: "Bolognese", source: "book", recipe_id: "r1", ingredients: ["Nudeln"], uses: [{ device_id: "d3", content: "Chili" }] },
+          { date: "2026-11-16", title: "Omelett", source: "ai", ingredients: ["Butter"], uses: [{ device_id: "d4", content: "Reis" }] },
+          { date: "2026-11-17", title: "Suppe", source: "ai", ingredients: [], uses: [{ device_id: "d1", content: "Lachs" }] },
+        ],
+        others: [],
+      };
+    }
+    if (msg.type === `${D}/plan_add`) {
+      added.push(msg);
+      return { plan: {} };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await go(el, "recipes");
+  $(el, '[data-role="week-suggest"]').click();
+  await flush();
+  await flush();
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelectorAll(".weekday").length, 3);
+  assert.match(form.textContent, /Bolognese.*📖 Rezeptbuch.*Verbraucht: Chili/);
+  form.querySelectorAll('[data-role="week-remove"]')[2].click();
+  assert.equal(form.querySelectorAll(".weekday").length, 2);
+  form.querySelector('[data-role="week-accept"]').click();
+  await flush();
+  await flush();
+  assert.deepEqual(added, [
+    { type: `${D}/plan_add`, date: "2026-11-15", title: "Bolognese", device_ids: ["d3"], recipe_id: "r1", ingredients: ["Nudeln"] },
+    { type: `${D}/plan_add`, date: "2026-11-16", title: "Omelett", device_ids: ["d4"], ingredients: ["Butter"] },
+  ]);
+  assert.match($(el, ".notice").textContent, /2 Gerichte im Wochenplan/);
+});

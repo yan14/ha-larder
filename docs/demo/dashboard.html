@@ -54,6 +54,8 @@ const doses = de ? [
   ["Beutel 2", "freezer", "Hackfleisch", 80, "raw_meat", "bag"],
   ["Packung 1", "cellar", "Tomaten gehackt", 400, "produce", "pack"],
   ["Packung 2", "cellar", "Haselnusscreme", 90, "sweet", "pack"],
+  ["Dose 11", "kitchen", "", null, null],
+  ["Dose 12", "cellar", "", null, null],
 ] : [
   ["Box 1", "kitchen", "Salmon", 1, "fish"],
   ["Box 2", "kitchen", "Chicken curry", 2, "dish"],
@@ -69,6 +71,8 @@ const doses = de ? [
   ["Bag 2", "freezer", "Minced meat", 80, "raw_meat", "bag"],
   ["Pack 1", "cellar", "Chopped tomatoes", 400, "produce", "pack"],
   ["Pack 2", "cellar", "Hazelnut spread", 90, "sweet", "pack"],
+  ["Box 11", "kitchen", "", null, null],
+  ["Box 12", "cellar", "", null, null],
 ];
 const entities = {}, devices = {}, states = {};
 doses.forEach(([name, area, content, days, category, kind = "container"], i) => {
@@ -78,6 +82,14 @@ doses.forEach(([name, area, content, days, category, kind = "container"], i) => 
   if (kind === "pack") for (const k of ["datetime", "image", "switch"]) delete ids[k]; // Packungen: nur Inhalt, Menge, MHD
   for (const e of Object.values(ids)) entities[e] = { entity_id: e, device_id: id, platform: "larder" };
   states[ids.text] = { entity_id: ids.text, state: content, attributes: { category, kind, ...(/Hazelnut|Haselnuss/.test(content) ? { brand: "Nutella", package: "450 g", kcal_100g: 539, nutri_score: "E", min_stock: 2, allergen_warning: [de ? "Schalenfrüchte" : "Nuts"] } : {}), ...(/Penne/.test(content) ? { brand: "Barilla", package: "500 g", ean: "8076800195057", kcal_100g: 359, kcal_portion: 449, nutri_score: "A", allergens: de ? "Gluten" : "Gluten", nutrients: de ? "Fett 2 g, Kohlenhydrate 71 g, davon Zucker 3,5 g, Eiweiß 13 g, Salz 0,01 g (pro 100 g)" : "Fat 2 g, carbohydrates 71 g, of which sugars 3.5 g, protein 13 g, salt 0.01 g (per 100 g)", source: "openfoodfacts" } : {}) } };
+  // Behältergrößen: feste Größen, Dose 4/5 mit variablem Deckel
+  const fixedSizes = { 0: "1 l", 1: "0,5 l", 2: "0,5 l", 5: "1,5 l", 6: "1,5 l", 7: "2 l", 8: "0,5 l", 9: "1 l", 14: "2 l" };
+  if (kind === "container") {
+    const variable = i === 3 || i === 4 || i === 15;
+    Object.assign(states[ids.text].attributes, variable
+      ? { size_variable: true, size_last: "1 l", ...(content ? { size: "1 l" } : {}) }
+      : { size_fixed: fixedSizes[i] || null, size: fixedSizes[i] || null });
+  }
   states[ids.date] = { entity_id: ids.date, state: days === null ? "unknown" : day(days), attributes: { estimates: true } };
   if (ids.datetime) states[ids.datetime] = { entity_id: ids.datetime, state: "unknown", attributes: {} };
   if (ids.switch) states[ids.switch] = { entity_id: ids.switch, state: "on", attributes: {} };
@@ -157,6 +169,18 @@ const hass = {
       { key: "b", content: "Boiled eggs", area: "Fridge", vacuum: false, days: 7, tip: "", source: "table" },
       { key: "c", content: "Salmon", area: "Fridge", vacuum: true, days: 2, tip: "", source: "learned", origin: "ai" } ] };
     if (msg.type === "larder/nfc_tags") return { links: {}, by_device: {} };
+    if (msg.type === "larder/sizes") return { overview: [{ size: "0,5 l", total: 3, filled: 3, free: 0 }, { size: "1 l", total: 6, filled: 3, free: 3 }, { size: "1,5 l", total: 2, filled: 2, free: 0 }, { size: "2 l", total: 3, filled: 1, free: 2 }], loose: { "1 l": 4, "2 l": 2 }, known: ["0,5 l", "1 l", "1,5 l", "2 l"] };
+    if (msg.type === "larder/plan_suggest") return { source: "book_ai", error: null, others: [{ title: "x", source: "book", uses: [] }], days: de ? [
+      { date: day(0), title: "Lachs-Pasta", source: "ai", ingredients: ["Sahne"], uses: [{ device_id: "demo00", content: "Lachs" }, { device_id: "demo05", content: "Penne" }] },
+      { date: day(1), title: "Hähnchen-Curry mit Reis", source: "book", recipe_id: "r3", ingredients: [], uses: [{ device_id: "demo01", content: "Hähnchen-Curry" }, { device_id: "demo06", content: "Basmati" }] },
+      { date: day(2), title: "Eiersalat", source: "ai", ingredients: ["Mayonnaise"], uses: [{ device_id: "demo08", content: "Gekochte Eier" }] },
+      { date: day(4), title: "Lasagne", source: "book", recipe_id: "r2", ingredients: [], uses: [{ device_id: "demo07", content: "Bolognese-Sauce" }] },
+    ] : [
+      { date: day(0), title: "Salmon pasta", source: "ai", ingredients: ["Cream"], uses: [{ device_id: "demo00", content: "Salmon" }, { device_id: "demo05", content: "Penne" }] },
+      { date: day(1), title: "Chicken curry with rice", source: "book", recipe_id: "r3", ingredients: [], uses: [{ device_id: "demo01", content: "Chicken curry" }, { device_id: "demo06", content: "Basmati" }] },
+      { date: day(2), title: "Egg salad", source: "ai", ingredients: ["Mayonnaise"], uses: [{ device_id: "demo08", content: "Boiled eggs" }] },
+      { date: day(4), title: "Lasagne", source: "book", recipe_id: "r2", ingredients: [], uses: [{ device_id: "demo07", content: "Bolognese sauce" }] },
+    ] };
     if (msg.type === "larder/place_tags") return { links: [{ tag_id: "t", area_id: "cellar", compartment: de ? "Regal oben" : "Top shelf" }] };
     if (msg.type === "larder/running_low") return { shopping_list: true, items: q.get("alerts") ? [{ key: "m", name: de ? "Milch" : "Milk", count: 2, min: 1, lasts_days: 4 }] : [] };
     if (msg.type === "larder/recalls") return { items: q.get("alerts") ? [{ id: "r1", title: de ? "Tomatenketchup 500 ml, Marke Heinz" : "Tomato ketchup 500 ml, brand Heinz", reason: de ? "Glassplitter können nicht ausgeschlossen werden" : "Glass fragments cannot be ruled out", date: day(-2), link: "https://www.lebensmittelwarnung.de", items: [{ cc: "P", device_id: "demo12", content: "Ketchup", brand: "Heinz", area: de ? "Küche" : "Kitchen", compartment: de ? "Tür" : "Door", via: "brand" }] }] : [] };
@@ -231,6 +255,16 @@ if (q.get("dialog") === "transfer") el.openTransferDialog("demo12");
 if (q.get("dialog") === "move") el.openMoveDialog("demo12");
 if (q.get("dialog") === "code") await el.takeByCode("4000000000001");
 if (q.get("dialog") === "open") el.openOpenDialog("demo12");
+if (q.get("dialog") === "sizes") await el.openSizesDialog();
+if (q.get("dialog") === "batch") {
+  await el.openBatchDialog({ content: de ? "Chili con Carne" : "Chili con carne" });
+  const f = el.shadowRoot.querySelector("form.dialog");
+  f.querySelector('[data-f="batch-total"]').value = "1500";
+  f.querySelector('[data-f="batch-unit"]').value = "milliliters";
+  f.querySelector('[data-f="batch-unit"]').dispatchEvent(new Event("change"));
+  f.querySelector('[data-role="batch-suggest"]').click();
+}
+if (q.get("dialog") === "week") await el.openWeekSuggest();
 if (q.get("dialog") === "place") await el.openPlace("cellar", de ? "Regal oben" : "Top shelf");
 if (q.get("take")) {
   el._take = { areaId: q.get("take"), compartment: "", started: true, status: new Map() };

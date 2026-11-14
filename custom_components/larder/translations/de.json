@@ -239,7 +239,9 @@
           "stock_lead_days": "Vorrat: Tage bis zum nächsten Einkauf",
           "reorder_shopping": "Bald leer: gleich auf die Einkaufsliste",
           "recall_check": "Rückrufwarnungen (lebensmittelwarnung.de)",
-          "recall_state": "Rückrufwarnungen: nur für dieses Bundesland"
+          "recall_state": "Rückrufwarnungen: nur für dieses Bundesland",
+          "plan_source": "Wochenplan-Vorschlag: Quelle",
+          "plan_days": "Wochenplan-Vorschlag: Tage"
         },
         "data_description": {
           "vacuum_default": "Neue Dosen starten mit eingeschaltetem oder ausgeschaltetem Schalter „Vakuum“. Bestehende Dosen behalten ihren Wert. Schalte es aus, wenn die meisten deiner Boxen nicht vakuumiert sind.",
@@ -261,7 +263,9 @@
           "stock_lead_days": "Für den Vorschlag zum Mindestbestand: so viele Packungen, wie in dieser Zeit verbraucht werden.",
           "reorder_shopping": "Reicht ein Produkt mit Mindestbestand laut Prognose nur noch die „Tage bis zum nächsten Einkauf“, steht es auf der Startseite unter „Bald leer“ (Ereignis larder_running_low). Ist das an, kommt es zusätzlich gleich auf die Einkaufsliste (einmal, nicht doppelt).",
           "recall_check": "Gleicht alle 6 Stunden die öffentlichen Rückrufe von lebensmittelwarnung.de mit Marke und Inhalt deiner Dosen, Beutel und Packungen ab. Treffer stehen auf der Startseite und der Karte; Ereignis larder_recall für Benachrichtigungen. Abgerufen wird nur der öffentliche Feed, es werden keine Daten gesendet.",
-          "recall_state": "Leer = Warnungen für alle Bundesländer."
+          "recall_state": "Leer = Warnungen für alle Bundesländer.",
+          "plan_source": "Woher die Gerichte für „Woche vorschlagen“ im Wochenplan kommen. Die KI braucht eine eingerichtete KI-Aufgabe.",
+          "plan_days": "Für so viele Tage ab heute schlägt Larder Gerichte vor (Tage, für die schon etwas geplant ist, werden übersprungen)."
         }
       }
     },
@@ -408,6 +412,14 @@
         "sesame_seeds": "Sesam",
         "sulphur_dioxide_and_sulphites": "Schwefeldioxid/Sulfite",
         "lupin": "Lupinen"
+      }
+    },
+    "plan_source": {
+      "options": {
+        "book": "Nur Rezeptbuch",
+        "ai": "Nur KI",
+        "book_ai": "Rezeptbuch, sonst KI",
+        "both": "Rezeptbuch und KI zusammen"
       }
     }
   },

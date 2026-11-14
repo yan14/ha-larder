@@ -9,7 +9,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DATA_STOCK, DOMAIN, KIND_PACK, SIGNAL_SETTINGS_CHANGED, SIGNAL_STOCK_CHANGED
+from .const import DATA_STOCK, DOMAIN, KIND_CONTAINER, KIND_PACK, SIGNAL_SETTINGS_CHANGED, SIGNAL_STOCK_CHANGED
 from .entity import LarderConfigEntry, LarderEntity, LarderResettable
 from .estimate import DATA_ESTIMATOR, async_get_estimator
 from .product import watched_allergens
@@ -109,6 +109,16 @@ class LarderContent(TextEntity, LarderResettable):
             if "price" not in self._product and (price := stock.prices.get(product_key(value))):
                 attrs["price_remembered"] = price["price"]
                 attrs["price_remembered_source"] = price.get("source")
+        sizes = self.hass.data.get(DOMAIN, {}).get("sizes")
+        if sizes is not None and self._kind == KIND_CONTAINER and (info := sizes.info(self._cc)):
+            # Behältergröße: fest an der Dose oder (variabel) die der aktuellen Befüllung
+            attrs["size_variable"] = bool(info.get("variable"))
+            if info.get("size"):
+                attrs["size_fixed"] = info["size"]
+            if info.get("last"):
+                attrs["size_last"] = info["last"]
+            if size := (info.get("current") if info.get("variable") and value.strip() else info.get("size")):
+                attrs["size"] = size
         recalls = self.hass.data.get(DOMAIN, {}).get("recalls")
         stock_data = self.hass.data.get(DOMAIN, {}).get(DATA_STOCK)
         if recalls is not None and stock_data is not None and value.strip() and recalls.found:

@@ -102,6 +102,12 @@ Plan a dish for a day: **📅 Plan** on a recipe idea or a recipe from the book 
 
 **Thawed** works like the **Thawed** button on the card (shortens the best-before date) and moves [flexible containers](containers.md#filling-containers) to the fridge if there is exactly one fridge area.
 
+### Week suggestion
+
+<p align="center"><img src="../images/dashboard-week-en.png" width="250" alt="Week suggestion"></p>
+
+**🪄 Suggest week** on the recipe page proposes dishes for the next days (setting *Week plan suggestion: days*, 5 by default) that use up the containers expiring first. Days that already have a plan are skipped, containers already planned are left out. Where the dishes come from is a setting, like the best-before estimate: *recipe book only*, *AI only*, *recipe book, otherwise AI* (default) or *recipe book and AI together*. A recipe from the book fits when one of its ingredient lines names the contents of a container. Per day you see the dish and the containers it uses; **↻ Other** swaps in another dish, **Remove** drops the day, **Accept** puts everything into the meal plan (with thaw reminders and missing ingredients as usual).
+
 ## Shopping list
 
 **Time for … again?** The start page suggests what you ate at least three times in the last 90 days but have in no container or pack right now ("Bolognese, eaten 4× …"). **🛒 Shopping list** puts it on the list, **✕** hides the suggestion for 30 days.

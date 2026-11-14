@@ -382,6 +382,7 @@ class DoseCard {
       <div class="row shoprow"><label class="check"><input type="checkbox" data-f="shopping"><span data-l="shopping"></span></label></div>
       <div class="row flexrow"><label class="check"><input type="checkbox" data-f="flexible"><span data-l="flexible"></span></label></div>
       <div class="row homerow"><label data-l="homeArea"></label><select data-f="homeArea"></select></div>
+      <div class="row sizerow" hidden><label data-l="size"></label><input data-f="size" type="text" maxlength="20" list="zs-sizes" autocomplete="off"><label class="check"><input type="checkbox" data-f="sizeVariable"><span data-l="sizeVariable"></span></label></div>
       <div class="recallline" role="alert" hidden><span class="txt"></span> <a target="_blank" rel="noopener noreferrer"></a></div>
       <div class="openedline" role="note" hidden></div>
       <div class="usageline" role="note" hidden></div>
@@ -519,6 +520,21 @@ class DoseCard {
     });
     this.q('[data-f="shopping"]').addEventListener("change", (ev) => {
       if (this.ids.shopping) this._call("switch", ev.target.checked ? "turn_on" : "turn_off", { entity_id: this.ids.shopping });
+    });
+    // Behältergröße: fest an der Dose, oder (variabel) die der aktuellen Befüllung
+    this.q('[data-f="size"]').addEventListener("change", (ev) => {
+      const hass = this._panel.hass;
+      if (!hass || !hass.callWS) return;
+      const variable = this.q('[data-f="sizeVariable"]').checked;
+      const size = ev.target.value.trim();
+      hass.callWS(variable ? { type: `${DOMAIN}/size_fill`, device_id: this.deviceId, size } : { type: `${DOMAIN}/size_set`, device_id: this.deviceId, size, variable: false }).catch(() => {});
+    });
+    this.q('[data-f="sizeVariable"]').addEventListener("change", (ev) => {
+      const hass = this._panel.hass;
+      if (!hass || !hass.callWS) return;
+      const text = (hass.states || {})[this._panel._devices.find((d) => d.deviceId === this.deviceId).entities.text];
+      const fixed = (text && text.attributes && text.attributes.size_fixed) || (ev.target.checked ? "" : this.q('[data-f="size"]').value.trim());
+      hass.callWS({ type: `${DOMAIN}/size_set`, device_id: this.deviceId, size: fixed, variable: ev.target.checked }).catch(() => {});
     });
     this.q('[data-f="flexible"]').addEventListener("change", (ev) => {
       if (this.ids.flexible) this._call("switch", ev.target.checked ? "turn_on" : "turn_off", { entity_id: this.ids.flexible });
@@ -732,6 +748,8 @@ class DoseCard {
     this.q('[data-l="vacuum"]').textContent = t.vacuum;
     this.q('[data-l="shopping"]').textContent = t.shopping;
     this.q('[data-l="flexible"]').textContent = t.flexible;
+    this.q('[data-l="size"]').textContent = t.size;
+    this.q('[data-l="sizeVariable"]').textContent = t.sizeVariable;
     this.q('[data-l="homeArea"]').textContent = t.homeArea;
     if (!this._estimating) this.q("button.estimate").textContent = t.estimate;
 
@@ -787,6 +805,18 @@ class DoseCard {
     const openBtn = this.q("button.openpack");
     openBtn.hidden = !(kind === "pack" && hasContentNow && !opened);
     openBtn.textContent = t.openPack;
+    // Behältergröße (nur Dosen)
+    const sizeRow = this.q(".sizerow");
+    sizeRow.hidden = kind !== "container" || !ok(text);
+    if (!sizeRow.hidden) {
+      const a = (text && text.attributes) || {};
+      const variable = !!a.size_variable;
+      this.q('[data-f="sizeVariable"]').checked = variable;
+      const sizeInput = this.q('[data-f="size"]');
+      this._setInput(sizeInput, variable ? (hasContentNow ? a.size || "" : "") : a.size_fixed || "");
+      sizeInput.placeholder = variable ? (hasContentNow ? a.size_last || t.sizeHint : t.sizeVariableEmpty) : t.sizeHint;
+      sizeInput.disabled = variable && !hasContentNow;
+    }
     const openedLine = this.q(".openedline");
     openedLine.hidden = !opened;
     openedLine.textContent = opened ? t.openedSince(opened) : "";
@@ -991,10 +1021,11 @@ class LarderPanel extends HTMLElement {
       <div class="overlay fill" hidden>
         <form class="dialog fillform" novalidate>
           <h2></h2>
-          <label class="field"><span data-l="content"></span><span class="contentline"><input type="text" data-f="content" maxlength="255" list="zs-contents" autocomplete="off"><button type="button" class="barcode" hidden>EAN</button><button type="button" class="photo" hidden>📷</button><input type="file" class="photofile" accept="image/*" capture="environment" hidden></span><datalist id="zs-contents"></datalist></label>
+          <label class="field"><span data-l="content"></span><span class="contentline"><input type="text" data-f="content" maxlength="255" list="zs-contents" autocomplete="off"><button type="button" class="barcode" hidden>EAN</button><button type="button" class="photo" hidden>📷</button><input type="file" class="photofile" accept="image/*" capture="environment" hidden></span><datalist id="zs-contents"></datalist><datalist id="zs-sizes"></datalist></label>
           <div class="hint barcodestatus" role="status" hidden></div>
           <label class="field" data-w="area" hidden><span data-l="area"></span><select data-f="area"></select></label>
           <label class="field" data-w="compartment" hidden><span data-l="compartment"></span><input type="text" data-f="compartment" maxlength="60" autocomplete="off"></label>
+          <label class="field" data-w="boxsize" hidden><span data-l="boxSize"></span><input type="text" data-f="boxSize" maxlength="20" list="zs-sizes" autocomplete="off"></label>
           <label class="field" data-w="quantity"><span data-l="quantity"></span><span class="qty"><input type="number" data-f="quantity" min="0" max="9999" step="1" inputmode="numeric"><select data-f="unit"></select></span></label>
           <label class="check" data-w="vacuum"><input type="checkbox" data-f="vacuum"><span data-l="vacuum"></span></label>
           <label class="check" data-w="shopping"><input type="checkbox" data-f="shopping"><span data-l="shopping"></span></label>
@@ -1444,7 +1475,7 @@ class LarderPanel extends HTMLElement {
    * Mit einer Liste von Geräte-IDs werden mehrere Dosen auf einmal mit denselben Angaben befüllt
    * (Menge gilt pro Dose); die Vorbelegung kommt dann von der ersten Dose, Inhalt und MHD bleiben leer.
    */
-  openFillDialog(deviceIds) {
+  openFillDialog(deviceIds, preset = null) {
     const hass = this._hass;
     const wanted = Array.isArray(deviceIds) ? deviceIds : [deviceIds];
     const devs = hass ? wanted.map((id) => this._devices.find((d) => d.deviceId === id)).filter(Boolean) : [];
@@ -1459,6 +1490,7 @@ class LarderPanel extends HTMLElement {
     const dt = states[dev.entities.datetime];
     const vac = states[dev.entities.switch];
     this._fillDevices = devs.map((d) => d.deviceId);
+    this._fillQuantities = (preset && preset.quantities) || null; // Vorkochen: Menge je Dose
     this._fillForm.querySelector("h2").textContent = many ? t.fillTitleMany(devs.length) : `${t.fillTitle}: ${dev.name}`;
     f("content").value = !many && isValidState(text) ? text.state : "";
     f("content").placeholder = t.fillPlaceholder;
@@ -1480,6 +1512,24 @@ class LarderPanel extends HTMLElement {
     fillUnitSelect(f("unit"), states[dev.entities.select], t);
     f("unit").style.display = states[dev.entities.select] ? "" : "none";
     this._fillForm.querySelector('[data-w="quantity"]').hidden = !quantity || quantity.state === "unavailable";
+    if (preset && preset.content) f("content").value = preset.content;
+    if (preset && preset.unit && [...f("unit").options].some((o) => o.value === preset.unit)) f("unit").value = preset.unit;
+    if (this._fillQuantities) {
+      const first = this._fillQuantities[dev.deviceId];
+      f("quantity").value = first ? String(first) : "";
+    }
+    // Größe für Dosen mit variabler Größe (Vorschlag: die zuletzt benutzte)
+    const variableDevs = devs.filter((d) => {
+      const st = states[d.entities.text];
+      return !!(st && st.attributes && st.attributes.size_variable);
+    });
+    this._fillForm.querySelector('[data-w="boxsize"]').hidden = !variableDevs.length;
+    if (variableDevs.length) {
+      const st = states[variableDevs[0].entities.text];
+      f("boxSize").value = (preset && preset.sizes && preset.sizes[variableDevs[0].deviceId]) || (st.attributes && st.attributes.size_last) || "";
+    }
+    this._fillSizes = (preset && preset.sizes) || null;
+    this._syncSizeList();
     f("vacuum").checked = !!vac && vac.state === "on";
     this._fillForm.querySelector('[data-w="vacuum"]').hidden = !vac || vac.state === "unavailable";
     // Bereich nur bei Dosen mit variablem Lagerort (und nur für Administratoren, die Bereiche ändern dürfen)
@@ -1531,6 +1581,27 @@ class LarderPanel extends HTMLElement {
   closeFillDialog() {
     this._fillOverlay.hidden = true;
     this._fillDevices = [];
+    this._fillQuantities = null;
+    this._fillSizes = null;
+  }
+
+  /** Bekannte Behältergrößen als Vorschläge (aus den Dosen). */
+  _syncSizeList() {
+    const states = (this._hass && this._hass.states) || {};
+    const seen = new Map();
+    for (const d of this._devices) {
+      const a = (states[d.entities.text] || {}).attributes || {};
+      for (const s of [a.size_fixed, a.size_last, a.size]) if (s) seen.set(String(s).replace(/\s+/g, "").toLowerCase(), s);
+    }
+    const list = this.shadowRoot.querySelector("#zs-sizes");
+    if (!list) return;
+    list.replaceChildren(
+      ...[...seen.values()].map((s) => {
+        const o = document.createElement("option");
+        o.value = s;
+        return o;
+      }),
+    );
   }
 
   /** Vorschläge für den Inhalt vom Server holen (zuletzt benutzte zuerst). */
@@ -1677,7 +1748,18 @@ class LarderPanel extends HTMLElement {
     this._busy = true;
     this._fillForm.querySelector("button.submit").disabled = true;
     try {
-      for (const dev of devs) await this._fillOne(dev, values);
+      const quantities = this._fillQuantities;
+      const sizes = this._fillSizes;
+      const boxSize = this._fillForm.querySelector('[data-w="boxsize"]').hidden ? null : f("boxSize").value.trim();
+      for (const dev of devs) {
+        const q = quantities && quantities[dev.deviceId];
+        await this._fillOne(dev, q ? { ...values, quantity: q } : values);
+        const st = (hass.states || {})[dev.entities.text];
+        if (boxSize !== null && st && st.attributes && st.attributes.size_variable && hass.callWS) {
+          const size = (sizes && sizes[dev.deviceId]) || boxSize;
+          await hass.callWS({ type: `${DOMAIN}/size_fill`, device_id: dev.deviceId, size }).catch(() => {});
+        }
+      }
     } catch (err) {
       errorEl.textContent = (err && err.message) || t.fillFailed;
       return;

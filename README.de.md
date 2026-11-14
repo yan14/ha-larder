@@ -12,14 +12,15 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 
 - 🖥️ **[Eigenes Dashboard](docs/de/dashboard.md#dashboard-larder)** in der Seitenleiste, gemacht fürs Handy: Startseite, Dosen als Kacheln, Liste oder Karten mit allen Details, Bereiche, Kategorien und Rezeptbuch; aktualisiert sich selbst
 - 🔖 **[Zwilling-Fresh-&-Save-QR-Codes](docs/de/scanning.md#scannen-in-der-app)**: die originalen Codes auf den Deckeln funktionieren weiter, mit dem 📷-Scanner in der App (iOS und Android) oder einem [iOS-Kurzbefehl](docs/de/scanning.md#ios-kurzbefehl-für-die-originalen-zwilling-codes)
-- 🏷️ **[Eigener QR-Code](docs/de/scanning.md#eigene-qr-codes)** und **[NFC-Tags](docs/de/scanning.md#nfc-tags)** für jede beliebige Dose: Scannen öffnet die Dose im Dashboard; QR-Codes lassen sich als [A4-Etikettenbogen](docs/de/scanning.md#etikettenbogen) drucken
-- 🛍 **[Beutel und Packungen](docs/de/containers.md#beutel-und-packungen)**: Einweg-Vakuumbeutel mit NFC-Sticker oder QR-Code, die nach dem Leeren verschwinden, und Vorrat ohne Dose (Konserven, Gläser) per Strichcode, Kassenbon-Foto oder von Hand, mit Vorrats-Ansicht, Mindestbestand, der die Einkaufsliste füllt, Entnehmen per Strichcode, ältestes zuerst, angebrochenen Packungen und Inventur je Fach
-- ✏️ **[Schnelles Befüllen](docs/de/containers.md#dosen-befüllen)**: Inhalt, Menge, MHD und Vakuum in wenigen Taps, auch für mehrere Dosen auf einmal und per [Serien-Scan](docs/de/dashboard.md#mehrere-dosen-auswählen)
+- 🏷️ **[Eigener QR-Code](docs/de/scanning.md#eigene-qr-codes)** und **[NFC-Tags](docs/de/scanning.md#nfc-tags)** für jede beliebige Dose und für [Fächer](docs/de/scanning.md#fächer), um etwas zu entnehmen oder die Inventur zu starten; QR-Codes lassen sich als [Etikettenbogen](docs/de/scanning.md#etikettenbogen) in mehreren Designs und Farben drucken
+- 🛍 **[Beutel und Packungen](docs/de/containers.md#beutel-und-packungen)**: Einweg-Vakuumbeutel mit NFC-Sticker oder QR-Code, die nach dem Leeren verschwinden, und Vorrat ohne Dose (Konserven, Gläser) per Strichcode, Kassenbon-Foto oder von Hand
+- 🥫 **[Vorrat](docs/de/containers.md#vorrat)**: Packungen über alle Orte zusammengezählt, ältestes zuerst, Mindestbestand, der die Einkaufsliste füllt, *reicht noch …* und *bald leer*, Preise (eigene, vom Kassenbon oder [Open Prices](https://prices.openfoodfacts.org)), angebrochene Packungen, [Inventur](docs/de/containers.md#inventur) je Fach und [Rückrufwarnungen](docs/de/containers.md#rückrufwarnungen) von lebensmittelwarnung.de
+- ✏️ **[Schnelles Befüllen](docs/de/containers.md#dosen-befüllen)**: Inhalt, Menge, MHD und Vakuum in wenigen Taps, auch für mehrere Dosen auf einmal, per [Serien-Scan](docs/de/dashboard.md#mehrere-dosen-auswählen) oder als [Vorkochen](docs/de/containers.md#vorkochen) mit freien Dosen nach [Größe](docs/de/containers.md#behältergrößen)
 - 🧮 **[MHD-Schätzung](docs/de/best-before.md#mhd-schätzung)**: eingebaute Haltbarkeitstabelle, optional mit KI, mit Grenzen pro Lagerort
 - 🍳 **[Rezepte](docs/de/kitchen.md#rezepte)**: Ideen aus dem, was bald abläuft, oder aus gewählten Dosen, ein Rezeptbuch und Rezepte vom Foto
 - 🔔 **[Tägliche Zusammenfassung](docs/de/kitchen.md#tägliche-zusammenfassung)**: Push mit Knöpfen an mehrere Handys und als Ansage auf Alexa oder anderen Lautsprechern, optional bei der ersten Bewegung in der Küche
 - 🛒 **[Einkaufsliste](docs/de/kitchen.md#einkaufsliste)**: auf Wunsch landet der Inhalt einer geleerten Dose auf einer To-do-Liste, Reste nie
-- 🗓 **[Wochenplan](docs/de/kitchen.md#wochenplan)** mit Auftau-Erinnerung, **[Nährwerte und Allergene](docs/de/containers.md#nährwerte)** aus dem Strichcode, **[Statistik](docs/de/dashboard.md#statistik)** über Gegessenes und Weggeworfenes mit [Monatsbericht](docs/de/kitchen.md#monatsbericht) und eine MHD-Schätzung, die [aus dem Verlauf lernt](docs/de/best-before.md#gemerkte-schätzungen-verwalten)
+- 🗓 **[Wochenplan](docs/de/kitchen.md#wochenplan)** mit Auftau-Erinnerung und [Wochenvorschlag](docs/de/kitchen.md#wochenvorschlag) aus dem, was zuerst abläuft, **[Nährwerte und Allergene](docs/de/containers.md#nährwerte)** aus dem Strichcode, **[Statistik](docs/de/dashboard.md#statistik)** über Gegessenes und Weggeworfenes mit [Monatsbericht](docs/de/kitchen.md#monatsbericht) und eine MHD-Schätzung, die [aus dem Verlauf lernt](docs/de/best-before.md#gemerkte-schätzungen-verwalten)
 - 📅 **[Kalendereinträge](docs/de/kitchen.md#mhd-im-kalender)**: MHDs in deinem Kalender (Lokaler Kalender, Google, CalDAV …)
 - 🌍 In Deutsch und Englisch verfügbar
 
@@ -29,7 +30,7 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 <img src="docs/images/dashboard-cards-de.png" width="250" alt="Karten mit allen Details">
 </p>
 
-> **Neu in 3.0:** Neben wiederverwendbaren Dosen gibt es jetzt **Einweg-Beutel** (z. B. Vakuumbeutel, mit NFC-Sticker oder QR-Code) und **Packungen** (Vorrat ohne Dose). Die optionale Ansicht *Larder experimental* entfällt. Siehe [Changelog](CHANGELOG.md).
+> **Neu in 3.x:** Einweg-**Beutel** und **Packungen** (3.0), die Vorrats-Ansicht mit Mindestbestand (3.2), Inventur und angebrochene Packungen (3.4), Verbrauch und Preise (3.5), *bald leer* und Rückrufwarnungen (3.6), Fach-Tags und neue Etiketten-Optionen (3.7), Vorkochen, Behältergrößen und Wochenvorschlag (3.8). Siehe [Changelog](CHANGELOG.md).
 
 ## Dokumentation
 
@@ -102,6 +103,6 @@ npm install
 npm test        # Tests für das Frontend (jsdom)
 ```
 
-Das Frontend liegt in `custom_components/larder/frontend/`: `larder-dashboard.js` (Seiten und Navigation) mit Texten, Stylesheet und den Beutel-/Packungs-Dialogen in eigenen Modulen, `larder-panel.js` (Karten und die Dialoge zum Anlegen und Befüllen) und `larder-card.js` (Lovelace-Karte).
+Das Frontend liegt in `custom_components/larder/frontend/`: `larder-dashboard.js` (Seiten und Navigation) mit Texten und Stylesheet, `larder-dashboard-items.js` (Beutel, Packungen, Vorrat), `larder-dashboard-care.js` (Inventur, Fächer, angebrochene Packungen), `larder-dashboard-cook.js` (Größen, Vorkochen, Wochenvorschlag), `larder-panel.js` (Karten und die Dialoge zum Anlegen und Befüllen) und `larder-card.js` (Lovelace-Karte).
 
 Die Screenshots stammen aus dem echten Code mit Demo-Daten: Repository per `python -m http.server` bereitstellen und `docs/demo/dashboard.html?lang=de&view=containers` öffnen (Optionen in der Datei), für die Dialoge `docs/demo/index.html?lang=de&dialog=scan`.

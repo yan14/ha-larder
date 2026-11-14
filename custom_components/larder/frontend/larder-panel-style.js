@@ -157,6 +157,8 @@ export const STYLE = `
   .actions button.openpack { font: inherit; padding: 7px 14px; border-radius: 8px; cursor: pointer;
     background: none; color: var(--primary-color); border: 1px solid var(--primary-color); }
   .actions button.openpack[hidden], .openedline[hidden] { display: none; }
+  .sizerow input[data-f="size"] { max-width: 7em; }
+  .sizerow[hidden] { display: none; }
   .usageline { font-size: 13px; color: var(--secondary-text-color); }
   .usageline[hidden] { display: none; }
   .priceline { font-size: 13px; color: var(--secondary-text-color); }

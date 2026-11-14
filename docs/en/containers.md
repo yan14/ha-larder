@@ -2,7 +2,7 @@
 
 [← Overview](../../README.md) · [🇩🇪 Deutsch](../de/containers.md)
 
-[Adding a container](#adding-a-container) · [Bags and packs](#bags-and-packs) · [Areas and labels](#areas-and-labels) · [Filling containers](#filling-containers)
+[Adding a container](#adding-a-container) · [Bags and packs](#bags-and-packs) · [Areas and labels](#areas-and-labels) · [Filling containers](#filling-containers) · [Batch cooking](#batch-cooking)
 
 ## Adding a container
 
@@ -178,6 +178,23 @@ An empty container shows a **Fill** button. It opens a small dialog: **contents*
 **Bought food:** in the Home Assistant app the button **EAN** next to the contents scans the barcode on the package and fills in the product name from [Open Food Facts](https://world.openfoodfacts.org) (free product database, needs internet). Brand, package size, EAN and the [nutrition](#nutrition) are taken over too. The best-before date is printed on the package; enter it in the dialog. Nothing found or offline: type the contents as usual.
 
 **Contents from a photo:** with an [AI](best-before.md#ai-optional) set up, **📷** next to the contents takes a photo of the food (or picks one) and fills in what the AI recognises, e.g. "Goulash with potatoes". Check it and correct if needed.
+
+### Container sizes
+
+<p align="center"><img src="../images/dashboard-sizes-en.png" width="250" alt="Container sizes"></p>
+
+A container can have a **size** (field **Size** on its card, free text like `1 l` or `500 ml`). It is shown on the tile and card.
+
+- **Fixed size** (default): the size belongs to the container.
+- **variable**: for lids that fit boxes of different sizes (e.g. Zwilling, where the code sits on the lid). The size is chosen in the fill dialog at every filling; the last size of this lid is suggested.
+- **Loose boxes:** **⋮ → 📏 Container sizes** takes how many boxes of each size you own for the variable lids, e.g. 4 × 1 l, 2 × 2 l.
+- **Free containers:** the storage view shows *Free: 3 × 1 l, 1 × 0.5 l*: empty containers with a fixed size plus the loose boxes not filled with a variable lid. Tap it to open the sizes.
+
+### Batch cooking
+
+<p align="center"><img src="../images/dashboard-batch-en.png" width="250" alt="Batch cooking"></p>
+
+**⋮ → 🍲 Batch cooking** (administrators) splits one dish into several empty containers: enter the **dish** and the **total amount** (portions, ml, g or pieces) and tick the containers. With millilitres, **Suggest fitting ones** picks the fewest containers that hold the amount, by their size; variable lids get a size from the free loose boxes. The amount is split (in millilitres as much as each container holds, otherwise evenly), then the usual fill dialog opens for all of them with the amount per container. Afterwards Larder offers to print the labels.
 
 ### Nutrition
 

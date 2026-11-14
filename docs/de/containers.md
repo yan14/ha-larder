@@ -2,7 +2,7 @@
 
 [← Übersicht](../../README.de.md) · [🇬🇧 English](../en/containers.md)
 
-[Dose anlegen](#dose-anlegen) · [Beutel und Packungen](#beutel-und-packungen) · [Bereiche und Labels](#bereiche-und-labels) · [Dosen befüllen](#dosen-befüllen)
+[Dose anlegen](#dose-anlegen) · [Beutel und Packungen](#beutel-und-packungen) · [Bereiche und Labels](#bereiche-und-labels) · [Dosen befüllen](#dosen-befüllen) · [Vorkochen](#vorkochen)
 
 ## Dose anlegen
 
@@ -178,6 +178,23 @@ Eine leere Dose zeigt den Button **Befüllen**. Er öffnet einen kleinen Dialog:
 **Gekaufte Ware:** In der Home Assistant App scannt der Knopf **EAN** neben dem Inhalt den Strichcode auf der Packung und trägt den Produktnamen aus [Open Food Facts](https://de.openfoodfacts.org) ein (freie Produktdatenbank, braucht Internet). Marke, Packungsgröße, EAN und die [Nährwerte](#nährwerte) werden mit übernommen. Das MHD steht auf der Packung; trag es im Dialog ein. Nichts gefunden oder offline: Inhalt wie gewohnt eintippen.
 
 **Inhalt per Foto:** Mit eingerichteter [KI](best-before.md#ki-optional) macht **📷** neben dem Inhalt ein Foto vom Essen (oder nimmt eins aus der Galerie) und trägt ein, was die KI erkennt, z. B. „Gulasch mit Kartoffeln“. Kurz prüfen und ggf. korrigieren.
+
+### Behältergrößen
+
+<p align="center"><img src="../images/dashboard-sizes-de.png" width="250" alt="Behältergrößen"></p>
+
+Eine Dose kann eine **Größe** haben (Feld **Größe** auf ihrer Karte, freier Text wie `1 l` oder `500 ml`). Sie steht auf Kachel und Karte.
+
+- **Feste Größe** (Standard): Die Größe gehört zur Dose.
+- **variabel**: für Deckel, die auf Behälter verschiedener Größe passen (z. B. Zwilling, wo der Code auf dem Deckel sitzt). Die Größe wird bei jeder Befüllung im Befüll-Dialog gewählt; vorgeschlagen wird die zuletzt benutzte Größe dieses Deckels.
+- **Lose Behälter:** Unter **⋮ → 📏 Behältergrößen** trägst du ein, wie viele Behälter je Größe du für die variablen Deckel hast, z. B. 4 × 1 l, 2 × 2 l.
+- **Freie Behälter:** Die Lager-Ansicht zeigt *Frei: 3 × 1 l, 1 × 0,5 l*: leere Dosen mit fester Größe plus die losen Behälter, die gerade nicht mit einem variablen Deckel befüllt sind. Antippen öffnet die Größen.
+
+### Vorkochen
+
+<p align="center"><img src="../images/dashboard-batch-de.png" width="250" alt="Vorkochen"></p>
+
+**⋮ → 🍲 Vorkochen** (Administratoren) teilt ein Gericht auf mehrere leere Dosen auf: **Gericht** und **Menge insgesamt** (Portionen, ml, g oder Stück) eintragen und die Dosen anhaken. Bei Millilitern wählt **Passende vorschlagen** nach Größe die wenigsten Dosen, die die Menge fassen; variable Deckel bekommen eine Größe aus den freien losen Behältern. Die Menge wird aufgeteilt (bei Millilitern so viel, wie jede Dose fasst, sonst gleichmäßig), dann öffnet sich das gewohnte Befüllen für alle, mit der Menge je Dose. Danach bietet Larder an, die Etiketten zu drucken.
 
 ### Nährwerte
 

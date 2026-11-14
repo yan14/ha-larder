@@ -239,7 +239,9 @@
           "stock_lead_days": "Stock: days until the next shopping trip",
           "reorder_shopping": "Running low: add to the shopping list right away",
           "recall_check": "Recall warnings (lebensmittelwarnung.de)",
-          "recall_state": "Recall warnings: only for this German state"
+          "recall_state": "Recall warnings: only for this German state",
+          "plan_source": "Week plan suggestion: source",
+          "plan_days": "Week plan suggestion: days"
         },
         "data_description": {
           "vacuum_default": "New containers start with the “Vacuum” switch on or off. Existing containers keep their value. Switch it off if most of your boxes are not vacuum-sealed.",
@@ -261,7 +263,9 @@
           "stock_lead_days": "For the suggested minimum stock: as many packs as are used up in this time.",
           "reorder_shopping": "When a product with a minimum stock will only last the “days until the next shopping trip” according to the forecast, the start page lists it under “Running low” (event larder_running_low). With this on, it also goes onto the shopping list right away (once, not twice).",
           "recall_check": "Every 6 hours, compares the public recalls of the German portal lebensmittelwarnung.de with the brand and contents of your containers, bags and packs. Matches appear on the start page and the card; event larder_recall for notifications. Only the public feed is fetched, nothing is sent.",
-          "recall_state": "Empty = warnings for all German states."
+          "recall_state": "Empty = warnings for all German states.",
+          "plan_source": "Where the dishes for “Suggest week” in the meal plan come from. The AI needs an AI task set up.",
+          "plan_days": "Larder suggests dishes for this many days from today (days that already have a plan are skipped)."
         }
       }
     },
@@ -408,6 +412,14 @@
         "sesame_seeds": "Sesame",
         "sulphur_dioxide_and_sulphites": "Sulphites",
         "lupin": "Lupin"
+      }
+    },
+    "plan_source": {
+      "options": {
+        "book": "Recipe book only",
+        "ai": "AI only",
+        "book_ai": "Recipe book, otherwise AI",
+        "both": "Recipe book and AI together"
       }
     }
   },

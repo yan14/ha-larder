@@ -3,6 +3,12 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 3.8.0
+
+- **Container sizes:** a fixed size on the card of a container, or **variable** for lids that fit boxes of different sizes (chosen at every filling, the last one suggested). **⋮ → 📏 Container sizes** takes the loose boxes for variable lids; the storage view shows the **free containers by size**. Size on tile and card.
+- **Batch cooking** (**⋮ → 🍲 Batch cooking**): split one dish into several empty containers; with millilitres Larder suggests fitting containers by size and splits the amount, then the fill dialog opens for all of them with the amount per container.
+- **Week suggestion** (**🪄 Suggest week** on the recipe page): dishes for the next days (5 by default) that use up what expires first, from the recipe book and/or the AI (new settings for source and days); swap or remove single days, then accept them into the meal plan.
+
 ## 3.7.1
 
 - Compartment tag: **Write sticker** now shows right away that the tag is linked (it no longer has to be linked again with *NFC tag*); both buttons are offered directly.

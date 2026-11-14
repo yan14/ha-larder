@@ -30,6 +30,8 @@ Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** (bei ei
 | Bald leer: gleich auf die Einkaufsliste | aus | Produkte, die bald leer sind, kommen sofort auf die Einkaufsliste, siehe [Vorrat](containers.md#vorrat) |
 | Rückrufwarnungen (lebensmittelwarnung.de) | an | Öffentliche Rückrufe mit dem Vorrat abgleichen, siehe [Rückrufwarnungen](containers.md#rückrufwarnungen) |
 | Rückrufwarnungen: nur für dieses Bundesland | alle | Nur Warnungen, die dieses Bundesland betreffen |
+| Wochenplan-Vorschlag: Quelle | Rezeptbuch, sonst KI | Woher die Gerichte des [Wochenvorschlags](kitchen.md#wochenvorschlag) kommen |
+| Wochenplan-Vorschlag: Tage | 5 | Für wie viele Tage der Vorschlag gilt |
 
 Der Dialog zeigt außerdem die **Webhook-URL** für den [iOS-Kurzbefehl](scanning.md#ios-kurzbefehl-für-die-originalen-zwilling-codes).
 

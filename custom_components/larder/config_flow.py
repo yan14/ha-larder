@@ -41,6 +41,8 @@ from .const import (
     CONF_MEAL_CALENDAR,
     CONF_NFC_NOTIFY,
     CONF_OPENED_DAYS,
+    CONF_PLAN_DAYS,
+    CONF_PLAN_SOURCE,
     CONF_QR_CODE,
     CONF_RECALL_CHECK,
     CONF_RECALL_STATE,
@@ -70,6 +72,7 @@ from .const import (
     KIND_BAG,
     MAX_RECIPE_DAYS,
     MAX_SOON_DAYS,
+    PLAN_SOURCES,
     RECALL_STATES,
     SIGNAL_SETTINGS_CHANGED,
     SOON_DAYS,
@@ -315,6 +318,12 @@ class LarderOptionsFlow(OptionsFlow):
                 ),
                 vol.Optional(CONF_THAW_DAYS, default=DEFAULT_THAW_DAYS): NumberSelector(
                     NumberSelectorConfig(min=0, max=3, step=1, mode=NumberSelectorMode.BOX)
+                ),
+                vol.Optional(CONF_PLAN_SOURCE, default="book_ai"): SelectSelector(
+                    SelectSelectorConfig(options=list(PLAN_SOURCES), translation_key=CONF_PLAN_SOURCE, mode=SelectSelectorMode.LIST)
+                ),
+                vol.Optional(CONF_PLAN_DAYS, default=5): NumberSelector(
+                    NumberSelectorConfig(min=1, max=14, step=1, mode=NumberSelectorMode.BOX)
                 ),
                 vol.Optional(CONF_AI_TASK_ENTITY): EntitySelector(
                     EntitySelectorConfig(domain="ai_task")

@@ -12,14 +12,15 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 - 🖥️ **[Own dashboard](docs/en/dashboard.md#dashboard-larder)** in the sidebar, made for the phone: start page, containers as tiles, list or cards with every detail, areas, categories and a recipe book; updates itself
 - 🔖 **[Zwilling Fresh & Save QR codes](docs/en/scanning.md#scanning-in-the-app)**: the original codes on the lids keep working, with the 📷 scanner in the app (iOS and Android) or an [iOS Shortcut](docs/en/scanning.md#ios-shortcut-for-the-original-zwilling-codes)
-- 🏷️ **[Your own QR code](docs/en/scanning.md#your-own-qr-codes)** and **[NFC tags](docs/en/scanning.md#nfc-tags)** for any container: scanning opens the container in the dashboard; QR codes print as an [A4 label sheet](docs/en/scanning.md#label-sheet)
-- 🛍 **[Bags and packs](docs/en/containers.md#bags-and-packs)**: single-use vacuum bags with an NFC sticker or QR code that disappear after emptying, and stock without a container (cans, jars) by barcode, receipt photo or by hand, with a stock view, minimum stock that fills the shopping list, taking packs by barcode, oldest first, opened packs and a stocktake per compartment, a consumption forecast with a suggested minimum, and prices (own, from the receipt or [Open Prices](https://prices.openfoodfacts.org)) for the stock value and what was thrown away, a *running low* reminder and recall warnings from [lebensmittelwarnung.de](https://www.lebensmittelwarnung.de)
-- ✏️ **[Quick filling](docs/en/containers.md#filling-containers)**: contents, quantity, best-before date and vacuum in a few taps, also for several containers at once and with a [serial scan](docs/en/dashboard.md#selecting-several-containers)
+- 🏷️ **[Your own QR code](docs/en/scanning.md#your-own-qr-codes)** and **[NFC tags](docs/en/scanning.md#nfc-tags)** for any container, and for [compartments](docs/en/scanning.md#compartments) to take something or start a stocktake; QR codes print as a [label sheet](docs/en/scanning.md#label-sheet) in several designs and colours
+- 🛍 **[Bags and packs](docs/en/containers.md#bags-and-packs)**: single-use vacuum bags with an NFC sticker or QR code that disappear after emptying, and stock without a container (cans, jars) by barcode, receipt photo or by hand
+- 🥫 **[Stock](docs/en/containers.md#stock)**: packs summed over every place, oldest first, minimum stock that fills the shopping list, *lasts about …* and *running low*, prices (own, from the receipt or [Open Prices](https://prices.openfoodfacts.org)), opened packs, a [stocktake](docs/en/containers.md#stocktake) per compartment and [recall warnings](docs/en/containers.md#recall-warnings) from lebensmittelwarnung.de
+- ✏️ **[Quick filling](docs/en/containers.md#filling-containers)**: contents, quantity, best-before date and vacuum in a few taps, also for several containers at once, with a [serial scan](docs/en/dashboard.md#selecting-several-containers) or as [batch cooking](docs/en/containers.md#batch-cooking) with free containers by [size](docs/en/containers.md#container-sizes)
 - 🧮 **[Best-before estimate](docs/en/best-before.md#best-before-estimate)**: built-in shelf-life table, optionally with AI, with limits per storage place
 - 🍳 **[Recipes](docs/en/kitchen.md#recipes)**: ideas from what expires soon or from selected containers, a recipe book, and recipes read from a photo
 - 🔔 **[Daily summary](docs/en/kitchen.md#daily-summary)**: push with buttons to several phones and read out on Alexa or other speakers, optionally at the first motion in the kitchen
 - 🛒 **[Shopping list](docs/en/kitchen.md#shopping-list)**: on request, the contents of an emptied container go onto a to-do list, never leftovers
-- 🗓 **[Meal plan](docs/en/kitchen.md#meal-plan)** with thaw reminder, **[nutrition and allergens](docs/en/containers.md#nutrition)** from the barcode, **[statistics](docs/en/dashboard.md#statistics)** of what was eaten and thrown away with a [monthly report](docs/en/kitchen.md#monthly-report), and a best-before estimate that [learns from your history](docs/en/best-before.md#managing-remembered-estimates)
+- 🗓 **[Meal plan](docs/en/kitchen.md#meal-plan)** with thaw reminder and a [week suggestion](docs/en/kitchen.md#week-suggestion) from what expires first, **[nutrition and allergens](docs/en/containers.md#nutrition)** from the barcode, **[statistics](docs/en/dashboard.md#statistics)** of what was eaten and thrown away with a [monthly report](docs/en/kitchen.md#monthly-report), and a best-before estimate that [learns from your history](docs/en/best-before.md#managing-remembered-estimates)
 - 📅 **[Calendar entries](docs/en/kitchen.md#best-before-dates-in-your-calendar)**: best-before dates in your calendar (Local Calendar, Google, CalDAV …)
 - 🌍 Available in English and German
 
@@ -29,7 +30,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 <img src="docs/images/dashboard-cards-en.png" width="250" alt="Cards with all details">
 </p>
 
-> **New in 3.0:** besides reusable containers there are now **single-use bags** (e.g. vacuum bags, with an NFC sticker or QR code) and **packs** (stock without a container). The optional *Larder experimental* view is gone. See the [changelog](CHANGELOG.md).
+> **New in 3.x:** single-use **bags** and **packs** (3.0), the stock view with minimum stock (3.2), stocktake and opened packs (3.4), consumption and prices (3.5), *running low* and recall warnings (3.6), compartment tags and new label options (3.7), batch cooking, container sizes and the week suggestion (3.8). See the [changelog](CHANGELOG.md).
 
 ## Documentation
 
@@ -102,6 +103,6 @@ npm install
 npm test        # tests for the frontend (jsdom)
 ```
 
-The frontend lives in `custom_components/larder/frontend/`: `larder-dashboard.js` (pages and navigation) with its texts, stylesheet and the bag/pack dialogs in separate modules, `larder-panel.js` (cards and the add/fill dialogs) and `larder-card.js` (Lovelace card).
+The frontend lives in `custom_components/larder/frontend/`: `larder-dashboard.js` (pages and navigation) with its texts and stylesheet, `larder-dashboard-items.js` (bags, packs, stock), `larder-dashboard-care.js` (stocktake, compartments, opened packs), `larder-dashboard-cook.js` (sizes, batch cooking, week suggestion), `larder-panel.js` (cards and the add/fill dialogs) and `larder-card.js` (Lovelace card).
 
 The screenshots come from the real code with demo data: serve the repository (`python -m http.server`) and open `docs/demo/dashboard.html?lang=en&view=containers` (options in the file) or, for the dialogs, `docs/demo/index.html?lang=en&dialog=scan`.

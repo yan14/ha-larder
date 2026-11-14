@@ -102,6 +102,12 @@ Ein Gericht für einen Tag einplanen: **📅 Einplanen** an einer Rezeptidee ode
 
 **Aufgetaut** wirkt wie der Knopf **Aufgetaut** auf der Karte (kürzt das MHD) und stellt [variable Dosen](containers.md#dosen-befüllen) in den Kühlschrank, wenn es genau einen Kühlschrank-Bereich gibt.
 
+### Wochenvorschlag
+
+<p align="center"><img src="../images/dashboard-week-de.png" width="250" alt="Wochenvorschlag"></p>
+
+**🪄 Woche vorschlagen** auf der Rezeptseite schlägt Gerichte für die nächsten Tage vor (Einstellung *Wochenplan-Vorschlag: Tage*, Standard 5), die zuerst die Dosen verbrauchen, die bald ablaufen. Tage, für die schon etwas geplant ist, werden übersprungen, schon eingeplante Dosen bleiben außen vor. Woher die Gerichte kommen, ist eine Einstellung wie bei der MHD-Schätzung: *nur Rezeptbuch*, *nur KI*, *Rezeptbuch, sonst KI* (Standard) oder *Rezeptbuch und KI zusammen*. Ein Rezept aus dem Buch passt, wenn eine seiner Zutatenzeilen den Inhalt einer Dose nennt. Je Tag siehst du das Gericht und die Dosen, die es verbraucht; **↻ Anderes** tauscht das Gericht, **Entfernen** nimmt den Tag heraus, **Übernehmen** schreibt alles in den Wochenplan (mit Auftau-Erinnerung und fehlenden Zutaten wie gewohnt).
+
 ## Einkaufsliste
 
 **Mal wieder …?** Die Startseite schlägt vor, was du in den letzten 90 Tagen mindestens dreimal gegessen hast, aber gerade in keiner Dose und keiner Packung ist („Bolognese, 4× gegessen …“). **🛒 Einkaufsliste** setzt es auf die Liste, **✕** blendet den Vorschlag 30 Tage aus.

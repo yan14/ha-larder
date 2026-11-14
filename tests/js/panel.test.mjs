@@ -2042,3 +2042,62 @@ test("Karte: Rückrufwarnung mit Link, ohne Warnung keine Zeile", async () => {
   assert.equal(line.querySelector("a").href, "https://www.lebensmittelwarnung.de/meldung/1");
   assert.equal(card("Packung 2").querySelector(".recallline").hidden, true);
 });
+
+// ---------- Block 10: Größen und Vorkochen ----------
+
+test("Karte: Größe fest bzw. variabel, nicht bei Packungen", async () => {
+  const hass = fillHass([
+    { id: "d1", name: "Dose 1", content: "unknown" },
+    { id: "d2", name: "Deckel", content: "Suppe", mhd: iso(5) },
+    { id: "p1", name: "Packung 1", content: "Senf", product: { kind: "pack" } },
+  ]);
+  hass.states["text.d1_inhalt"].attributes = { kind: "container", size_fixed: "1 l", size: "1 l" };
+  hass.states["text.d2_inhalt"].attributes = { kind: "container", size_variable: true, size: "2 l", size_last: "2 l" };
+  const el = mount(hass);
+  await flush();
+  const card = (n) => $$(el, ".card").find((c) => c.querySelector(".name").textContent === n);
+  assert.equal(card("Packung 1").querySelector(".sizerow").hidden, true);
+  const fixed = card("Dose 1");
+  assert.equal(fixed.querySelector(".sizerow").hidden, false);
+  assert.equal(fixed.querySelector('[data-f="size"]').value, "1 l");
+  assert.equal(fixed.querySelector('[data-f="sizeVariable"]').checked, false);
+  const variable = card("Deckel");
+  assert.equal(variable.querySelector('[data-f="sizeVariable"]').checked, true);
+  assert.equal(variable.querySelector('[data-f="size"]').value, "2 l");
+  // feste Größe ändern
+  const size = fixed.querySelector('[data-f="size"]');
+  size.value = "1,5 l";
+  size.dispatchEvent(new dom.window.Event("change"));
+  assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/size_set`, device_id: "d1", size: "1,5 l", variable: false });
+  // variable Dose: Größe der aktuellen Befüllung
+  const vsize = variable.querySelector('[data-f="size"]');
+  vsize.value = "1 l";
+  vsize.dispatchEvent(new dom.window.Event("change"));
+  assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/size_fill`, device_id: "d2", size: "1 l" });
+  // auf variabel umstellen: feste Größe bleibt gemerkt
+  fixed.querySelector('[data-f="sizeVariable"]').click();
+  assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/size_set`, device_id: "d1", size: "1 l", variable: true });
+});
+
+test("Befüllen mit Vorgaben (Vorkochen): Menge je Dose und Größe der variablen Dosen", async () => {
+  const hass = fillHass([
+    { id: "d1", name: "Dose 1", content: "unknown" },
+    { id: "d2", name: "Deckel", content: "unknown" },
+  ]);
+  hass.states["text.d1_inhalt"].attributes = { kind: "container", size_fixed: "1 l" };
+  hass.states["text.d2_inhalt"].attributes = { kind: "container", size_variable: true, size_last: "2 l" };
+  const el = mount(hass);
+  await flush();
+  el.openFillDialog(["d1", "d2"], { content: "Chili", quantities: { d1: 1000, d2: 500 }, unit: "milliliters", sizes: { d2: "0,5 l" } });
+  await flush();
+  const form = $(el, "form.fillform");
+  assert.equal(form.querySelector('[data-f="content"]').value, "Chili");
+  assert.equal(form.querySelector('[data-w="boxsize"]').hidden, false);
+  assert.equal(form.querySelector('[data-f="boxSize"]').value, "0,5 l");
+  form.dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  await flush();
+  await flush();
+  await flush();
+  assert.deepEqual(hass.calls.filter((c) => c.domain === "number").map((c) => [c.data.entity_id, c.data.value]), [["number.d1_portionen", 1000], ["number.d2_portionen", 500]]);
+  assert.deepEqual(hass.wsCalls.filter((m) => m.type === `${D}/size_fill`), [{ type: `${D}/size_fill`, device_id: "d2", size: "0,5 l" }]);
+});

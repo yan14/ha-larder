@@ -38,6 +38,8 @@ from .const import (
     CONF_MEAL_CALENDAR,
     CONF_NFC_NOTIFY,
     CONF_OPENED_DAYS,
+    CONF_PLAN_DAYS,
+    CONF_PLAN_SOURCE,
     CONF_RECALL_CHECK,
     CONF_RECALL_STATE,
     CONF_RECIPE_DAYS,
@@ -64,6 +66,7 @@ from .const import (
     ESTIMATE_TABLE_AI,
     MAX_RECIPE_DAYS,
     MAX_SOON_DAYS,
+    PLAN_SOURCES,
     RECALL_STATES,
     SOON_DAYS,
 )
@@ -291,6 +294,8 @@ SETTINGS: dict[str, tuple[str, Any, Any]] = {
     CONF_STOCK_LEAD_DAYS: ("stock_lead_days", 7, _number(1, 60)),
     CONF_REORDER_SHOPPING: ("reorder_shopping", False, _flag),
     CONF_RECALL_CHECK: ("recall_check", True, _flag),
+    CONF_PLAN_SOURCE: ("plan_source", "book_ai", lambda value, default: value if value in PLAN_SOURCES else default),
+    CONF_PLAN_DAYS: ("plan_days", 5, _number(1, 14)),
     CONF_RECALL_STATE: ("recall_state", None, lambda value, default: value if value in RECALL_STATES else None),
     CONF_AI_TASK_ENTITY: ("ai_task_entity", None, _entity),
 }

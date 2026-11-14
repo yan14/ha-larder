@@ -160,6 +160,22 @@ export const STYLE = `
     border: 1px solid var(--primary-color); background: none; color: var(--primary-color); }
   .dialog .coderow button.primary, .boughtrow button.primary { background: var(--primary-color); color: var(--text-primary-color, #fff); }
   .dialog p.lead { margin: 0; font-size: 15px; }
+  .dialog h3 { font-size: 15px; font-weight: 500; margin: 14px 0 4px; }
+  .freesizes { margin: -4px 0 8px; font-size: 13px; color: var(--secondary-text-color); cursor: pointer; }
+  .looserow { display: flex; gap: 8px; align-items: center; margin: 4px 0; }
+  .looserow input[data-f="loose-size"] { width: 7em; }
+  .looserow input[data-f="loose-count"] { width: 5em; }
+  .sizeoverview { margin: 4px 0 8px; padding-left: 18px; font-size: 14px; }
+  .batchlist { display: flex; flex-direction: column; gap: 4px; max-height: 40vh; overflow: auto; margin: 4px 0; }
+  .batchrow select { margin-left: auto; }
+  .weeklist { display: flex; flex-direction: column; gap: 8px; margin: 8px 0; }
+  .weekday { border: 1px solid var(--divider-color); border-radius: 10px; padding: 8px 10px; }
+  .weekday .head { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+  .weekday .day { font-weight: 500; min-width: 5.5em; }
+  .weekday .title { flex: 1; }
+  .weekday .src, .weekday .sub { font-size: 12px; color: var(--secondary-text-color); }
+  .weekday .acts { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+  .weekday .acts button, .bar.week button, .dialog button[data-role="loose-add"], .dialog button[data-role="batch-suggest"] { font: inherit; padding: 4px 12px; border-radius: 8px; cursor: pointer; border: 1px solid var(--divider-color); background: none; color: inherit; }
   .placetag { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
   .placetag button { font: inherit; padding: 6px 12px; border-radius: 8px; cursor: pointer; border: 1px solid var(--divider-color); background: none; color: inherit; }
   .boughtrow { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--divider-color); }
