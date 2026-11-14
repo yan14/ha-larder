@@ -97,7 +97,13 @@ Ein Beutel funktioniert wie eine Dose (scannen, Portion entnehmen, **Geöffnet**
 <img src="../images/dashboard-move-de.png" width="250" alt="Move">
 </p>
 
-**⋮ → 🥫 Vorrat** im Dashboard zeigt alle Packungen nach Produkt, über alle Orte zusammengezählt, mit Marke, Packung und wo sie liegen (Antippen eines Orts öffnet die Packung). Den **Mindestbestand** jedes Produkts stellst du direkt dort ein; was darunter liegt, ist mit *zu wenig* oder *keine mehr da* markiert. Produkte mit Mindestbestand bleiben in der Liste, auch wenn keins mehr da ist.
+**⋮ → 🥫 Vorrat** im Dashboard zeigt alle Packungen nach Produkt, über alle Orte zusammengezählt, mit Marke, Packung und wo sie liegen (Antippen eines Orts öffnet die Packung). Den **Mindestbestand** jedes Produkts stellst du direkt dort ein; was darunter liegt, ist mit *zu wenig* oder *keine mehr da* markiert. Produkte mit Mindestbestand bleiben in der Liste, auch wenn keins mehr da ist. **Ältestes zuerst:** Die Orte eines Produkts sind nach MHD sortiert, das früheste steht beim Produkt, und die Karte einer Packung warnt, wenn dieselbe Ware woanders mit früherem MHD liegt.
+
+**Entnehmen per Strichcode.** Den Strichcode einer Packung mit **📷** (Startseite, Behälter-Seite) oder **📷 Strichcode** in der Vorrats-Ansicht scannen (Home Assistant App). Larder zeigt alle Orte, an denen das Produkt liegt, mit Anzahl und MHD, **das älteste zuerst**. Hast du gerade eine neuere in der Hand, nimmst du sie an ihrem Ort mit **−1**; die letzte Packung eines Eintrags leert ihn. Ist das Produkt nicht im Vorrat, lässt es sich gleich als Packung anlegen.
+
+<p align="center"><img src="../images/dashboard-code-de.png" width="250" alt="Entnehmen per Strichcode"></p>
+
+**Von der Einkaufsliste zurück in den Vorrat.** Hakst du auf der Einkaufsliste etwas ab, das Larder dort eingetragen hat (Mindestbestand oder geleerte Dose), fragt die Startseite **🛒 Eingekauft – in den Vorrat?**. **In den Vorrat** öffnet den Packungs-Dialog mit Inhalt, Marke, Anzahl und dem Ort, an dem das Produkt sonst liegt; **✕** verwirft den Hinweis.
 
 ## Bereiche und Labels
 

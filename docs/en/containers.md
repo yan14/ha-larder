@@ -97,7 +97,13 @@ A bag works like a container (scan it, take a portion, **Opened**, **Thawed**, r
 <img src="../images/dashboard-move-en.png" width="250" alt="Move">
 </p>
 
-**⋮ → 🥫 Stock** in the dashboard lists all packs by product, summed over every place, with brand, package and where they are (tap a place to open the pack). Set the **minimum stock** of every product right there; products below it are marked *too few* or *none left*. Products with a minimum stay in the list even when none are left.
+**⋮ → 🥫 Stock** in the dashboard lists all packs by product, summed over every place, with brand, package and where they are (tap a place to open the pack). Set the **minimum stock** of every product right there; products below it are marked *too few* or *none left*. Products with a minimum stay in the list even when none are left. **Oldest first:** the places of a product are sorted by best-before date, the earliest one is shown next to the product, and the card of a pack warns when an older pack of the same food lies somewhere else.
+
+**Take by barcode.** Scan the barcode of a pack with **📷** (start page, containers page) or **📷 Barcode** in the stock view (Home Assistant app). Larder shows every place where this product is, with count and best-before date, the **oldest first**. If you are holding a newer one, take it from its own place with **−1**; the last pack of an entry empties it. A product that is not in stock can be added as a pack right away.
+
+<p align="center"><img src="../images/dashboard-code-en.png" width="250" alt="Take by barcode"></p>
+
+**From the shopping list back into the stock.** When you tick off an item on your shopping list that Larder put there (minimum stock or an emptied container), the start page asks **🛒 Bought – add to the stock?**. **Add to stock** opens the pack dialog with the contents, brand, count and the place where the product usually is; **✕** drops the hint.
 
 ## Areas and labels
 

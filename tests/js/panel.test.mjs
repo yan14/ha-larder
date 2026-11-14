@@ -1926,3 +1926,17 @@ test("Karte einer Packung: Mindestbestand und Verschieben", async () => {
   card.querySelector("button.move").click();
   assert.equal(moved, "d1");
 });
+
+test("Packung: Hinweis auf eine ältere Packung an einem anderen Ort", async () => {
+  const hass = adminHass([
+    { id: "d1", name: "Packung 1", area: "kitchen", content: "Ketchup", mhd: "2027-06-01", product: { kind: "pack" } },
+    { id: "d2", name: "Packung 2", content: "ketchup", mhd: "2026-12-01", product: { kind: "pack" } },
+  ]);
+  const el = mount(hass);
+  const cards = $$(el, ".card");
+  const newer = cards.find((c) => c.querySelector(".name").textContent === "Packung 1");
+  const older = cards.find((c) => c.querySelector(".name").textContent === "Packung 2");
+  assert.equal(newer.querySelector(".olderhint").hidden, false);
+  assert.match(newer.querySelector(".olderhint").textContent, /Ältere Packung in .*01\.12\.2026/);
+  assert.equal(older.querySelector(".olderhint").hidden, true);
+});

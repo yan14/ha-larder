@@ -10,19 +10,21 @@
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 import logging
 from typing import Any
+import uuid
 
 import voluptuous as vol
 
 from homeassistant.components import websocket_api
-from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.const import EVENT_STATE_CHANGED, STATE_UNAVAILABLE, STATE_UNKNOWN
+from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import area_registry as ar, device_registry as dr, entity_registry as er
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.storage import Store
+from homeassistant.util import dt as dt_util
 
 from .const import CONF_CC, DATA_STOCK, DOMAIN, KIND_PACK, SIGNAL_STOCK_CHANGED
 from .entity import kind_of
@@ -36,6 +38,8 @@ DATA_WS = "stock_ws_registered"
 STORAGE_KEY = f"{DOMAIN}.stock"
 STORAGE_VERSION = 1
 MAX_MIN = 999
+TRACK_DAYS = 60  # so lange wartet Larder darauf, dass ein Eintrag auf der Einkaufsliste abgehakt wird
+MAX_BOUGHT = 30
 
 
 def product_key(content: str | None) -> str:
@@ -49,10 +53,87 @@ class Stock:
         self.hass = hass
         self._store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
         self.minimums: dict[str, dict[str, Any]] = {}
+        # von Larder auf die Einkaufsliste gesetzt (Eintrag → Inhalt, Produktdaten, Ort) und schon abgehakt
+        self.tracked: dict[str, dict[str, Any]] = {}
+        self.bought: list[dict[str, Any]] = []
+        self._unsub = None
 
     async def async_load(self) -> None:
         data = await self._store.async_load() or {}
         self.minimums = {k: v for k, v in (data.get("minimums") or {}).items() if isinstance(v, dict)}
+        self.tracked = {k: v for k, v in (data.get("tracked") or {}).items() if isinstance(v, dict)}
+        self.bought = [b for b in data.get("bought") or [] if isinstance(b, dict)]
+
+    def _data(self) -> dict[str, Any]:
+        return {"minimums": self.minimums, "tracked": self.tracked, "bought": self.bought}
+
+    def _save(self) -> None:
+        self._store.async_delay_save(self._data, 1)
+
+    # ----- Einkaufsliste → Vorrat -----
+
+    def track(self, summary: str, info: dict[str, Any]) -> None:
+        """Eintrag, den Larder auf die Einkaufsliste gesetzt hat, merken (für "eingekauft → in den Vorrat")."""
+        now = dt_util.now()
+        self.tracked[summary.casefold()] = {**info, "summary": summary, "at": now.isoformat(timespec="seconds")}
+        cutoff = (now - timedelta(days=TRACK_DAYS)).isoformat()
+        self.tracked = {k: v for k, v in self.tracked.items() if v.get("at", "") >= cutoff}
+        self._save()
+
+    @callback
+    def async_start(self) -> None:
+        """Die Einkaufsliste beobachten: abgehakte Einträge von Larder werden als "eingekauft" angeboten."""
+        if self._unsub is not None:
+            return
+
+        @callback
+        def changed(event: Event) -> None:
+            estimator = self.hass.data.get(DOMAIN, {}).get("estimator")
+            todo = getattr(estimator, "todo_entity", None)
+            if todo and event.data.get("entity_id") == todo and self.tracked:
+                self.hass.async_create_task(self.async_poll(), f"{DOMAIN}_bought")
+
+        self._unsub = self.hass.bus.async_listen(EVENT_STATE_CHANGED, changed)
+
+    @callback
+    def async_stop(self) -> None:
+        if self._unsub is not None:
+            self._unsub()
+            self._unsub = None
+
+    async def async_poll(self) -> list[dict[str, Any]]:
+        """Abgehakte Einträge, die Larder gesetzt hat, nach "eingekauft" verschieben."""
+        estimator = await async_get_estimator(self.hass)
+        todo = estimator.todo_entity
+        if not todo or not self.tracked:
+            return []
+        try:
+            response = await self.hass.services.async_call(
+                "todo", "get_items", {"entity_id": todo, "status": "completed"}, blocking=True, return_response=True
+            )
+        except HomeAssistantError:
+            _LOGGER.debug("Einkaufsliste %s nicht lesbar", todo, exc_info=True)
+            return []
+        done = {str(i.get("summary", "")).strip().casefold() for i in ((response or {}).get(todo) or {}).get("items") or []}
+        moved: list[dict[str, Any]] = []
+        for key in [k for k in self.tracked if k in done]:
+            info = self.tracked.pop(key)
+            item = {"id": uuid.uuid4().hex[:10], **info, "bought": dt_util.now().isoformat(timespec="seconds")}
+            self.bought = [b for b in self.bought if b.get("summary", "").casefold() != key] + [item]
+            moved.append(item)
+        if moved:
+            self.bought = self.bought[-MAX_BOUGHT:]
+            self._save()
+            async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
+        return moved
+
+    def dismiss(self, item_id: str) -> bool:
+        before = len(self.bought)
+        self.bought = [b for b in self.bought if b.get("id") != item_id]
+        if len(self.bought) != before:
+            self._save()
+            return True
+        return False
 
     def minimum(self, content: str | None) -> int:
         return int((self.minimums.get(product_key(content)) or {}).get("min") or 0)
@@ -67,7 +148,7 @@ class Stock:
             self.minimums[key] = {"name": " ".join(content.split()), "min": min(int(value), MAX_MIN), "product": product}
         else:
             self.minimums.pop(key, None)
-        await self._store.async_save({"minimums": self.minimums})
+        await self._store.async_save(self._data())
         async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
         await async_check_stock(self.hass, content)
 
@@ -127,6 +208,7 @@ def pack_entries(hass: HomeAssistant, exclude: set[str] | None = None) -> list[d
                 "best_before": best_state.state if best_state else None,
                 "brand": attrs.get("brand"),
                 "package": attrs.get("package"),
+                "ean": attrs.get("ean"),
             }
         )
     return out
@@ -146,6 +228,7 @@ def stock_overview(hass: HomeAssistant, minimums: dict[str, dict[str, Any]]) -> 
         product["places"].append(
             {
                 "device_id": item["device_id"],
+                "area_id": item["area_id"],
                 "area": item["area"],
                 "compartment": item["compartment"],
                 "count": item["count"],
@@ -158,7 +241,9 @@ def stock_overview(hass: HomeAssistant, minimums: dict[str, dict[str, Any]]) -> 
     for product in products.values():
         product["min"] = int((minimums.get(product["key"]) or {}).get("min") or 0)
         product["low"] = product["min"] > 0 and product["count"] < product["min"]
-        product["places"].sort(key=lambda p: (str(p["area"] or "￿").casefold(), p["compartment"].casefold()))
+        # ältestes zuerst: früheste MHD oben, ohne MHD zuletzt
+        product["places"].sort(key=lambda p: (p["best_before"] or "9999", str(p["area"] or "￿").casefold(), p["compartment"].casefold()))
+        product["earliest"] = next((p["best_before"] for p in product["places"] if p["best_before"]), None)
         rows.append(product)
     rows.sort(key=lambda p: p["name"].casefold())
     return rows
@@ -188,9 +273,22 @@ async def async_check_stock(hass: HomeAssistant, content: str | None, exclude: s
         product.update(stock.minimums[key].get("product") or {})  # zuletzt bekannte Marke/Packung
     if count >= stock.minimums[key]["min"]:
         return False
-    return await async_add_to_shopping_list(
-        hass, estimator.todo_entity, shopping_text(product, getattr(estimator, "shopping_details", True))
-    )
+    text = shopping_text(product, getattr(estimator, "shopping_details", True))
+    added = await async_add_to_shopping_list(hass, estimator.todo_entity, text)
+    if added:
+        place = next((p for p in stock_overview(hass, stock.minimums) if p["key"] == key), {}).get("places") or []
+        stock.track(
+            text,
+            {
+                "content": product["name"],
+                "product": {k: product[k] for k in ("brand", "package") if product.get(k)},
+                "area_id": place[0].get("area_id") if place else None,
+                "compartment": place[0].get("compartment", "") if place else "",
+                "count": max(1, stock.minimums[key]["min"] - count),
+                "source": "minimum",
+            },
+        )
+    return added
 
 
 # ---------- Aufteilen / Verschieben ----------
@@ -260,6 +358,36 @@ async def async_move_packs(
     return {"moved": count, "merged": False, "device_id": created[0]["device_id"]}
 
 
+# ---------- Strichcode ----------
+
+
+async def async_find_by_code(hass: HomeAssistant, code: str) -> dict[str, Any]:
+    """Packungen zu einem Strichcode (über die EAN, sonst über den Produktnamen), früheste MHD zuerst."""
+    from .product import async_lookup  # noqa: PLC0415 - vermeidet einen Import-Kreis
+
+    digits = "".join(ch for ch in code if ch.isdigit())
+    packs = pack_entries(hass)
+    found = [p for p in packs if digits and str(p.get("ean") or "") == digits]
+    lookup: dict[str, Any] = {}
+    if not found:
+        lookup = await async_lookup(hass, digits)
+        if lookup.get("found"):
+            key = product_key(lookup["name"])
+            found = [p for p in packs if product_key(p["content"]) == key]
+    found.sort(key=lambda p: (p["best_before"] or "9999", str(p["area"] or "￿").casefold(), p["compartment"].casefold()))
+    name = found[0]["content"] if found else lookup.get("name")
+    return {
+        "code": digits,
+        "name": name,
+        "entries": [
+            {k: p[k] for k in ("device_id", "area", "compartment", "count", "best_before")} for p in found
+        ],
+        # unbekannt im Vorrat: Daten für "als Packung anlegen"
+        "product": None if found else (lookup.get("product") if lookup.get("found") else None),
+        "error": lookup.get("error"),
+    }
+
+
 # ---------- WebSocket ----------
 
 
@@ -296,6 +424,30 @@ async def ws_stock_min(hass: HomeAssistant, connection: websocket_api.ActiveConn
     connection.send_result(msg["id"], {"products": stock_overview(hass, stock.minimums)})
 
 
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/stock_code", vol.Required("code"): str})
+@websocket_api.async_response
+async def ws_stock_code(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    connection.send_result(msg["id"], await async_find_by_code(hass, msg["code"]))
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/bought"})
+@websocket_api.async_response
+async def ws_bought(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    stock = await async_get_stock(hass)
+    await stock.async_poll()
+    connection.send_result(msg["id"], {"items": list(reversed(stock.bought))})
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): f"{DOMAIN}/bought_dismiss", vol.Required("item_id"): str}
+)
+@websocket_api.async_response
+async def ws_bought_dismiss(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    stock = await async_get_stock(hass)
+    stock.dismiss(msg["item_id"])
+    connection.send_result(msg["id"], {"items": list(reversed(stock.bought))})
+
+
 @websocket_api.websocket_command(
     {
         vol.Required("type"): f"{DOMAIN}/pack_move",
@@ -326,4 +478,7 @@ def async_setup_stock_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_stock)
     websocket_api.async_register_command(hass, ws_stock_min)
     websocket_api.async_register_command(hass, ws_pack_move)
+    websocket_api.async_register_command(hass, ws_stock_code)
+    websocket_api.async_register_command(hass, ws_bought)
+    websocket_api.async_register_command(hass, ws_bought_dismiss)
     domain_data[DATA_WS] = True

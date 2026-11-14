@@ -52,7 +52,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_disposable_websocket(hass)
     await async_get_retired(hass)
     async_setup_stock_websocket(hass)
-    await async_get_stock(hass)
+    (await async_get_stock(hass)).async_start()
     (await async_get_plan(hass)).async_start()
     (await async_get_calendar_sync(hass)).async_start()
     (await async_get_nfc(hass)).async_start()
@@ -98,6 +98,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> b
         (await async_get_repairs(hass)).async_stop()
         (await async_get_temperature_watch(hass)).async_stop()
         (await async_get_plan(hass)).async_stop()
+        (await async_get_stock(hass)).async_stop()
     return unloaded
 
 

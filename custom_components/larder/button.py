@@ -9,7 +9,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import area_registry as ar, device_registry as dr
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DISPOSABLE_KINDS, DOMAIN
+from .const import DATA_STOCK, DISPOSABLE_KINDS, DOMAIN
 from .entity import LarderConfigEntry, LarderEntity, LarderRuntime
 from .estimate import storage_context
 from .history import async_get_history, build_record
@@ -43,6 +43,7 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
             )
         item = self._shopping_item()
         details = self._shopping_details() if item else ""  # vor dem Leeren, danach sind die Produktdaten weg
+        product = {k: v for k, v in (self._product_data() or {}).items() if k in ("brand", "package", "ean", "kcal_100g", "kcal_portion", "nutri_score", "allergens", "nutrients", "source")}
         history = await async_get_history(self.hass)
         record = self._history_record(history.pop_pending(self._cc))
         for entity in entities:
@@ -55,7 +56,8 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
             for part in parts:
                 # Marke/Packung nur bei einem Inhalt, bei "Salami, Leberwurst" gehören sie zu keinem bestimmt
                 text = f"{part} ({details})" if details and len(parts) == 1 else part
-                await async_add_to_shopping_list(self.hass, item[0], text)
+                if await async_add_to_shopping_list(self.hass, item[0], text) and (stock := self.hass.data.get(DOMAIN, {}).get(DATA_STOCK)):
+                    stock.track(text, {"content": part, "product": product if len(parts) == 1 else {}, "area_id": None, "compartment": "", "count": 1, "source": "emptied"})
         if self._kind in DISPOSABLE_KINDS:
             # Beutel und Packungen sind nach dem Leeren weg (als eigene Aufgabe: die Entität entfernt sich selbst)
             from .disposable import async_dispose  # noqa: PLC0415 - vermeidet einen Import-Kreis

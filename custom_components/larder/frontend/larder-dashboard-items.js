@@ -64,6 +64,21 @@ const TEXT = {
     transferDone: (name, left) => `Umgefüllt in ${name}.${left ? ` Noch ${left} im Vorrat.` : ""}`,
     transferFailed: "Umfüllen fehlgeschlagen.",
     stockTitle: "Vorrat",
+    codeTitle: "Strichcode",
+    codeScan: "📷 Strichcode",
+    codeOldest: (place) => `Ältestes zuerst: ${place}`,
+    codeOther: "Hast du gerade eine andere in der Hand? Dann dort −1.",
+    codeNone: (name) => `${name || "Dieses Produkt"} ist nicht im Vorrat.`,
+    codeAdd: "Als Packung anlegen",
+    codeUnknown: (code) => `Zu ${code} wurde nichts gefunden.`,
+    codeTake: "−1",
+    codeTaken: (place) => `Eine Packung aus ${place} entnommen.`,
+    codeDate: (d) => `MHD ${d}`,
+    noDate: "ohne MHD",
+    stockEarliest: (d) => `frühestes MHD ${d}`,
+    boughtTitle: "🛒 Eingekauft – in den Vorrat?",
+    boughtAdd: "In den Vorrat",
+    boughtDismiss: "Nicht anlegen",
     stockIntro: "Packungen nach Produkt, über alle Orte zusammengezählt. Mit Mindestbestand kommt ein Produkt auf die Einkaufsliste, sobald weniger da ist.",
     stockNoList: "Für den Mindestbestand fehlt noch eine Einkaufsliste in den Einstellungen.",
     stockEmpty: "Noch keine Packungen. Lege sie über ＋ → Packung an.",
@@ -139,6 +154,21 @@ const TEXT = {
     transferDone: (name, left) => `Moved into ${name}.${left ? ` ${left} left in stock.` : ""}`,
     transferFailed: "Moving failed.",
     stockTitle: "Stock",
+    codeTitle: "Barcode",
+    codeScan: "📷 Barcode",
+    codeOldest: (place) => `Oldest first: ${place}`,
+    codeOther: "Holding another one right now? Take it from there with −1.",
+    codeNone: (name) => `${name || "This product"} is not in stock.`,
+    codeAdd: "Add as a pack",
+    codeUnknown: (code) => `Nothing found for ${code}.`,
+    codeTake: "−1",
+    codeTaken: (place) => `Took one pack from ${place}.`,
+    codeDate: (d) => `best before ${d}`,
+    noDate: "no best-before date",
+    stockEarliest: (d) => `earliest best before ${d}`,
+    boughtTitle: "🛒 Bought – add to the stock?",
+    boughtAdd: "Add to stock",
+    boughtDismiss: "Don't add",
     stockIntro: "Packs by product, summed over all places. With a minimum stock a product goes onto the shopping list as soon as there is less.",
     stockNoList: "For the minimum stock, choose a shopping list in the settings first.",
     stockEmpty: "No packs yet. Add them with ＋ → Pack.",
@@ -189,6 +219,141 @@ export function buildItems(kind, rows, vacuum = true) {
 export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN }) {
   const proto = Dashboard.prototype;
 
+  const fmtDate = (hass, iso) => {
+    if (!iso) return "";
+    const [y, m, d] = iso.split("-");
+    return String((hass && hass.language) || "en").toLowerCase().startsWith("de") ? `${d}.${m}.${y}` : iso;
+  };
+  const placeName = (p, t) => [p.area, p.compartment].filter(Boolean).join(" · ") || t.noArea;
+
+  /** Gekaufte Packung per Strichcode entnehmen: zeigt alle Orte, die mit dem frühesten MHD zuerst. */
+  proto.takeByCode = async function takeByCode(code) {
+    const hass = this._hass;
+    const t = itemTexts(hass);
+    let res;
+    try {
+      res = await hass.callWS({ type: `${DOMAIN}/stock_code`, code });
+    } catch {
+      res = null;
+    }
+    const form = this._form;
+    const close = button("cancel", t.cancel, () => this._closeDialog());
+    if (!res || !res.entries || !res.entries.length) {
+      const parts = [el("h2", "", (res && res.name) || t.codeTitle)];
+      if (res && res.name) {
+        parts.push(el("p", "hint", t.codeNone(res.name)));
+        const add = button("submit", t.codeAdd, () =>
+          this.openItemsDialog("pack", { rows: [{ content: res.name, quantity: 1, product: res.product }] }),
+        );
+        add.dataset.role = "code-add";
+        parts.push(buttonsRow(close, add));
+      } else {
+        parts.push(el("p", "hint", t.codeUnknown((res && res.code) || code)), buttonsRow(close));
+      }
+      form.replaceChildren(...parts);
+      this._submit = null;
+      this._overlay.hidden = false;
+      return res;
+    }
+    const list = el("div", "codelist");
+    res.entries.forEach((entry, i) => {
+      const row = el("div", `coderow${i === 0 ? " oldest" : ""}`);
+      const text = el("span", "text");
+      text.append(
+        el("span", "name", `${placeName(entry, t)}: ${entry.count}`),
+        el("span", "sub", entry.best_before ? t.codeDate(fmtDate(hass, entry.best_before)) : t.noDate),
+      );
+      const take = button(i === 0 ? "primary" : "", t.codeTake, async () => {
+        take.disabled = true;
+        await this._takeOne(entry);
+        this._closeDialog();
+        this.showNotice(t.codeTaken(placeName(entry, t)));
+        if (this._view === "stock") this.loadStock();
+      });
+      take.dataset.role = "code-take";
+      row.append(text, take);
+      list.append(row);
+    });
+    const parts = [el("h2", "", res.name), el("p", "lead", t.codeOldest(placeName(res.entries[0], t))), list];
+    if (res.entries.length > 1) parts.push(el("p", "hint", t.codeOther));
+    parts.push(buttonsRow(close));
+    form.replaceChildren(...parts);
+    this._submit = null;
+    this._overlay.hidden = false;
+    return res;
+  };
+
+  /** Eine Packung entnehmen: Anzahl −1, die letzte leert den Eintrag (als gegessen). */
+  proto._takeOne = async function _takeOne(entry) {
+    const hass = this._hass;
+    const row = this._rows().find((r) => r.id === entry.device_id);
+    if (entry.count > 1 && row && row.dev.entities.number) {
+      await hass.callService("number", "set_value", { entity_id: row.dev.entities.number, value: entry.count - 1 });
+      return;
+    }
+    try {
+      await hass.callWS({ type: `${DOMAIN}/empty`, device_id: entry.device_id, outcome: "eaten" });
+    } catch {
+      if (row && row.dev.entities.button) await hass.callService("button", "press", { entity_id: row.dev.entities.button });
+    }
+  };
+
+  /** Strichcode-Scanner der App öffnen und die gescannte Ware entnehmen. */
+  proto.scanToTake = function scanToTake() {
+    this._classic.scanBarcodeRaw((code) => this.takeByCode(code));
+  };
+
+  proto.loadBought = async function loadBought() {
+    const hass = this._hass;
+    if (!hass || !hass.callWS) return;
+    try {
+      this._bought = ((await hass.callWS({ type: `${DOMAIN}/bought` })) || {}).items || [];
+    } catch {
+      this._bought = [];
+    }
+    this._sig = "";
+    this._update();
+  };
+
+  /** Startseite: abgehakte Einträge von der Einkaufsliste, die Larder gesetzt hat, als Packung anbieten. */
+  proto._boughtBox = function _boughtBox() {
+    const items = this._bought || [];
+    if (!items.length) return null;
+    const hass = this._hass;
+    const t = itemTexts(hass);
+    const dismiss = async (item) => {
+      try {
+        this._bought = ((await hass.callWS({ type: `${DOMAIN}/bought_dismiss`, item_id: item.id })) || {}).items || [];
+      } catch {
+        this._bought = this._bought.filter((b) => b.id !== item.id);
+      }
+      this._sig = "";
+      this._update();
+    };
+    const box = el("section", "stat bought");
+    box.append(el("h3", "", t.boughtTitle));
+    for (const item of items) {
+      const row = el("div", "boughtrow");
+      row.dataset.id = item.id;
+      const add = button("primary", t.boughtAdd, () =>
+        this.openItemsDialog("pack", {
+          rows: [{ content: item.content, quantity: item.count || 1, product: item.product || null }],
+          area_id: item.area_id,
+          compartment: item.compartment,
+          onCreated: () => dismiss(item),
+        }),
+      );
+      add.dataset.role = "bought-add";
+      const drop = button("", "✕", () => dismiss(item));
+      drop.dataset.role = "bought-dismiss";
+      drop.setAttribute("aria-label", t.boughtDismiss);
+      drop.title = t.boughtDismiss;
+      row.append(el("span", "name", item.summary || item.content), add, drop);
+      box.append(row);
+    }
+    return box;
+  };
+
   proto.stockTitle = function stockTitle() {
     return itemTexts(this._hass).stockTitle;
   };
@@ -214,6 +379,13 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN }) {
     if (!data) {
       this._main.replaceChildren(frag);
       return;
+    }
+    if (this._classic._hasBarcodeScanner && this._classic._hasBarcodeScanner()) {
+      const bar = el("div", "bar");
+      const scan = button("", t.codeScan, () => this.scanToTake());
+      scan.dataset.role = "stock-scan";
+      bar.append(el("span", "grow"), scan);
+      frag.append(bar);
     }
     frag.append(el("p", "note", t.stockIntro));
     if (!data.shopping_list && data.products.some((p) => p.min > 0)) frag.append(el("p", "note warn", t.stockNoList));
@@ -249,10 +421,12 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN }) {
       minWrap.append(min);
       head.append(minWrap);
       item.append(head);
-      if (p.brand || p.package) item.append(el("div", "sub", [p.brand, p.package].filter(Boolean).join(" · ")));
+      const sub = [p.brand, p.package, p.earliest ? t.stockEarliest(fmtDate(hass, p.earliest)) : null].filter(Boolean).join(" · ");
+      if (sub) item.append(el("div", "sub", sub));
       const places = el("div", "places");
       for (const place of p.places) {
-        const chip = el("button", "place", `${[place.area, place.compartment].filter(Boolean).join(" · ") || "–"}: ${place.count}`);
+        const date = place.best_before ? ` · ${fmtDate(hass, place.best_before)}` : "";
+        const chip = el("button", "place", `${[place.area, place.compartment].filter(Boolean).join(" · ") || "–"}: ${place.count}${date}`);
         chip.type = "button";
         chip.dataset.id = place.device_id;
         chip.addEventListener("click", () => this.openDetail(place.device_id));
@@ -376,7 +550,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN }) {
   };
 
   /** Beutel oder Packungen anlegen: mehrere Zeilen, je Zeile ein Inhalt. */
-  proto.openItemsDialog = function openItemsDialog(kind) {
+  proto.openItemsDialog = function openItemsDialog(kind, preset = null) {
     const hass = this._hass;
     const t = itemTexts(hass);
     const form = this._form;
@@ -389,13 +563,14 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN }) {
       o.value = a.id;
       area.append(o);
     }
-    const remembered = (this._opts.itemArea || {})[kind] || "";
+    const remembered = preset && preset.area_id ? preset.area_id : (this._opts.itemArea || {})[kind] || "";
     if ([...area.options].some((o) => o.value === remembered)) area.value = remembered;
     const compartment = el("input");
     compartment.type = "text";
     compartment.maxLength = 60;
     compartment.dataset.f = "compartment";
     compartment.placeholder = t.compartmentHint;
+    if (preset && preset.compartment) compartment.value = preset.compartment;
 
     const rows = el("div", "itemrows");
     const status = el("p", "hint");
@@ -420,7 +595,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN }) {
       quantity.min = "0";
       quantity.max = "9999";
       quantity.inputMode = "numeric";
-      quantity.value = values.quantity || (bag ? "" : "1");
+      quantity.value = values.quantity ? String(values.quantity) : bag ? "" : "1";
       const unit = el("select");
       unit.dataset.i = "unit";
       for (const key of UNITS) {
@@ -460,7 +635,8 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN }) {
       rows.append(row);
       return row;
     };
-    addRow();
+    if (preset && preset.rows && preset.rows.length) for (const values of preset.rows) addRow(values);
+    else addRow();
 
     const extras = [];
     if (!bag && this._classic._hasBarcodeScanner && this._classic._hasBarcodeScanner()) {
@@ -580,6 +756,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN }) {
         this._saveOptions();
         const created = ((res && res.items) || []).map((it, i) => ({ ...it, content: items[i] ? items[i].content : "" }));
         this._itemsCreated(kind, created);
+        if (preset && preset.onCreated) preset.onCreated(created);
       } catch (err) {
         error.textContent = (err && err.message) || t.failed;
       } finally {

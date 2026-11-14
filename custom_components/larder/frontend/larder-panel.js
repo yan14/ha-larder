@@ -287,6 +287,7 @@ class DoseCard {
       <div class="row shoprow"><label class="check"><input type="checkbox" data-f="shopping"><span data-l="shopping"></span></label></div>
       <div class="row flexrow"><label class="check"><input type="checkbox" data-f="flexible"><span data-l="flexible"></span></label></div>
       <div class="row homerow"><label data-l="homeArea"></label><select data-f="homeArea"></select></div>
+      <div class="olderhint" role="note" hidden></div>
       <div class="row minrow" hidden><label data-l="minStock"></label><input data-f="minStock" type="number" min="0" max="999" step="1" inputmode="numeric"><span class="stockinfo"></span></div>
       <div class="allergen-warning" role="note" hidden></div>
       <details class="nutrition"><summary></summary>
@@ -678,6 +679,28 @@ class DoseCard {
     const move = this.q("button.move");
     move.hidden = !(kind === "pack" && hasContentNow);
     move.textContent = t.movePack;
+    // ältestes zuerst: liegt dieselbe Ware woanders mit früherem MHD?
+    const older = this.q(".olderhint");
+    older.hidden = true;
+    if (kind === "pack" && hasContentNow && isValidState(date)) {
+      const key = text.state.trim().toLowerCase();
+      let best = null;
+      for (const other of this._panel._devices || []) {
+        if (other.deviceId === this.deviceId) continue;
+        const ot = states[other.entities.text];
+        const od = states[other.entities.date];
+        if (!isValidState(ot) || !isValidState(od) || (ot.attributes && ot.attributes.kind) !== "pack") continue;
+        if (ot.state.trim().toLowerCase() !== key || od.state >= date.state) continue;
+        if (!best || od.state < best.date) {
+          const comp = states[other.entities.compartment];
+          best = { date: od.state, place: [other.areaName, isValidState(comp) ? comp.state.trim() : ""].filter(Boolean).join(" · ") || t.noArea };
+        }
+      }
+      if (best) {
+        older.hidden = false;
+        older.textContent = t.olderElsewhere(best.place, best.date);
+      }
+    }
     const minRow = this.q(".minrow");
     minRow.hidden = !(kind === "pack" && hasContentNow);
     this.q('[data-l="minStock"]').textContent = t.minStock;

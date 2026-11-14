@@ -3,7 +3,12 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
-## 3.1.0
+## 3.2.0
+
+- **Take a pack by barcode:** scan the barcode of a pack (📷 on the start and containers page, 📷 Barcode in the stock view). Larder shows every place of the product with count and best-before date, the oldest first; **−1** takes one from the place you choose. Unknown products can be added as a pack right away.
+- **Oldest first:** the stock view sorts the places of a product by best-before date and shows the earliest; the card of a pack warns when an older pack of the same food lies elsewhere.
+- **From the shopping list back into the stock:** items that Larder put on the shopping list (minimum stock, emptied containers) and that you tick off are offered on the start page; **Add to stock** opens the pack dialog with contents, brand, count and the usual place.
+
 
 - **Stock view** (**⋮ → 🥫 Stock**): packs by product, summed over every place, with where they are and the **minimum stock**, editable at a glance.
 - **Minimum stock** per product, also on the card of a pack: when there are fewer packs (−1, emptying, moving into a container), the product goes onto the shopping list with brand and package. Kept when the last pack is gone.

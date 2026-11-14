@@ -158,15 +158,21 @@ const hass = {
       { key: "c", content: "Salmon", area: "Fridge", vacuum: true, days: 2, tip: "", source: "learned", origin: "ai" } ] };
     if (msg.type === "call_service") return { response: { recipes: suggestions } };
     if (msg.type === "larder/nfc_tags") return { links: {}, by_device: {} };
+    if (msg.type === "larder/bought") return { items: q.get("view") === "start" ? [de
+      ? { id: "b1", summary: "Senf (Develey)", content: "Senf", product: { brand: "Develey" }, area_id: "pantry", compartment: "Schrank", count: 1 }
+      : { id: "b1", summary: "Mustard (Develey)", content: "Mustard", product: { brand: "Develey" }, area_id: "pantry", compartment: "Cupboard", count: 1 }] : [] };
+    if (msg.type === "larder/stock_code") return de
+      ? { code: msg.code, name: "Ketchup", entries: [{ device_id: "demo12", area: "Küche", compartment: "Tür", count: 1, best_before: day(25) }, { device_id: "demo12", area: "Vorratskammer", compartment: "Schrank", count: 2, best_before: day(240) }] }
+      : { code: msg.code, name: "Ketchup", entries: [{ device_id: "demo12", area: "Kitchen", compartment: "Door", count: 1, best_before: day(25) }, { device_id: "demo12", area: "Pantry", compartment: "Cupboard", count: 2, best_before: day(240) }] };
     if (msg.type === "larder/stock") return { shopping_list: true, products: de ? [
       { key: "haselnusscreme", name: "Haselnusscreme", count: 3, min: 2, low: false, brand: "Nutella", package: "450 g", places: [{ device_id: "demo13", area: "Keller", compartment: "Regal oben", count: 3 }] },
-      { key: "ketchup", name: "Ketchup", count: 3, min: 4, low: true, brand: "Heinz", package: "500 ml", places: [{ device_id: "demo12", area: "Vorratskammer", compartment: "Schrank", count: 2 }, { device_id: "demo12", area: "Küche", compartment: "Tür", count: 1 }] },
+      { key: "ketchup", name: "Ketchup", count: 3, min: 4, low: true, brand: "Heinz", package: "500 ml", earliest: day(25), places: [{ device_id: "demo12", area: "Küche", compartment: "Tür", count: 1, best_before: day(25) }, { device_id: "demo12", area: "Vorratskammer", compartment: "Schrank", count: 2, best_before: day(240) }] },
       { key: "senf", name: "Senf", count: 0, min: 1, low: true, places: [] },
       { key: "tomaten gehackt", name: "Tomaten gehackt", count: 6, min: 0, low: false, brand: "Mutti", package: "400 g", places: [{ device_id: "demo12", area: "Keller", compartment: "Regal oben", count: 4 }, { device_id: "demo12", area: "Vorratskammer", compartment: "", count: 2 }] },
     ] : [
       { key: "chopped tomatoes", name: "Chopped tomatoes", count: 6, min: 0, low: false, brand: "Mutti", package: "400 g", places: [{ device_id: "demo12", area: "Basement", compartment: "Top shelf", count: 4 }, { device_id: "demo12", area: "Pantry", compartment: "", count: 2 }] },
       { key: "hazelnut spread", name: "Hazelnut spread", count: 3, min: 2, low: false, brand: "Nutella", package: "450 g", places: [{ device_id: "demo13", area: "Basement", compartment: "Top shelf", count: 3 }] },
-      { key: "ketchup", name: "Ketchup", count: 3, min: 4, low: true, brand: "Heinz", package: "500 ml", places: [{ device_id: "demo12", area: "Pantry", compartment: "Cupboard", count: 2 }, { device_id: "demo12", area: "Kitchen", compartment: "Door", count: 1 }] },
+      { key: "ketchup", name: "Ketchup", count: 3, min: 4, low: true, brand: "Heinz", package: "500 ml", earliest: day(25), places: [{ device_id: "demo12", area: "Kitchen", compartment: "Door", count: 1, best_before: day(25) }, { device_id: "demo12", area: "Pantry", compartment: "Cupboard", count: 2, best_before: day(240) }] },
       { key: "mustard", name: "Mustard", count: 0, min: 1, low: true, places: [] },
     ] };
     return {};
@@ -205,6 +211,7 @@ if (q.get("dialog") === "bag" || q.get("dialog") === "pack") {
 if (q.get("dialog") === "labels") el.openLabelDialog();
 if (q.get("dialog") === "transfer") el.openTransferDialog("demo12");
 if (q.get("dialog") === "move") el.openMoveDialog("demo12");
+if (q.get("dialog") === "code") await el.takeByCode("4000000000001");
 if (q.get("dialog") === "plan") el.openPlanDialog(recipes[1]);
 if (q.get("select") === "1") {
   el.startSelecting();

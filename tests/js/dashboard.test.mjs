@@ -1821,3 +1821,90 @@ test("Packung verschieben/aufteilen und Kassenbon im Packungs-Dialog", async () 
   assert.deepEqual(rows, [["Gehackte Tomaten", "3"], ["Milch", "1"]]);
   assert.match(form.querySelector('[data-role="item-status"]').textContent, /2 Produkt/);
 });
+
+// ---------- Block 12: Vorrat im Alltag ----------
+
+test("Strichcode: zeigt alle Orte, ältestes MHD zuerst, −1 am gewählten Ort; unbekannt → als Packung anlegen", async () => {
+  const hass = makeHass(DOSES);
+  hass.states["number.d2_portionen"].state = "3";
+  const answers = {
+    "4000000000001": { code: "4000000000001", name: "Ketchup", product: null, entries: [
+      { device_id: "d1", area: "Küche", compartment: "Tür", count: 1, best_before: "2026-12-01" },
+      { device_id: "d2", area: "Keller", compartment: "Regal", count: 3, best_before: "2027-06-01" }] },
+    "6000000000003": { code: "6000000000003", name: "Senf", product: { brand: "Develey" }, entries: [] },
+  };
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/stock_code`) return answers[msg.code];
+    if (msg.type === `${D}/resolve_code`) return { valid: false };
+    if (msg.type === `${D}/empty`) {
+      hass.wsCalls.push(msg);
+      return {};
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await go(el, "containers");
+  // EAN über den normalen 📷-Scan
+  assert.equal(await el._resolveSingle("4000000000001"), true);
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelector("h2").textContent, "Ketchup");
+  assert.match(form.querySelector("p.lead").textContent, /Ältestes zuerst: Küche · Tür/);
+  const rows = [...form.querySelectorAll(".coderow")];
+  assert.deepEqual(rows.map((r) => r.querySelector(".name").textContent), ["Küche · Tür: 1", "Keller · Regal: 3"]);
+  assert.equal(rows[1].querySelector(".sub").textContent, "MHD 01.06.2027");
+  assert.ok(rows[0].classList.contains("oldest"));
+  assert.match(form.textContent, /andere in der Hand/);
+  // die neuere in der Hand: dort −1
+  rows[1].querySelector('[data-role="code-take"]').click();
+  await flush();
+  assert.deepEqual(hass.calls.at(-1), { domain: "number", service: "set_value", data: { entity_id: "number.d2_portionen", value: 2 } });
+  assert.match($(el, ".notice").textContent, /aus Keller · Regal entnommen/);
+  // die letzte: wird geleert (gegessen)
+  await el.takeByCode("4000000000001");
+  form.querySelector('[data-role="code-take"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/empty`), { type: `${D}/empty`, device_id: "d1", outcome: "eaten" });
+  // nicht im Vorrat
+  await el.takeByCode("6000000000003");
+  assert.match(form.textContent, /Senf ist nicht im Vorrat/);
+  form.querySelector('[data-role="code-add"]').click();
+  assert.match(form.querySelector("h2").textContent, /Packungen anlegen/);
+  assert.equal(form.querySelector('[data-i="content"]').value, "Senf");
+});
+
+test("Eingekauft: Startseite bietet abgehakte Einträge an, Anlegen übernimmt Ort und Daten", async () => {
+  const hass = makeHass(DOSES);
+  let bought = [{ id: "b1", summary: "Senf (Develey)", content: "Senf", product: { brand: "Develey" }, area_id: "cellar", compartment: "Regal", count: 2 }];
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/bought`) return { items: bought };
+    if (msg.type === `${D}/bought_dismiss`) {
+      hass.wsCalls.push(msg);
+      bought = bought.filter((b) => b.id !== msg.item_id);
+      return { items: bought };
+    }
+    if (msg.type === `${D}/create_items`) {
+      hass.wsCalls.push(msg);
+      return { items: [{ device_id: "p1", cc: "HA-1", name: "Packung 1" }] };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await flush();
+  const box = $(el, ".stat.bought");
+  assert.match(box.textContent, /Eingekauft/);
+  assert.match(box.querySelector(".boughtrow .name").textContent, /Senf \(Develey\)/);
+  box.querySelector('[data-role="bought-add"]').click();
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelector('[data-f="area"]').value, "cellar");
+  assert.equal(form.querySelector('[data-f="compartment"]').value, "Regal");
+  assert.equal(form.querySelector('[data-i="quantity"]').value, "2");
+  form.querySelector("button.submit").click();
+  await flush();
+  await flush();
+  const created = hass.wsCalls.find((m) => m.type === `${D}/create_items`);
+  assert.deepEqual(created.items, [{ content: "Senf", quantity: 2, unit: "pieces", product: { brand: "Develey" } }]);
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/bought_dismiss`), { type: `${D}/bought_dismiss`, item_id: "b1" });
+});

@@ -343,6 +343,7 @@ export class LarderDashboard extends HTMLElement {
     if (first) {
       this.loadRecipes();
       this.loadPlans();
+      this.loadBought();
       this.loadSettings();
       this._handleViewParam();
       this._subscribeScans();
@@ -467,6 +468,7 @@ export class LarderDashboard extends HTMLElement {
     if (view === "stats") this.loadStats();
     if (view === "stock") this.loadStock();
     if (view === "start" || view === "recipes") this.loadPlans();
+    if (view === "start") this.loadBought();
     const { soon, ...rest } = filter || {};
     this._filter = { area: null, category: null, state: soon ? "soon" : null, problem: null, ...rest };
     this._openRecipe = null;
@@ -587,6 +589,7 @@ export class LarderDashboard extends HTMLElement {
       this._chosenFor,
       this._areaEdit,
       this._plans,
+      this._bought,
       this._view === "stats" ? [this._stats, this._statsDays] : null,
       this._view === "stock" ? this._stock : null,
       this._view === "areas" ? this._areaSig() : null,
@@ -897,7 +900,14 @@ export class LarderDashboard extends HTMLElement {
     } catch {
       return false;
     }
-    if (!res || !res.valid) return false;
+    if (!res || !res.valid) {
+      // Strichcode gekaufter Ware (EAN): Packung aus dem Vorrat entnehmen
+      if (/^\d{8,14}$/.test(String(code).trim())) {
+        await this.takeByCode(String(code).trim());
+        return true;
+      }
+      return false;
+    }
     this.setView("containers");
     if (res.retired) {
       this.showNotice(res.retired); // Etikett eines schon geleerten Beutels
@@ -1690,6 +1700,8 @@ export class LarderDashboard extends HTMLElement {
     } else {
       frag.append(el("p", "lead", t.soonNone(rows.length ? rows[0].soon : SOON_DAYS)));
     }
+    const bought = this._boughtBox();
+    if (bought) frag.append(bought);
     const thaw = this._thawBox(t);
     if (thaw) frag.append(thaw);
     const planned = this._plannedBox(t, false);

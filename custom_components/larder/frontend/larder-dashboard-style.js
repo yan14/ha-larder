@@ -151,6 +151,19 @@ export const STYLE = `
   .dialog .hint { margin: 0; font-size: 12px; color: var(--secondary-text-color); }
   .dialog a.pdf { align-self: stretch; text-align: center; padding: 12px; border-radius: 10px; font-size: 16px; text-decoration: none;
     background: var(--primary-color); color: var(--text-primary-color, #fff); }
+  .dialog .codelist { display: flex; flex-direction: column; gap: 6px; }
+  .dialog .coderow { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--divider-color); border-radius: 10px; }
+  .dialog .coderow.oldest { border-color: var(--primary-color); }
+  .dialog .coderow .text { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .dialog .coderow .sub { font-size: 12px; color: var(--secondary-text-color); }
+  .dialog .coderow button, .boughtrow button { font: inherit; padding: 6px 14px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--primary-color); background: none; color: var(--primary-color); }
+  .dialog .coderow button.primary, .boughtrow button.primary { background: var(--primary-color); color: var(--text-primary-color, #fff); }
+  .dialog p.lead { margin: 0; font-size: 15px; }
+  .boughtrow { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--divider-color); }
+  .boughtrow:first-of-type { border-top: 0; }
+  .boughtrow .name { flex: 1; min-width: 0; }
+  .boughtrow button[data-role="bought-dismiss"] { border: 0; color: var(--secondary-text-color); padding: 6px 8px; }
   .stocklist { display: flex; flex-direction: column; gap: 8px; }
   .stockitem { background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 12px; padding: 10px 12px; }
   .stockitem.low { border-color: var(--error-color, #c62828); }

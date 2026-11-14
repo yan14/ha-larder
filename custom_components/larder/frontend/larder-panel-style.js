@@ -99,6 +99,8 @@ export const STYLE = `
   .lastrow .lasttext { flex: 1; }
   .allergen-warning { font-size: 13px; font-weight: 600; color: var(--error-color, #c62828); }
   .allergen-warning[hidden] { display: none; }
+  .olderhint { font-size: 13px; color: var(--warning-color, #f57c00); font-weight: 500; }
+  .olderhint[hidden] { display: none; }
   details.nutrition { font-size: 13px; }
   details.nutrition[hidden] { display: none; }
   details.nutrition summary { cursor: pointer; color: var(--primary-color); }
