@@ -73,6 +73,15 @@ limit: 8               # optional
 area: kueche           # optional, Bereichs-ID
 ```
 
+Die zweite Karte, **Larder: Vorrat**, zeigt, was unter dem [Mindestbestand](containers.md#vorrat) ist (mit 🛒 für die Einkaufsliste), Eingekauftes, das noch nicht im Vorrat angelegt ist, und angebrochene Packungen. Antippen einer Zeile öffnet die Vorrats-Ansicht bzw. die Packung.
+
+```yaml
+type: custom:larder-stock-card
+title: Vorrat         # optional
+show_bought: true     # optional
+show_opened: true     # optional
+```
+
 ## Statistik
 
 <p align="center"><img src="../images/dashboard-stats-de.png" width="250" alt="Statistik"></p>

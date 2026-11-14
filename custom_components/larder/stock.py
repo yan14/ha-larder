@@ -26,7 +26,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
-from .const import CONF_CC, DATA_STOCK, DOMAIN, KIND_PACK, SIGNAL_STOCK_CHANGED
+from .const import CONF_CC, DATA_STOCK, DOMAIN, KIND_BAG, KIND_PACK, SIGNAL_STOCK_CHANGED
 from .entity import kind_of
 from .estimate import async_get_estimator, storage_context
 from .shopping import async_add_to_shopping_list
@@ -221,6 +221,7 @@ def pack_entries(hass: HomeAssistant, exclude: set[str] | None = None) -> list[d
                 "brand": attrs.get("brand"),
                 "package": attrs.get("package"),
                 "ean": attrs.get("ean"),
+                "opened": attrs.get("opened"),
             }
         )
     return out
@@ -245,6 +246,7 @@ def stock_overview(hass: HomeAssistant, minimums: dict[str, dict[str, Any]]) -> 
                 "compartment": item["compartment"],
                 "count": item["count"],
                 "best_before": item["best_before"],
+                "opened": item["opened"],
             }
         )
     for key, info in minimums.items():
@@ -254,7 +256,8 @@ def stock_overview(hass: HomeAssistant, minimums: dict[str, dict[str, Any]]) -> 
         product["min"] = int((minimums.get(product["key"]) or {}).get("min") or 0)
         product["low"] = product["min"] > 0 and product["count"] < product["min"]
         # ältestes zuerst: früheste MHD oben, ohne MHD zuletzt
-        product["places"].sort(key=lambda p: (p["best_before"] or "9999", str(p["area"] or "￿").casefold(), p["compartment"].casefold()))
+        product["places"].sort(key=lambda p: (not p["opened"], p["best_before"] or "9999", str(p["area"] or "￿").casefold(), p["compartment"].casefold()))
+        product["opened"] = sum(p["count"] for p in product["places"] if p["opened"])
         product["earliest"] = next((p["best_before"] for p in product["places"] if p["best_before"]), None)
         rows.append(product)
     rows.sort(key=lambda p: p["name"].casefold())
@@ -306,6 +309,70 @@ async def async_check_stock(hass: HomeAssistant, content: str | None, exclude: s
 # ---------- Aufteilen / Verschieben ----------
 
 
+async def _async_relocate(hass: HomeAssistant, cc: str, area_id: str | None, compartment: str) -> None:
+    """Eintrag in einen anderen Bereich und ein anderes Fach stellen."""
+    registry = dr.async_get(hass)
+    device = registry.async_get_device(identifiers={(DOMAIN, cc)})
+    if device is not None:
+        registry.async_update_device(device.id, area_id=area_id or None)
+    comp_id = er.async_get(hass).async_get_entity_id("text", DOMAIN, f"{cc}_compartment")
+    if comp_id:
+        await hass.services.async_call("text", "set_value", {"entity_id": comp_id, "value": (compartment or "").strip()}, blocking=True)
+
+
+async def async_open_pack(hass: HomeAssistant, cc: str, area_id: str | None = None, compartment: str | None = None) -> dict[str, Any]:
+    """Packung anbrechen: bei mehreren eine abtrennen, als geöffnet markieren, MHD für geöffnete Ware.
+
+    Mit `area_id` kommt die geöffnete Packung dorthin (z. B. Ketchup in den Kühlschrank). Das MHD wird für den
+    neuen Ort geschätzt (Tabelle/KI), sonst gilt "Haltbarkeit nach dem Öffnen" der Einstellungen; höchstens das
+    aufgedruckte Datum.
+    """
+    from .disposable import async_create_items  # noqa: PLC0415 - vermeidet einen Import-Kreis
+
+    entries = {e.data.get(CONF_CC): e for e in hass.config_entries.async_loaded_entries(DOMAIN)}
+    entry = entries.get(cc)
+    source = next((p for p in pack_entries(hass) if p["cc"] == cc), None)
+    if entry is None or kind_of(entry) != KIND_PACK or source is None or source["opened"]:
+        raise HomeAssistantError(translation_domain=DOMAIN, translation_key="open_invalid")
+    target_area = source["area_id"] if area_id is None else (area_id or None)
+    target_comp = source["compartment"] if compartment is None else compartment.strip()
+    today = dt_util.now().date().isoformat()
+    ents = entry.runtime_data.resettable
+    product = {**ents["content"].product, "opened": today}
+    if source["count"] > 1:
+        item: dict[str, Any] = {"content": source["content"], "quantity": 1, "unit": "pieces", "product": product}
+        if source["best_before"]:
+            item["best_before"] = date.fromisoformat(source["best_before"])
+        created = await async_create_items(hass, KIND_PACK, [item], target_area, target_comp)
+        await ents["portions"].async_set_native_value(float(source["count"] - 1))
+        opened_cc = created[0]["cc"]
+    else:
+        await ents["content"].async_set_product(product)
+        if (target_area, target_comp) != (source["area_id"], source["compartment"]):
+            await _async_relocate(hass, cc, target_area, target_comp)
+        opened_cc = cc
+    target = entries.get(opened_cc) or next(e for e in hass.config_entries.async_loaded_entries(DOMAIN) if e.data.get(CONF_CC) == opened_cc)
+    best_entity = target.runtime_data.resettable["best_before"]
+    printed: date | None = best_entity.native_value
+    best: date | None = None
+    estimator = await async_get_estimator(hass)
+    if estimator.enabled:
+        try:
+            await best_entity.async_estimate_best_before(overwrite=True)
+            best = best_entity.native_value
+        except HomeAssistantError:
+            _LOGGER.debug("MHD nach dem Öffnen nicht geschätzt", exc_info=True)
+    if best is None or best == printed:
+        # nichts Besseres bekannt: Haltbarkeit nach dem Öffnen aus den Einstellungen
+        await best_entity.async_set_value(dt_util.now().date() + timedelta(days=estimator.opened_days))
+        best = best_entity.native_value
+    if printed is not None and best is not None and printed < best:
+        await best_entity.async_set_value(printed)
+        best = printed
+    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, opened_cc)})
+    return {"device_id": device.id if device else None, "best_before": best.isoformat() if best else None, "split": opened_cc != cc}
+
+
 async def async_move_packs(
     hass: HomeAssistant, cc: str, count: int, area_id: str | None, compartment: str
 ) -> dict[str, Any]:
@@ -314,10 +381,15 @@ async def async_move_packs(
 
     entries = {e.data.get(CONF_CC): e for e in hass.config_entries.async_loaded_entries(DOMAIN)}
     entry = entries.get(cc)
-    if entry is None or kind_of(entry) != KIND_PACK:
+    if entry is None or kind_of(entry) not in (KIND_PACK, KIND_BAG):
         raise HomeAssistantError(translation_domain=DOMAIN, translation_key="move_invalid")
     if area_id and ar.async_get(hass).async_get_area(area_id) is None:
         raise HomeAssistantError(translation_domain=DOMAIN, translation_key="move_invalid")
+    if kind_of(entry) == KIND_BAG:
+        # Beutel ziehen immer ganz um (Inventur: "woanders"), zusammengeführt wird nichts
+        await _async_relocate(hass, cc, area_id, compartment)
+        device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, cc)})
+        return {"moved": 1, "merged": False, "device_id": device.id if device else None}
     source = next((p for p in pack_entries(hass) if p["cc"] == cc), None)
     if source is None:
         raise HomeAssistantError(translation_domain=DOMAIN, translation_key="move_invalid")
@@ -349,13 +421,7 @@ async def async_move_packs(
             await ents["portions"].async_set_native_value(float(source["count"] - count))
         return {"moved": count, "merged": True, "device_id": target["device_id"]}
     if all_of_them:
-        registry = dr.async_get(hass)
-        device = registry.async_get_device(identifiers={(DOMAIN, cc)})
-        if device is not None:
-            registry.async_update_device(device.id, area_id=area_id or None)
-        comp_id = er.async_get(hass).async_get_entity_id("text", DOMAIN, f"{cc}_compartment")
-        if comp_id:
-            await hass.services.async_call("text", "set_value", {"entity_id": comp_id, "value": compartment}, blocking=True)
+        await _async_relocate(hass, cc, area_id, compartment)
         return {"moved": count, "merged": False, "device_id": source["device_id"]}
     item: dict[str, Any] = {
         "content": source["content"],
@@ -438,13 +504,14 @@ async def async_find_by_code(hass: HomeAssistant, code: str) -> dict[str, Any]:
         if lookup.get("found"):
             key = product_key(lookup["name"])
             found = [p for p in packs if product_key(p["content"]) == key]
-    found.sort(key=lambda p: (p["best_before"] or "9999", str(p["area"] or "￿").casefold(), p["compartment"].casefold()))
+    # angebrochene zuerst, dann das früheste MHD
+    found.sort(key=lambda p: (not p["opened"], p["best_before"] or "9999", str(p["area"] or "￿").casefold(), p["compartment"].casefold()))
     name = found[0]["content"] if found else lookup.get("name")
     return {
         "code": digits,
         "name": name,
         "entries": [
-            {k: p[k] for k in ("device_id", "area", "compartment", "count", "best_before")} for p in found
+            {k: p[k] for k in ("device_id", "area", "compartment", "count", "best_before", "opened")} for p in found
         ],
         # unbekannt im Vorrat: Daten für "als Packung anlegen"
         "product": None if found else (lookup.get("product") if lookup.get("found") else None),
@@ -510,6 +577,56 @@ async def ws_bought_dismiss(hass: HomeAssistant, connection: websocket_api.Activ
     stock = await async_get_stock(hass)
     stock.dismiss(msg["item_id"])
     connection.send_result(msg["id"], {"items": list(reversed(stock.bought))})
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/pack_open",
+        vol.Required("device_id"): str,
+        vol.Optional("area_id"): vol.Any(str, None),
+        vol.Optional("compartment"): vol.All(str, vol.Length(max=60)),
+    }
+)
+@websocket_api.async_response
+async def ws_pack_open(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    cc = _cc_of(hass, msg["device_id"])
+    try:
+        if not cc:
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="open_invalid")
+        result = await async_open_pack(hass, cc, msg.get("area_id", None) if "area_id" in msg else None, msg.get("compartment"))
+    except HomeAssistantError as err:
+        connection.send_error(msg["id"], "open_failed", str(err))
+        return
+    connection.send_result(msg["id"], result)
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): f"{DOMAIN}/stock_shop", vol.Required("content"): vol.All(str, vol.Length(min=1, max=255))}
+)
+@websocket_api.async_response
+async def ws_stock_shop(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Produkt des Vorrats (mit Marke und Packung) auf die Einkaufsliste setzen, z. B. aus der Vorrats-Karte."""
+    estimator = await async_get_estimator(hass)
+    if not estimator.todo_entity:
+        connection.send_error(msg["id"], "no_shopping_list", "no shopping list chosen in the settings")
+        return
+    stock = await async_get_stock(hass)
+    key = product_key(msg["content"])
+    product = next((p for p in stock_overview(hass, stock.minimums) if p["key"] == key), None) or {"name": msg["content"]}
+    product = {**(stock.minimums.get(key, {}).get("product") or {}), **{k: v for k, v in product.items() if v}}
+    text = shopping_text(product, getattr(estimator, "shopping_details", True))
+    added = await async_add_to_shopping_list(hass, estimator.todo_entity, text)
+    if added:
+        places = product.get("places") or []
+        stock.track(text, {
+            "content": product["name"],
+            "product": {k: product[k] for k in ("brand", "package") if product.get(k)},
+            "area_id": places[0].get("area_id") if places else None,
+            "compartment": places[0].get("compartment", "") if places else "",
+            "count": max(1, int(product.get("min") or 1) - int(product.get("count") or 0)),
+            "source": "minimum",
+        })
+    connection.send_result(msg["id"], {"added": added, "item": text})
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/cook_again"})
@@ -579,5 +696,7 @@ def async_setup_stock_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_bought)
     websocket_api.async_register_command(hass, ws_bought_dismiss)
     websocket_api.async_register_command(hass, ws_cook_again)
+    websocket_api.async_register_command(hass, ws_pack_open)
+    websocket_api.async_register_command(hass, ws_stock_shop)
     websocket_api.async_register_command(hass, ws_cook_again_action)
     domain_data[DATA_WS] = True

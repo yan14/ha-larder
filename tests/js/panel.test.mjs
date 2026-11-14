@@ -1983,3 +1983,20 @@ test("Schätzungen: Vorschläge aus dem Verlauf übernehmen oder ignorieren", as
   assert.equal($(el, "#estimates .est.suggest"), null);
   assert.equal($$(el, "#estimates .est:not(.new)")[0].querySelector('[data-f="days"]').value, "2");
 });
+
+test("Karte einer Packung: Anbrechen und Kennzeichen 'angebrochen'", async () => {
+  const hass = adminHass([
+    { id: "d1", name: "Packung 1", content: "Ketchup", product: { kind: "pack" } },
+    { id: "d2", name: "Packung 2", content: "Senf", product: { kind: "pack", opened: "2026-11-10" } },
+  ]);
+  const el = mount(hass);
+  const card = (name) => $$(el, ".card").find((c) => c.querySelector(".name").textContent === name);
+  assert.equal(card("Packung 1").querySelector("button.openpack").hidden, false);
+  assert.equal(card("Packung 1").querySelector(".openedline").hidden, true);
+  assert.equal(card("Packung 2").querySelector("button.openpack").hidden, true);
+  assert.equal(card("Packung 2").querySelector(".openedline").textContent, "🔓 Angebrochen am 10.11.2026");
+  let asked = null;
+  el.addEventListener("larder-open-pack", (ev) => (asked = ev.detail.deviceId));
+  card("Packung 1").querySelector("button.openpack").click();
+  assert.equal(asked, "d1");
+});

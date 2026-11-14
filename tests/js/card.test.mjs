@@ -86,3 +86,40 @@ test("Karte: leerer Zustand auf Englisch und Registrierung in customCards", () =
   assert.ok(window.customCards.some((c) => c.type === "larder-card"));
   assert.deepEqual(LarderCard.getStubConfig(), { show_expired: true, limit: 8 });
 });
+
+const { LarderStockCard } = await import("../../custom_components/larder/frontend/larder-card.js");
+
+test("Vorrats-Karte: unter Mindestbestand mit 🛒, Eingekauftes und Angebrochenes", async () => {
+  const calls = [];
+  const hass = {
+    language: "de",
+    entities: {},
+    states: {},
+    callWS: async (msg) => {
+      calls.push(msg);
+      if (msg.type === "larder/stock") return { shopping_list: true, products: [
+        { key: "ketchup", name: "Ketchup", count: 1, min: 3, low: true, opened: 1, places: [{ device_id: "p1", area: "Kühlschrank", compartment: "Tür", opened: "2026-11-10" }] },
+        { key: "senf", name: "Senf", count: 2, min: 1, low: false, opened: 0, places: [] },
+      ] };
+      if (msg.type === "larder/bought") return { items: [{ id: "b1", summary: "Mehl (Aurora)" }] };
+      return { added: true };
+    },
+  };
+  const card = new LarderStockCard();
+  card.setConfig({});
+  card.hass = hass;
+  await new Promise((r) => setTimeout(r, 10));
+  const root = card.shadowRoot;
+  assert.deepEqual([...root.querySelectorAll("h3")].map((h) => h.textContent), ["Unter Mindestbestand", "Eingekauft, noch nicht im Vorrat", "Angebrochen"]);
+  assert.match(root.textContent, /Ketchup\s*1 von 3/);
+  assert.match(root.textContent, /Mehl \(Aurora\)/);
+  assert.match(root.textContent, /🔓 Ketchup\s*Kühlschrank · Tür/);
+  assert.doesNotMatch(root.textContent, /Senf/);
+  root.querySelector("[data-shop]").click();
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepEqual(calls.at(-1), { type: "larder/stock_shop", content: "Ketchup" });
+  assert.match(card.shadowRoot.querySelector("[data-shop]").textContent, /auf der Liste/);
+  card.shadowRoot.querySelectorAll("[data-go]")[2].click();
+  assert.equal(window.location.pathname + window.location.search, "/larder?open=p1");
+  assert.ok(window.customCards.some((c) => c.type === "larder-stock-card"));
+});

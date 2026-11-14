@@ -200,6 +200,9 @@
     },
     "move_invalid": {
       "message": "Only packs can be moved, into an existing area."
+    },
+    "open_invalid": {
+      "message": "Only an unopened pack can be opened."
     }
   },
   "options": {

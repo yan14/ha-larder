@@ -154,6 +154,10 @@ export const STYLE = `
   .actions button.transfer[hidden] { display: none; }
   .actions button.move { font: inherit; padding: 7px 14px; border-radius: 8px; cursor: pointer;
     background: none; color: var(--primary-color); border: 1px solid var(--primary-color); }
+  .actions button.openpack { font: inherit; padding: 7px 14px; border-radius: 8px; cursor: pointer;
+    background: none; color: var(--primary-color); border: 1px solid var(--primary-color); }
+  .actions button.openpack[hidden], .openedline[hidden] { display: none; }
+  .openedline { font-size: 13px; font-weight: 500; color: var(--primary-color); }
   .actions button.move[hidden], .row.minrow[hidden] { display: none; }
   .actions { flex-wrap: wrap; }
   .row.minrow input { max-width: 90px; }

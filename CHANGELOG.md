@@ -3,7 +3,13 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
-## 3.3.1
+## 3.4.0
+
+- **Stocktake** (⋮ → 📋 Stocktake, for all users): go through an area or compartment, tick off, correct counts, remove what is gone (eaten / thrown away) or move it elsewhere; scanning QR codes, barcodes and NFC tags ticks off; summary at the end.
+- **Opened packs:** **Open** on the card of a pack splits one off (with a count > 1), marks it 🔓 opened, moves it where you want (e.g. the fridge) and estimates the best-before date for the opened food, at most the printed date. Opened packs come first in the barcode dialog and the stock view.
+- **Lovelace card `custom:larder-stock-card`:** below minimum stock (with 🛒), bought but not added yet, opened packs.
+- Bags can now be moved to another area and compartment.
+
 
 - Fix: scanning the barcode of a pack with 📷 offered to add a new container instead of showing the pack in the stock.
 

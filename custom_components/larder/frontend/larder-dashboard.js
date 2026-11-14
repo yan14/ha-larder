@@ -11,6 +11,7 @@ const { attachCompartmentChips, collectDevices, daysUntil, isLarderLabel, knownC
   `./larder-panel.js${VERSION_QUERY}`
 );
 const { installItems } = await import(`./larder-dashboard-items.js${VERSION_QUERY}`);
+const { installCare } = await import(`./larder-dashboard-care.js${VERSION_QUERY}`);
 
 const DOMAIN = "larder";
 const STORAGE_KEY = `${DOMAIN}.experimental`; // historischer Name, bleibt, damit gespeicherte Ansichten erhalten bleiben
@@ -36,7 +37,7 @@ export const CATEGORY_ICONS = {
 };
 
 const VIEWS = ["start", "containers", "recipes", "areas", "categories"];
-const ALL_VIEWS = [...VIEWS, "estimates", "stats", "stock"]; // "estimates" und "stats" erreicht man über ☰/⚙
+const ALL_VIEWS = [...VIEWS, "estimates", "stats", "stock", "stocktake"]; // "estimates" und "stats" erreicht man über ☰/⚙
 const MODES = ["grid", "list", "cards"];
 const VIEW_ICONS = { start: "🏠", containers: "🫙", recipes: "📖", areas: "📍", categories: "🏷️" };
 
@@ -67,7 +68,7 @@ export function describeDevices(hass, devices, now = new Date()) {
     const attrs = (content && text.attributes) || {};
     const kind = (text && text.attributes && text.attributes.kind) || "container"; // Dose, Beutel (bag) oder Packung (pack)
     const kcal = attrs.kcal_portion !== undefined ? { value: attrs.kcal_portion, per: "portion" } : attrs.kcal_100g !== undefined ? { value: attrs.kcal_100g, per: "100g" } : null;
-    return { dev, id: dev.deviceId, name: dev.name, content, days, soon: soonDaysOf(date), category, areaId: dev.areaId, areaName: dev.areaName, compartment, kcal, nutriScore: attrs.nutri_score || null, allergens: Array.isArray(attrs.allergen_warning) ? attrs.allergen_warning : [], kind };
+    return { dev, id: dev.deviceId, name: dev.name, content, days, soon: soonDaysOf(date), category, areaId: dev.areaId, areaName: dev.areaName, compartment, kcal, nutriScore: attrs.nutri_score || null, allergens: Array.isArray(attrs.allergen_warning) ? attrs.allergen_warning : [], kind, opened: attrs.opened || null };
   });
 }
 
@@ -225,7 +226,7 @@ export class LarderDashboard extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>${STYLE}</style>
       <header><button id="menu" type="button" aria-label="Menu">☰</button><h1></h1><button id="settings" type="button" hidden>⋮</button></header>
-      <div class="menu" hidden><button type="button" data-role="menu-stats"></button><button type="button" data-role="menu-stock"></button><button type="button" data-role="menu-labels"></button><button type="button" data-role="menu-data"></button><button type="button" data-role="menu-estimates"></button><button type="button" data-role="menu-settings"></button></div>
+      <div class="menu" hidden><button type="button" data-role="menu-stats"></button><button type="button" data-role="menu-stock"></button><button type="button" data-role="menu-stocktake"></button><button type="button" data-role="menu-labels"></button><button type="button" data-role="menu-data"></button><button type="button" data-role="menu-estimates"></button><button type="button" data-role="menu-settings"></button></div>
       <div class="notice" role="alert" hidden></div>
       <main></main>
       <nav></nav>
@@ -268,6 +269,10 @@ export class LarderDashboard extends HTMLElement {
       this._menu.hidden = true;
       this.setView("stats");
     });
+    this._menu.querySelector('[data-role="menu-stocktake"]').addEventListener("click", () => {
+      this._menu.hidden = true;
+      this.setView("stocktake");
+    });
     this._menu.querySelector('[data-role="menu-stock"]').addEventListener("click", () => {
       this._menu.hidden = true;
       this.setView("stock");
@@ -295,6 +300,7 @@ export class LarderDashboard extends HTMLElement {
     });
     this._classic.addEventListener("larder-transfer", (ev) => this.openTransferDialog(ev.detail.deviceId));
     this._classic.addEventListener("larder-move", (ev) => this.openMoveDialog(ev.detail.deviceId));
+    this._classic.addEventListener("larder-open-pack", (ev) => this.openOpenDialog(ev.detail.deviceId));
     this._form.addEventListener("submit", (ev) => {
       ev.preventDefault();
       if (this._submit) this._submit();
@@ -406,6 +412,10 @@ export class LarderDashboard extends HTMLElement {
     try {
       this._scanUnsub = await hass.connection.subscribeEvents((ev) => {
         const id = ev && ev.data && ev.data.device_id;
+        if (this._view === "stocktake" && this._take && this._take.started && ev && ev.data && ev.data.device_id) {
+          this.stocktakeTick(ev.data.device_id); // Inventur: NFC-Scan hakt ab statt zu öffnen
+          return;
+        }
         if (ev && ev.data && ev.data.retired && this.isConnected) {
           this.showNotice(ev.data.message); // NFC-Sticker eines schon geleerten Beutels
           return;
@@ -556,7 +566,9 @@ export class LarderDashboard extends HTMLElement {
             ? t.menuStats
             : this._view === "stock"
               ? this.stockTitle()
-              : t.views[this._view];
+              : this._view === "stocktake"
+                ? this.stocktakeTitle()
+                : t.views[this._view];
     // ⋮: Statistik und Etiketten für alle, Export, Schätzungen und Einstellungen nur für Administratoren
     const admin = isAdmin(hass);
     this._settingsBtn.hidden = false;
@@ -571,6 +583,7 @@ export class LarderDashboard extends HTMLElement {
     this._menu.querySelector('[data-role="menu-data"]').textContent = `📦 ${t.menuData}`;
     this._menu.querySelector('[data-role="menu-stats"]').textContent = `📊 ${t.menuStats}`;
     this._menu.querySelector('[data-role="menu-stock"]').textContent = `🥫 ${this.stockTitle()}`;
+    this._menu.querySelector('[data-role="menu-stocktake"]').textContent = `📋 ${this.stocktakeTitle()}`;
 
     const rows = this._rows();
     const sig = JSON.stringify([
@@ -578,7 +591,7 @@ export class LarderDashboard extends HTMLElement {
       this._filter,
       this._opts,
       t.title,
-      rows.map((r) => [r.id, r.name, r.content, r.days, r.category, r.areaId, r.areaName, r.compartment, r.kcal, r.allergens, r.kind]),
+      rows.map((r) => [r.id, r.name, r.content, r.days, r.category, r.areaId, r.areaName, r.compartment, r.kcal, r.allergens, r.kind, r.opened]),
       hass.user && hass.user.name,
       isAdmin(hass),
       this._canGenerate(),
@@ -601,6 +614,7 @@ export class LarderDashboard extends HTMLElement {
       this._view === "stats" ? this._report : null,
       this._view === "stats" ? [this._stats, this._statsDays] : null,
       this._view === "stock" ? this._stock : null,
+      this._view === "stocktake" ? this.stocktakeSig() : null,
       this._view === "areas" ? this._areaSig() : null,
     ]);
     if (sig === this._sig) return;
@@ -629,6 +643,9 @@ export class LarderDashboard extends HTMLElement {
         break;
       case "stock":
         this._renderStock();
+        break;
+      case "stocktake":
+        this._renderStocktake();
         break;
       default:
         this._renderStart(t, rows);
@@ -673,7 +690,7 @@ export class LarderDashboard extends HTMLElement {
     tile.type = "button";
     tile.dataset.id = row.id;
     tile.append(el("span", "ico", CATEGORY_ICONS[row.category] || CATEGORY_ICONS.other));
-    if (row.kind !== "container") tile.append(el("span", "kindmark", row.kind === "bag" ? "🛍" : "📦"));
+    if (row.kind !== "container") tile.append(el("span", "kindmark", row.kind === "bag" ? "🛍" : row.opened ? "📦🔓" : "📦"));
     tile.append(el("span", "name", empty ? t.empty : row.content));
     tile.append(el("span", "sub", [row.name, showArea ? row.areaName : null, row.compartment].filter(Boolean).join(" · ")));
     if (!empty && row.days !== null) tile.append(el("span", `badge ${dayClass(row)}`, daysLabel(t, row.days)));
@@ -2700,6 +2717,7 @@ export class LarderDashboard extends HTMLElement {
 }
 
 installItems(LarderDashboard, { el, isAdmin, listAreas, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment });
+installCare(LarderDashboard, { el, isAdmin, listAreas, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment, CATEGORY_ICONS });
 
 if (!customElements.get("larder-dashboard")) {
   customElements.define("larder-dashboard", LarderDashboard);

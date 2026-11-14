@@ -2005,3 +2005,89 @@ test("Statistik zeigt den Monatsbericht des Vormonats", async () => {
   assert.equal(box.querySelector("h3").textContent, "📅 Oktober 2026");
   assert.deepEqual([...box.querySelectorAll("p.line")].map((p) => p.textContent), ["📦 4 befüllt, 4 geleert", "✅ 2 gegessen, 🗑 2 weggeworfen"]);
 });
+
+// ---------- Block 14: Vorrat pflegen ----------
+
+test("Packung anbrechen: Dialog mit Ort, pack_open, danach die geöffnete Packung", async () => {
+  const hass = makeHass(DOSES);
+  hass.states["text.d4_inhalt"].attributes.kind = "pack";
+  hass.states["number.d4_portionen"].state = "3";
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/pack_open`) {
+      hass.wsCalls.push(msg);
+      return { device_id: "d2", best_before: "2026-12-24", split: true };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await go(el, "containers");
+  el._classic.dispatchEvent(new dom.window.CustomEvent("larder-open-pack", { detail: { deviceId: "d4" } }));
+  const form = $(el, "form.dialog");
+  assert.match(form.textContent, /Eine von 3 Packungen/);
+  assert.equal(form.querySelector('[data-f="area"]').value, "cellar");
+  form.querySelector('[data-f="area"]').value = "kitchen";
+  form.querySelector('[data-f="compartment"]').value = "Tür";
+  form.querySelector("button.submit").click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/pack_open`), { type: `${D}/pack_open`, device_id: "d4", area_id: "kitchen", compartment: "Tür" });
+  assert.match($(el, ".notice").textContent, /Angebrochen, MHD jetzt 24\.12\.2026/);
+  assert.equal(el._classic.getAttribute("only"), "d2");
+});
+
+test("Inventur: Ort wählen, abhaken, Anzahl korrigieren, austragen, scannen, Zusammenfassung", async () => {
+  const hass = makeHass([
+    ...DOSES,
+    { id: "p1", name: "Packung 1", area: "cellar", content: "Tomaten", days: 200, category: "produce" },
+  ]);
+  hass.states["text.p1_inhalt"].attributes.kind = "pack";
+  hass.states["number.p1_portionen"].state = "4";
+  hass.states["select.p1_einheit"].state = "pieces";
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/empty`) {
+      hass.wsCalls.push(msg);
+      return {};
+    }
+    if (msg.type === `${D}/resolve_code`) return { valid: true, cc: msg.code, device_id: msg.code === "QR-D4" ? "d4" : msg.code === "QR-D1" ? "d1" : null };
+    return base(msg);
+  };
+  hass.user.is_admin = false; // Inventur auch ohne Administratorrechte
+  const el = mount(hass);
+  $(el, "#settings").click();
+  $(el, '[data-role="menu-stocktake"]').click();
+  await flush();
+  assert.equal($(el, "h1").textContent, "Inventur");
+  $(el, '[data-f="take-area"]').value = "cellar";
+  $(el, '[data-role="take-start"]').click();
+  await flush();
+  const rowsText = () => $$(el, ".takerow .name").map((n) => n.textContent);
+  assert.deepEqual(rowsText().sort(), ["Chili", "Reis", "Tomaten"]);
+  assert.match($(el, "main p.count").textContent, /0 von 3 geprüft/);
+  // Dose ohne Administratorrechte: kein "Woanders"; Packung schon
+  const row = (id) => $(el, `.takerow[data-id="${id}"]`);
+  assert.equal(row("d3").querySelector('[data-role="take-elsewhere"]'), null);
+  assert.ok(row("p1").querySelector('[data-role="take-elsewhere"]'));
+  // Anzahl korrigieren
+  const count = row("p1").querySelector('[data-role="take-count"]');
+  assert.equal(count.value, "4");
+  count.value = "3";
+  count.dispatchEvent(new dom.window.Event("change"));
+  await flush();
+  assert.deepEqual(hass.calls.at(-1), { domain: "number", service: "set_value", data: { entity_id: "number.p1_portionen", value: 3 } });
+  assert.ok(row("p1").classList.contains("changed"));
+  // per Scan abhaken (Dose 4 = Reis); Dose 1 gehört nicht hierher
+  await el.stocktakeScan("QR-D4");
+  assert.ok(row("d4").classList.contains("ok"));
+  await el.stocktakeScan("QR-D1");
+  assert.match($(el, ".notice").textContent, /Lachs gehört nicht in dieses Fach/);
+  // austragen
+  row("d3").querySelector('[data-role="take-gone"]').click();
+  row("d3").querySelector('[data-role="take-thrown"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/empty`), { type: `${D}/empty`, device_id: "d3", outcome: "thrown" });
+  assert.ok(row("d3").classList.contains("gone"));
+  assert.match($(el, "main p.count").textContent, /3 von 3 geprüft/);
+  $(el, '[data-role="take-finish"]').click();
+  assert.match($(el, "form.dialog").textContent, /2 bestätigt \(1 korrigiert\), 1 ausgetragen, 0 verschoben, 0 nicht geprüft/);
+});

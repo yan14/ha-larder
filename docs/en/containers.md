@@ -105,7 +105,23 @@ A bag works like a container (scan it, take a portion, **Opened**, **Thawed**, r
 
 <p align="center"><img src="../images/dashboard-code-en.png" width="250" alt="Take by barcode"></p>
 
+**Opened packs.** **Open** on the card of a pack (ketchup, jam, UHT milk …) asks where the opened pack goes, e.g. the fridge door. With a count of more than one, one pack is split off as its own entry. It is marked **🔓 opened**, and its best-before date is estimated for the new place (table or AI, otherwise *shelf life after opening* from the settings), at most the printed date. Opened packs come first when you scan a barcode and in the stock view.
+
+<p align="center"><img src="../images/dashboard-open-en.png" width="250" alt="Open a pack"></p>
+
 **From the shopping list back into the stock.** When you tick off an item on your shopping list that Larder put there (minimum stock or an emptied container), the start page asks **🛒 Bought – add to the stock?**. **Add to stock** opens the pack dialog with the contents, brand, count and the place where the product usually is; **✕** drops the hint.
+
+### Stocktake
+
+**⋮ → 📋 Stocktake** (for everyone in the household) goes through one area, or one compartment of it. Larder lists everything that should be there; per line:
+
+- **✓** it is there; for packs and bags correct the **count** right in the line,
+- **Gone** → eaten or thrown away (goes into the history),
+- **Elsewhere** moves it to another area or compartment (containers only for administrators).
+
+**📷 Scan** (Home Assistant app) ticks off what you scan, QR codes of containers and barcodes of packs; NFC tags tick off too while the stocktake is open. **＋ Missing pack** adds what is there but not in Larder. **Done** shows a short summary.
+
+<p align="center"><img src="../images/dashboard-stocktake-en.png" width="250" alt="Stocktake"></p>
 
 ## Areas and labels
 

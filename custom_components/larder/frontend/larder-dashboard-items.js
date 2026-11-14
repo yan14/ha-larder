@@ -71,6 +71,7 @@ const TEXT = {
     againDismiss: "Nicht jetzt",
     reportTitle: (label) => `📅 ${label}`,
     codeTitle: "Strichcode",
+    openedMark: "🔓 angebrochen",
     codeScan: "📷 Strichcode",
     codeOldest: (place) => `Ältestes zuerst: ${place}`,
     codeOther: "Hast du gerade eine andere in der Hand? Dann dort −1.",
@@ -167,6 +168,7 @@ const TEXT = {
     againDismiss: "Not now",
     reportTitle: (label) => `📅 ${label}`,
     codeTitle: "Barcode",
+    openedMark: "🔓 opened",
     codeScan: "📷 Barcode",
     codeOldest: (place) => `Oldest first: ${place}`,
     codeOther: "Holding another one right now? Take it from there with −1.",
@@ -273,7 +275,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
       const text = el("span", "text");
       text.append(
         el("span", "name", `${placeName(entry, t)}: ${entry.count}`),
-        el("span", "sub", entry.best_before ? t.codeDate(fmtDate(hass, entry.best_before)) : t.noDate),
+        el("span", "sub", [entry.opened ? t.openedMark : null, entry.best_before ? t.codeDate(fmtDate(hass, entry.best_before)) : t.noDate].filter(Boolean).join(" · ")),
       );
       const take = button(i === 0 ? "primary" : "", t.codeTake, async () => {
         take.disabled = true;
@@ -512,7 +514,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
       if (sub) item.append(el("div", "sub", sub));
       const places = el("div", "places");
       for (const place of p.places) {
-        const date = place.best_before ? ` · ${fmtDate(hass, place.best_before)}` : "";
+        const date = (place.best_before ? ` · ${fmtDate(hass, place.best_before)}` : "") + (place.opened ? " · 🔓" : "");
         const chip = el("button", "place", `${[place.area, place.compartment].filter(Boolean).join(" · ") || "–"}: ${place.count}${date}`);
         chip.type = "button";
         chip.dataset.id = place.device_id;
@@ -527,7 +529,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
   };
 
   /** Packung verschieben oder aufteilen (ein Teil an einen anderen Ort). */
-  proto.openMoveDialog = function openMoveDialog(deviceId) {
+  proto.openMoveDialog = function openMoveDialog(deviceId, onDone = null) {
     const hass = this._hass;
     const t = itemTexts(hass);
     const row = this._rows().find((r) => r.id === deviceId);
@@ -583,6 +585,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
         const place = [area.value ? area.options[area.selectedIndex].textContent : t.noArea, compartment.value.trim()].filter(Boolean).join(" · ");
         this._closeDialog();
         this.showNotice(t.moveDone(n, place));
+        if (onDone) onDone();
         if (this._view === "stock") this.loadStock();
       } catch (err) {
         error.textContent = (err && err.message) || t.moveFailed;

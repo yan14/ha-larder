@@ -170,6 +170,32 @@ export const STYLE = `
     border: 1px solid var(--divider-color); background: none; color: var(--primary-text-color); }
   .boughtrow .name .sub { display: block; font-size: 12px; color: var(--secondary-text-color); }
   .stat.report p.line { margin: 2px 0; font-size: 14px; }
+  .takeform { display: flex; flex-direction: column; gap: 10px; }
+  .takeform label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--secondary-text-color); }
+  .takeform select, .takeform input { font: inherit; font-size: 15px; padding: 8px 10px; border-radius: 10px;
+    border: 1px solid var(--divider-color); background: var(--card-background-color, #fff); color: var(--primary-text-color); }
+  .takeform .compchips, .stocklist .compchips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .takeform .compchip { font: inherit; font-size: 13px; padding: 4px 10px; border-radius: 14px; cursor: pointer;
+    border: 1px solid var(--divider-color); background: none; color: var(--primary-text-color); }
+  .takeform button.primary, .help button.primary { font: inherit; padding: 10px 16px; border-radius: 10px; cursor: pointer; border: 0;
+    background: var(--primary-color); color: var(--text-primary-color, #fff); }
+  .takeplace { font-size: 16px; font-weight: 500; }
+  .takelist { display: flex; flex-direction: column; gap: 6px; }
+  .takerow { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 12px; flex-wrap: wrap;
+    background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); }
+  .takerow.ok, .takerow.changed { border-color: var(--success-color, #2e7d32); }
+  .takerow.gone, .takerow.moved { opacity: .55; }
+  .takerow .ico { font-size: 22px; }
+  .takerow .text { flex: 1; min-width: 120px; display: flex; flex-direction: column; }
+  .takerow .sub { font-size: 12px; color: var(--secondary-text-color); }
+  .takerow .acts { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .takerow .acts input { width: 60px; font: inherit; padding: 5px 6px; border-radius: 8px; border: 1px solid var(--divider-color);
+    background: var(--card-background-color, #fff); color: var(--primary-text-color); }
+  .takerow .acts button { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--primary-color); background: none; color: var(--primary-color); }
+  .takerow .acts button.primary { background: var(--primary-color); color: var(--text-primary-color, #fff); }
+  .takerow .state { font-size: 13px; color: var(--secondary-text-color); }
+  .takerow.ok .state, .takerow.changed .state { color: var(--success-color, #2e7d32); font-weight: 500; }
   .stocklist { display: flex; flex-direction: column; gap: 8px; }
   .stockitem { background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 12px; padding: 10px 12px; }
   .stockitem.low { border-color: var(--error-color, #c62828); }

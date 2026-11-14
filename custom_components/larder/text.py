@@ -37,6 +37,7 @@ PRODUCT_FIELDS: dict[str, type] = {
     "nutri_score": str,  # A–E
     "allergens": str,
     "source": str,  # "openfoodfacts" oder leer (von Hand)
+    "opened": str,  # Packung angebrochen am (ISO-Datum)
 }
 _MAX_TEXT = 500
 

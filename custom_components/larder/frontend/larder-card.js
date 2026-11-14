@@ -140,6 +140,157 @@ export class LarderCard extends HTMLElement {
   }
 }
 
+
+const STOCK_TEXT = {
+  de: {
+    title: "Vorrat",
+    low: "Unter Mindestbestand",
+    bought: "Eingekauft, noch nicht im Vorrat",
+    opened: "Angebrochen",
+    none: "Alles da.",
+    shop: "🛒",
+    shopped: "auf der Liste",
+    of: (n, min) => `${n} von ${min}`,
+    description: "Vorrat aus Larder: was unter Mindestbestand ist, Eingekauftes und angebrochene Packungen.",
+  },
+  en: {
+    title: "Stock",
+    low: "Below minimum stock",
+    bought: "Bought, not in stock yet",
+    opened: "Opened",
+    none: "Everything is there.",
+    shop: "🛒",
+    shopped: "on the list",
+    of: (n, min) => `${n} of ${min}`,
+    description: "Stock from Larder: below minimum stock, bought items and opened packs.",
+  },
+};
+
+function stockTexts(hass) {
+  return String((hass && hass.language) || "en").toLowerCase().startsWith("de") ? STOCK_TEXT.de : STOCK_TEXT.en;
+}
+
+const REFRESH_MS = 5 * 60 * 1000;
+
+/** Lovelace-Karte "Larder: Vorrat" (type: custom:larder-stock-card). */
+export class LarderStockCard extends HTMLElement {
+  static getStubConfig() {
+    return { show_bought: true, show_opened: true };
+  }
+
+  setConfig(config) {
+    this._config = { show_bought: true, show_opened: true, ...(config || {}) };
+    this._render();
+  }
+
+  set hass(hass) {
+    const first = !this._hass;
+    this._hass = hass;
+    // neu laden, wenn sich Inhalte oder Mengen von Larder ändern (gebündelt) oder spätestens alle 5 Minuten
+    const sig = Object.values(hass.entities || {})
+      .filter((e) => e.platform === "larder" && /^(text|number)\./.test(e.entity_id))
+      .map((e) => (hass.states[e.entity_id] || {}).state)
+      .join("|");
+    if (first || sig !== this._stateSig || Date.now() - (this._loaded || 0) > REFRESH_MS) {
+      this._stateSig = sig;
+      clearTimeout(this._timer);
+      this._timer = setTimeout(() => this.load(), first ? 0 : 1500);
+    }
+  }
+
+  getCardSize() {
+    return 3;
+  }
+
+  async load() {
+    const hass = this._hass;
+    if (!hass || !hass.callWS) return;
+    this._loaded = Date.now();
+    try {
+      const [stock, bought] = await Promise.all([
+        hass.callWS({ type: "larder/stock" }),
+        this._config && this._config.show_bought === false ? Promise.resolve({ items: [] }) : hass.callWS({ type: "larder/bought" }),
+      ]);
+      this._data = { stock, bought: (bought && bought.items) || [] };
+    } catch {
+      this._data = { stock: { products: [] }, bought: [] };
+    }
+    this._render();
+  }
+
+  _go(path) {
+    window.history.pushState(null, "", path);
+    window.dispatchEvent(new Event("location-changed"));
+  }
+
+  _render() {
+    if (!this._config) return;
+    if (!this.shadowRoot) this.attachShadow({ mode: "open" });
+    const t = stockTexts(this._hass);
+    const data = this._data || { stock: { products: [] }, bought: [] };
+    const products = data.stock.products || [];
+    const low = products.filter((p) => p.low);
+    const opened = this._config.show_opened === false ? [] : products.filter((p) => p.opened > 0);
+    const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+    const section = (title, rows) => (rows.length ? `<h3>${esc(title)}</h3>${rows.join("")}` : "");
+    const lowRows = low.map(
+      (p) => `<div class="row" data-go="/larder?view=stock"><span class="name">${esc(p.name)}</span><span class="sub">${esc(t.of(p.count, p.min))}</span>${
+        data.stock.shopping_list ? `<button data-shop="${esc(p.name)}" title="${esc(t.shop)}">${(this._shopped || new Set()).has(p.name) ? esc(t.shopped) : t.shop}</button>` : ""
+      }</div>`,
+    );
+    const boughtRows = (data.bought || []).map((b) => `<div class="row" data-go="/larder"><span class="name">${esc(b.summary || b.content)}</span></div>`);
+    const openedRows = opened.map((p) => {
+      const place = p.places.find((x) => x.opened) || {};
+      return `<div class="row" data-go="/larder?open=${esc(place.device_id || "")}"><span class="name">🔓 ${esc(p.name)}</span><span class="sub">${esc([place.area, place.compartment].filter(Boolean).join(" · "))}</span></div>`;
+    });
+    const body = section(t.low, lowRows) + section(t.bought, boughtRows) + section(t.opened, openedRows);
+    this.shadowRoot.innerHTML = `
+      <style>
+        ha-card { padding: 12px 16px 8px; }
+        h2 { margin: 0 0 4px; font-size: 18px; font-weight: 400; }
+        h3 { margin: 10px 0 2px; font-size: 13px; font-weight: 500; color: var(--secondary-text-color); }
+        .row { display: flex; align-items: center; gap: 10px; padding: 6px 0; cursor: pointer; border-top: 1px solid var(--divider-color); }
+        .row .name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .row .sub { font-size: 12px; color: var(--secondary-text-color); white-space: nowrap; }
+        .row button { font: inherit; font-size: 13px; padding: 3px 10px; border-radius: 12px; cursor: pointer;
+          border: 1px solid var(--primary-color); background: none; color: var(--primary-color); }
+        .none { color: var(--secondary-text-color); font-size: 14px; padding: 6px 0; }
+      </style>
+      <ha-card>
+        <h2>${esc(this._config.title || t.title)}</h2>
+        ${body || `<div class="none">${esc(t.none)}</div>`}
+      </ha-card>`;
+    for (const row of this.shadowRoot.querySelectorAll("[data-go]")) {
+      row.addEventListener("click", (ev) => {
+        if (ev.target.closest("button")) return;
+        this._go(row.dataset.go);
+      });
+    }
+    for (const btn of this.shadowRoot.querySelectorAll("[data-shop]")) {
+      btn.addEventListener("click", async () => {
+        try {
+          await this._hass.callWS({ type: "larder/stock_shop", content: btn.dataset.shop });
+          this._shopped = new Set([...(this._shopped || []), btn.dataset.shop]);
+        } catch {
+          /* bleibt */
+        }
+        this._render();
+      });
+    }
+  }
+}
+
+if (!customElements.get("larder-stock-card")) {
+  customElements.define("larder-stock-card", LarderStockCard);
+  window.customCards = window.customCards || [];
+  window.customCards.push({
+    type: "larder-stock-card",
+    name: "Larder: Vorrat / Stock",
+    description: stockTexts({ language: (navigator.language || "en").slice(0, 2) }).description,
+    preview: true,
+  });
+}
+
 if (!customElements.get("larder-card")) {
   customElements.define("larder-card", LarderCard);
   window.customCards = window.customCards || [];

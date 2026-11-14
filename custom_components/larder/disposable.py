@@ -238,7 +238,7 @@ async def async_transfer(hass: HomeAssistant, pack_cc: str, target_cc: str) -> d
     if not content or (dest["content"].native_value or "").strip():
         raise HomeAssistantError(translation_domain=DOMAIN, translation_key="transfer_invalid")
     await dest["content"].async_set_value(content)
-    await dest["content"].async_set_product(source["content"].product)
+    await dest["content"].async_set_product({k: v for k, v in source["content"].product.items() if k != "opened"})
     await dest["filled_at"].async_set_value(dt_util.now())
     printed: date | None = source["best_before"].native_value
     best: date | None = None

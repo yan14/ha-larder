@@ -382,6 +382,7 @@ class DoseCard {
       <div class="row shoprow"><label class="check"><input type="checkbox" data-f="shopping"><span data-l="shopping"></span></label></div>
       <div class="row flexrow"><label class="check"><input type="checkbox" data-f="flexible"><span data-l="flexible"></span></label></div>
       <div class="row homerow"><label data-l="homeArea"></label><select data-f="homeArea"></select></div>
+      <div class="openedline" role="note" hidden></div>
       <div class="olderhint" role="note" hidden></div>
       <div class="row minrow" hidden><label data-l="minStock"></label><input data-f="minStock" type="number" min="0" max="999" step="1" inputmode="numeric"><span class="stockinfo"></span></div>
       <div class="allergen-warning" role="note" hidden></div>
@@ -399,7 +400,7 @@ class DoseCard {
         <div class="source" hidden></div>
       </details>
       <div class="nfcrow"><span class="nfcstate"></span><button class="nfcbtn" type="button"></button></div>
-      <div class="actions"><button class="fill" type="button"></button><button class="transfer" type="button" hidden></button><button class="move" type="button" hidden></button><button class="empty" type="button"></button><span class="spacer"></span><img class="qr" alt=""></div>
+      <div class="actions"><button class="fill" type="button"></button><button class="transfer" type="button" hidden></button><button class="move" type="button" hidden></button><button class="openpack" type="button" hidden></button><button class="empty" type="button"></button><span class="spacer"></span><img class="qr" alt=""></div>
       <div class="outcomerow" hidden><span class="otext"></span><button class="eaten" type="button"></button><button class="thrown" type="button"></button><button class="ocancel" type="button"></button></div>
       <details class="history"><summary></summary><ul></ul></details>`;
     this.el = el;
@@ -524,6 +525,9 @@ class DoseCard {
     this.q("button.estimate").addEventListener("click", () => this._estimate());
     this.q("button.fill").addEventListener("click", () => this._panel.openFillDialog(this.deviceId));
     // Packung öffnen und in eine leere Dose umfüllen: die Auswahl der Dose übernimmt das Dashboard
+    this.q("button.openpack").addEventListener("click", () => {
+      this._panel.dispatchEvent(new CustomEvent("larder-open-pack", { detail: { deviceId: this.deviceId } }));
+    });
     this.q("button.move").addEventListener("click", () => {
       this._panel.dispatchEvent(new CustomEvent("larder-move", { detail: { deviceId: this.deviceId } }));
     });
@@ -775,6 +779,13 @@ class DoseCard {
     const transfer = this.q("button.transfer");
     transfer.hidden = !(kind === "pack" && hasContentNow);
     transfer.textContent = t.transfer;
+    const opened = kind === "pack" && hasContentNow && text.attributes && text.attributes.opened;
+    const openBtn = this.q("button.openpack");
+    openBtn.hidden = !(kind === "pack" && hasContentNow && !opened);
+    openBtn.textContent = t.openPack;
+    const openedLine = this.q(".openedline");
+    openedLine.hidden = !opened;
+    openedLine.textContent = opened ? t.openedSince(opened) : "";
     const move = this.q("button.move");
     move.hidden = !(kind === "pack" && hasContentNow);
     move.textContent = t.movePack;

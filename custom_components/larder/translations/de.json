@@ -200,6 +200,9 @@
     },
     "move_invalid": {
       "message": "Verschieben geht nur für Packungen in einen vorhandenen Bereich."
+    },
+    "open_invalid": {
+      "message": "Anbrechen geht nur bei einer ungeöffneten Packung."
     }
   },
   "options": {

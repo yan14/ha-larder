@@ -105,7 +105,23 @@ Ein Beutel funktioniert wie eine Dose (scannen, Portion entnehmen, **Geöffnet**
 
 <p align="center"><img src="../images/dashboard-code-de.png" width="250" alt="Entnehmen per Strichcode"></p>
 
+**Angebrochene Packungen.** **Anbrechen** auf der Karte einer Packung (Ketchup, Marmelade, H-Milch …) fragt, wohin die geöffnete Packung kommt, z. B. in die Kühlschranktür. Bei mehreren wird eine als eigener Eintrag abgetrennt. Sie ist als **🔓 angebrochen** markiert, und ihr MHD wird für den neuen Ort geschätzt (Tabelle oder KI, sonst *Haltbarkeit nach dem Öffnen* aus den Einstellungen), höchstens das aufgedruckte Datum. Angebrochene Packungen kommen beim Strichcode-Scan und in der Vorrats-Ansicht zuerst.
+
+<p align="center"><img src="../images/dashboard-open-de.png" width="250" alt="Packung anbrechen"></p>
+
 **Von der Einkaufsliste zurück in den Vorrat.** Hakst du auf der Einkaufsliste etwas ab, das Larder dort eingetragen hat (Mindestbestand oder geleerte Dose), fragt die Startseite **🛒 Eingekauft – in den Vorrat?**. **In den Vorrat** öffnet den Packungs-Dialog mit Inhalt, Marke, Anzahl und dem Ort, an dem das Produkt sonst liegt; **✕** verwirft den Hinweis.
+
+### Inventur
+
+**⋮ → 📋 Inventur** (für alle im Haushalt) geht einen Bereich oder ein Fach darin durch. Larder listet alles, was dort sein sollte; pro Zeile:
+
+- **✓** ist da; bei Packungen und Beuteln die **Anzahl** direkt in der Zeile korrigieren,
+- **Weg** → gegessen oder weggeworfen (kommt in den Verlauf),
+- **Woanders** stellt es in einen anderen Bereich oder ein anderes Fach (Dosen nur für Administratoren).
+
+**📷 Scannen** (Home Assistant App) hakt ab, was du scannst, QR-Codes von Dosen und Strichcodes von Packungen; auch NFC-Tags haken ab, solange die Inventur offen ist. **＋ Packung, die fehlt** legt an, was da ist, aber nicht in Larder steht. **Fertig** zeigt eine kurze Zusammenfassung.
+
+<p align="center"><img src="../images/dashboard-stocktake-de.png" width="250" alt="Inventur"></p>
 
 ## Bereiche und Labels
 

@@ -73,6 +73,15 @@ limit: 8               # optional
 area: kitchen          # optional, area ID
 ```
 
+The second card, **Larder: Stock**, shows what is below its [minimum stock](containers.md#stock) (with 🛒 to put it on the shopping list), items you bought but have not added to the stock yet, and opened packs. Tapping a line opens the stock view or the pack.
+
+```yaml
+type: custom:larder-stock-card
+title: Stock          # optional
+show_bought: true     # optional
+show_opened: true     # optional
+```
+
 ## Statistics
 
 <p align="center"><img src="../images/dashboard-stats-en.png" width="250" alt="Statistics"></p>

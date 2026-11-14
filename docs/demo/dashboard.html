@@ -219,6 +219,15 @@ if (q.get("dialog") === "labels") el.openLabelDialog();
 if (q.get("dialog") === "transfer") el.openTransferDialog("demo12");
 if (q.get("dialog") === "move") el.openMoveDialog("demo12");
 if (q.get("dialog") === "code") await el.takeByCode("4000000000001");
+if (q.get("dialog") === "open") el.openOpenDialog("demo12");
+if (q.get("take")) {
+  el._take = { areaId: q.get("take"), compartment: "", started: true, status: new Map() };
+  el._take.items = el._takeRows();
+  if (el._take.items[0]) el._take.status.set(el._take.items[0].id, "ok");
+  if (el._take.items[1]) el._take.status.set(el._take.items[1].id, "changed");
+  el._sig = "";
+  el._update();
+}
 if (q.get("dialog") === "plan") el.openPlanDialog(recipes[1]);
 if (q.get("select") === "1") {
   el.startSelecting();
