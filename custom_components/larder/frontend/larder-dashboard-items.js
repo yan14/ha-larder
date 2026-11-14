@@ -64,6 +64,12 @@ const TEXT = {
     transferDone: (name, left) => `Umgefüllt in ${name}.${left ? ` Noch ${left} im Vorrat.` : ""}`,
     transferFailed: "Umfüllen fehlgeschlagen.",
     stockTitle: "Vorrat",
+    againTitle: "💡 Mal wieder …?",
+    againItem: (n) => `${n}× in den letzten 90 Tagen gegessen, gerade nicht da`,
+    againShop: "🛒 Einkaufsliste",
+    againShopped: (c) => `${c} steht auf der Einkaufsliste.`,
+    againDismiss: "Nicht jetzt",
+    reportTitle: (label) => `📅 ${label}`,
     codeTitle: "Strichcode",
     codeScan: "📷 Strichcode",
     codeOldest: (place) => `Ältestes zuerst: ${place}`,
@@ -154,6 +160,12 @@ const TEXT = {
     transferDone: (name, left) => `Moved into ${name}.${left ? ` ${left} left in stock.` : ""}`,
     transferFailed: "Moving failed.",
     stockTitle: "Stock",
+    againTitle: "💡 Time for … again?",
+    againItem: (n) => `eaten ${n}× in the last 90 days, none left`,
+    againShop: "🛒 Shopping list",
+    againShopped: (c) => `${c} is on the shopping list.`,
+    againDismiss: "Not now",
+    reportTitle: (label) => `📅 ${label}`,
     codeTitle: "Barcode",
     codeScan: "📷 Barcode",
     codeOldest: (place) => `Oldest first: ${place}`,
@@ -351,6 +363,81 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
       row.append(el("span", "name", item.summary || item.content), add, drop);
       box.append(row);
     }
+    return box;
+  };
+
+  proto.loadCookAgain = async function loadCookAgain() {
+    const hass = this._hass;
+    if (!hass || !hass.callWS) return;
+    try {
+      this._again = await hass.callWS({ type: `${DOMAIN}/cook_again` });
+    } catch {
+      this._again = null;
+    }
+    this._sig = "";
+    this._update();
+  };
+
+  /** Startseite: oft gegessen, gerade nicht da → auf die Einkaufsliste oder für 30 Tage ausblenden. */
+  proto._againBox = function _againBox() {
+    const data = this._again;
+    if (!data || !data.items || !data.items.length) return null;
+    const hass = this._hass;
+    const t = itemTexts(hass);
+    const box = el("section", "stat again");
+    box.append(el("h3", "", t.againTitle));
+    for (const item of data.items) {
+      const row = el("div", "boughtrow");
+      const text = el("span", "name");
+      text.append(el("span", "", item.content), el("span", "sub", t.againItem(item.count)));
+      row.append(text);
+      const act = async (action) => {
+        try {
+          const res = await hass.callWS({ type: `${DOMAIN}/cook_again_action`, content: item.content, action });
+          this._again = { ...this._again, items: res.items || [] };
+          if (action === "shop") this.showNotice(t.againShopped(item.content));
+        } catch {
+          /* bleibt stehen */
+        }
+        this._sig = "";
+        this._update();
+      };
+      if (data.shopping_list) {
+        const shop = button("primary", t.againShop, () => act("shop"));
+        shop.dataset.role = "again-shop";
+        row.append(shop);
+      }
+      const drop = button("", "✕", () => act("dismiss"));
+      drop.dataset.role = "again-dismiss";
+      drop.setAttribute("aria-label", t.againDismiss);
+      drop.title = t.againDismiss;
+      row.append(drop);
+      box.append(row);
+    }
+    return box;
+  };
+
+  proto.loadReport = async function loadReport() {
+    const hass = this._hass;
+    if (!hass || !hass.callWS) return;
+    try {
+      const res = await hass.callWS({ type: "call_service", domain: DOMAIN, service: "get_monthly_report", service_data: {}, return_response: true });
+      this._report = (res && res.response) || null;
+    } catch {
+      this._report = null;
+    }
+    this._sig = "";
+    this._update();
+  };
+
+  /** Statistik: Bericht des Vormonats (wie ihn der Blueprint "Monatsbericht" schickt). */
+  proto._reportBox = function _reportBox() {
+    const r = this._report;
+    if (!r || r.empty || !r.label) return null;
+    const t = itemTexts(this._hass);
+    const box = el("section", "stat report");
+    box.append(el("h3", "", t.reportTitle(r.label)));
+    for (const line of String(r.summary || "").split("\n")) box.append(el("p", "line", line));
     return box;
   };
 

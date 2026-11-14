@@ -19,7 +19,7 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 - 🍳 **[Rezepte](docs/de/kitchen.md#rezepte)**: Ideen aus dem, was bald abläuft, oder aus gewählten Dosen, ein Rezeptbuch und Rezepte vom Foto
 - 🔔 **[Tägliche Zusammenfassung](docs/de/kitchen.md#tägliche-zusammenfassung)**: Push mit Knöpfen an mehrere Handys und als Ansage auf Alexa oder anderen Lautsprechern, optional bei der ersten Bewegung in der Küche
 - 🛒 **[Einkaufsliste](docs/de/kitchen.md#einkaufsliste)**: auf Wunsch landet der Inhalt einer geleerten Dose auf einer To-do-Liste, Reste nie
-- 🗓 **[Wochenplan](docs/de/kitchen.md#wochenplan)** mit Auftau-Erinnerung, **[Nährwerte und Allergene](docs/de/containers.md#nährwerte)** aus dem Strichcode, **[Statistik](docs/de/dashboard.md#statistik)** über Gegessenes und Weggeworfenes
+- 🗓 **[Wochenplan](docs/de/kitchen.md#wochenplan)** mit Auftau-Erinnerung, **[Nährwerte und Allergene](docs/de/containers.md#nährwerte)** aus dem Strichcode, **[Statistik](docs/de/dashboard.md#statistik)** über Gegessenes und Weggeworfenes mit [Monatsbericht](docs/de/kitchen.md#monatsbericht) und eine MHD-Schätzung, die [aus dem Verlauf lernt](docs/de/best-before.md#gemerkte-schätzungen-verwalten)
 - 📅 **[Kalendereinträge](docs/de/kitchen.md#mhd-im-kalender)**: MHDs in deinem Kalender (Lokaler Kalender, Google, CalDAV …)
 - 🌍 In Deutsch und Englisch verfügbar
 

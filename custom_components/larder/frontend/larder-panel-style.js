@@ -203,6 +203,11 @@ export const STYLE = `
   .est input[type="text"], .est input[type="number"], .est select { font: inherit; color: var(--primary-text-color);
     background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 6px;
     padding: 6px 8px; box-sizing: border-box; min-width: 0; width: 100%; }
+  .est.suggest { border: 1px solid var(--primary-color); }
+  .est.suggest h3 { grid-column: 1 / -1; margin: 0; }
+  .est.suggest .intro { grid-column: 1 / -1; margin: 0; }
+  .est .sugg { grid-column: 1 / -1; display: flex; flex-direction: column; gap: 6px; padding-top: 8px; border-top: 1px solid var(--divider-color); }
+  .est .sugg .btns { display: flex; gap: 8px; justify-content: flex-end; }
   .est .btns { grid-column: 1 / -1; display: flex; gap: 8px; justify-content: flex-end; }
   .est .btns button { font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 8px; cursor: pointer; border: 0; }
   .est .btns button.save { background: var(--primary-color); color: var(--text-primary-color, #fff); }

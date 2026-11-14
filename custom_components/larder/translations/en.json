@@ -351,6 +351,16 @@
           "description": "Only emptyings of the last so many days. Empty: all."
         }
       }
+    },
+    "get_monthly_report": {
+      "name": "Get monthly report",
+      "description": "Returns the report of a month: filled, emptied, eaten, thrown away, the share thrown away compared with the previous month and what was thrown away most, with a ready-made text and speech.",
+      "fields": {
+        "month": {
+          "name": "Month",
+          "description": "Month as YYYY-MM. Empty: the previous month."
+        }
+      }
     }
   },
   "selector": {

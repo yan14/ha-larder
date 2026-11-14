@@ -74,6 +74,12 @@ response_variable: result
 
 `larder.suggest_recipes` also returns `speech` ("Idea: …"). For your own dashboards there is the sensor **Days until best before** on every container.
 
+### Monthly report
+
+A second blueprint sends a **monthly report** for the previous month on the day you choose: containers filled and emptied, eaten and thrown away, the share thrown away compared with the month before, and what was thrown away most. As a push (tapping it opens the statistics) and optionally read out loud. Nothing is sent for a month without activity. The same report is at the top of the [statistics](dashboard.md#statistics) and comes from the service `larder.get_monthly_report` (`month`: `YYYY-MM`, default the previous month).
+
+[![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fmonthly_report.yaml)
+
 ## Meal plan
 
 Plan a dish for a day: **📅 Plan** on a recipe idea or a recipe from the book (also for non-administrators). The dialog takes the dish, the day (preset: tomorrow) and the **containers** it needs; the containers whose contents appear in the recipe are already ticked.
@@ -91,6 +97,8 @@ Plan a dish for a day: **📅 Plan** on a recipe idea or a recipe from the book 
 **Thawed** works like the **Thawed** button on the card (shortens the best-before date) and moves [flexible containers](containers.md#filling-containers) to the fridge if there is exactly one fridge area.
 
 ## Shopping list
+
+**Time for … again?** The start page suggests what you ate at least three times in the last 90 days but have in no container or pack right now ("Bolognese, eaten 4× …"). **🛒 Shopping list** puts it on the list, **✕** hides the suggestion for 30 days.
 
 Under Settings → Devices & services → **Larder** → **Configure** you can pick a **to-do list** of Home Assistant, for example the built-in *Shopping list*, Todoist or Bring!. Each container then has a checkbox **Add to shopping list when emptied** (the `Shopping list` switch, off by default). When you press **Empty container** on a container with the checkbox on, its contents are added to the list, for example "Basmati".
 

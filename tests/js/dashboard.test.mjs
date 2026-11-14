@@ -1953,3 +1953,51 @@ test("Fach vorschlagen: Chips je Bereich aus vorhandenen und zuletzt benutzten F
   assert.equal(hass.wsCalls.find((m) => m.type === `${D}/create_items`).compartment, "Regal unten");
   assert.deepEqual(JSON.parse(dom.window.localStorage.getItem("larder.compartments")).cellar, ["Regal unten", "Kiste"]);
 });
+
+// ---------- Block 8: Lernen und berichten ----------
+
+test("Mal wieder …?: Startseite schlägt oft Gegessenes vor; Einkaufsliste und Ausblenden", async () => {
+  const hass = makeHass(DOSES);
+  let items = [{ key: "bolognese", content: "Bolognese", count: 4, last: "2026-11-01" }];
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/cook_again`) return { items, shopping_list: true };
+    if (msg.type === `${D}/cook_again_action`) {
+      hass.wsCalls.push(msg);
+      items = [];
+      return { added: true, items };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await flush();
+  const box = $(el, ".stat.again");
+  assert.match(box.textContent, /Mal wieder/);
+  assert.match(box.textContent, /Bolognese.*4× in den letzten 90 Tagen/);
+  box.querySelector('[data-role="again-shop"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/cook_again_action`), { type: `${D}/cook_again_action`, content: "Bolognese", action: "shop" });
+  assert.equal($(el, ".stat.again"), null);
+  assert.match($(el, ".notice").textContent, /Bolognese steht auf der Einkaufsliste/);
+});
+
+test("Statistik zeigt den Monatsbericht des Vormonats", async () => {
+  const hass = makeHass(DOSES);
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === "call_service" && msg.service === "get_monthly_report") {
+      return { response: { label: "Oktober 2026", empty: false, summary: "📦 4 befüllt, 4 geleert\n✅ 2 gegessen, 🗑 2 weggeworfen" } };
+    }
+    if (msg.type === `${D}/statistics`) return null;
+    return base(msg);
+  };
+  const el = mount(hass);
+  $(el, "#settings").click();
+  $(el, '[data-role="menu-stats"]').click();
+  await flush();
+  await flush();
+  const box = $(el, ".stat.report");
+  assert.equal(box.querySelector("h3").textContent, "📅 Oktober 2026");
+  assert.deepEqual([...box.querySelectorAll("p.line")].map((p) => p.textContent), ["📦 4 befüllt, 4 geleert", "✅ 2 gegessen, 🗑 2 weggeworfen"]);
+});

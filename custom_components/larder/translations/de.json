@@ -351,6 +351,16 @@
           "description": "Nur Leerungen der letzten so vielen Tage. Ohne Angabe: alle."
         }
       }
+    },
+    "get_monthly_report": {
+      "name": "Monatsbericht abrufen",
+      "description": "Liefert den Bericht eines Monats: befüllt, geleert, gegessen, weggeworfen, Anteil weggeworfen im Vergleich zum Vormonat und was am häufigsten weggeworfen wurde, mit fertigem Text und Sprachtext.",
+      "fields": {
+        "month": {
+          "name": "Monat",
+          "description": "Monat als JJJJ-MM. Leer: der Vormonat."
+        }
+      }
     }
   },
   "selector": {

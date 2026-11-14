@@ -15,6 +15,7 @@ from .expiry import async_setup_services
 from .export import async_setup_export
 from .history import async_setup_history_websocket
 from .labels import async_setup_labels
+from .learning import async_setup_learning_websocket
 from .nfc import async_get_nfc
 from .panel import async_setup_panel, async_teardown_panel
 from .plan import async_get_plan, async_setup_plan_websocket
@@ -52,6 +53,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_disposable_websocket(hass)
     await async_get_retired(hass)
     async_setup_stock_websocket(hass)
+    async_setup_learning_websocket(hass)
     (await async_get_stock(hass)).async_start()
     (await async_get_plan(hass)).async_start()
     (await async_get_calendar_sync(hass)).async_start()

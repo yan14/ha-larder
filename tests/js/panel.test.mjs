@@ -859,10 +859,15 @@ const ENTRIES = [
   { key: "suppe|keller|normal", content: "Suppe", area: "Keller", vacuum: false, days: 4, tip: "", source: "table", origin: null },
 ];
 
-function estimatesHass(entries = ENTRIES) {
+function estimatesHass(entries = ENTRIES, suggestions = []) {
   const hass = adminHass([{ id: "d1", name: "A", area: "kitchen" }]);
   hass.callWS = async (msg) => {
     if (msg.type === `${D}/nfc_tags`) return { by_device: {} };
+    if (msg.type === `${D}/estimate_suggestions`) return { suggestions };
+    if (msg.type === `${D}/estimate_suggestion`) {
+      hass.wsCalls.push(msg);
+      return { suggestions: [], entries: entries.map((e) => (e.key === msg.key ? { ...e, days: 2 } : e)) };
+    }
     if (msg.type === "config/label_registry/list") return [];
     hass.wsCalls.push(msg);
     if (msg.type === `${D}/estimates`) return { mode: "table", entries };
@@ -1959,4 +1964,22 @@ test("Karte: Fach-Vorschläge aus dem gleichen Bereich, Antippen speichert", asy
   assert.deepEqual(chips.map((c) => c.textContent), ["Schublade 2"]);
   chips[0].click();
   assert.deepEqual(hass.calls.at(-1), { domain: "text", service: "set_value", data: { entity_id: compId("d1"), value: "Schublade 2" } });
+});
+
+test("Schätzungen: Vorschläge aus dem Verlauf übernehmen oder ignorieren", async () => {
+  const hass = estimatesHass(ENTRIES, [
+    { key: ENTRIES[0].key, content: "Pizza", area: "Kühlschrank", vacuum: true, days: 3, suggested: 2, direction: "shorter", count: 2 },
+  ]);
+  const el = mount(hass);
+  $(el, '[data-view="estimates"]').click();
+  await flush();
+  await flush();
+  const box = $(el, "#estimates .est.suggest");
+  assert.match(box.textContent, /Pizza: 3 → 2 Tage/);
+  assert.match(box.textContent, /2× vor dem MHD weggeworfen/);
+  box.querySelector('[data-role="suggestion-accept"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/estimate_suggestion`, key: ENTRIES[0].key, action: "accept" });
+  assert.equal($(el, "#estimates .est.suggest"), null);
+  assert.equal($$(el, "#estimates .est:not(.new)")[0].querySelector('[data-f="days"]').value, "2");
 });

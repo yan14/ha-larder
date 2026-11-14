@@ -89,6 +89,7 @@ The values survive restarts. "Empty container" is a regular button entity, so yo
 | `larder.get_expiring` | List what expires soon, with a ready-made text, see [Daily summary](kitchen.md#daily-summary) |
 | `larder.suggest_recipes` | [Recipe ideas](kitchen.md#recipe-ideas) from what expires soon, from all or from selected containers |
 | `larder.get_statistics` | Eaten / thrown away, most frequent contents, storage time and current stock, see [Statistics](dashboard.md#statistics) |
+| `larder.get_monthly_report` | Report of a month (filled, emptied, eaten, thrown away, compared with the month before) with text and speech, see [Monthly report](kitchen.md#monthly-report) |
 | `larder.rebuild_calendar` | Clean up the [calendar](kitchen.md#best-before-dates-in-your-calendar) |
 
 Items of `larder.get_expiring` carry `kind` (`container`, `bag`, `pack`). If the sticker of a bag that was already emptied is scanned, `larder_dose_scanned` fires with `retired: true` and a `message` instead of `cc` and `device_id`.

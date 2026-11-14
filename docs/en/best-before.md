@@ -71,6 +71,13 @@ Administrators open the list with **⚙ → Remembered estimates** in the dashbo
 - **delete** an entry; the next estimate for that combination is calculated anew (table or AI),
 - **add** your own entry for a combination of contents, area and vacuum.
 
+**Suggestions from the history.** Larder compares the remembered estimates with what really happened (last 12 months, from the [history](dashboard.md#export-and-import)):
+
+- thrown away **before** the best-before date at least twice (and never eaten late) → it suggests a **shorter** value, how long it really kept (median, rounded down),
+- eaten **well after** the best-before date (2 days or more) at least twice and never thrown away early → it suggests a **longer** value, the shortest of those storage times, at most twice the current value.
+
+The suggestions appear at the top of the list with **Accept** or **Ignore**; nothing is changed by itself. An ignored suggestion comes back only when the suggested value changes. Emptyings without an answer (eaten / thrown away) do not count.
+
 The built-in table itself is not edited here. Entries you add or change simply take precedence over it for that exact combination.
 
 **Upgrading from 0.5:** "Estimate with AI" switched on becomes **AI only** (as before); switched off becomes **Table only**.

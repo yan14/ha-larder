@@ -71,6 +71,13 @@ Administratoren öffnen die Liste im Dashboard über **⚙ → Gemerkte Schätzu
 - einen Eintrag **löschen**; die nächste Schätzung für diese Kombination wird dann neu berechnet (Tabelle oder KI),
 - einen **eigenen Eintrag** für eine Kombination aus Inhalt, Bereich und Vakuum hinzufügen.
 
+**Vorschläge aus dem Verlauf.** Larder vergleicht die gemerkten Schätzungen mit dem, was wirklich passiert ist (letzte 12 Monate, aus dem [Verlauf](dashboard.md#export-und-import)):
+
+- mindestens zweimal **vor** dem MHD weggeworfen (und nie spät noch gegessen) → Vorschlag **kürzer**, so lange es wirklich gehalten hat (Median, abgerundet),
+- mindestens zweimal **deutlich nach** dem MHD (2 Tage oder mehr) noch gegessen und nie vorher weggeworfen → Vorschlag **länger**, die kürzeste dieser Lagerzeiten, höchstens das Doppelte des bisherigen Werts.
+
+Die Vorschläge stehen oben in der Liste mit **Übernehmen** oder **Ignorieren**; nichts wird von selbst geändert. Ein ignorierter Vorschlag kommt erst wieder, wenn sich der vorgeschlagene Wert ändert. Leerungen ohne Antwort (gegessen / weggeworfen) zählen nicht.
+
 Die eingebaute Tabelle selbst wird hier nicht bearbeitet. Eigene und geänderte Einträge haben nur für genau diese Kombination Vorrang vor ihr.
 
 **Update von 0.5:** War „Per KI schätzen“ an, wird daraus **Nur KI** (wie bisher); war es aus, wird es **Nur Tabelle**.

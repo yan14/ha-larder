@@ -89,6 +89,7 @@ Die Werte bleiben über Neustarts erhalten. „Behälter leeren“ ist eine norm
 | `larder.get_expiring` | Liste, was bald abläuft, mit fertigem Text, siehe [Tägliche Zusammenfassung](kitchen.md#tägliche-zusammenfassung) |
 | `larder.suggest_recipes` | [Rezeptideen](kitchen.md#rezeptideen) aus dem, was bald abläuft, aus allen oder aus gewählten Dosen |
 | `larder.get_statistics` | Gegessen / weggeworfen, häufigste Inhalte, Lagerdauer und aktueller Bestand, siehe [Statistik](dashboard.md#statistik) |
+| `larder.get_monthly_report` | Bericht eines Monats (befüllt, geleert, gegessen, weggeworfen, Vergleich zum Vormonat) mit Text und Sprachtext, siehe [Monatsbericht](kitchen.md#monatsbericht) |
 | `larder.rebuild_calendar` | [Kalender](kitchen.md#mhd-im-kalender) aufräumen |
 
 Die Einträge von `larder.get_expiring` tragen `kind` (`container`, `bag`, `pack`). Wird der Sticker eines schon geleerten Beutels gescannt, kommt `larder_dose_scanned` mit `retired: true` und einer `message` statt `cc` und `device_id`.

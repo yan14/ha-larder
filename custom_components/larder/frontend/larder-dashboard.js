@@ -346,6 +346,7 @@ export class LarderDashboard extends HTMLElement {
       this.loadRecipes();
       this.loadPlans();
       this.loadBought();
+      this.loadCookAgain();
       this.loadSettings();
       this._handleViewParam();
       this._subscribeScans();
@@ -470,7 +471,11 @@ export class LarderDashboard extends HTMLElement {
     if (view === "stats") this.loadStats();
     if (view === "stock") this.loadStock();
     if (view === "start" || view === "recipes") this.loadPlans();
-    if (view === "start") this.loadBought();
+    if (view === "start") {
+      this.loadBought();
+      this.loadCookAgain();
+    }
+    if (view === "stats") this.loadReport();
     const { soon, ...rest } = filter || {};
     this._filter = { area: null, category: null, state: soon ? "soon" : null, problem: null, ...rest };
     this._openRecipe = null;
@@ -592,6 +597,8 @@ export class LarderDashboard extends HTMLElement {
       this._areaEdit,
       this._plans,
       this._bought,
+      this._again,
+      this._view === "stats" ? this._report : null,
       this._view === "stats" ? [this._stats, this._statsDays] : null,
       this._view === "stock" ? this._stock : null,
       this._view === "areas" ? this._areaSig() : null,
@@ -1704,6 +1711,8 @@ export class LarderDashboard extends HTMLElement {
     }
     const bought = this._boughtBox();
     if (bought) frag.append(bought);
+    const again = this._againBox();
+    if (again) frag.append(again);
     const thaw = this._thawBox(t);
     if (thaw) frag.append(thaw);
     const planned = this._plannedBox(t, false);
@@ -2319,6 +2328,8 @@ export class LarderDashboard extends HTMLElement {
       el("span", "grow"),
     );
     frag.append(bar);
+    const report = this._reportBox();
+    if (report) frag.append(report);
     const st = this._stats;
     if (!st) {
       this._main.replaceChildren(frag);

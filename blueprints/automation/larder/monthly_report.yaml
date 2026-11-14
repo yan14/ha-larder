@@ -1,0 +1,90 @@
+blueprint:
+  name: Larder – monthly report
+  description: >
+    Once a month (on the chosen day, for the previous month): containers filled and emptied, eaten and
+    thrown away, the share thrown away compared with the month before and what was thrown away most.
+    As a push notification and optionally read out loud. Nothing is sent for a month without activity.
+    Monatsbericht: einmal im Monat für den Vormonat, als Push und optional als Sprachausgabe.
+  domain: automation
+  source_url: https://github.com/yan14/ha-larder/blob/main/blueprints/automation/larder/monthly_report.yaml
+  input:
+    notify_action:
+      name: Push notification
+      description: >
+        Notify action(s) for the push message, for example notify.mobile_app_your_iphone or a
+        notify group. Several are separated by commas. Leave empty for voice only.
+      default: ""
+      selector:
+        text:
+    voice_action:
+      name: Voice output (optional)
+      description: >
+        Notify action(s) that read the report out loud, for example notify.alexa_media_kitchen.
+        Several are separated by commas.
+      default: ""
+      selector:
+        text:
+    voice_data:
+      name: Voice options
+      description: Extra data for the voice action, e.g. type announce for Alexa Media Player.
+      default: {}
+      selector:
+        object:
+    day:
+      name: Day of the month
+      description: The report for the previous month is sent on this day.
+      default: 1
+      selector:
+        number:
+          min: 1
+          max: 28
+          mode: box
+    send_time:
+      name: Time
+      default: "09:00:00"
+      selector:
+        time:
+
+mode: single
+max_exceeded: silent
+
+variables:
+  notify_action: !input notify_action
+  voice_action: !input voice_action
+  voice_data: !input voice_data
+  day: !input day
+  push_targets: "{{ (notify_action or '') | string | lower | regex_findall('[a-z0-9_]+[.][a-z0-9_]+') }}"
+  voice_targets: "{{ (voice_action or '') | string | lower | regex_findall('[a-z0-9_]+[.][a-z0-9_]+') }}"
+
+triggers:
+  - trigger: time
+    at: !input send_time
+
+conditions:
+  - condition: template
+    value_template: "{{ now().day == day | int(1) }}"
+
+actions:
+  - action: larder.get_monthly_report
+    response_variable: report
+  - condition: template
+    value_template: "{{ not report.empty }}"
+  - repeat:
+      for_each: "{{ push_targets }}"
+      sequence:
+        - action: "{{ repeat.item }}"
+          data:
+            title: "{{ report.title }}"
+            message: "{{ report.summary }}"
+            data:
+              url: /larder?view=stats
+              clickAction: /larder?view=stats
+          continue_on_error: true
+  - repeat:
+      for_each: "{{ voice_targets }}"
+      sequence:
+        - action: "{{ repeat.item }}"
+          data:
+            message: "{{ report.speech }}"
+            data: "{{ voice_data }}"
+          continue_on_error: true

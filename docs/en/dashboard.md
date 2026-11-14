@@ -77,6 +77,8 @@ area: kitchen          # optional, area ID
 
 <p align="center"><img src="../images/dashboard-stats-en.png" width="250" alt="Statistics"></p>
 
+At the top: the **report of the previous month** (see [Monthly report](kitchen.md#monthly-report)).
+
 **⋮ → 📊 Statistics** in the dashboard shows, for the last 30 or 90 days, a year or everything:
 
 - **In stock now**: filled, empty, expiring soon, expired (and filled without a date).

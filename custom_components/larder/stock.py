@@ -40,6 +40,10 @@ STORAGE_VERSION = 1
 MAX_MIN = 999
 TRACK_DAYS = 60  # so lange wartet Larder darauf, dass ein Eintrag auf der Einkaufsliste abgehakt wird
 MAX_BOUGHT = 30
+AGAIN_DAYS = 90  # "oft gegessen": in den letzten so vielen Tagen
+AGAIN_MIN = 3  # mindestens so oft
+AGAIN_SNOOZE = 30  # "✕" blendet einen Vorschlag so viele Tage aus
+AGAIN_MAX = 3
 
 
 def product_key(content: str | None) -> str:
@@ -56,6 +60,7 @@ class Stock:
         # von Larder auf die Einkaufsliste gesetzt (Eintrag → Inhalt, Produktdaten, Ort) und schon abgehakt
         self.tracked: dict[str, dict[str, Any]] = {}
         self.bought: list[dict[str, Any]] = []
+        self.snoozed: dict[str, str] = {}  # Produkt → bis wann "Mal wieder …?" nicht vorgeschlagen wird
         self._unsub = None
 
     async def async_load(self) -> None:
@@ -63,9 +68,16 @@ class Stock:
         self.minimums = {k: v for k, v in (data.get("minimums") or {}).items() if isinstance(v, dict)}
         self.tracked = {k: v for k, v in (data.get("tracked") or {}).items() if isinstance(v, dict)}
         self.bought = [b for b in data.get("bought") or [] if isinstance(b, dict)]
+        self.snoozed = {str(k): str(v) for k, v in (data.get("snoozed") or {}).items()}
 
     def _data(self) -> dict[str, Any]:
-        return {"minimums": self.minimums, "tracked": self.tracked, "bought": self.bought}
+        return {"minimums": self.minimums, "tracked": self.tracked, "bought": self.bought, "snoozed": self.snoozed}
+
+    def snooze(self, content: str) -> None:
+        self.snoozed[product_key(content)] = (dt_util.now().date() + timedelta(days=AGAIN_SNOOZE)).isoformat()
+        today = dt_util.now().date().isoformat()
+        self.snoozed = {k: v for k, v in self.snoozed.items() if v > today}
+        self._save()
 
     def _save(self) -> None:
         self._store.async_delay_save(self._data, 1)
@@ -358,6 +370,58 @@ async def async_move_packs(
     return {"moved": count, "merged": False, "device_id": created[0]["device_id"]}
 
 
+# ---------- Mal wieder …? ----------
+
+
+def build_cook_again(
+    records: list[dict[str, Any]], present: set[str], snoozed: dict[str, str], today: date | None = None
+) -> list[dict[str, Any]]:
+    """Oft gegessen (mind. AGAIN_MIN× in AGAIN_DAYS Tagen), aber gerade in keiner Dose und keiner Packung."""
+    from .shelf_life import split_items  # noqa: PLC0415
+
+    today = today or dt_util.now().date()
+    since = today - timedelta(days=AGAIN_DAYS)
+    counts: dict[str, dict[str, Any]] = {}
+    for record in records:
+        if record.get("outcome") != "eaten":
+            continue
+        parsed = dt_util.parse_datetime(record.get("emptied") or "")
+        day = dt_util.as_local(parsed).date() if parsed else None
+        if day is None or day <= since:
+            continue
+        for part in split_items(record.get("content") or ""):
+            key = product_key(part)
+            info = counts.setdefault(key, {"content": part, "count": 0, "last": day})
+            info["count"] += 1
+            info["last"] = max(info["last"], day)
+    out = [
+        {"key": k, "content": v["content"], "count": v["count"], "last": v["last"].isoformat()}
+        for k, v in counts.items()
+        if v["count"] >= AGAIN_MIN and k not in present and snoozed.get(k, "") <= today.isoformat()
+    ]
+    out.sort(key=lambda s: (-s["count"], s["last"]))
+    return out[:AGAIN_MAX]
+
+
+def present_products(hass: HomeAssistant) -> set[str]:
+    from .expiry import collect_expiring  # noqa: PLC0415
+    from .shelf_life import split_items  # noqa: PLC0415
+
+    keys: set[str] = set()
+    for item in collect_expiring(hass, days=None, include_expired=True, include_undated=True):
+        for part in split_items(item.get("content") or ""):
+            keys.add(product_key(part))
+    return keys
+
+
+async def async_cook_again(hass: HomeAssistant) -> list[dict[str, Any]]:
+    from .history import async_get_history  # noqa: PLC0415
+
+    stock = await async_get_stock(hass)
+    history = await async_get_history(hass)
+    return build_cook_again(history.records, present_products(hass), stock.snoozed)
+
+
 # ---------- Strichcode ----------
 
 
@@ -448,6 +512,39 @@ async def ws_bought_dismiss(hass: HomeAssistant, connection: websocket_api.Activ
     connection.send_result(msg["id"], {"items": list(reversed(stock.bought))})
 
 
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/cook_again"})
+@websocket_api.async_response
+async def ws_cook_again(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    estimator = await async_get_estimator(hass)
+    connection.send_result(
+        msg["id"], {"items": await async_cook_again(hass), "shopping_list": bool(estimator.todo_entity)}
+    )
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/cook_again_action",
+        vol.Required("content"): vol.All(str, vol.Length(min=1, max=255)),
+        vol.Required("action"): vol.In(("shop", "dismiss")),
+    }
+)
+@websocket_api.async_response
+async def ws_cook_again_action(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """Vorschlag auf die Einkaufsliste setzen oder ausblenden (beides blendet ihn für eine Weile aus)."""
+    stock = await async_get_stock(hass)
+    added = False
+    if msg["action"] == "shop":
+        estimator = await async_get_estimator(hass)
+        if not estimator.todo_entity:
+            connection.send_error(msg["id"], "no_shopping_list", "no shopping list chosen in the settings")
+            return
+        added = await async_add_to_shopping_list(hass, estimator.todo_entity, msg["content"])
+    stock.snooze(msg["content"])
+    connection.send_result(msg["id"], {"added": added, "items": await async_cook_again(hass)})
+
+
 @websocket_api.websocket_command(
     {
         vol.Required("type"): f"{DOMAIN}/pack_move",
@@ -481,4 +578,6 @@ def async_setup_stock_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_stock_code)
     websocket_api.async_register_command(hass, ws_bought)
     websocket_api.async_register_command(hass, ws_bought_dismiss)
+    websocket_api.async_register_command(hass, ws_cook_again)
+    websocket_api.async_register_command(hass, ws_cook_again_action)
     domain_data[DATA_WS] = True

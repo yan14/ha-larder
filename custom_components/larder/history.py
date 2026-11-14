@@ -88,6 +88,7 @@ def build_record(
     compartment: str | None = None,
     product: dict[str, Any] | None = None,
     kind: str | None = None,
+    vacuum: bool | None = None,
 ) -> dict[str, Any]:
     now = dt_util.now()
     filled_day: date | None = None
@@ -115,6 +116,7 @@ def build_record(
         "outcome": outcome if outcome in OUTCOMES else None,
         **({"product": product} if product else {}),
         **({"kind": kind} if kind and kind != "container" else {}),
+        **({"vacuum": vacuum} if vacuum is not None else {}),
     }
 
 

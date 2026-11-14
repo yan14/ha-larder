@@ -77,6 +77,8 @@ area: kueche           # optional, Bereichs-ID
 
 <p align="center"><img src="../images/dashboard-stats-de.png" width="250" alt="Statistik"></p>
 
+Ganz oben steht der **Bericht des Vormonats** (siehe [Monatsbericht](kitchen.md#monatsbericht)).
+
 **⋮ → 📊 Statistik** im Dashboard zeigt für die letzten 30 oder 90 Tage, ein Jahr oder alles:
 
 - **Jetzt im Vorrat**: gefüllt, leer, läuft bald ab, abgelaufen (und gefüllt ohne MHD).

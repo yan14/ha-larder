@@ -1832,6 +1832,11 @@ class LarderPanel extends HTMLElement {
     try {
       this._est = await hass.callWS({ type: `${DOMAIN}/estimates` });
       this.showError("");
+      try {
+        this._estSuggestions = ((await hass.callWS({ type: `${DOMAIN}/estimate_suggestions` })) || {}).suggestions || [];
+      } catch {
+        this._estSuggestions = [];
+      }
     } catch (err) {
       this._est = this._est || { entries: [], mode: "table" };
       this.showError(strings(hass).estLoadFailed);
@@ -1868,6 +1873,44 @@ class LarderPanel extends HTMLElement {
     const frag = document.createDocumentFragment();
     frag.append(el("h2", "", t.estTitle), el("p", "intro", t.estIntro));
     if (this._est.mode === "off") frag.append(el("p", "intro", t.estOff));
+
+    // --- Vorschläge aus dem Verlauf (nie still übernommen) ---
+    const suggestions = this._estSuggestions || [];
+    if (suggestions.length) {
+      const box = el("section", "est suggest");
+      box.append(el("h3", "", t.estSuggestTitle), el("p", "intro", t.estSuggestIntro));
+      for (const s of suggestions) {
+        const line = el("div", "sugg");
+        line.dataset.key = s.key;
+        const what = el("div", "what");
+        what.append(
+          el("span", "name", `${s.content}: ${s.days} → ${s.suggested} ${t.estDaysShort}`),
+          el("span", "meta", `${s.area} · ${s.vacuum ? t.estVacuum : t.estNoVacuum}`),
+          el("span", "meta", s.direction === "shorter" ? t.estSuggestShorter(s.count) : t.estSuggestLonger(s.count)),
+        );
+        const btns = el("div", "btns");
+        const act = (cls, text, action) => {
+          const b = el("button", cls, text);
+          b.type = "button";
+          b.dataset.role = `suggestion-${action}`;
+          b.addEventListener("click", async () => {
+            try {
+              const res = await hass.callWS({ type: `${DOMAIN}/estimate_suggestion`, key: s.key, action });
+              this._estSuggestions = res.suggestions || [];
+              if (res.entries) this._est = { ...this._est, entries: res.entries };
+            } catch (err) {
+              this.showError((err && err.message) || t.estFailed);
+            }
+            this._renderEstimates();
+          });
+          return b;
+        };
+        btns.append(act("del", t.estSuggestIgnore, "ignore"), act("save", t.estSuggestAccept, "accept"));
+        line.append(what, btns);
+        box.append(line);
+      }
+      frag.append(box);
+    }
 
     // --- eigenen Eintrag hinzufügen ---
     const add = el("section", "est new");

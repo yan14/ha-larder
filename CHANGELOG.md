@@ -3,7 +3,13 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
-## 3.2.1
+## 3.3.0
+
+- **The estimate learns from the history:** remembered estimates get suggestions in the list (⋮ → Remembered estimates): shorter when something was thrown away before its best-before date at least twice, longer when it was eaten well after the date at least twice and never thrown away early. **Accept** or **Ignore**; nothing changes by itself.
+- **Monthly report:** new blueprint and service `larder.get_monthly_report` – filled, emptied, eaten, thrown away, share thrown away compared with the previous month and what was thrown away most, as push and speech. Also at the top of the statistics.
+- **Time for … again?** The start page suggests what was eaten often (3× in 90 days) but is in no container or pack right now; **🛒 Shopping list** or hide for 30 days.
+- The history now records whether a container was vacuum-sealed (for the suggestions).
+
 
 - **Compartment suggestions:** the compartments already used in the chosen area appear as chips below every compartment field (adding bags and packs, moving, card, fill dialog), most used first; typing filters them, and compartments entered before are remembered on the device.
 

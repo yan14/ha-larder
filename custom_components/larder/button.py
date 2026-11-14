@@ -96,6 +96,7 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
             compartment=value("text", "compartment"),
             product=self._product_data(),
             kind=self._kind,
+            vacuum=None if (vac := self._sibling_state("switch", "vacuum")) is None else vac.state == STATE_ON,
         )
 
     def _product_data(self) -> dict | None:
