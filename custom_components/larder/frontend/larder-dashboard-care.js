@@ -50,7 +50,7 @@ const TEXT = {
     placeTagLinked: "📡 NFC-Tag verknüpft",
     placeTagHint: "Halte das Handy an einen schon beschriebenen NFC-Tag, um ihn mit diesem Fach zu verknüpfen.",
     placeTagWrite: "✍ Sticker beschreiben",
-    placeTagHold: "Halte das Handy jetzt an den leeren Sticker.",
+    placeTagHold: "Verknüpft. Halte das Handy jetzt an den leeren Sticker, damit die App ihn beschreibt.",
     placeTagDone: "NFC-Tag mit dem Fach verknüpft.",
     placeTagUnlink: "Tag lösen",
     placeTagFailed: "Verknüpfen fehlgeschlagen.",
@@ -105,7 +105,7 @@ const TEXT = {
     placeTagLinked: "📡 NFC tag linked",
     placeTagHint: "Hold your phone to an NFC tag that is already written to link it to this compartment.",
     placeTagWrite: "✍ Write sticker",
-    placeTagHold: "Now hold your phone to the blank sticker.",
+    placeTagHold: "Linked. Now hold your phone to the blank sticker so the app writes it.",
     placeTagDone: "NFC tag linked to the compartment.",
     placeTagUnlink: "Unlink tag",
     placeTagFailed: "Linking failed.",
@@ -300,6 +300,7 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, DOMAIN, attachC
       unlink.dataset.role = "place-unlink";
       tagRow.append(unlink);
     } else {
+      // vorhandenen (schon beschriebenen) Tag scannen
       const tag = button("", t.placeTag, () => {
         status.textContent = t.placeTagHint;
         classic.cancelCapture("place");
@@ -318,25 +319,27 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, DOMAIN, attachC
           "place",
           null,
         );
-        const ext = hass.auth && hass.auth.external;
-        if (ext && typeof ext.fireMessage === "function" && ext.config && ext.config.canWriteTag && !tagRow.querySelector('[data-role="place-write"]')) {
-          const write = button("", t.placeTagWrite, async () => {
-            const tagId = classic._newTagId();
-            try {
-              await link(tagId);
-              await classic._writeNewTag(tagId, this._placeName(areaId, compartment));
-            } catch (err) {
-              status.textContent = (err && err.message) || t.placeTagFailed;
-              return;
-            }
-            status.textContent = t.placeTagHold;
-          });
-          write.dataset.role = "place-write";
-          tagRow.append(write);
-        }
       });
       tag.dataset.role = "place-tag";
       tagRow.append(tag);
+      // leeren Sticker beschreiben: gleich verknüpfen, dann schreibt die App die ID auf den Sticker
+      const ext = hass.auth && hass.auth.external;
+      if (ext && typeof ext.fireMessage === "function" && ext.config && ext.config.canWriteTag) {
+        const write = button("", t.placeTagWrite, async () => {
+          classic.cancelCapture("place");
+          const tagId = classic._newTagId();
+          try {
+            await link(tagId);
+          } catch (err) {
+            status.textContent = (err && err.message) || t.placeTagFailed;
+            return;
+          }
+          await classic._writeNewTag(tagId, this._placeName(areaId, compartment));
+          this.openPlace(areaId, compartment, t.placeTagHold);
+        });
+        write.dataset.role = "place-write";
+        tagRow.append(write);
+      }
     }
     const close = button("cancel", t.close, () => {
       classic.cancelCapture("place");

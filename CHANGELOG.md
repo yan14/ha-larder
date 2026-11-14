@@ -3,6 +3,10 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 3.7.1
+
+- Compartment tag: **Write sticker** now shows right away that the tag is linked (it no longer has to be linked again with *NFC tag*); both buttons are offered directly.
+
 ## 3.7.0
 
 - **Compartment tags:** a compartment (or a whole area) can get its own NFC tag or QR label (**🏷 Compartment tag** in the stocktake). Scanning it opens the compartment: everything there, oldest best-before date first, **−1** for packs, **Open** for containers and bags, and **📋 Stocktake** for exactly this compartment. Notification on the scanning phone, event `larder_compartment_scanned`.

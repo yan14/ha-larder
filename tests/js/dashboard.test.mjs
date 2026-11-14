@@ -2316,3 +2316,43 @@ test("Fach-Etikett und Look-Optionen im PDF-Link", async () => {
   assert.equal(signed[1], "/api/larder/labels.pdf?place=kitchen%7CT%C3%BCr&layout=3x8&skip=0&inverted=1&logo=1");
   dom.window.localStorage.clear();
 });
+
+test("Fach: Sticker beschreiben verknüpft den Tag sofort", async () => {
+  document.body.innerHTML = "";
+  const hass = makeHass(DOSES);
+  const messages = [];
+  hass.auth = { external: { config: { canWriteTag: true }, fireMessage: (m) => messages.push(m) } };
+  let links = [];
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/place_tags`) return { links };
+    if (msg.type === `${D}/place_link`) {
+      hass.wsCalls.push(msg);
+      links = [{ tag_id: msg.tag_id, area_id: msg.area_id, compartment: msg.compartment }];
+      return { links };
+    }
+    if (msg.type === "tag/create") {
+      hass.wsCalls.push(msg);
+      return {};
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await el.openPlace("cellar", "Regal oben");
+  // beide Wege sofort sichtbar
+  assert.ok($(el, '[data-role="place-tag"]'));
+  $(el, '[data-role="place-write"]').click();
+  await flush();
+  await flush();
+  await flush();
+  const link = hass.wsCalls.find((m) => m.type === `${D}/place_link`);
+  assert.equal(link.area_id, "cellar");
+  assert.equal(link.compartment, "Regal oben");
+  assert.equal(hass.wsCalls.find((m) => m.type === "tag/create").tag_id, link.tag_id);
+  assert.deepEqual(messages[0], { type: "tag/write", payload: { name: "Keller · Regal oben", tag: link.tag_id } });
+  const form = $(el, "form.dialog");
+  assert.match(form.textContent, /NFC-Tag verknüpft/);
+  assert.match(form.querySelector('[data-role="place-status"]').textContent, /Verknüpft\. Halte das Handy/);
+  assert.equal(form.querySelector('[data-role="place-write"]'), null);
+});

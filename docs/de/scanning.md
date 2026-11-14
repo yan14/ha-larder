@@ -62,7 +62,7 @@ Für eigene Automationen löst ein verknüpfter Scan das Ereignis `larder_dose_s
 
 Ein **Fach** (Bereich mit Fach, z. B. *Keller · Regal oben*, oder ein ganzer Bereich) kann einen eigenen NFC-Tag oder ein QR-Etikett bekommen. Scannen öffnet das Fach: alles, was dort liegt, das älteste MHD zuerst, mit **−1** bei Packungen und **Öffnen** bei Dosen und Beuteln, dazu **📋 Inventur** genau für dieses Fach.
 
-- **Einrichten:** In der [Inventur](containers.md#inventur) Bereich und Fach wählen und **🏷 Fach-Tag** drücken. Dort verknüpft **📡 NFC-Tag** einen schon beschriebenen Tag (Handy daran halten) oder **✍ Sticker beschreiben** beschreibt einen leeren; **🖨 Etikett** druckt ein QR-Etikett für das Fach. Das kann jeder im Haushalt.
+- **Einrichten:** In der [Inventur](containers.md#inventur) Bereich und Fach wählen und **🏷 Fach-Tag** drücken. Dort verknüpft **📡 NFC-Tag** einen schon beschriebenen Tag (Handy daran halten) oder **✍ Sticker beschreiben** verknüpft sofort und lässt die App einen leeren Sticker beschreiben; **🖨 Etikett** druckt ein QR-Etikett für das Fach. Das kann jeder im Haushalt.
 - **Scannen:** Ist das Dashboard offen, zeigt es das Fach sofort; sonst bekommt das scannende Handy eine Benachrichtigung, die es öffnet (Einstellung *NFC: Handy benachrichtigen*). Ein QR-Etikett scannst du mit **📷** im Dashboard oder mit der Handykamera.
 - Das Ereignis `larder_compartment_scanned` (`area_id`, `compartment`, `name`, `items`, `source`) ist für eigene Automationen.
 - Der Tag hängt am Namen des Fachs: Benennst du das Fach der Einträge um, verknüpfe den Tag neu.
