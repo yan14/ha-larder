@@ -1836,7 +1836,8 @@ test("Strichcode: zeigt alle Orte, ältestes MHD zuerst, −1 am gewählten Ort;
   const base = hass.callWS;
   hass.callWS = async (msg) => {
     if (msg.type === `${D}/stock_code`) return answers[msg.code];
-    if (msg.type === `${D}/resolve_code`) return { valid: false };
+    // eine EAN ist für Larder formal auch eine gültige Dosen-ID (nur unbekannt)
+    if (msg.type === `${D}/resolve_code`) return { valid: true, cc: msg.code, device_id: null, name: null, retired: null };
     if (msg.type === `${D}/empty`) {
       hass.wsCalls.push(msg);
       return {};
@@ -1845,8 +1846,11 @@ test("Strichcode: zeigt alle Orte, ältestes MHD zuerst, −1 am gewählten Ort;
   };
   const el = mount(hass);
   await go(el, "containers");
-  // EAN über den normalen 📷-Scan
+  let added = 0;
+  el._classic.openAddDialog = () => added++;
+  // EAN über den normalen 📷-Scan: Vorrat statt "Dose hinzufügen"
   assert.equal(await el._resolveSingle("4000000000001"), true);
+  assert.equal(added, 0);
   const form = $(el, "form.dialog");
   assert.equal(form.querySelector("h2").textContent, "Ketchup");
   assert.match(form.querySelector("p.lead").textContent, /Ältestes zuerst: Küche · Tür/);

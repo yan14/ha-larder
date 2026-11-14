@@ -3,6 +3,10 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 3.3.1
+
+- Fix: scanning the barcode of a pack with 📷 offered to add a new container instead of showing the pack in the stock.
+
 ## 3.3.0
 
 - **The estimate learns from the history:** remembered estimates get suggestions in the list (⋮ → Remembered estimates): shorter when something was thrown away before its best-before date at least twice, longer when it was eaten well after the date at least twice and never thrown away early. **Accept** or **Ignore**; nothing changes by itself.

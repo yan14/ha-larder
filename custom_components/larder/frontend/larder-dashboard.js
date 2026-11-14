@@ -909,14 +909,14 @@ export class LarderDashboard extends HTMLElement {
     } catch {
       return false;
     }
-    if (!res || !res.valid) {
-      // Strichcode gekaufter Ware (EAN): Packung aus dem Vorrat entnehmen
-      if (/^\d{8,14}$/.test(String(code).trim())) {
-        await this.takeByCode(String(code).trim());
-        return true;
-      }
-      return false;
+    // Strichcode gekaufter Ware (EAN, 8–14 Ziffern): Packung im Vorrat suchen statt "Dose hinzufügen".
+    // Eine EAN sieht für Larder auch wie eine gültige Dosen-ID aus, daher zählt nur eine bekannte Dose.
+    const ean = /^\d{8,14}$/.test(String(code).trim());
+    if (ean && !(res && (res.device_id || res.retired))) {
+      await this.takeByCode(String(code).trim());
+      return true;
     }
+    if (!res || !res.valid) return false;
     this.setView("containers");
     if (res.retired) {
       this.showNotice(res.retired); // Etikett eines schon geleerten Beutels
