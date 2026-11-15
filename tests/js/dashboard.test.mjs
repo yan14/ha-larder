@@ -2483,3 +2483,58 @@ test("Wochenplan vorschlagen: Tage anzeigen, entfernen, übernehmen", async () =
   ]);
   assert.match($(el, ".notice").textContent, /2 Gerichte im Wochenplan/);
 });
+
+// ---------- Block 20: Bugfixes ----------
+
+test("Strichcode: umbenannte Packung behält die EAN; nicht im Vorrat → mit Produkt verknüpfen", async () => {
+  document.body.innerHTML = "";
+  const hass = makeHass(DOSES);
+  let linked = false;
+  const created = [];
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/stock_code`) {
+      return linked
+        ? { code: msg.code, name: "Curryketchup", product: null, entries: [{ device_id: "d1", area: "Küche", compartment: "", count: 1, best_before: null }] }
+        : { code: msg.code, name: "Hela Curry Gewürz Ketchup", product: { ean: msg.code, brand: "Hela" }, entries: [] };
+    }
+    if (msg.type === `${D}/stock`) return { products: [{ key: "curryketchup", name: "Curryketchup", brand: "Hela", count: 2 }, { key: "x", name: "Leer", count: 0 }] };
+    if (msg.type === `${D}/stock_code_link`) {
+      hass.wsCalls.push(msg);
+      linked = true;
+      return { linked: 1 };
+    }
+    if (msg.type === `${D}/create_items`) {
+      created.push(msg);
+      return { items: [] };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  // Als Packung anlegen und umbenennen: Produktdaten (EAN) bleiben
+  await el.takeByCode("4000000000017");
+  const form = $(el, "form.dialog");
+  form.querySelector('[data-role="code-add"]').click();
+  const content = form.querySelector('[data-i="content"]');
+  content.value = "Curryketchup";
+  content.dispatchEvent(new Event("input"));
+  form.dispatchEvent(new Event("submit", { cancelable: true }));
+  await flush();
+  await flush();
+  assert.equal(created[0].items[0].content, "Curryketchup");
+  assert.equal(created[0].items[0].product.ean, "4000000000017");
+  // nicht im Vorrat → verknüpfen
+  await el.takeByCode("4000000000017");
+  form.querySelector('[data-role="code-link"]').click();
+  await flush();
+  await flush();
+  assert.equal(form.querySelector("h2").textContent, "Strichcode zuordnen");
+  assert.deepEqual([...form.querySelectorAll('[data-f="code-product"] option')].map((o) => o.value), ["Curryketchup"]);
+  form.querySelector('[data-role="code-link-save"]').click();
+  await flush();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/stock_code_link`), { type: `${D}/stock_code_link`, code: "4000000000017", content: "Curryketchup" });
+  assert.equal(form.querySelector("h2").textContent, "Curryketchup");
+  assert.match($(el, ".notice").textContent, /Strichcode mit Curryketchup verknüpft/);
+});

@@ -103,3 +103,28 @@ async def test_emptied_container_on_the_list_is_tracked(hass: HomeAssistant, has
     await hass.async_block_till_done()
     assert todo.summaries == ["Basmati"]
     assert hass.data[DOMAIN][DATA_STOCK].tracked["basmati"]["source"] == "emptied"
+
+
+async def test_renamed_pack_is_found_by_barcode_and_old_packs_can_be_linked(hass: HomeAssistant, hass_ws_client, aioclient_mock) -> None:
+    await _setup(hass, "AAAA")
+    aioclient_mock.get(API.format(code="4000000000017"), json={"status": 1, "product": {"product_name": "Hela Curry Gewürz Ketchup"}})
+    # mit EAN angelegt, aber umbenannt
+    made = (await _packs(hass, hass_ws_client, [{"content": "Curryketchup", "quantity": 2, "unit": "pieces", "product": {"ean": "4000000000017"}}]))[0]
+    res = await _ws(hass, hass_ws_client, type="larder/stock_code", code="4000000000017")
+    assert [e["device_id"] for e in res["result"]["entries"]] == [made["device_id"]] and res["result"]["name"] == "Curryketchup"
+    # alle weg: der eigene Name ist gemerkt (nicht der von Open Food Facts)
+    await _ws(hass, hass_ws_client, type="larder/empty", device_id=made["device_id"], outcome="eaten")
+    await hass.async_block_till_done()
+    res = await _ws(hass, hass_ws_client, type="larder/stock_code", code="4000000000017")
+    assert res["result"]["entries"] == [] and res["result"]["name"] == "Curryketchup"
+
+    # ältere Packung ohne EAN: über "Mit Produkt im Vorrat verknüpfen"
+    aioclient_mock.get(API.format(code="5000000000021"), json={"status": 1, "product": {"product_name": "Senf mittelscharf"}})
+    old = (await _packs(hass, hass_ws_client, [{"content": "Senf", "quantity": 1, "unit": "pieces"}]))[0]
+    res = await _ws(hass, hass_ws_client, type="larder/stock_code", code="5000000000021")
+    assert res["result"]["entries"] == []
+    res = await _ws(hass, hass_ws_client, type="larder/stock_code_link", code="5000000000021", content="senf")
+    assert res["result"]["linked"] == 1 and [e["device_id"] for e in res["result"]["entries"]] == [old["device_id"]]
+    assert hass.states.get(_eid(hass, "text", old["cc"])).attributes["ean"] == "5000000000021"
+    res = await _ws(hass, hass_ws_client, type="larder/stock_code_link", code="12", content="Senf")
+    assert not res["success"]

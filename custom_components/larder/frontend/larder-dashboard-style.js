@@ -1,20 +1,23 @@
 /** Larder-Dashboard: Stylesheet (wird in das Shadow DOM eingefügt). */
 export const STYLE = `
-  :host { position: relative; display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; background: var(--primary-background-color);
+  /* Feste Höhe: nur main scrollt, Kopfzeile und Navigation bleiben stehen (iOS: kein Mitfedern der Leiste) */
+  :host { position: relative; display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; background: var(--primary-background-color);
     color: var(--primary-text-color); font-family: var(--paper-font-body1_-_font-family, Roboto, sans-serif); }
   [hidden] { display: none !important; }
   header { display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 56px; box-sizing: border-box;
     background: var(--app-header-background-color, var(--primary-color)); color: var(--app-header-text-color, #fff);
-    position: sticky; top: 0; z-index: 2; }
+    flex: 0 0 auto; z-index: 2; }
   header h1 { flex: 1; font-size: 20px; font-weight: 400; margin: 0; }
   header button { background: none; border: 0; color: inherit; font-size: 22px; cursor: pointer; padding: 4px 8px; }
   #menu { display: none; }
   :host([narrow]) #menu { display: inline-block; }
-  main { flex: 1; padding: 12px 16px 16px; box-sizing: border-box; display: flex; flex-direction: column; }
+  main { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+    padding: 12px 16px 16px; box-sizing: border-box; display: flex; flex-direction: column; }
   main > * { flex: 0 0 auto; }
   main > .selbar { margin-top: auto; }
-  :host([classic-view]) main { flex: none; padding-bottom: 0; }
-  :host([classic-view]) larder-panel-embedded { flex: 1; }
+  /* Karten-Ansicht: oben die Leiste (main), darunter scrollt die eingebettete Ansicht */
+  :host([classic-view]) main { flex: 0 0 auto; padding-bottom: 0; overflow: visible; }
+  larder-panel-embedded { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
   .menu { position: absolute; top: 52px; right: 8px; z-index: 5; display: flex; flex-direction: column; min-width: 220px;
     background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 12px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, .2); overflow: hidden; }
@@ -77,7 +80,7 @@ export const STYLE = `
   .tile.selected, .row.selected { outline: 3px solid var(--primary-color); outline-offset: -3px; opacity: 1; }
   .tile .check, .row .check { position: absolute; top: 6px; right: 8px; font-size: 16px; color: var(--primary-color); }
   .row { position: relative; }
-  .selbar { position: sticky; bottom: calc(57px + env(safe-area-inset-bottom, 0px)); z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  .selbar { position: sticky; bottom: -16px; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
     margin: 12px -16px -16px; padding: 10px 16px; background: var(--card-background-color, #fff); border-top: 1px solid var(--divider-color); }
   .selbar .count { flex: 1; font-size: 14px; color: var(--secondary-text-color); min-width: 90px; }
   .selbar button { font: inherit; font-size: 14px; border-radius: 18px; padding: 7px 12px; cursor: pointer;
@@ -119,7 +122,7 @@ export const STYLE = `
     background: var(--card-background-color, #fff); color: var(--primary-text-color); border: 1px solid var(--divider-color); }
   button.primary { background: var(--primary-color); color: var(--text-primary-color, #fff); border: 0; text-align: center; }
   button:disabled { opacity: .5; cursor: default; }
-  nav { position: sticky; bottom: 0; z-index: 2; display: flex; background: var(--card-background-color, #fff);
+  nav { flex: 0 0 auto; z-index: 2; display: flex; background: var(--card-background-color, #fff);
     border-top: 1px solid var(--divider-color); padding-bottom: env(safe-area-inset-bottom, 0); }
   nav button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px 7px; font: inherit; font-size: 11px;
     background: none; border: 0; color: var(--secondary-text-color); cursor: pointer; min-width: 0; }

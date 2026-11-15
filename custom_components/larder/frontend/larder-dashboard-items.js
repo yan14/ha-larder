@@ -94,6 +94,13 @@ const TEXT = {
     codeOther: "Hast du gerade eine andere in der Hand? Dann dort −1.",
     codeNone: (name) => `${name || "Dieses Produkt"} ist nicht im Vorrat.`,
     codeAdd: "Als Packung anlegen",
+    codeLink: "🔗 Mit Produkt im Vorrat verknüpfen",
+    codeLinkTitle: "Strichcode zuordnen",
+    codeLinkHint: (code) => `Zu welchem Produkt im Vorrat gehört ${code}? Larder merkt sich den Strichcode, der nächste Scan findet es.`,
+    codeLinkNone: "Im Vorrat ist gerade kein Produkt.",
+    codeLinkSave: "Verknüpfen",
+    codeLinkFailed: "Verknüpfen fehlgeschlagen.",
+    codeLinked: (name) => `Strichcode mit ${name} verknüpft.`,
     codeUnknown: (code) => `Zu ${code} wurde nichts gefunden.`,
     codeTake: "−1",
     codeTaken: (place) => `Eine Packung aus ${place} entnommen.`,
@@ -208,6 +215,13 @@ const TEXT = {
     codeOther: "Holding another one right now? Take it from there with −1.",
     codeNone: (name) => `${name || "This product"} is not in stock.`,
     codeAdd: "Add as a pack",
+    codeLink: "🔗 Link to a product in stock",
+    codeLinkTitle: "Assign barcode",
+    codeLinkHint: (code) => `Which product in stock does ${code} belong to? Larder remembers the barcode, the next scan finds it.`,
+    codeLinkNone: "There is no product in stock right now.",
+    codeLinkSave: "Link",
+    codeLinkFailed: "Linking failed.",
+    codeLinked: (name) => `Barcode linked to ${name}.`,
     codeUnknown: (code) => `Nothing found for ${code}.`,
     codeTake: "−1",
     codeTaken: (place) => `Took one pack from ${place}.`,
@@ -309,15 +323,18 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
     const close = button("cancel", t.cancel, () => this._closeDialog());
     if (!res || !res.entries || !res.entries.length) {
       const parts = [el("h2", "", (res && res.name) || t.codeTitle)];
+      const digits = String((res && res.code) || code).replace(/\D/g, "");
+      const link = digits.length >= 8 ? button("", t.codeLink, () => this._linkCode(digits)) : null;
+      if (link) link.dataset.role = "code-link";
       if (res && res.name) {
         parts.push(el("p", "hint", t.codeNone(res.name)));
         const add = button("submit", t.codeAdd, () =>
           this.openItemsDialog("pack", { rows: [{ content: res.name, quantity: 1, product: res.product }] }),
         );
         add.dataset.role = "code-add";
-        parts.push(buttonsRow(close, add));
+        parts.push(buttonsRow(...[close, link, add].filter(Boolean)));
       } else {
-        parts.push(el("p", "hint", t.codeUnknown((res && res.code) || code)), buttonsRow(close));
+        parts.push(el("p", "hint", t.codeUnknown((res && res.code) || code)), buttonsRow(...[close, link].filter(Boolean)));
       }
       form.replaceChildren(...parts);
       this._submit = null;
@@ -350,6 +367,49 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
     this._submit = null;
     this._overlay.hidden = false;
     return res;
+  };
+
+  /** Strichcode einem Produkt im Vorrat zuordnen (Packung ohne EAN, z. B. umbenannt angelegt). */
+  proto._linkCode = async function _linkCode(code) {
+    const hass = this._hass;
+    const t = itemTexts(hass);
+    let products = [];
+    try {
+      products = (((await hass.callWS({ type: `${DOMAIN}/stock` })) || {}).products || []).filter((p) => p.count > 0);
+    } catch {
+      products = [];
+    }
+    const select = el("select");
+    select.dataset.f = "code-product";
+    for (const p of products) {
+      const o = el("option", "", [p.name, p.brand].filter(Boolean).join(" · "));
+      o.value = p.name;
+      select.append(o);
+    }
+    const error = el("div", "error");
+    error.setAttribute("role", "alert");
+    const save = button("submit", t.codeLinkSave, async () => {
+      if (!select.value) return;
+      try {
+        await hass.callWS({ type: `${DOMAIN}/stock_code_link`, code, content: select.value });
+      } catch {
+        error.textContent = t.codeLinkFailed;
+        return;
+      }
+      this.showNotice(t.codeLinked(select.value));
+      this.takeByCode(code);
+    });
+    save.dataset.role = "code-link-save";
+    save.disabled = !products.length;
+    this._form.replaceChildren(
+      el("h2", "", t.codeLinkTitle),
+      el("p", "hint", products.length ? t.codeLinkHint(code) : t.codeLinkNone),
+      select,
+      error,
+      buttonsRow(button("cancel", t.cancel, () => this._closeDialog()), save),
+    );
+    this._submit = null;
+    this._overlay.hidden = false;
   };
 
   /** Eine Packung entnehmen: Anzahl −1, die letzte leert den Eintrag (als gegessen). */
@@ -922,9 +982,9 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
       const first = el("div", "itemmain");
       first.append(content, remove);
       row.append(first, second);
+      // gescannte Produktdaten (EAN, Marke, Nährwerte) bleiben, auch wenn der Name geändert wird:
+      // so findet ein späterer Scan desselben Strichcodes die Packung wieder
       row._product = values.product || null;
-      // von Hand geänderter Inhalt: die gescannten Produktdaten gehören nicht mehr dazu
-      content.addEventListener("input", () => (row._product = null));
       rows.append(row);
       return row;
     };

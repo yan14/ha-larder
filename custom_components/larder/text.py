@@ -139,6 +139,7 @@ class LarderContent(TextEntity, LarderResettable):
             self._product = clean_product({k: v for k, v in merged.items() if v not in (None, "")})
         self.async_write_ha_state()
         stock = self.hass.data.get(DOMAIN, {}).get(DATA_STOCK)
+        self._remember_ean(stock)
         if stock is not None and self._kind == KIND_PACK and self._product.get("price") and self._attr_native_value:
             # Preis für den nächsten Einkauf dieses Produkts merken (Schätzungen aus Open Prices nur, wenn nichts da ist)
             stock.remember_price(self._attr_native_value, self._product["price"], self._product.get("price_source") or "own")
@@ -148,6 +149,12 @@ class LarderContent(TextEntity, LarderResettable):
         self.async_write_ha_state()
         if value.strip():
             (await async_get_estimator(self.hass)).remember_content(value)
+            self._remember_ean(self.hass.data.get(DOMAIN, {}).get(DATA_STOCK))
+
+    def _remember_ean(self, stock) -> None:
+        """Strichcode → eigener Name merken (ein späterer Scan findet das Produkt auch nach dem Umbenennen)."""
+        if stock is not None and self._kind == KIND_PACK and self._product.get("ean") and (self._attr_native_value or "").strip():
+            stock.remember_ean(str(self._product["ean"]), self._attr_native_value)
 
     async def async_reset(self) -> None:
         self._product = {}

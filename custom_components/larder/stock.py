@@ -73,6 +73,7 @@ class Stock:
         self.reorder_notified: list[str] = []  # Produkte, für die "Bald leer" schon gemeldet wurde
         self.recalls_read: list[str] = []  # gelesene Rückrufwarnungen
         self.recalls_sent: list[str] = []  # schon gemeldete Rückrufwarnungen (Ereignis nur einmal)
+        self.ean_names: dict[str, str] = {}  # Strichcode → eigener Name des Produkts
         self._unsub = None
 
     async def async_load(self) -> None:
@@ -87,6 +88,7 @@ class Stock:
         self.reorder_notified = [str(k) for k in data.get("reorder_notified") or []]
         self.recalls_read = [str(k) for k in data.get("recalls_read") or []]
         self.recalls_sent = [str(k) for k in data.get("recalls_sent") or []]
+        self.ean_names = {str(k): str(v) for k, v in (data.get("ean_names") or {}).items()}
 
     def _data(self) -> dict[str, Any]:
         return {
@@ -100,6 +102,7 @@ class Stock:
             "reorder_notified": self.reorder_notified,
             "recalls_read": self.recalls_read,
             "recalls_sent": self.recalls_sent,
+            "ean_names": self.ean_names,
         }
 
     # ----- Verbrauch und Preise -----
@@ -128,6 +131,15 @@ class Stock:
             self.recalls_read = [*self.recalls_read, recall_id][-500:]
             self._save()
             async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
+
+    def remember_ean(self, ean: str, name: str) -> None:
+        digits = "".join(ch for ch in ean if ch.isdigit())
+        name = " ".join(name.split())
+        if len(digits) >= 8 and name and self.ean_names.get(digits) != name:
+            self.ean_names[digits] = name
+            if len(self.ean_names) > 2000:
+                self.ean_names = dict(list(self.ean_names.items())[-2000:])
+            self._save()
 
     def recalls_notified(self) -> list[str]:
         return self.recalls_sent
@@ -723,6 +735,11 @@ async def async_find_by_code(hass: HomeAssistant, code: str) -> dict[str, Any]:
     packs = pack_entries(hass)
     found = [p for p in packs if digits and str(p.get("ean") or "") == digits]
     lookup: dict[str, Any] = {}
+    stock = hass.data.get(DOMAIN, {}).get(DATA_STOCK)
+    own = stock.ean_names.get(digits) if stock is not None and digits else None
+    if not found and own:
+        # schon einmal mit diesem Strichcode angelegt (evtl. umbenannt): über den eigenen Namen
+        found = [p for p in packs if product_key(p["content"]) == product_key(own)]
     if not found:
         lookup = await async_lookup(hass, digits)
         if lookup.get("found"):
@@ -730,7 +747,8 @@ async def async_find_by_code(hass: HomeAssistant, code: str) -> dict[str, Any]:
             found = [p for p in packs if product_key(p["content"]) == key]
     # angebrochene zuerst, dann das früheste MHD
     found.sort(key=lambda p: (not p["opened"], p["best_before"] or "9999", str(p["area"] or "￿").casefold(), p["compartment"].casefold()))
-    name = found[0]["content"] if found else lookup.get("name")
+    name = found[0]["content"] if found else own or lookup.get("name")
+    product = None if found else (lookup.get("product") if lookup.get("found") else None)
     return {
         "code": digits,
         "name": name,
@@ -738,7 +756,7 @@ async def async_find_by_code(hass: HomeAssistant, code: str) -> dict[str, Any]:
             {k: p[k] for k in ("device_id", "area", "compartment", "count", "best_before", "opened")} for p in found
         ],
         # unbekannt im Vorrat: Daten für "als Packung anlegen"
-        "product": None if found else (lookup.get("product") if lookup.get("found") else None),
+        "product": product,
         "error": lookup.get("error"),
     }
 
@@ -796,6 +814,35 @@ async def ws_stock_min(hass: HomeAssistant, connection: websocket_api.ActiveConn
 @websocket_api.async_response
 async def ws_stock_code(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
     connection.send_result(msg["id"], await async_find_by_code(hass, msg["code"]))
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/stock_code_link",
+        vol.Required("code"): str,
+        vol.Required("content"): vol.All(str, vol.Length(min=1, max=255)),
+    }
+)
+@websocket_api.async_response
+async def ws_stock_code_link(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Strichcode einem Produkt im Vorrat zuordnen (Packungen ohne EAN, z. B. umbenannt angelegt)."""
+    from .product import _content_entity  # noqa: PLC0415 - vermeidet einen Import-Kreis
+
+    digits = "".join(ch for ch in msg["code"] if ch.isdigit())
+    if len(digits) < 8:
+        connection.send_error(msg["id"], "invalid_code", "not a barcode")
+        return
+    key = product_key(msg["content"])
+    linked = 0
+    for pack in pack_entries(hass):
+        if product_key(pack["content"]) == key and pack.get("device_id"):
+            entity = _content_entity(hass, pack["device_id"])
+            if entity is not None:
+                await entity.async_set_product({"ean": digits}, replace=False)
+                linked += 1
+    stock = await async_get_stock(hass)
+    stock.remember_ean(digits, msg["content"])
+    connection.send_result(msg["id"], {"linked": linked, **await async_find_by_code(hass, digits)})
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/bought"})
@@ -945,6 +992,7 @@ def async_setup_stock_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_stock_min)
     websocket_api.async_register_command(hass, ws_pack_move)
     websocket_api.async_register_command(hass, ws_stock_code)
+    websocket_api.async_register_command(hass, ws_stock_code_link)
     websocket_api.async_register_command(hass, ws_bought)
     websocket_api.async_register_command(hass, ws_bought_dismiss)
     websocket_api.async_register_command(hass, ws_cook_again)

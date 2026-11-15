@@ -513,6 +513,7 @@ export class LarderDashboard extends HTMLElement {
 
   setView(view, filter = null) {
     if (!ALL_VIEWS.includes(view)) return;
+    if (view !== this._view && this._main) this._main.scrollTop = 0; // neue Seite beginnt oben
     if (view === "estimates" && !isAdmin(this._hass)) return;
     if (view !== "areas") this._areaEdit = false;
     if (view !== "containers") {

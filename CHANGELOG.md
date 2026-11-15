@@ -3,6 +3,12 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 3.8.1
+
+- iOS: the bottom navigation no longer moves up (and shows a black bar) when the page is scrolled to the end; only the content scrolls, header and navigation stay put.
+- Barcode: a pack added by scanning keeps its barcode when its name is changed, and Larder remembers *barcode → your name*, so a later scan finds it. Packs without a barcode can be linked from the barcode dialog (**🔗 Link to a product in stock**).
+- Blueprint *Running low and recalls*: running the automation by hand sends a test notification instead of logging an error. Re-import the blueprint.
+
 ## 3.8.0
 
 - **Container sizes:** a fixed size on the card of a container, or **variable** for lids that fit boxes of different sizes (chosen at every filling, the last one suggested). **⋮ → 📏 Container sizes** takes the loose boxes for variable lids; the storage view shows the **free containers by size**. Size on tile and card.

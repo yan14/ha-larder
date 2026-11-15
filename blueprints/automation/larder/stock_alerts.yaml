@@ -36,6 +36,16 @@ variables:
   running_low: !input running_low
   recalls: !input recalls
   push_targets: "{{ (notify_action or '') | string | lower | regex_findall('[a-z0-9_]+[.][a-z0-9_]+') }}"
+  # Run by hand (no event): send a test message instead of failing
+  kind: "{{ trigger.id if trigger is defined and trigger.event is defined and trigger.id is defined else 'test' }}"
+  event_data: "{{ trigger.event.data if kind != 'test' else {} }}"
+  push_title: >-
+    {% if kind == 'recall' %}{{ event_data.notification_title | default('⚠️ Recall') }}
+    {% elif kind == 'running_low' %}{{ event_data.title | default('🛒 Running low') }}
+    {% else %}Larder{% endif %}
+  push_message: >-
+    {% if kind == 'test' %}Test: Bald leer und Rückrufe sind eingerichtet. / Running low and recalls are set up.
+    {% else %}{{ event_data.message | default('') }}{% endif %}
 
 triggers:
   - trigger: event
@@ -47,7 +57,7 @@ triggers:
 
 conditions:
   - condition: template
-    value_template: "{{ (trigger.id == 'running_low' and running_low) or (trigger.id == 'recall' and recalls) }}"
+    value_template: "{{ kind == 'test' or (kind == 'running_low' and running_low) or (kind == 'recall' and recalls) }}"
 
 actions:
   - repeat:
@@ -55,8 +65,8 @@ actions:
       sequence:
         - action: "{{ repeat.item }}"
           data:
-            title: "{{ trigger.event.data.notification_title if trigger.id == 'recall' else trigger.event.data.title }}"
-            message: "{{ trigger.event.data.message }}"
+            title: "{{ push_title }}"
+            message: "{{ push_message }}"
             data:
               url: /larder
               clickAction: /larder

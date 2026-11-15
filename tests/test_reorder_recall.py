@@ -172,3 +172,38 @@ def test_blueprint_stock_alerts() -> None:
     bp = yaml.load(path.read_text(encoding="utf-8"), Loader=Loader)  # noqa: S506
     assert {t["event_type"] for t in bp["triggers"]} == {"larder_running_low", "larder_recall"}
     assert set(bp["blueprint"]["input"]) == {"notify_action", "running_low", "recalls"}
+
+
+async def test_stock_alerts_blueprint_manual_run_and_events(hass: HomeAssistant, tmp_path) -> None:
+    import shutil  # noqa: PLC0415
+
+    from homeassistant.setup import async_setup_component  # noqa: PLC0415
+
+    from .test_learning_report import _notify  # noqa: PLC0415
+
+    src = Path(__file__).parents[1] / "blueprints/automation/larder/stock_alerts.yaml"
+    target = Path(hass.config.path("blueprints/automation/larder"))
+    target.mkdir(parents=True, exist_ok=True)
+    shutil.copy(src, target / src.name)
+    try:
+        await _setup(hass, "AAAA")
+        calls = _notify(hass, "mobile_app_yan")
+        assert await async_setup_component(
+            hass, "automation",
+            {"automation": {"id": "larder_alerts", "alias": "Larder alerts", "use_blueprint": {"path": f"larder/{src.name}", "input": {"notify_action": "notify.mobile_app_yan"}}}},
+        )
+        await hass.async_block_till_done()
+        # von Hand ausgeführt: Testnachricht statt Fehler
+        await hass.services.async_call("automation", "trigger", {"entity_id": "automation.larder_alerts"}, blocking=True)
+        await hass.async_block_till_done()
+        (test,) = calls["mobile_app_yan"]
+        assert test["title"] == "Larder" and test["message"].startswith("Test:")
+        # echtes Ereignis
+        hass.bus.async_fire("larder_running_low", {"title": "🛒 Bald leer", "message": "Milch: noch 2", "name": "Milch"})
+        await hass.async_block_till_done()
+        assert calls["mobile_app_yan"][1] == {**calls["mobile_app_yan"][1], "title": "🛒 Bald leer", "message": "Milch: noch 2"}
+        hass.bus.async_fire("larder_recall", {"notification_title": "⚠️ Rückruf", "message": "Ketchup – Glas", "title": "Ketchup"})
+        await hass.async_block_till_done()
+        assert calls["mobile_app_yan"][2]["title"] == "⚠️ Rückruf" and calls["mobile_app_yan"][2]["data"]["url"] == "/larder"
+    finally:
+        shutil.rmtree(Path(hass.config.path("blueprints")), ignore_errors=True)
