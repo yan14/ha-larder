@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.helpers import config_validation as cv, entity_registry as er
 from homeassistant.util import dt as dt_util
 
-from .const import DEFAULT_UNIT, DOMAIN, KIND_HOUSEHOLD, SERVICE_GET_EXPIRING, SOON_DAYS, UNITS
+from .const import DEFAULT_LONG_SOON_DAYS, DEFAULT_UNIT, DOMAIN, NON_FOOD_KINDS, SERVICE_GET_EXPIRING, SOON_DAYS, UNITS
 from .entity import kind_of
 from .estimate import storage_context
 
@@ -24,9 +24,11 @@ STATUS_SOON = "soon"
 STATUS_EXPIRED = "expired"
 
 
-def soon_days(hass: HomeAssistant) -> int:
+def soon_days(hass: HomeAssistant, kind: str | None = None) -> int:
     """Setting "expires soon" (days); default as long as the settings are not loaded."""
     estimator = hass.data.get(DOMAIN, {}).get("estimator")
+    if kind in NON_FOOD_KINDS:
+        return int(getattr(estimator, "long_soon_days", DEFAULT_LONG_SOON_DAYS))
     return getattr(estimator, "soon_days", SOON_DAYS)
 
 
@@ -245,7 +247,7 @@ def collect_expiring(
     items: list[dict[str, Any]] = []
     for entry in hass.config_entries.async_entries(DOMAIN):
         cc = entry.data.get("cc")
-        if not cc or kind_of(entry) == KIND_HOUSEHOLD:  # household items have no best-before date
+        if not cc or kind_of(entry) in NON_FOOD_KINDS:  # medicines and household items: start page only
             continue
         date_id = registry.async_get_entity_id("date", DOMAIN, f"{cc}_best_before")
         state = hass.states.get(date_id) if date_id else None

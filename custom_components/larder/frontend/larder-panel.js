@@ -281,14 +281,19 @@ function isAdmin(hass) {
  * these labels appear; if none of the areas has one, all are shown. `keep`
  * is an area that must always be included (the current area of a container, even without a label).
  */
-let AREA_SCOPES = null; // area id → "food" | "household" | "both" | null (from larder/area_scopes)
+let AREA_SCOPES = null; // area id → "food" | "household" | "pharmacy" | "both" | null (from larder/area_scopes)
+
+/** Which side of the dashboard an entry belongs to: food, household or pharmacy (medicines). */
+export function scopeOfKind(kind) {
+  return kind === "household" ? "household" : kind === "medicine" ? "pharmacy" : "food";
+}
 
 /** Remember what each area is used for (food, household or both), see `listAreas`. */
 export function setAreaScopes(scopes) {
   AREA_SCOPES = scopes || null;
 }
 
-/** May this area hold entries of this scope ("food" or "household")? Unknown or unlabelled areas may. */
+/** May this area hold entries of this scope ("food", "household" or "pharmacy")? Unknown or unlabelled areas may. */
 export function areaAllows(areaId, scope) {
   const s = AREA_SCOPES && AREA_SCOPES[areaId];
   return !scope || !s || s === "both" || s === scope;
@@ -421,6 +426,7 @@ class DoseCard {
           <label><span data-n="package"></span><input data-p="package" type="text" maxlength="40"></label>
           <label data-hh="only"><span data-n="pack_size"></span><input data-p="pack_size" type="number" min="1" max="9999" step="1" inputmode="numeric"></label>
           <label data-hh="only"><span data-n="piece"></span><input data-p="piece" type="text" maxlength="30"></label>
+          <label data-hh="pao"><span data-n="pao"></span><input data-p="pao" type="number" min="0" max="120" step="1" inputmode="numeric"></label>
           <label data-hh="no"><span data-n="kcal_100g"></span><input data-p="kcal_100g" type="number" min="0" max="10000" step="any" inputmode="decimal"></label>
           <label data-hh="no"><span data-n="kcal_portion"></span><input data-p="kcal_portion" type="number" min="0" max="10000" step="any" inputmode="decimal"></label>
           <label data-hh="no"><span data-n="nutri_score"></span><select data-p="nutri_score"><option value=""></option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option></select></label>
@@ -432,7 +438,7 @@ class DoseCard {
         <div class="source" hidden></div>
       </details>
       <div class="nfcrow"><span class="nfcstate"></span><button class="nfcbtn" type="button"></button></div>
-      <div class="actions"><button class="fill" type="button"></button><button class="transfer" type="button" hidden></button><button class="move" type="button" hidden></button><button class="openpack" type="button" hidden></button><button class="convert" type="button" hidden></button><button class="empty" type="button"></button><span class="spacer"></span><img class="qr" alt=""></div>
+      <div class="actions"><button class="fill" type="button"></button><button class="transfer" type="button" hidden></button><button class="move" type="button" hidden></button><button class="openpack" type="button" hidden></button><select class="convert" hidden></select><button class="empty" type="button"></button><span class="spacer"></span><img class="qr" alt=""></div>
       <div class="outcomerow" hidden><span class="otext"></span><button class="eaten" type="button"></button><button class="thrown" type="button"></button><button class="ocancel" type="button"></button></div>
       <details class="history"><summary></summary><ul></ul></details>`;
     this.el = el;
@@ -572,10 +578,12 @@ class DoseCard {
     this.q("button.estimate").addEventListener("click", () => this._estimate());
     this.q("button.fill").addEventListener("click", () => this._panel.openFillDialog(this.deviceId));
     // open a pack and transfer it into an empty container: the dashboard handles choosing the container
-    this.q("button.convert").addEventListener("click", (ev) => {
+    this.q("select.convert").addEventListener("change", (ev) => {
       const hass = this._panel.hass;
-      if (!hass || !hass.callWS) return;
-      hass.callWS({ type: `${DOMAIN}/convert_kind`, device_id: this.deviceId, kind: ev.currentTarget.dataset.kind }).catch(() => {});
+      const kind = ev.target.value;
+      ev.target.value = "";
+      if (!hass || !hass.callWS || !kind) return;
+      hass.callWS({ type: `${DOMAIN}/convert_kind`, device_id: this.deviceId, kind }).catch(() => {});
     });
     this.q("button.openpack").addEventListener("click", () => {
       this._panel.dispatchEvent(new CustomEvent("larder-open-pack", { detail: { deviceId: this.deviceId } }));
@@ -732,8 +740,13 @@ class DoseCard {
     warn.hidden = !warned;
     warn.textContent = warned ? t.allergenWarning(attrs.allergen_warning.join(", ")) : "";
     const household = attrs.kind === "household";
-    for (const label of nut.querySelectorAll("[data-hh]")) label.hidden = (label.dataset.hh === "only") !== household;
-    const bits = [household ? t.productDetails : t.nutrition];
+    const nonFood = household || attrs.kind === "medicine";
+    for (const label of nut.querySelectorAll("[data-hh]")) {
+      const want = label.dataset.hh;
+      // "only": household items, "pao": household items and medicines, "no": food only
+      label.hidden = want === "only" ? !household : want === "pao" ? !nonFood : nonFood;
+    }
+    const bits = [nonFood ? t.productDetails : t.nutrition];
     if (attrs.kcal_100g !== undefined) bits.push(`${String(attrs.kcal_100g).replace(".", decimalComma ? "," : ".")} kcal/100 g`);
     if (attrs.nutri_score) bits.push(`Nutri-Score ${attrs.nutri_score}`);
     nut.querySelector("summary").textContent = bits.join(" · ");
@@ -758,7 +771,7 @@ class DoseCard {
     this._setInput(compInput, isValidState(comp) ? comp.state : "");
     if (admin) {
       const select = this.q('[data-f="area"]');
-      const areas = listAreas(hass, this._panel.larderLabel, dev.areaId, attrs.kind === "household" ? "household" : "food");
+      const areas = listAreas(hass, this._panel.larderLabel, dev.areaId, scopeOfKind(attrs.kind));
       const sig = JSON.stringify([areas, t.noArea]);
       if (sig !== this._areaSig) {
         this._areaSig = sig;
@@ -840,22 +853,33 @@ class DoseCard {
     // NFC: administrators only (linking and unlinking are administrator commands).
     const nfc = this._panel.nfcState(this.deviceId);
     const kind = (text && text.attributes && text.attributes.kind) || "container";
-    const packLike = kind === "pack" || kind === "household";
+    const packLike = kind === "pack" || kind === "household" || kind === "medicine";
+    const nonFoodKind = kind === "household" || kind === "medicine";
     this.q(".nfcrow").classList.toggle("visible", admin && nfc !== null && !packLike);
-    // household items have no best-before date
-    this.q(".bbrow").style.display = kind === "household" ? "none" : "";
-    if (kind === "household") this.q(".quickrow").classList.remove("visible");
-    this.q(".estimaterow").style.display = kind === "household" ? "none" : "";
-    const convert = this.q("button.convert");
+    // household items: the date is optional (e.g. sunscreen); medicines: the expiry date; no estimate for either
+    this.q('[data-l="bestBefore"]').textContent = kind === "medicine" ? t.expiry : kind === "household" ? t.expiryOptional : t.bestBefore;
+    if (nonFoodKind) this.q(".quickrow").classList.remove("visible");
+    this.q(".estimaterow").style.display = nonFoodKind ? "none" : "";
+    const convert = this.q("select.convert");
     convert.hidden = !(packLike && hasContentNow);
-    convert.dataset.kind = kind === "pack" ? "household" : "pack";
-    convert.textContent = kind === "pack" ? t.convertToHousehold : t.convertToPack;
+    const convertSig = `${kind}|${t.convertTo}`;
+    if (!convert.hidden && convert.dataset.sig !== convertSig) {
+      const option = (value, label) => {
+        const o = document.createElement("option");
+        o.value = value;
+        o.textContent = label;
+        return o;
+      };
+      const targets = { pack: t.convertToPack, household: t.convertToHousehold, medicine: t.convertToMedicine };
+      convert.replaceChildren(option("", t.convertTo), ...Object.entries(targets).filter(([k]) => k !== kind).map(([k, label]) => option(k, label)));
+      convert.dataset.sig = convertSig;
+    }
     const transfer = this.q("button.transfer");
     transfer.hidden = !(kind === "pack" && hasContentNow);
     transfer.textContent = t.transfer;
-    const opened = kind === "pack" && hasContentNow && text.attributes && text.attributes.opened;
+    const opened = packLike && hasContentNow && text.attributes && text.attributes.opened;
     const openBtn = this.q("button.openpack");
-    openBtn.hidden = !(kind === "pack" && hasContentNow && !opened);
+    openBtn.hidden = !(packLike && hasContentNow && !opened);
     openBtn.textContent = t.openPack;
     // container size (containers only)
     const sizeRow = this.q(".sizerow");

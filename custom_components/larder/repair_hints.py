@@ -237,7 +237,7 @@ class Repairs:
 
 def scope_listing(plan: list[dict[str, Any]], language: str) -> str:
     de = language.lower().startswith("de")
-    names = {"food": "Lebensmittel" if de else "food", "household": "Haushalt" if de else "household"}
+    names = {"food": "Lebensmittel" if de else "food", "household": "Haushalt" if de else "household", "pharmacy": "Apotheke" if de else "pharmacy"}
     return "\n".join(f"- {p['name']}: {names[p['scope']]}" for p in plan)
 
 

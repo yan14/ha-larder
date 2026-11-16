@@ -8,7 +8,7 @@
 
 Sobald mindestens eine Dose angelegt ist, erscheint in der Seitenleiste der Eintrag **Larder**. Er braucht keine Konfiguration, passt sich an Theme und Sprache von Home Assistant an (Deutsch und Englisch) und aktualisiert sich selbst. *Die Screenshots zeigen Demo-Daten.*
 
-Eine Leiste unten wechselt zwischen fünf Seiten. **Lager**, **Bereiche** und **Kategorien** haben oben einen Umschalter **Lebensmittel | Haushalt** (siehe [Haushaltsartikel](containers.md#haushaltsartikel)):
+Eine Leiste unten wechselt zwischen fünf Seiten. **Lager**, **Bereiche** und **Kategorien** haben oben einen Umschalter **Lebensmittel | Haushalt | Apotheke** (siehe [Haushaltsartikel](containers.md#haushaltsartikel)):
 
 - **Start**: eine Begrüßung mit deinem Home-Assistant-Namen, Kacheln für alles, was bald verbraucht werden sollte (Abgelaufenes zuerst), und Abkürzungen zu den Rezeptvorschlägen und zum Lager. Mit [Haushaltsartikeln](containers.md#haushaltsartikel) hat die Seite zwei Abschnitte, *Lebensmittel* und *Haushalt*. In der Home Assistant App gibt es dort auch **📷 Dose scannen** (siehe [Scannen in der App](scanning.md#scannen-in-der-app)).
 - **Lager** (bis 3.x *Behälter*): alles Eingelagerte mit einem Symbol für die Art des Essens, dem Inhalt, dem Namen der Dose und den Resttagen.

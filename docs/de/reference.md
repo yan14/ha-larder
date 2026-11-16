@@ -16,6 +16,7 @@ Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** (bei ei
 | Haltbarkeit nach dem Auftauen | 2 Tage | Dasselbe für den Button **Aufgetaut** |
 | Zeitraum für Rezeptideen | 3 Tage | Dosen, die in so vielen Tagen ablaufen, gehen in die [Rezeptideen](kitchen.md#rezeptideen) (0 = nur heute) |
 | „Läuft bald ab“ ab | 3 Tage | Ab wann eine Dose als „läuft bald ab“ gilt: Hinweis und Filter in den Dashboards, `status` des Sensors, Vorgabe von `larder.get_expiring` |
+| „Läuft bald ab“ für Medikamente und Haushalt | 60 Tage | Dasselbe für [Medikamente](containers.md#medikamente-apotheke) und Haushaltsartikel mit Datum; sie stehen nur auf der Startseite |
 | Vakuum-Vorbelegung | an | Vorbelegung des Schalters **Vakuum** bei neuen Dosen |
 | NFC: Handy benachrichtigen | an | Benachrichtigung auf dem scannenden Handy nach einem [NFC-Scan](scanning.md#nfc-tags) |
 | Reparaturhinweise | an | Hinweise unter Einstellungen → System → Reparaturen, siehe [Reparaturhinweise](#reparaturhinweise) |
@@ -23,6 +24,7 @@ Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** (bei ei
 | Kalender | keiner | [MHD im Kalender](kitchen.md#mhd-im-kalender) |
 | Einkaufsliste (Lebensmittel) | keine | Standardliste für alles, was Larder auf eine [Einkaufsliste](kitchen.md#einkaufsliste) setzt |
 | Einkaufsliste für Haushaltsartikel | keine | Standardliste für [Haushaltsartikel](containers.md#haushaltsartikel); leer = die Lebensmittel-Liste |
+| Einkaufsliste für Medikamente | keine | Standardliste für [Medikamente](containers.md#medikamente-apotheke); leer = die Lebensmittel-Liste |
 | Marke und Packung mit auf die Einkaufsliste | an | „Haferflocken (Kölln, 500 g)“ statt „Haferflocken“, siehe [Einkaufsliste](kitchen.md#einkaufsliste) |
 | Allergene im Haushalt | keine | Warnung an Dosen und keine solchen Dosen in Rezeptideen, siehe [Allergene im Haushalt](containers.md#allergene-im-haushalt) |
 | Kalender für den Wochenplan | keiner | Geplante Gerichte als ganztägige Termine, siehe [Wochenplan](kitchen.md#wochenplan) |
@@ -45,7 +47,7 @@ Larder zeigt unter **Einstellungen → System → Reparaturen** Hinweise, wenn D
 | **Dosen ohne Bereich** | Eine Dose hat keinen Bereich, die Schätzung weiß also nicht, wo das Essen lagert. |
 | **Gefüllte Dosen ohne MHD** | Eine Dose hat einen Inhalt, aber kein MHD. Sie taucht dann weder in der täglichen Zusammenfassung noch im Kalender auf. |
 | **Dosen seit über 7 Tagen abgelaufen** | Zeit, sie zu leeren. |
-| **Larder 4.0: Bereiche für Lebensmittel und Haushalt zuordnen** | Nach dem Update auf 4.0, solange Larder für mindestens einen Bereich eine Nutzung vorschlagen kann (siehe [Lebensmittel oder Haushalt](containers.md#lebensmittel-oder-haushalt-seit-40)). **Beheben** fügt die vorgeschlagenen Labels hinzu. |
+| **Larder 4.0: Bereiche für Lebensmittel und Haushalt zuordnen** | Nach dem Update auf 4.0, solange Larder für mindestens einen Bereich eine Nutzung vorschlagen kann (siehe [Lebensmittel oder Haushalt](containers.md#lebensmittel-haushalt-oder-apotheke)). **Beheben** fügt die vorgeschlagenen Labels hinzu. |
 
 Ein Hinweis verschwindet von selbst, sobald keine Dose mehr betroffen ist (geprüft bei jeder Änderung und einmal täglich). In den [Einstellungen](#einstellungen) lassen sich die Hinweise abschalten („Reparaturhinweise“).
 
@@ -81,7 +83,7 @@ Pro Dose entsteht ein Gerät (eindeutig über die ID, den Parameter `cc` eines Z
 | **Tage bis MHD** | `sensor` | Verbleibende Tage bis zum MHD (negativ = abgelaufen). Das Attribut `status` ist `ok`, `soon` (3 Tage oder weniger, siehe [Einstellungen](#einstellungen)), `expired` oder `none` |
 | **QR-Code** | `image` | QR-Code der Dose als Bild: Scannen mit der Kamera-App öffnet die Dose im Larder-Dashboard, siehe [Eigene QR-Codes](scanning.md#eigene-qr-codes) |
 
-[Beutel](containers.md#beutel-und-packungen) haben dieselben Entitäten außer **Einkaufsliste**, **Variabler Lagerort** und **Lagerort nach dem Leeren**; [Packungen](containers.md#beutel-und-packungen) haben nur **Inhalt**, **Fach**, **MHD**, **Menge**, **Einheit**, **Tage bis MHD** und **Behälter leeren**. [Haushaltsartikel](containers.md#haushaltsartikel) haben die Entitäten einer Packung (die Entität **MHD** bleibt leer und wird im Dashboard ausgeblendet), dazu an **Inhalt** die Attribute `pack_size` (Stück je Packung) und `piece` (Name eines Stücks) und Kategorien, die mit `hh_` beginnen. Das Attribut `kind` von **Inhalt** ist `container`, `bag`, `pack` oder `household`. **Behälter leeren** entfernt bei einem Beutel, einer Packung oder einem Haushaltsartikel das Gerät.
+[Beutel](containers.md#beutel-und-packungen) haben dieselben Entitäten außer **Einkaufsliste**, **Variabler Lagerort** und **Lagerort nach dem Leeren**; [Packungen](containers.md#beutel-und-packungen) haben nur **Inhalt**, **Fach**, **MHD**, **Menge**, **Einheit**, **Tage bis MHD** und **Behälter leeren**. [Haushaltsartikel](containers.md#haushaltsartikel) haben die Entitäten einer Packung (die Entität **MHD** bleibt leer und wird im Dashboard ausgeblendet), dazu an **Inhalt** die Attribute `pack_size` (Stück je Packung) und `piece` (Name eines Stücks) und Kategorien, die mit `hh_` beginnen. [Medikamente](containers.md#medikamente-apotheke) haben die Entitäten einer Packung, Kategorien beginnen mit `md_`. Haushaltsartikel und Medikamente können das Attribut `pao` haben (Monate nach dem Öffnen). Das Attribut `kind` von **Inhalt** ist `container`, `bag`, `pack`, `household` oder `medicine`. **Behälter leeren** entfernt bei einem Beutel, einer Packung oder einem Haushaltsartikel das Gerät.
 
 Die Werte bleiben über Neustarts erhalten. „Behälter leeren“ ist eine normale Button-Entität, lässt sich also auf Dashboards und in Automationen über `button.press` verwenden.
 

@@ -14,13 +14,14 @@ from .const import (
     DOMAIN,
     KIND_CONTAINER,
     KIND_HOUSEHOLD,
+    KIND_MEDICINE,
     PACK_KINDS,
     SIGNAL_SETTINGS_CHANGED,
     SIGNAL_STOCK_CHANGED,
 )
 from .entity import LarderConfigEntry, LarderEntity, LarderResettable
 from .estimate import DATA_ESTIMATOR, async_get_estimator
-from .household import household_category
+from .household import household_category, medicine_category
 from .product import watched_allergens
 from .shelf_life import category_for
 from .stock import product_key
@@ -52,6 +53,7 @@ PRODUCT_FIELDS: dict[str, type] = {
     "price_source": str,  # "receipt", "own" or "openprices" (estimate)
     "pack_size": float,  # household items: pieces per pack (e.g. 8 rolls)
     "piece": str,  # household items: name of one piece (e.g. "Rollen")
+    "pao": float,  # cosmetics and medicines: keeps this many months after opening (the jar symbol "12M")
 }
 _MAX_TEXT = 500
 
@@ -109,7 +111,11 @@ class LarderContent(TextEntity, LarderResettable):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Category (for categories and icons in the dashboard) and, if present, product data."""
         value = self._attr_native_value or ""
-        category = (household_category(value) if self._kind == KIND_HOUSEHOLD else category_for(value)) if value else None
+        category = (
+            (household_category(value) if self._kind == KIND_HOUSEHOLD else medicine_category(value) if self._kind == KIND_MEDICINE else category_for(value))
+            if value
+            else None
+        )
         attrs: dict[str, Any] = {"category": category, "kind": self._kind, **self._product}
         estimator = self.hass.data.get(DOMAIN, {}).get(DATA_ESTIMATOR)
         watched = getattr(estimator, "watch_allergens", None)

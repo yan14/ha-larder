@@ -8,7 +8,7 @@
 
 As soon as at least one container exists, a sidebar entry **Larder** appears. It needs no configuration, adapts to your Home Assistant theme and language (English and German) and updates itself. *The screenshots show demo data.*
 
-A bar at the bottom switches between five pages. **Storage**, **Areas** and **Categories** have a switch **Food | Household** at the top (see [Household items](containers.md#household-items)):
+A bar at the bottom switches between five pages. **Storage**, **Areas** and **Categories** have a switch **Food | Household | Pharmacy** at the top (see [Household items](containers.md#household-items)):
 
 - **Start**: a greeting with your Home Assistant name, tiles for everything that should be used up soon (expired first), and shortcuts to the recipe suggestions and the storage view. With [household items](containers.md#household-items) the page has two sections, *Food* and *Household*. In the Home Assistant app there is also **📷 Scan container** (see [Scanning in the app](scanning.md#scanning-in-the-app)).
 - **Storage** (called *Containers* before 4.0): everything in store with a symbol for the kind of food, the contents, the container name and the days left.

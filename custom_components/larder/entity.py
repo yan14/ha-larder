@@ -23,7 +23,7 @@ class LarderRuntime:
 
 type LarderConfigEntry = ConfigEntry[LarderRuntime]
 
-_MODELS = {"bag": "Bag", "pack": "Pack", "household": "Household item"}
+_MODELS = {"bag": "Bag", "pack": "Pack", "household": "Household item", "medicine": "Medicine"}
 
 
 def kind_of(entry: ConfigEntry) -> str:

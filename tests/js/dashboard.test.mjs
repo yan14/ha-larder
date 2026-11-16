@@ -2559,13 +2559,13 @@ test("Strichcode: umbenannte Packung behält die EAN; nicht im Vorrat → mit Pr
 
 // ----- 4.0: household items, area scopes -----
 
-test("buildItems: household items count pieces (packs × pieces per pack), no date", () => {
+test("buildItems: household items count pieces (packs × pieces per pack), optional date (4.4)", () => {
   const items = buildItems("household", [
     { content: "Klopapier", quantity: "2", packSize: "8", piece: " Rollen ", date: "2030-01-01", price: "3,99", product: { ean: "4" } },
     { content: "Spülmittel", quantity: "", packSize: "" },
   ]);
   assert.deepEqual(items, [
-    { content: "Klopapier", quantity: 16, unit: "pieces", product: { ean: "4", pack_size: 8, piece: "Rollen", price: 3.99, price_source: "own" } },
+    { content: "Klopapier", quantity: 16, unit: "pieces", best_before: "2030-01-01", product: { ean: "4", pack_size: 8, piece: "Rollen", price: 3.99, price_source: "own" } },
     { content: "Spülmittel", quantity: 1, unit: "pieces" },
   ]);
 });
@@ -2622,7 +2622,7 @@ test("Switch Lebensmittel | Haushalt: filters storage, areas and categories and 
   await flush();
   await go(el, "containers");
   assert.equal($(el, "h1").textContent, "Lager");
-  assert.deepEqual($$(el, ".scope button").map((b) => [b.textContent, b.classList.contains("on")]), [["🥫 Lebensmittel", true], ["🧻 Haushalt", false]]);
+  assert.deepEqual($$(el, ".scope button").map((b) => [b.textContent, b.classList.contains("on")]), [["🥫 Lebensmittel", true], ["🧻 Haushalt", false], ["💊 Apotheke", false]]);
   assert.ok(!names(el).includes("Klopapier"));
   $(el, '.scope [data-scope="household"]').click();
   await flush();
@@ -2655,7 +2655,7 @@ test("Haushaltsartikel anlegen: own dialog, only household areas, pieces and pac
   $(el, '[data-role="add-household"]').click();
   const form = $(el, "form.dialog");
   assert.equal(form.querySelector("h2").textContent, "Haushaltsartikel anlegen");
-  assert.equal(form.querySelector('[data-i="date"]'), null);
+  assert.equal(form.querySelector(".datelabel").firstChild.textContent, "Ablaufdatum (optional)"); // 4.4
   assert.equal(form.querySelector('[data-i="unit"]'), null);
   assert.equal(form.querySelector('[data-role="item-receipt"]'), null);
   const areas = [...form.querySelector('[data-f="area"]').options].map((o) => o.textContent);
@@ -2748,7 +2748,7 @@ test("Vorrat: household products show pieces and packs, minimum in pieces", asyn
   assert.match($(el, '[data-role="stock-value"]').textContent, /6,00/);
   await go(el, "containers");
   assert.equal($(el, "main .count").textContent, "1 Artikel");
-  assert.equal($(el, '[data-role="state"]').options.length, 1);
+  assert.equal($(el, '[data-role="state"]').options.length, 3); // all, soon, expired (4.4: household items may have a date)
 });
 
 test("Bereiche bearbeiten: use (scope) per area and automatic assignment", async () => {
@@ -2906,4 +2906,47 @@ test("Put away (4.3): scan one product after another, unknown ones are added at 
   form.querySelector('[data-role="putaway-new"]').click();
   assert.match(form.querySelector("h2").textContent, /Packungen anlegen/);
   assert.equal(form.querySelector('[data-i="content"]').value, "Senf");
+});
+
+test("Pharmacy (4.4): third tab, own section on the start page with the longer warning, add medicines", async () => {
+  const hass = householdHass();
+  // medicine expiring in 40 days: "soon" with the 60 days of the setting; one in 200 days is not
+  for (const [id, name, content, days] of [["m1", "Medikament 1", "Ibuprofen 400", 40], ["m2", "Medikament 2", "Nasenspray", 200]]) {
+    const extra = makeHass([{ id, name, area: "bath", content, days, category: "md_pain" }]);
+    Object.assign(hass.entities, extra.entities);
+    Object.assign(hass.devices, extra.devices);
+    Object.assign(hass.states, extra.states);
+    hass.states[`text.${id}_inhalt`].attributes.kind = "medicine";
+    hass.states[`date.${id}_mhd`].attributes.soon_days = 60;
+  }
+  hass.areas.cabinet = { area_id: "cabinet", name: "Arzneischrank", labels: ["l"] };
+  hass.scopes = { ...hass.scopes, cabinet: "pharmacy" };
+  const el = mount(hass);
+  el._classic.larderLabel = ["l", "l_hh", "l_food"];
+  await flush();
+  await flush();
+  const heads = $$(el, "main h2.section").map((h) => h.textContent);
+  assert.deepEqual(heads, ["🥫 Lebensmittel", "🧻 Haushalt", "💊 Apotheke"]);
+  assert.deepEqual([...$(el, '[data-role="pharmacy-soon"]').querySelectorAll(".name")].map((n) => n.textContent), ["Ibuprofen 400"]);
+  // the food list does not show medicines
+  assert.ok(!$$(el, "main .tiles:not([data-role]) .name").map((n) => n.textContent).includes("Ibuprofen 400"));
+  await go(el, "containers");
+  $(el, '.scope [data-scope="pharmacy"]').click();
+  await flush();
+  assert.deepEqual(names(el).sort(), ["Ibuprofen 400", "Nasenspray"]);
+  $(el, '[data-role="add"]').click();
+  $(el, '[data-role="add-medicine"]').click();
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelector("h2").textContent, "Medikamente anlegen");
+  assert.equal(form.querySelector(".datelabel").firstChild.textContent, "Verfallsdatum");
+  const areas = [...form.querySelector('[data-f="area"]').options].map((o) => o.textContent);
+  assert.ok(areas.includes("Arzneischrank") && !areas.includes("Bad") && !areas.includes("Kühlschrank"));
+  form.querySelector('[data-i="content"]').value = "Paracetamol";
+  form.querySelector('[data-i="date"]').value = "2028-03-01";
+  form.querySelector("button.submit").click();
+  await flush();
+  await flush();
+  const created = hass.wsCalls.find((m) => m.type === `${D}/create_items`);
+  assert.equal(created.kind, "medicine");
+  assert.deepEqual(created.items, [{ content: "Paracetamol", quantity: 1, unit: "pieces", best_before: "2028-03-01" }]);
 });

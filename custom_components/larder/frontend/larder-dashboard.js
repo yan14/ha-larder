@@ -7,7 +7,7 @@
  */
 // Load with the same version query as this module, so an older copy from the cache is never used.
 const VERSION_QUERY = new URL(import.meta.url).search;
-const { areaAllows, setAreaScopes, todoLists, attachCompartmentChips, collectDevices, daysUntil, isLarderLabel, knownCompartments, listAreas, rememberCompartment, soonDaysOf, SOON_DAYS } = await import(
+const { areaAllows, scopeOfKind, setAreaScopes, todoLists, attachCompartmentChips, collectDevices, daysUntil, isLarderLabel, knownCompartments, listAreas, rememberCompartment, soonDaysOf, SOON_DAYS } = await import(
   `./larder-panel.js${VERSION_QUERY}`
 );
 const { installItems } = await import(`./larder-dashboard-items.js${VERSION_QUERY}`);
@@ -40,6 +40,13 @@ export const CATEGORY_ICONS = {
   hh_care: "🧴",
   hh_batteries: "🔋",
   hh_other: "🧰",
+  md_pain: "🌡️",
+  md_cold: "🤧",
+  md_digest: "🫖",
+  md_wound: "🩹",
+  md_allergy: "🌼",
+  md_vitamin: "🍊",
+  md_other: "💊",
   empty: "🫙",
 };
 
@@ -202,7 +209,7 @@ function loadOptions() {
       labelParts: raw.labelParts && typeof raw.labelParts === "object" ? raw.labelParts : { qr: true, name: true, content: false },
       labelLook: raw.labelLook && typeof raw.labelLook === "object" ? raw.labelLook : { color: "black", inverted: false, logo: false },
       itemArea: raw.itemArea && typeof raw.itemArea === "object" ? raw.itemArea : {},
-      scope: raw.scope === "household" ? "household" : "food",
+      scope: ["household", "pharmacy"].includes(raw.scope) ? raw.scope : "food",
     };
   } catch {
     return { mode: "grid", sort: "date", areaSort: "name", recipeSort: "newest", recipePeriod: "default" };
@@ -221,7 +228,7 @@ const { STYLE } = await import(`./larder-dashboard-style.js${VERSION_QUERY}`);
 
 /** Views that show either food or household items. */
 const SCOPED_VIEWS = ["containers", "areas", "categories"];
-const SCOPE_LABELS = ["haushalt", "household", "lebensmittel", "food"];
+const SCOPE_LABELS = ["haushalt", "household", "lebensmittel", "food", "apotheke", "pharmacy", "hausapotheke", "medicine"];
 
 /** "Larder: Household" / "Larder: Food" (and the German names): extra labels that only set the scope. */
 export function isScopeLabel(label) {
@@ -690,8 +697,7 @@ export class LarderDashboard extends HTMLElement {
 
     // storage, areas and categories show either food or household items (the switch is remembered)
     const everything = this._rows();
-    const household = this._opts.scope === "household";
-    const rows = SCOPED_VIEWS.includes(this._view) ? everything.filter((r) => (r.kind === "household") === household) : everything;
+    const rows = SCOPED_VIEWS.includes(this._view) ? everything.filter((r) => scopeOfKind(r.kind) === this._opts.scope) : everything;
     const sig = JSON.stringify([
       this._scopes,
       this._scopePlan,
@@ -801,7 +807,7 @@ export class LarderDashboard extends HTMLElement {
     tile.type = "button";
     tile.dataset.id = row.id;
     tile.append(el("span", "ico", CATEGORY_ICONS[row.category] || CATEGORY_ICONS.other));
-    if (row.kind !== "container" && row.kind !== "household") tile.append(el("span", "kindmark", row.kind === "bag" ? "🛍" : row.opened ? "📦🔓" : "📦"));
+    if (row.kind === "bag" || row.kind === "pack") tile.append(el("span", "kindmark", row.kind === "bag" ? "🛍" : row.opened ? "📦🔓" : "📦"));
     tile.append(el("span", "name", empty ? t.empty : row.content));
     tile.append(el("span", "sub", [row.name, showArea ? row.areaName : null, row.compartment, row.size].filter(Boolean).join(" · ")));
     if (!empty && row.days !== null) tile.append(el("span", `badge ${dayClass(row)}`, daysLabel(t, row.days)));
@@ -1335,7 +1341,7 @@ export class LarderDashboard extends HTMLElement {
   }
 
   _countText(t, shown, all) {
-    return this._opts.scope === "household" ? t.countItems(shown, all) : t.count(shown, all);
+    return this._opts.scope === "food" ? t.count(shown, all) : t.countItems(shown, all);
   }
 
   /** Containers after filters (state, area, category, search) and sorting. */
@@ -1378,8 +1384,8 @@ export class LarderDashboard extends HTMLElement {
     this._searchInput.setAttribute("aria-label", t.search);
     if (this._searchInput.value !== (this._query || "")) this._searchInput.value = this._query || "";
     const state = this._select(
-      this._opts.scope === "household"
-        ? [["all", t.filterAll]] // household items have no date and are never empty
+      this._opts.scope !== "food"
+        ? [["all", t.filterAll], ["soon", t.filterSoon], ["expired", t.filterExpired]] // household and pharmacy: dates only
         : [["all", t.filterAll], ["soon", t.filterSoon], ["expired", t.filterExpired], ["filled", t.filterFilled], ["empty", t.filterEmpty], ["bags", t.filterBags], ["packs", t.filterPacks]],
       this._filter.state || "all",
       (value) => {
@@ -1426,7 +1432,7 @@ export class LarderDashboard extends HTMLElement {
   _scopeSwitch(t = texts(this._hass)) {
     const box = el("div", "scope");
     box.setAttribute("role", "tablist");
-    for (const [scope, icon] of [["food", "🥫"], ["household", "🧻"]]) {
+    for (const [scope, icon] of [["food", "🥫"], ["household", "🧻"], ["pharmacy", "💊"]]) {
       const btn = el("button", scope === this._opts.scope ? "on" : "", `${icon} ${t.scopes[scope]}`);
       btn.type = "button";
       btn.dataset.scope = scope;
@@ -1439,7 +1445,7 @@ export class LarderDashboard extends HTMLElement {
   }
 
   setScope(scope) {
-    const next = scope === "household" ? "household" : "food";
+    const next = ["household", "pharmacy"].includes(scope) ? scope : "food";
     if (next === this._opts.scope) return;
     this._opts.scope = next;
     saveOptions(this._opts);
@@ -1500,7 +1506,7 @@ export class LarderDashboard extends HTMLElement {
     frag.append(this._searchRow(t, allRows));
     this._countEl = el("p", "count", this._countText(t, rows.length, allRows.length));
     frag.append(this._countEl);
-    const free = this._opts.scope === "household" ? null : this._freeLine(); // free containers belong to food
+    const free = this._opts.scope !== "food" ? null : this._freeLine(); // free containers belong to food
     if (free) frag.append(free);
     this._results = el("div", "results");
     this._results.append(this._renderResults(t, allRows, rows));
@@ -1680,7 +1686,7 @@ export class LarderDashboard extends HTMLElement {
       const box = el("div", this._opts.mode === "grid" ? "tiles" : "list");
       for (const g of list) {
         const open = editing ? () => this.openAreaDialog(g.key) : () => this.setView("containers", { area: g.key });
-        const sub = editing ? this._areaKindText(g.key, t) : (this._opts.scope === "household" ? t.itemsCount : t.containersCount)(g.count);
+        const sub = editing ? this._areaKindText(g.key, t) : (this._opts.scope === "food" ? t.containersCount : t.itemsCount)(g.count);
         if (this._opts.mode === "grid") {
           const tile = this._groupTile(editing ? "✏️" : "📍", g.name, sub, !editing && g.soon ? t.soonCount(g.soon) : "", open);
           tile.dataset.area = g.key;
@@ -1809,7 +1815,7 @@ export class LarderDashboard extends HTMLElement {
     buttons.append(cancel, submit);
     const scope = el("select");
     scope.dataset.f = "scope";
-    for (const key of ["both", "food", "household"]) scope.append(option(key, t.scopeNames[key]));
+    for (const key of ["both", "food", "household", "pharmacy"]) scope.append(option(key, t.scopeNames[key]));
     scope.value = (area && (this._scopes || {})[area.area_id]) || "both";
     form.replaceChildren(
       el("h2", "", area ? t.areaEditTitle : t.areaAdd),
@@ -1908,12 +1914,12 @@ export class LarderDashboard extends HTMLElement {
         const icon = CATEGORY_ICONS[g.key] || CATEGORY_ICONS.other;
         const open = () => this.setView("containers", { category: g.key });
         if (this._opts.mode === "grid") {
-          box.append(this._groupTile(icon, name, (this._opts.scope === "household" ? t.itemsCount : t.containersCount)(g.count), g.soon ? t.soonCount(g.soon) : "", open));
+          box.append(this._groupTile(icon, name, (this._opts.scope === "food" ? t.containersCount : t.itemsCount)(g.count), g.soon ? t.soonCount(g.soon) : "", open));
         } else {
           const btn = el("button", "row");
           btn.type = "button";
           const text = el("span", "text");
-          text.append(el("span", "name", name), el("span", "sub", (this._opts.scope === "household" ? t.itemsCount : t.containersCount)(g.count)));
+          text.append(el("span", "name", name), el("span", "sub", (this._opts.scope === "food" ? t.containersCount : t.itemsCount)(g.count)));
           btn.append(el("span", "ico", icon), text);
           if (g.soon) btn.append(el("span", "badge soon", t.soonCount(g.soon)));
           btn.addEventListener("click", open);
@@ -1929,13 +1935,19 @@ export class LarderDashboard extends HTMLElement {
     const hass = this._hass;
     const frag = document.createDocumentFragment();
     frag.append(el("div", "hello", t.hello(hass.user && hass.user.name)));
-    const soon = sortRows(rows.filter(isSoon), "date", this._lang());
-    const isHh = (item) => item.kind === "household";
-    const hhLow = this._lowBox(isHh);
-    const hhBought = this._boughtBox(isHh);
-    const hasHousehold = rows.some((r) => r.kind === "household") || !!hhLow || !!hhBought;
-    // two sections once household items are in use: food first, household below
-    if (hasHousehold) frag.append(el("h2", "section", `🥫 ${t.scopes.food}`));
+    const scopeOf = (item) => scopeOfKind(item.kind);
+    const soon = sortRows(rows.filter((r) => scopeOf(r) === "food" && isSoon(r)), "date", this._lang());
+    const isHh = (item) => scopeOf(item) !== "food";
+    // household and pharmacy: expiring soon (with their longer warning), running low, bought
+    const others = ["household", "pharmacy"].map((scope) => ({
+      scope,
+      soon: sortRows(rows.filter((r) => scopeOf(r) === scope && isSoon(r)), "date", this._lang()),
+      low: this._lowBox((item) => scopeOf(item) === scope),
+      bought: this._boughtBox((item) => scopeOf(item) === scope),
+      used: rows.some((r) => scopeOf(r) === scope),
+    })).filter((s) => s.used || s.low || s.bought);
+    // sections once household items or medicines are in use: food first, the others below
+    if (others.length) frag.append(el("h2", "section", `🥫 ${t.scopes.food}`));
     if (soon.length) {
       frag.append(el("p", "lead", t.soonTitle));
       const box = el("div", "tiles");
@@ -1956,13 +1968,20 @@ export class LarderDashboard extends HTMLElement {
     if (thaw) frag.append(thaw);
     const planned = this._plannedBox(t, false);
     if (planned) frag.append(planned);
-    if (hasHousehold) {
-      const head = el("h2", "section", `🧻 ${t.scopes.household}`);
-      head.dataset.role = "household-section";
+    for (const other of others) {
+      const head = el("h2", "section", `${other.scope === "pharmacy" ? "💊" : "🧻"} ${t.scopes[other.scope]}`);
+      head.dataset.role = `${other.scope}-section`;
       frag.append(head);
-      if (hhLow) frag.append(hhLow);
-      if (hhBought) frag.append(hhBought);
-      if (!hhLow && !hhBought) frag.append(el("p", "lead", t.householdFine));
+      if (other.soon.length) {
+        frag.append(el("p", "lead", t.soonOther));
+        const box = el("div", "tiles");
+        box.dataset.role = `${other.scope}-soon`;
+        for (const row of other.soon) box.append(this._tile(row, t, { showArea: true }));
+        frag.append(box);
+      }
+      if (other.low) frag.append(other.low);
+      if (other.bought) frag.append(other.bought);
+      if (!other.soon.length && !other.low && !other.bought) frag.append(el("p", "lead", other.scope === "pharmacy" ? t.pharmacyFine : t.householdFine));
     }
     frag.append(el("p", "lead", t.help));
     const help = el("div", "help");
@@ -2588,6 +2607,11 @@ export class LarderDashboard extends HTMLElement {
       this._renderHouseholdStats(t, frag);
       return;
     }
+    if (this._opts.scope === "pharmacy") {
+      frag.append(el("p", "note", t.statsPharmacyNone));
+      this._main.replaceChildren(frag);
+      return;
+    }
     const bar = el("div", "bar");
     bar.append(
       this._select(
@@ -3065,9 +3089,9 @@ export class LarderDashboard extends HTMLElement {
   }
 }
 
-installItems(LarderDashboard, { el, isAdmin, listAreas, todoLists, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment });
+installItems(LarderDashboard, { el, isAdmin, listAreas, todoLists, scopeOfKind, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment });
 installCook(LarderDashboard, { el, isAdmin, DOMAIN });
-installCare(LarderDashboard, { el, isAdmin, listAreas, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment, CATEGORY_ICONS });
+installCare(LarderDashboard, { el, isAdmin, listAreas, scopeOfKind, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment, CATEGORY_ICONS });
 
 if (!customElements.get("larder-dashboard")) {
   customElements.define("larder-dashboard", LarderDashboard);

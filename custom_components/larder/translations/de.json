@@ -231,10 +231,12 @@
           "temperature_warning": "Temperaturwarnung",
           "todo_entity": "Einkaufsliste (Lebensmittel)",
           "todo_household": "Einkaufsliste für Haushaltsartikel (optional)",
+          "todo_pharmacy": "Einkaufsliste für Medikamente (optional)",
           "meal_calendar": "Kalender für den Wochenplan",
           "thaw_days": "Auftauen: Tage vorher",
           "recipe_days": "Zeitraum für Rezeptideen (Tage)",
           "soon_days": "„Läuft bald ab“ ab (Tage)",
+          "long_soon_days": "„Läuft bald ab“ für Medikamente und Haushalt (Tage)",
           "shopping_details": "Marke und Packung mit auf die Einkaufsliste",
           "watch_allergens": "Allergene im Haushalt (optional)",
           "stock_lead_days": "Vorrat: Tage bis zum nächsten Einkauf",
@@ -256,10 +258,12 @@
           "temperature_warning": "Warnt (Reparaturhinweis und Ereignis larder_temperature_warning), wenn ein Lagerort mit Temperatursensor zu lange zu warm ist: Gefrierschrank über −12 °C für 30 Minuten, Kühlschrank über 8 °C bzw. 0-°C-Fach über 6 °C für 60 Minuten.",
           "todo_entity": "Eine To-do-Liste von Home Assistant (z. B. „Einkaufsliste“, Todoist, Bring!). Hierhin kommt alles, was Larder auf die Einkaufsliste setzt: geleerte Dosen mit Schalter „Einkaufsliste“, Mindestbestand, bald leer, Zutaten aus dem Wochenplan (nicht doppelt). Einzelne Produkte können auf ihrer Karte eine andere Liste bekommen. Leer = aus.",
           "todo_household": "Eigene To-do-Liste für Haushaltsartikel (z. B. „Drogerie“). Leer = dieselbe Liste wie für Lebensmittel. Einzelne Produkte können auf ihrer Karte eine andere Liste bekommen.",
+          "todo_pharmacy": "Eigene To-do-Liste für Medikamente (z. B. „Apotheke“). Leer = dieselbe Liste wie für Lebensmittel.",
           "meal_calendar": "Optional: geplante Gerichte erscheinen dort als ganztägiger Termin „🍽 …“. Ohne Auswahl stehen sie nur im Dashboard.",
           "thaw_days": "Wie viele Tage vor dem geplanten Tag die Zusammenfassung an Dosen aus dem Gefrierschrank erinnert (0 = am Tag selbst).",
           "recipe_days": "Rezeptideen „aus Resten“ berücksichtigen Dosen, die in so vielen Tagen ablaufen (0 = nur heute). Im Dashboard lässt sich der Zeitraum für einen einzelnen Aufruf ändern oder ganz abschalten.",
           "soon_days": "Ab so vielen Resttagen gilt eine Dose als „läuft bald ab“ (Hinweis im Dashboard, Filter, Status des Sensors und Vorgabe für die Ablauf-Übersicht).",
+          "long_soon_days": "Medikamente und Haushaltsartikel mit Datum (z. B. Sonnencreme) gelten so viele Tage vorher als „läuft bald ab“ und stehen dann auf der Startseite in ihrem Abschnitt. In der täglichen Zusammenfassung tauchen sie nicht auf.",
           "shopping_details": "Sind Marke oder Packungsgröße einer Dose bekannt (z. B. nach einem Strichcode-Scan), kommen sie beim Leeren mit auf die Liste: „Haferflocken (Kölln, 500 g)“.",
           "watch_allergens": "Dosen, deren Allergene oder Inhalt dazu passen, bekommen ein ⚠ auf Karte und Kachel; Rezeptideen lassen sie weg und meiden diese Zutaten. Nur ein Hinweis, keine Garantie.",
           "stock_lead_days": "Für den Vorschlag zum Mindestbestand: so viele Packungen, wie in dieser Zeit verbraucht werden.",
@@ -481,7 +485,7 @@
         "step": {
           "scopes": {
             "title": "Bereiche zuordnen",
-            "description": "Seit Version 4.0 gibt es Haushaltsartikel. Ein Bereich gilt für Lebensmittel, für Haushalt oder für beides – gesteuert über zusätzliche Labels (`Larder: Lebensmittel`, `Larder: Haushalt`). Larder kann eindeutige Bereiche automatisch zuordnen:\n\n{areas}\n\nEs werden nur Labels hinzugefügt; bestehende Labels (z. B. `Larder: Gefrierschrank` mit Temperatur und Lagerzeit) bleiben unverändert. Alle anderen Larder-Bereiche gelten für beides und lassen sich im Dashboard unter Bereiche ändern."
+            "description": "Seit Version 4.0 gibt es Haushaltsartikel. Ein Bereich gilt für Lebensmittel, für Haushalt oder für beides – gesteuert über zusätzliche Labels (`Larder: Lebensmittel`, `Larder: Haushalt`, seit 4.4 `Larder: Apotheke`). Larder kann eindeutige Bereiche automatisch zuordnen:\n\n{areas}\n\nEs werden nur Labels hinzugefügt; bestehende Labels (z. B. `Larder: Gefrierschrank` mit Temperatur und Lagerzeit) bleiben unverändert. Alle anderen Larder-Bereiche gelten für beides und lassen sich im Dashboard unter Bereiche ändern."
           }
         },
         "abort": {

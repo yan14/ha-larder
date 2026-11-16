@@ -58,7 +58,7 @@ def record_value(records: list[dict[str, Any]]) -> tuple[float | None, int]:
 def build_statistics(hass: HomeAssistant, records: list[dict[str, Any]], days: int | None = None) -> dict[str, Any]:
     today = dt_util.now().date()
     since = today - timedelta(days=days) if days else None
-    records = [r for r in records if r.get("kind") != "household"]  # food only
+    records = [r for r in records if r.get("kind") not in ("household", "medicine")]  # food only
     chosen = [r for r in records if (d := _emptied_day(r)) is not None and (since is None or d > since)]
 
     eaten = [r for r in chosen if r.get("outcome") == "eaten"]
@@ -159,7 +159,7 @@ def build_monthly_report(
     records: list[dict[str, Any]], fills_now: list[str], month: str, language: str
 ) -> dict[str, Any]:
     """Report for a month (YYYY-MM): filled, emptied, eaten, thrown away, comparison with the previous month."""
-    records = [r for r in records if r.get("kind") != "household"]  # food only
+    records = [r for r in records if r.get("kind") not in ("household", "medicine")]  # food only
     lang = "de" if language.lower().startswith("de") else "en"
 
     def emptied_in(key: str) -> list[dict[str, Any]]:

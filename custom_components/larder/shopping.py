@@ -15,7 +15,7 @@ import logging
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 
-from .const import DATA_STOCK, DOMAIN, KIND_HOUSEHOLD
+from .const import DATA_STOCK, DOMAIN, KIND_HOUSEHOLD, KIND_MEDICINE
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -30,6 +30,8 @@ def default_list(hass: HomeAssistant, kind: str | None = None) -> str | None:
     food = getattr(estimator, "todo_entity", None)
     if kind == KIND_HOUSEHOLD:
         return getattr(estimator, "todo_household", None) or food
+    if kind == KIND_MEDICINE:
+        return getattr(estimator, "todo_pharmacy", None) or food
     return food
 
 
@@ -52,7 +54,10 @@ def shopping_list_for(hass: HomeAssistant, content: str | None, kind: str | None
 def any_list(hass: HomeAssistant) -> bool:
     """Is any shopping list set up (a default list or a list for a product)?"""
     stock = hass.data.get(DOMAIN, {}).get(DATA_STOCK)
-    return bool(default_list(hass) or default_list(hass, KIND_HOUSEHOLD) or (getattr(stock, "lists", None) or {}))
+    return bool(
+        default_list(hass) or default_list(hass, KIND_HOUSEHOLD) or default_list(hass, KIND_MEDICINE)
+        or (getattr(stock, "lists", None) or {})
+    )
 
 
 def _base(item: str) -> str:

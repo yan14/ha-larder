@@ -2102,30 +2102,50 @@ test("Befüllen mit Vorgaben (Vorkochen): Menge je Dose und Größe der variable
   assert.deepEqual(hass.wsCalls.filter((m) => m.type === `${D}/size_fill`), [{ type: `${D}/size_fill`, device_id: "d2", size: "0,5 l" }]);
 });
 
-test("Card of a household item: no best-before date, pieces and packs, convert to a pack", async () => {
+test("Card of a household item / medicine: optional date, pieces and packs, period after opening, convert (4.4)", async () => {
   const hass = adminHass([
     { id: "d1", name: "Artikel 1", content: "Klopapier", product: { kind: "household", pack_size: 8, piece: "Rollen" } },
     { id: "d2", name: "Packung 1", content: "Senf", product: { kind: "pack" } },
+    { id: "d3", name: "Medikament 1", content: "Ibuprofen", product: { kind: "medicine" } },
   ]);
   hass.states["number.d1_portionen"].state = "12";
   hass.states["select.d1_einheit"].state = "pieces";
+  hass.states["number.d3_portionen"].state = "1";
+  hass.states["select.d3_einheit"].state = "pieces";
   const el = mount(hass);
-  const [item, pack] = $$(el, ".card");
-  assert.equal(item.querySelector(".bbrow").style.display, "none");
-  assert.equal(pack.querySelector(".bbrow").style.display, "");
+  const cards = $$(el, ".card");
+  const card = (name) => cards.find((c) => c.querySelector(".name").textContent === name);
+  const [item, pack, med] = [card("Artikel 1"), card("Packung 1"), card("Medikament 1")];
+  // household items may have a date now (e.g. sunscreen), medicines have an expiry date; no estimate
+  assert.equal(item.querySelector(".bbrow").style.display, "");
+  assert.equal(item.querySelector('[data-l="bestBefore"]').textContent, "Ablaufdatum (optional)");
+  assert.equal(med.querySelector('[data-l="bestBefore"]').textContent, "Verfallsdatum");
+  assert.equal(pack.querySelector('[data-l="bestBefore"]').textContent, "MHD");
+  assert.equal(med.querySelector(".estimaterow").style.display, "none");
   assert.equal(item.querySelector(".packline").hidden, false);
   assert.match(item.querySelector(".packline").textContent, /12 Rollen \(1[.,]5 Packungen\)/);
   assert.equal(pack.querySelector(".packline").hidden, true);
   assert.equal(item.querySelector("button.transfer").hidden, true);
+  // opening: also household items and medicines (period after opening)
+  assert.equal(item.querySelector("button.openpack").hidden, false);
+  assert.equal(med.querySelector("button.openpack").hidden, false);
   assert.equal(item.querySelector('[data-hh="only"]').hidden, false);
+  assert.equal(item.querySelector('[data-hh="pao"]').hidden, false);
+  assert.equal(med.querySelector('[data-hh="pao"]').hidden, false);
+  assert.equal(med.querySelector('[data-hh="only"]').hidden, true);
   assert.equal(item.querySelector('[data-hh="no"]').hidden, true);
   assert.equal(pack.querySelector('[data-hh="only"]').hidden, true);
-  const convert = item.querySelector("button.convert");
+  assert.equal(pack.querySelector('[data-hh="pao"]').hidden, true);
+  // convert: a choice of the other kinds
+  const convert = item.querySelector("select.convert");
   assert.equal(convert.hidden, false);
-  convert.click();
+  assert.deepEqual([...convert.options].map((o) => o.value), ["", "pack", "medicine"]);
+  convert.value = "medicine";
+  convert.dispatchEvent(new Event("change"));
   await new Promise((r) => setTimeout(r, 0));
-  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/convert_kind`), { type: `${D}/convert_kind`, device_id: "d1", kind: "pack" });
-  assert.equal(pack.querySelector("button.convert").dataset.kind, "household");
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/convert_kind`), { type: `${D}/convert_kind`, device_id: "d1", kind: "medicine" });
+  assert.equal(convert.value, "");
+  assert.deepEqual([...pack.querySelector("select.convert").options].map((o) => o.value), ["", "household", "medicine"]);
 });
 
 test("Card: own shopping list per product (4.1), only with content and to-do lists", async () => {

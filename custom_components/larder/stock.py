@@ -33,6 +33,7 @@ from .const import (
     KIND_BAG,
     KIND_HOUSEHOLD,
     KIND_PACK,
+    NON_FOOD_KINDS,
     PACK_KINDS,
     SIGNAL_STOCK_CHANGED,
     larder_id,
@@ -398,8 +399,8 @@ def stock_overview(hass: HomeAssistant, minimums: dict[str, dict[str, Any]], sto
             key, {"key": key, "name": item["content"], "count": 0, "places": [], "brand": None, "package": None}
         )
         product["count"] += item["count"]
-        if item["kind"] == KIND_HOUSEHOLD:
-            product["kind"] = KIND_HOUSEHOLD
+        if item["kind"] in NON_FOOD_KINDS:
+            product["kind"] = item["kind"]
         if item["pack_size"] > 1:
             product["pack_size"] = item["pack_size"]
         product["piece"] = product.get("piece") or item["piece"]
@@ -655,7 +656,8 @@ async def async_open_pack(hass: HomeAssistant, cc: str, area_id: str | None = No
     entries = {e.data.get(CONF_CC): e for e in hass.config_entries.async_loaded_entries(DOMAIN)}
     entry = entries.get(cc)
     source = next((p for p in pack_entries(hass) if p["cc"] == cc), None)
-    if entry is None or kind_of(entry) != KIND_PACK or source is None or source["opened"]:
+    kind = kind_of(entry) if entry is not None else None
+    if kind not in PACK_KINDS or source is None or source["opened"]:
         raise HomeAssistantError(translation_domain=DOMAIN, translation_key="open_invalid")
     target_area = source["area_id"] if area_id is None else (area_id or None)
     target_comp = source["compartment"] if compartment is None else compartment.strip()
@@ -666,7 +668,7 @@ async def async_open_pack(hass: HomeAssistant, cc: str, area_id: str | None = No
         item: dict[str, Any] = {"content": source["content"], "quantity": 1, "unit": "pieces", "product": product}
         if source["best_before"]:
             item["best_before"] = date.fromisoformat(source["best_before"])
-        created = await async_create_items(hass, KIND_PACK, [item], target_area, target_comp)
+        created = await async_create_items(hass, kind, [item], target_area, target_comp)
         quiet = hass.data.setdefault(DOMAIN, {}).setdefault(DATA_QUIET, set())
         quiet.add(cc)  # opening is not consumption (yet)
         await ents["portions"].async_set_native_value(float(source["count"] - 1))
@@ -682,6 +684,18 @@ async def async_open_pack(hass: HomeAssistant, cc: str, area_id: str | None = No
     printed: date | None = best_entity.native_value
     best: date | None = None
     estimator = await async_get_estimator(hass)
+    if kind in NON_FOOD_KINDS:
+        # cosmetics and medicines: the period after opening of the product (PAO, months), else the printed date
+        months = float(product.get("pao") or 0)
+        if months > 0:
+            best = dt_util.now().date() + timedelta(days=round(months * 30.44))
+            if printed is not None and printed < best:
+                best = printed
+            await best_entity.async_set_value(best)
+        else:
+            best = printed
+        device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, opened_cc)})
+        return {"device_id": device.id if device else None, "best_before": best.isoformat() if best else None, "split": opened_cc != cc}
     if estimator.enabled:
         try:
             await best_entity.async_estimate_best_before(overwrite=True)
@@ -780,7 +794,7 @@ def build_cook_again(
     since = today - timedelta(days=AGAIN_DAYS)
     counts: dict[str, dict[str, Any]] = {}
     for record in records:
-        if record.get("outcome") != "eaten" or record.get("kind") == KIND_HOUSEHOLD:
+        if record.get("outcome") != "eaten" or record.get("kind") in NON_FOOD_KINDS:
             continue
         parsed = dt_util.parse_datetime(record.get("emptied") or "")
         day = dt_util.as_local(parsed).date() if parsed else None

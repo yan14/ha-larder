@@ -36,13 +36,14 @@ const demoLabels = [
   { label_id: "larder_food", name: de ? "Larder: Lebensmittel" : "Larder: Food" },
   { label_id: "larder_household", name: de ? "Larder: Haushalt" : "Larder: Household" },
   { label_id: "larder", name: "Larder" },
+  { label_id: "larder_pharmacy", name: de ? "Larder: Apotheke" : "Larder: Pharmacy" },
 ];
-const scopes = { kitchen: "food", freezer: "food", pantry: "both", cellar: "both", bath: "household", utility: "household" };
-const areaLabels = { kitchen: ["larder_fridge"], freezer: ["larder_freezer"], pantry: ["larder_pantry"], cellar: ["larder_pantry"], bath: ["larder", "larder_household"], utility: ["larder", "larder_household"] };
+const scopes = { kitchen: "food", freezer: "food", pantry: "both", cellar: "both", bath: "household", utility: "household", cabinet: "pharmacy" };
+const areaLabels = { kitchen: ["larder_fridge"], freezer: ["larder_freezer"], pantry: ["larder_pantry"], cellar: ["larder_pantry"], bath: ["larder", "larder_household"], utility: ["larder", "larder_household"], cabinet: ["larder", "larder_pharmacy"] };
 areaLabels.kitchen.push("larder_food");
 areaLabels.freezer.push("larder_food");
-const areas = de ? { kitchen: "Küche", cellar: "Keller", pantry: "Vorratskammer", freezer: "Gefrierschrank", bath: "Bad", utility: "Hauswirtschaftsraum" }
-                 : { kitchen: "Kitchen", cellar: "Basement", pantry: "Pantry", freezer: "Freezer", bath: "Bathroom", utility: "Utility room" };
+const areas = de ? { kitchen: "Küche", cellar: "Keller", pantry: "Vorratskammer", freezer: "Gefrierschrank", bath: "Bad", utility: "Hauswirtschaftsraum", cabinet: "Arzneischrank" }
+                 : { kitchen: "Kitchen", cellar: "Basement", pantry: "Pantry", freezer: "Freezer", bath: "Bathroom", utility: "Utility room", cabinet: "Medicine cabinet" };
 // [Name, Bereich, Inhalt, Tage, Kategorie]
 const doses = de ? [
   ["Dose 1", "kitchen", "Lachs", 1, "fish"],
@@ -66,6 +67,9 @@ const doses = de ? [
   ["Artikel 3", "utility", "Waschmittel", null, "hh_laundry", "household"],
   ["Artikel 4", "cellar", "Batterien AA", null, "hh_batteries", "household"],
   ["Artikel 5", "bath", "Zahnpasta", null, "hh_care", "household"],
+  ["Medikament 1", "cabinet", "Ibuprofen 400", 40, "md_pain", "medicine"],
+  ["Medikament 2", "cabinet", "Nasenspray", 150, "md_cold", "medicine"],
+  ["Medikament 3", "cabinet", "Pflaster", 900, "md_wound", "medicine"],
 ] : [
   ["Box 1", "kitchen", "Salmon", 1, "fish"],
   ["Box 2", "kitchen", "Chicken curry", 2, "dish"],
@@ -88,6 +92,9 @@ const doses = de ? [
   ["Item 3", "utility", "Laundry detergent", null, "hh_laundry", "household"],
   ["Item 4", "cellar", "AA batteries", null, "hh_batteries", "household"],
   ["Item 5", "bath", "Toothpaste", null, "hh_care", "household"],
+  ["Medicine 1", "cabinet", "Ibuprofen 400", 40, "md_pain", "medicine"],
+  ["Medicine 2", "cabinet", "Nasal spray", 150, "md_cold", "medicine"],
+  ["Medicine 3", "cabinet", "Plasters", 900, "md_wound", "medicine"],
 ];
 // household demo data: [pieces, pieces per pack, piece name]
 const hhData = { hh_paper: [12, 8, de ? "Rollen" : "rolls"], hh_cleaning: [55, 40, "Tabs"], hh_laundry: [2, 1, ""], hh_batteries: [6, 4, ""], hh_care: [3, 1, ""] };
@@ -97,7 +104,8 @@ doses.forEach(([name, area, content, days, category, kind = "container"], i) => 
   devices[id] = { id, name, name_by_user: null, area_id: area };
   const ids = { text: `text.${id}_c`, date: `date.${id}_b`, datetime: `datetime.${id}_f`, button: `button.${id}_e`, image: `image.${id}_q`, switch: `switch.${id}_v`, number: `number.${id}_p`, select: `select.${id}_u` };
   const hh = kind === "household";
-  if (kind === "pack" || hh) for (const k of ["datetime", "image", "switch"]) delete ids[k]; // Packungen: nur Inhalt, Menge, MHD
+  const med = kind === "medicine";
+  if (kind === "pack" || hh || med) for (const k of ["datetime", "image", "switch"]) delete ids[k]; // Packungen: nur Inhalt, Menge, MHD
   for (const e of Object.values(ids)) entities[e] = { entity_id: e, device_id: id, platform: "larder" };
   states[ids.text] = { entity_id: ids.text, state: content, attributes: { category, kind, ...(hh ? { pack_size: hhData[category][1], piece: hhData[category][2] || null, ...(category === "hh_paper" ? { brand: "Zewa", min_stock: 8, price: 4.99, shopping_list: "todo.drogerie" } : {}) } : {}), ...(/Hazelnut|Haselnuss/.test(content) ? { brand: "Nutella", package: "450 g", kcal_100g: 539, nutri_score: "E", min_stock: 2, allergen_warning: [de ? "Schalenfrüchte" : "Nuts"] } : {}), ...(/Penne/.test(content) ? { brand: "Barilla", package: "500 g", ean: "8076800195057", kcal_100g: 359, kcal_portion: 449, nutri_score: "A", allergens: de ? "Gluten" : "Gluten", nutrients: de ? "Fett 2 g, Kohlenhydrate 71 g, davon Zucker 3,5 g, Eiweiß 13 g, Salz 0,01 g (pro 100 g)" : "Fat 2 g, carbohydrates 71 g, of which sugars 3.5 g, protein 13 g, salt 0.01 g (per 100 g)", source: "openfoodfacts" } : {}) } };
   // Behältergrößen: feste Größen, Dose 4/5 mit variablem Deckel
@@ -108,16 +116,16 @@ doses.forEach(([name, area, content, days, category, kind = "container"], i) => 
       ? { size_variable: true, size_last: "1 l", ...(content ? { size: "1 l" } : {}) }
       : { size_fixed: fixedSizes[i] || null, size: fixedSizes[i] || null });
   }
-  states[ids.date] = { entity_id: ids.date, state: days === null ? "unknown" : day(days), attributes: { estimates: true } };
+  states[ids.date] = { entity_id: ids.date, state: days === null ? "unknown" : day(days), attributes: { estimates: true, soon_days: hh || med ? 60 : 3 } };
   if (ids.datetime) states[ids.datetime] = { entity_id: ids.datetime, state: "unknown", attributes: {} };
   if (ids.switch) states[ids.switch] = { entity_id: ids.switch, state: "on", attributes: {} };
-  states[ids.number] = { entity_id: ids.number, state: hh ? String(hhData[category][0]) : kind === "pack" ? "3" : content && area === "freezer" ? "3" : "0", attributes: {} };
-  states[ids.select] = { entity_id: ids.select, state: kind === "pack" || hh ? "pieces" : "portions", attributes: { options: ["portions", "pieces", "slices", "grams", "milliliters"] } };
+  states[ids.number] = { entity_id: ids.number, state: hh ? String(hhData[category][0]) : med ? "1" : kind === "pack" ? "3" : content && area === "freezer" ? "3" : "0", attributes: {} };
+  states[ids.select] = { entity_id: ids.select, state: kind === "pack" || hh || med ? "pieces" : "portions", attributes: { options: ["portions", "pieces", "slices", "grams", "milliliters"] } };
   states[ids.button] = { entity_id: ids.button, state: "unknown", attributes: {} };
   if (ids.image) states[ids.image] = { entity_id: ids.image, state: "x", attributes: {} };
   const comp = `text.${id}_compartment`;
   entities[comp] = { entity_id: comp, device_id: id, platform: "larder", translation_key: "compartment" };
-  states[comp] = { entity_id: comp, state: hh ? (area === "bath" ? (de ? "Schrank" : "Cupboard") : de ? "Regal" : "Shelf") : kind === "pack" ? (de ? "Regal oben" : "Top shelf") : "", attributes: {} };
+  states[comp] = { entity_id: comp, state: med ? "" : hh ? (area === "bath" ? (de ? "Schrank" : "Cupboard") : de ? "Regal" : "Shelf") : kind === "pack" ? (de ? "Regal oben" : "Top shelf") : "", attributes: {} };
   if (kind !== "container") return; // Beutel und Packungen haben keinen festen Platz
   // variabler Lagerort (Vakuumdosen im Kühlschrank) mit "nach dem Leeren zurück in"
   const flex = `switch.${id}_flexible`, home = `select.${id}_home_area`;
@@ -308,6 +316,14 @@ if (q.get("dialog") === "bag" || q.get("dialog") === "pack") {
     form.querySelector('[data-f="area"]').value = "cellar";
     fill(form.querySelector(".itemrow"), { content: de ? "Kichererbsen" : "Chickpeas", quantity: 4, date: day(500) });
   }
+  document.activeElement && document.activeElement.blur();
+}
+if (q.get("dialog") === "medicine") {
+  el.openItemsDialog("medicine");
+  const form = el.shadowRoot.querySelector("form.dialog");
+  form.querySelector('[data-f="area"]').value = "cabinet";
+  const row = form.querySelector(".itemrow");
+  for (const [k, v] of Object.entries({ content: "Paracetamol 500", quantity: 2, date: day(700), price: de ? "2,95" : "2.95" })) row.querySelector(`[data-i="${k}"]`).value = v;
   document.activeElement && document.activeElement.blur();
 }
 if (q.get("dialog") === "household") {

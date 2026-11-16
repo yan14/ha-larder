@@ -156,7 +156,7 @@ Seit 4.0 verwaltet Larder auch Dinge ohne Haltbarkeitsdatum: Klopapier, Küchenr
 
 - **Stück und Packungen.** Pro Produkt eine Zeile mit der Anzahl **Packungen**, den **Stück je Packung** und einem Namen für das Stück (z. B. 2 × 8 *Rollen*). Larder zählt **Stück**: **−1** entnimmt eine Rolle, die Inventur zählt Rollen, und auch der **Mindestbestand gilt in Stück**. Vorrats-Ansicht und Karte zeigen beides, z. B. *12 Rollen · 1,5 Packungen*.
 - **Einkaufsliste in Packungen.** Sinkt der Bestand unter das Minimum, kommt die nötige Anzahl Packungen (aufgerundet) auf die Einkaufsliste: *Klopapier (Zewa, 2 Packungen)*. Abgehakt erscheint es auf der Startseite unter **Eingekauft** und öffnet den Haushalts-Dialog mit der Packungsgröße.
-- **Kein MHD.** Haushaltsartikel haben kein Datum und tauchen nicht bei *läuft bald ab*, in der täglichen Zusammenfassung, bei Rezepten, im Kalender oder in der Lebensmittel-Statistik auf. *Reicht noch …*, *bald leer*, Preise und Wert funktionieren wie bei Packungen.
+- **Datum optional (seit 4.4).** Haushaltsartikel brauchen kein Datum, können aber eins haben (z. B. Sonnencreme, Batterien): **Ablaufdatum (optional)** auf der Karte oder im Anlegen-Dialog. Mit Datum erscheinen sie unter *läuft bald ab* im Haushalts-Abschnitt der Startseite, mit der längeren Vorwarnung wie bei [Medikamenten](#medikamente-apotheke). **Haltbar nach dem Öffnen (Monate)** auf der Karte ist das Tiegel-Symbol (*12M*): **Anbrechen** setzt das Datum dann auf höchstens diese Frist. Haushaltsartikel tauchen nicht in der täglichen Zusammenfassung, bei Rezepten oder in der Lebensmittel-Statistik auf; *reicht noch …*, *bald leer*, Preise und Wert funktionieren wie bei Packungen.
 - **Strichcode.** Kennt Open Food Facts einen Strichcode nicht, fragt Larder auch die Schwester-Datenbanken **Open Beauty Facts**, **Open Products Facts** und **Open Pet Food Facts**. Ein dort gefundenes Produkt wird als Haushaltsartikel angeboten.
 - **Umwandeln.** Eine Packung, die eigentlich ein Haushaltsartikel ist (oder umgekehrt), wandelst du mit **→ Haushaltsartikel** / **→ Lebensmittel-Packung** unten auf ihrer Karte um. Automatisch wird nichts umgewandelt.
 - **Kategorien:** Papier & Hygiene, Waschen, Putzen & Spülen, Körperpflege, Batterien & Leuchtmittel, Sonstiges.
@@ -170,6 +170,16 @@ Seit 4.0 verwaltet Larder auch Dinge ohne Haltbarkeitsdatum: Klopapier, Küchenr
 <img src="../images/dashboard-household-stock-de.png" width="250" alt="Vorrat an Haushaltsartikeln">
 </p>
 
+## Medikamente (Apotheke)
+
+Seit 4.4 haben Medikamente einen eigenen Bereich, **Apotheke** (💊), neben Lebensmitteln und Haushalt. **＋ → 💊 Medikament** legt sie mit **Verfallsdatum**, Anzahl (Packungen) und Preis an.
+
+- **Längere Vorwarnung.** Medikamente gelten früher als *läuft bald ab* als Lebensmittel: standardmäßig **60 Tage** vor dem Verfallsdatum (Einstellung *„Läuft bald ab“ für Medikamente und Haushalt*). Sie stehen dann auf der Startseite im Abschnitt **💊 Apotheke**, nicht in der täglichen Zusammenfassung, bei Rezepten oder in der Lebensmittel-Statistik.
+- **Eigene Orte und Liste.** Bereiche mit dem Label `Larder: Apotheke` (oder `Larder: Pharmacy`), z. B. der Arzneischrank oder der Verbandskasten im Auto, werden nur für Medikamente angeboten, siehe [Lebensmittel, Haushalt oder Apotheke](#lebensmittel-haushalt-oder-apotheke). Eine eigene Standard-Einkaufsliste (*Einkaufsliste für Medikamente*), z. B. *Apotheke*.
+- **Nach dem Öffnen.** **Anbrechen** auf der Karte (oder im Strichcode-Dialog) markiert eine Packung als angebrochen. Steht auf ihrer Karte *Haltbar nach dem Öffnen (Monate)*, wird das Verfallsdatum der kürzere Wert aus aufgedrucktem Datum und dieser Frist, z. B. Augentropfen 1 Monat.
+- **Kategorien:** Schmerz & Fieber, Erkältung, Magen & Darm, Wunde & Verband, Allergie, Vitamine & Mineralstoffe, Sonstige.
+- Mindestbestand, *bald leer*, Umbuchen und Inventur funktionieren wie bei Packungen. Rückrufwarnungen von lebensmittelwarnung.de decken Medikamente nicht ab, deshalb wird dort nichts abgeglichen.
+
 ## Bereiche und Labels
 
 Jede Dose gehört zu einem **Bereich** von Home Assistant (dem Bereich ihres Geräts). Der Bereich sagt der Schätzung, wo das Essen lagert, und gruppiert das Dashboard. Ändern kannst du ihn direkt auf der Karte der Dose im Dashboard.
@@ -180,16 +190,17 @@ Jede Dose gehört zu einem **Bereich** von Home Assistant (dem Bereich ihres Ger
 
 **Empfohlen:** ein Label pro Art von Lagerort, benannt `Larder: Freezer`, `Larder: Fridge`, `Larder: 0 °C`, `Larder: Pantry` …, mit der Vorlage unten in der Beschreibung. Ein Label pro Bereich reicht. In ein einfaches Label `Larder` gehören keine Grenzen: Das teilen sich alle Vorrats-Bereiche.
 
-### Lebensmittel oder Haushalt (seit 4.0)
+### Lebensmittel, Haushalt oder Apotheke
 
 Ein Bereich kann für Lebensmittel, für Haushaltsartikel oder für beides genutzt werden. Gesteuert wird das über ein **zusätzliches** Label neben dem Lagerart-Label:
 
 | Labels des Bereichs | Angeboten für |
 |---|---|
 | kein Larder-Label | nicht angeboten (wie bisher, sobald irgendein Bereich ein Larder-Label hat) |
-| `Larder` oder ein Lagerart-Label wie `Larder: Gefrierschrank` | Lebensmittel **und** Haushalt |
+| `Larder` oder ein Lagerart-Label wie `Larder: Gefrierschrank` | alles (Lebensmittel, Haushalt, Apotheke) |
 | zusätzlich `Larder: Haushalt` (oder `Larder: Household`) | nur Haushalt |
 | zusätzlich `Larder: Lebensmittel` (oder `Larder: Food`) | nur Lebensmittel |
+| zusätzlich `Larder: Apotheke` (oder `Larder: Pharmacy`), seit 4.4 | nur Medikamente |
 
 Die Nutzungs-Labels haben keine Beschreibung; Temperatur und max. Lagerzeit bleiben im Lagerart-Label (Vorlage unten). Die Nutzung stellst du im Dashboard ein: **Bereiche → ✏️ →** Bereich antippen **→ Nutzung**. Larder legt das Label an, wenn es gebraucht wird.
 

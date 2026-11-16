@@ -126,6 +126,7 @@ Under Settings → Devices & services → **Larder** → **Configure** you can p
 |---|---|---|
 | **Shopping list (food)** | Configure | food, and household items without a list of their own |
 | **Shopping list for household items** | Configure (optional) | household items; empty = the food list |
+| **Shopping list for medicines** (since 4.4) | Configure (optional) | medicines; empty = the food list |
 | **A list per product** | the card (**Shopping list**) or the add dialog | this product, e.g. *Butcher* for liver loaf or *Pharmacy* for plasters; remembered by product name, so the next pack goes there too. **Default list** goes back |
 
 *Bought – add to stock* watches every list Larder wrote to, and *Brand and package on the shopping list* applies to all of them. If a chosen list is removed from Home Assistant, the product falls back to the default list.

@@ -156,7 +156,7 @@ Since 4.0 Larder also keeps track of things without a best-before date: toilet p
 
 - **Pieces and packs.** One row per product with the number of **packs**, the **pieces per pack** and a name for the piece (e.g. 2 × 8 *rolls*). Larder counts **pieces**: **−1** takes one roll, the stocktake counts rolls, and the **minimum stock is in pieces** too. The stock view and the card show both, e.g. *12 rolls · 1.5 packs*.
 - **Shopping list in packs.** When the stock drops below the minimum, the shopping list gets the number of packs needed, rounded up: *Toilet paper (Zewa, 2 packs)*. Ticked off, it is offered on the start page under **Bought** and opens the household dialog with the pack size filled in.
-- **No best-before date.** Household items have no date, do not appear in *expires soon*, the daily summary, recipes, the calendar or the food statistics. *Lasts about …*, *running low*, prices and the value work as for packs.
+- **Date optional (since 4.4).** Household items need no date, but can have one (e.g. sunscreen, batteries): **Expiry date (optional)** on the card or in the add dialog. With a date they appear under *expires soon* in the household section of the start page, with the longer warning of [medicines](#medicines-pharmacy). **Keeps after opening (months)** on the card is the jar symbol (*12M*): **Open** then sets the date to at most that period. Household items stay out of the daily summary, recipes and the food statistics; *lasts about …*, *running low*, prices and the value work as for packs.
 - **Barcode.** If Open Food Facts does not know a barcode, Larder also asks its sister databases **Open Beauty Facts**, **Open Products Facts** and **Open Pet Food Facts**. A product found there is offered as a household item.
 - **Converting.** A pack that should have been a household item (or the other way round) is converted with **→ Household item** / **→ Food pack** at the bottom of its card. Nothing is converted automatically.
 - **Categories:** paper & hygiene, laundry, cleaning & dishes, personal care, batteries & bulbs, other.
@@ -170,6 +170,16 @@ Since 4.0 Larder also keeps track of things without a best-before date: toilet p
 <img src="../images/dashboard-household-stock-en.png" width="250" alt="Stock of household items">
 </p>
 
+## Medicines (pharmacy)
+
+Since 4.4 medicines have a side of their own, **Pharmacy** (💊), next to food and household. **＋ → 💊 Medicine** adds them with their **expiry date**, count (packs) and price.
+
+- **Longer warning.** Medicines count as *expires soon* earlier than food: by default **60 days** before the expiry date (setting *“Expires soon” for medicines and household*). They then appear on the start page in the section **💊 Pharmacy**, not in the daily summary, recipes or food statistics.
+- **Own places and list.** Areas with the label `Larder: Pharmacy` (or `Larder: Apotheke`), e.g. the medicine cabinet or the first-aid kit in the car, are offered only for medicines, see [Food, household or pharmacy](#food-household-or-pharmacy). A default shopping list of its own (*Shopping list for medicines*), e.g. *Pharmacy*.
+- **After opening.** **Open** on the card (or in the barcode dialog) marks one pack as opened. With *Keeps after opening (months)* on its card, the expiry date becomes the shorter of the printed date and that period, e.g. eye drops 1 month.
+- **Categories:** pain & fever, colds, stomach & digestion, wounds & dressings, allergy, vitamins & minerals, other.
+- Minimum stock, *running low*, moving and stocktake work as for packs. Recall warnings on lebensmittelwarnung.de do not cover medicines, so none are matched.
+
 ## Areas and labels
 
 Every container belongs to an **area** of Home Assistant (the area of its device). The area tells the estimate where the food is stored and groups the dashboard. Change it right on the container's card in the dashboard.
@@ -180,16 +190,17 @@ Every container belongs to an **area** of Home Assistant (the area of its device
 
 **Recommended:** one label per kind of storage place, named `Larder: Freezer`, `Larder: Fridge`, `Larder: 0 °C`, `Larder: Pantry` …, with the template below in its description. One label per area is enough. Do not put limits into a plain `Larder` label: it is shared by all your storage areas.
 
-### Food or household (since 4.0)
+### Food, household or pharmacy
 
 An area can be used for food, for household items or for both. This is set with an **additional** label next to the storage-kind label:
 
 | Labels of the area | Offered for |
 |---|---|
 | no Larder label | not offered (as before, once any area has a Larder label) |
-| `Larder` or a storage-kind label such as `Larder: Freezer` | food **and** household |
+| `Larder` or a storage-kind label such as `Larder: Freezer` | everything (food, household, pharmacy) |
 | additionally `Larder: Household` (or `Larder: Haushalt`) | household only |
 | additionally `Larder: Food` (or `Larder: Lebensmittel`) | food only |
+| additionally `Larder: Pharmacy` (or `Larder: Apotheke`), since 4.4 | medicines only |
 
 The scope labels carry no description; temperature and max. storage time stay in the storage-kind label (template below). Set the use in the dashboard: **Areas → ✏️ →** tap an area **→ Used for**. Larder creates the label when it is needed.
 

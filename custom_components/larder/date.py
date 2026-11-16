@@ -35,6 +35,7 @@ from .estimate import (
     estimate_best_before,
     storage_context,
 )
+from .expiry import soon_days
 
 
 async def async_setup_entry(
@@ -104,7 +105,8 @@ class LarderBestBefore(DateEntity, LarderResettable):
         estimator = self.hass.data.get(DOMAIN, {}).get(DATA_ESTIMATOR)
         return {
             "estimates": bool(estimator and estimator.enabled),
-            "soon_days": getattr(estimator, "soon_days", SOON_DAYS),  # for the dashboards
+            # for the dashboards: medicines and household items warn earlier
+            "soon_days": soon_days(self.hass, self._kind) if estimator else SOON_DAYS,
         }
 
     async def async_set_value(self, value: date) -> None:

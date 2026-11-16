@@ -129,7 +129,7 @@ export function rowsAtPlace(rows, areaId, compartment) {
   );
 }
 
-export function installCare(Dashboard, { el, isAdmin, listAreas, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment, CATEGORY_ICONS }) {
+export function installCare(Dashboard, { el, isAdmin, listAreas, scopeOfKind, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment, CATEGORY_ICONS }) {
   const proto = Dashboard.prototype;
   const button = (cls, text, onClick) => {
     const b = el("button", cls, text);
@@ -164,7 +164,7 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, DOMAIN, attachC
     const qty = Number((states[row.dev.entities.number] || {}).state) || 1;
     const area = el("select");
     area.dataset.f = "area";
-    for (const a of [{ id: "", name: t.noArea }, ...listAreas(hass, this._classic.larderLabel, row.areaId, row.kind === "household" ? "household" : "food")]) {
+    for (const a of [{ id: "", name: t.noArea }, ...listAreas(hass, this._classic.larderLabel, row.areaId, scopeOfKind(row.kind))]) {
       const o = el("option", "", a.name);
       o.value = a.id;
       area.append(o);
@@ -249,11 +249,11 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, DOMAIN, attachC
       const date = best && best.state && best.state !== "unknown" && best.state !== "unavailable" ? fmt(hass, best.state) : "";
       const text = el("span", "text");
       text.append(
-        el("span", "name", `${CATEGORY_ICONS[row.category] || CATEGORY_ICONS.other} ${row.content}${(row.kind === "pack" || row.kind === "household") && count > 1 ? ` · ${count}` : ""}`),
+        el("span", "name", `${CATEGORY_ICONS[row.category] || CATEGORY_ICONS.other} ${row.content}${["pack", "household", "medicine"].includes(row.kind) && count > 1 ? ` · ${count}` : ""}`),
         el("span", "sub", [row.opened ? "🔓" : null, row.name, date ? t.bestBefore(date) : t.noDate, !compartment && row.compartment ? row.compartment : null].filter(Boolean).join(" · ")),
       );
       line.append(text);
-      if (row.kind === "pack" || row.kind === "household") {
+      if (["pack", "household", "medicine"].includes(row.kind)) {
         const take = button("primary", t.placeTake, async () => {
           take.disabled = true;
           await this._takeOne({ device_id: row.id, count });
@@ -594,7 +594,7 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, DOMAIN, attachC
     const hass = this._hass;
     const t = careTexts(hass);
     const area = el("select");
-    for (const a of [{ id: "", name: t.noArea }, ...listAreas(hass, this._classic.larderLabel, row.areaId, row.kind === "household" ? "household" : "food")]) {
+    for (const a of [{ id: "", name: t.noArea }, ...listAreas(hass, this._classic.larderLabel, row.areaId, scopeOfKind(row.kind))]) {
       const o = el("option", "", a.name);
       o.value = a.id;
       area.append(o);

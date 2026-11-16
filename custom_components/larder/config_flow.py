@@ -38,6 +38,7 @@ from .const import (
     CONF_ESTIMATE_MODE,
     CONF_INITIAL,
     CONF_KIND,
+    CONF_LONG_SOON_DAYS,
     CONF_MEAL_CALENDAR,
     CONF_NFC_NOTIFY,
     CONF_OPENED_DAYS,
@@ -60,8 +61,10 @@ from .const import (
     CONF_THAWED_DAYS,
     CONF_TODO_ENTITY,
     CONF_TODO_HOUSEHOLD,
+    CONF_TODO_PHARMACY,
     CONF_VACUUM_DEFAULT,
     CONF_WATCH_ALLERGENS,
+    DEFAULT_LONG_SOON_DAYS,
     DEFAULT_OPENED_DAYS,
     DEFAULT_RECIPE_DAYS,
     DEFAULT_THAW_DAYS,
@@ -287,6 +290,9 @@ class LarderOptionsFlow(OptionsFlow):
                 vol.Optional(CONF_SOON_DAYS, default=SOON_DAYS): NumberSelector(
                     NumberSelectorConfig(min=0, max=MAX_SOON_DAYS, step=1, mode=NumberSelectorMode.BOX)
                 ),
+                vol.Optional(CONF_LONG_SOON_DAYS, default=DEFAULT_LONG_SOON_DAYS): NumberSelector(
+                    NumberSelectorConfig(min=1, max=365, step=1, mode=NumberSelectorMode.BOX)
+                ),
                 vol.Optional(CONF_VACUUM_DEFAULT, default=True): BooleanSelector(),
                 vol.Optional(CONF_NFC_NOTIFY, default=True): BooleanSelector(),
                 vol.Optional(CONF_REPAIR_HINTS, default=True): BooleanSelector(),
@@ -298,6 +304,9 @@ class LarderOptionsFlow(OptionsFlow):
                     EntitySelectorConfig(domain="todo")
                 ),
                 vol.Optional(CONF_TODO_HOUSEHOLD): EntitySelector(
+                    EntitySelectorConfig(domain="todo")
+                ),
+                vol.Optional(CONF_TODO_PHARMACY): EntitySelector(
                     EntitySelectorConfig(domain="todo")
                 ),
                 vol.Optional(CONF_SHOPPING_DETAILS, default=True): BooleanSelector(),

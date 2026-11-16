@@ -24,16 +24,30 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import area_registry as ar, device_registry as dr, label_registry as lr
 
 from . import shelf_life
-from .const import CONF_KIND, DOMAIN, KIND_HOUSEHOLD, KIND_PACK, larder_id
+from .const import CONF_KIND, DOMAIN, PACK_KINDS, larder_id
 from .entity import kind_of
 
 SCOPE_FOOD = "food"
 SCOPE_HOUSEHOLD = "household"
-SCOPE_BOTH = "both"
-SCOPES = (SCOPE_FOOD, SCOPE_HOUSEHOLD, SCOPE_BOTH)
-
-_FOOD_NAMES = ("larder: lebensmittel", "larder: food")
-_HOUSEHOLD_NAMES = ("larder: haushalt", "larder: household")
+SCOPE_PHARMACY = "pharmacy"  # medicines (4.4)
+SCOPE_BOTH = "both"  # every use (the name stays from 4.0, when there were two)
+SINGLE_SCOPES = (SCOPE_FOOD, SCOPE_HOUSEHOLD, SCOPE_PHARMACY)
+SCOPES = (*SINGLE_SCOPES, SCOPE_BOTH)
+# label names per scope (either language); new labels are created as _SCOPE_LABEL (German, English)
+_SCOPE_NAMES = {
+    SCOPE_FOOD: ("larder: lebensmittel", "larder: food"),
+    SCOPE_HOUSEHOLD: ("larder: haushalt", "larder: household"),
+    SCOPE_PHARMACY: ("larder: apotheke", "larder: pharmacy", "larder: hausapotheke", "larder: medicine"),
+}
+_SCOPE_LABEL = {
+    SCOPE_FOOD: ("Larder: Lebensmittel", "Larder: Food"),
+    SCOPE_HOUSEHOLD: ("Larder: Haushalt", "Larder: Household"),
+    SCOPE_PHARMACY: ("Larder: Apotheke", "Larder: Pharmacy"),
+}
+_PHARMACY_AREA = re.compile(
+    r"(arznei|apotheke|medikament|medizin|verbandskasten|erste[- ]hilfe|medicine|first[- ]aid|pharmacy)",
+    re.IGNORECASE,
+)
 _HOUSEHOLD_AREA = re.compile(
     r"\b(bad|badezimmer|gäste-?wc|wc|bath(room)?|hauswirtschaftsraum|hwr|utility( room)?|waschküche|waschkeller|waschraum|laundry( room)?|putzkammer|putzraum)\b",
     re.IGNORECASE,
@@ -57,6 +71,26 @@ def household_category(content: str | None) -> str | None:
     return next((cat for cat, words in _CATEGORIES if any(w in text for w in words)), HOUSEHOLD_OTHER)
 
 
+# medicines (4.4): category → keywords; the first match wins
+_MEDICINE_CATEGORIES: tuple[tuple[str, tuple[str, ...]], ...] = (
+    ("md_pain", ("ibuprofen", "paracetamol", "aspirin", "acetylsalicyl", "diclofenac", "schmerz", "fieber", "kopfschmerz", "pain", "fever")),
+    ("md_cold", ("erkält", "husten", "schnupfen", "nasenspray", "halsschmerz", "hals", "grippe", "cold", "cough", "nasal", "throat", "flu")),
+    ("md_digest", ("magen", "darm", "durchfall", "verstopfung", "übelkeit", "sodbrennen", "iberogast", "stomach", "diarrh", "nausea", "heartburn")),
+    ("md_wound", ("pflaster", "verband", "wund", "desinfekt", "kompresse", "mullbinde", "plaster", "bandage", "wound", "disinfect")),
+    ("md_allergy", ("allerg", "cetirizin", "loratadin", "antihistamin", "heuschnupfen", "hay fever")),
+    ("md_vitamin", ("vitamin", "magnesium", "zink", "eisen", "mineral", "zinc", "iron", "supplement")),
+)
+MEDICINE_OTHER = "md_other"
+
+
+def medicine_category(content: str | None) -> str | None:
+    """Category of a medicine (for icons and groups in the dashboard)."""
+    if not content:
+        return None
+    text = content.casefold()
+    return next((cat for cat, words in _MEDICINE_CATEGORIES if any(w in text for w in words)), MEDICINE_OTHER)
+
+
 def packs_needed(minimum: int, count: int, pack_size: int | None) -> int:
     """How many packs bring the stock (in pieces) back to the minimum; at least one."""
     return max(1, math.ceil(max(0, minimum - count) / max(1, int(pack_size or 1))))
@@ -75,29 +109,27 @@ def _is_larder(name: str) -> bool:
 
 
 def area_scope(hass: HomeAssistant, area: ar.AreaEntry) -> str | None:
-    """food / household / both for an area with a Larder label; None without one."""
+    """food / household / pharmacy / both for an area with a Larder label; None without one.
+
+    Exactly one scope label limits the area to that use; none (or several) means every use.
+    """
     names = [n for n in _label_names(hass, area) if _is_larder(n)]
     if not names:
         return None
-    food = any(n in _FOOD_NAMES for n in names)
-    household = any(n in _HOUSEHOLD_NAMES for n in names)
-    if food != household:
-        return SCOPE_FOOD if food else SCOPE_HOUSEHOLD
-    return SCOPE_BOTH
+    found = [scope for scope, labels in _SCOPE_NAMES.items() if any(n in labels for n in names)]
+    return found[0] if len(found) == 1 else SCOPE_BOTH
 
 
 def _scope_label(hass: HomeAssistant, scope: str, create: bool) -> str | None:
     """Label id of the scope label (existing in either language, otherwise created in the system language)."""
     registry = lr.async_get(hass)
-    names = _FOOD_NAMES if scope == SCOPE_FOOD else _HOUSEHOLD_NAMES
     for label in registry.async_list_labels():
-        if label.name.strip().casefold() in names:
+        if label.name.strip().casefold() in _SCOPE_NAMES[scope]:
             return label.label_id
     if not create:
         return None
     de = (hass.config.language or "en").lower().startswith("de")
-    name = ("Larder: Lebensmittel" if de else "Larder: Food") if scope == SCOPE_FOOD else ("Larder: Haushalt" if de else "Larder: Household")
-    return registry.async_create(name).label_id
+    return registry.async_create(_SCOPE_LABEL[scope][0 if de else 1]).label_id
 
 
 def _plain_label(hass: HomeAssistant) -> str:
@@ -116,10 +148,10 @@ def async_set_area_scope(hass: HomeAssistant, area_id: str, scope: str) -> None:
     if area is None or scope not in SCOPES:
         raise ValueError("unknown area or scope")
     labels = set(area.labels)
-    for other in (SCOPE_FOOD, SCOPE_HOUSEHOLD):
+    for other in SINGLE_SCOPES:
         if (lid := _scope_label(hass, other, create=False)) is not None:
             labels.discard(lid)
-    if scope in (SCOPE_FOOD, SCOPE_HOUSEHOLD):
+    if scope in SINGLE_SCOPES:
         labels.add(_scope_label(hass, scope, create=True))
     else:
         registry = lr.async_get(hass)
@@ -145,7 +177,7 @@ def plan_area_scopes(hass: HomeAssistant) -> list[dict[str, Any]]:
     plan: list[dict[str, Any]] = []
     for area in areas:
         scope = area_scope(hass, area)
-        if scope in (SCOPE_FOOD, SCOPE_HOUSEHOLD):
+        if scope in SINGLE_SCOPES:
             continue
         words = " ".join([area.name, *[n.removeprefix("larder:").strip() for n in _label_names(hass, area) if _is_larder(n)]])
         storage = shelf_life.storage_from_words(words)
@@ -153,6 +185,8 @@ def plan_area_scopes(hass: HomeAssistant) -> list[dict[str, Any]]:
             # without any Larder labels every area is offered; only label places that are used or already labelled
             if scope is not None or not any_larder or area.id in _areas_in_use(hass):
                 plan.append({"area_id": area.id, "name": area.name, "scope": SCOPE_FOOD})
+        elif _PHARMACY_AREA.search(area.name):
+            plan.append({"area_id": area.id, "name": area.name, "scope": SCOPE_PHARMACY})
         elif _HOUSEHOLD_AREA.search(area.name):
             plan.append({"area_id": area.id, "name": area.name, "scope": SCOPE_HOUSEHOLD})
     return sorted(plan, key=lambda p: p["name"].casefold())
@@ -176,7 +210,7 @@ def async_assign_area_scopes(hass: HomeAssistant) -> list[dict[str, Any]]:
 
 
 def scopes_assigned(hass: HomeAssistant) -> bool:
-    return any(area_scope(hass, area) in (SCOPE_FOOD, SCOPE_HOUSEHOLD) for area in ar.async_get(hass).async_list_areas())
+    return any(area_scope(hass, area) in SINGLE_SCOPES for area in ar.async_get(hass).async_list_areas())
 
 
 # ---------- WebSocket ----------
@@ -216,16 +250,16 @@ def ws_area_scopes_auto(hass: HomeAssistant, connection: websocket_api.ActiveCon
 
 
 @websocket_api.websocket_command(
-    {vol.Required("type"): f"{DOMAIN}/convert_kind", vol.Required("device_id"): str, vol.Required("kind"): vol.In((KIND_PACK, KIND_HOUSEHOLD))}
+    {vol.Required("type"): f"{DOMAIN}/convert_kind", vol.Required("device_id"): str, vol.Required("kind"): vol.In(PACK_KINDS)}
 )
 @websocket_api.async_response
 async def ws_convert_kind(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    """Turn a pack into a household item (or back); the entry is reloaded with the other kind."""
+    """Turn a pack into a household item or a medicine (or back); the entry is reloaded with the other kind."""
     device = dr.async_get(hass).async_get(msg["device_id"])
     cc = larder_id(device)
     entry = next((e for e in hass.config_entries.async_entries(DOMAIN) if e.data.get("cc") == cc), None) if cc else None
-    if entry is None or kind_of(entry) not in (KIND_PACK, KIND_HOUSEHOLD):
-        connection.send_error(msg["id"], "not_found", "not a pack or household item")
+    if entry is None or kind_of(entry) not in PACK_KINDS:
+        connection.send_error(msg["id"], "not_found", "not a pack, household item or medicine")
         return
     if kind_of(entry) != msg["kind"]:
         hass.config_entries.async_update_entry(entry, data={**entry.data, CONF_KIND: msg["kind"]})

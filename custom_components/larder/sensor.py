@@ -93,6 +93,6 @@ class LarderDaysLeftSensor(SensorEntity, LarderEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         value = self.native_value
         return {
-            "status": status_for(value, soon_days(self.hass)),
+            "status": status_for(value, soon_days(self.hass, self._kind)),
             "best_before": self._best_before.isoformat() if self._best_before else None,
         }

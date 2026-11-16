@@ -231,10 +231,12 @@
           "temperature_warning": "Temperature warning",
           "todo_entity": "Shopping list (food)",
           "todo_household": "Shopping list for household items (optional)",
+          "todo_pharmacy": "Shopping list for medicines (optional)",
           "meal_calendar": "Calendar for the meal plan",
           "thaw_days": "Thawing: days ahead",
           "recipe_days": "Period for recipe ideas (days)",
           "soon_days": "\"Expiring soon\" from (days)",
+          "long_soon_days": "“Expires soon” for medicines and household (days)",
           "shopping_details": "Brand and package on the shopping list",
           "watch_allergens": "Allergens in the household (optional)",
           "stock_lead_days": "Stock: days until the next shopping trip",
@@ -256,10 +258,12 @@
           "temperature_warning": "Warns (repair hint and event larder_temperature_warning) when a storage place with a temperature sensor stays too warm: freezer above −12 °C for 30 minutes, fridge above 8 °C or 0 °C drawer above 6 °C for 60 minutes.",
           "todo_entity": "A to-do list of Home Assistant (e.g. “Shopping list”, Todoist, Bring!). Everything Larder puts on the shopping list goes here: emptied containers with the “Shopping list” switch, minimum stock, running low, meal plan ingredients (not twice). Single products can get another list on their card. Leave empty = off.",
           "todo_household": "A to-do list of its own for household items (e.g. “Drugstore”). Empty = the same list as for food. Single products can get another list on their card.",
+          "todo_pharmacy": "A to-do list of its own for medicines (e.g. “Pharmacy”). Empty = the same list as for food.",
           "meal_calendar": "Optional: planned dishes appear there as an all-day event “🍽 …”. Without a calendar they are only in the dashboard.",
           "thaw_days": "How many days before the planned day the summary reminds you of containers in the freezer (0 = on the day itself).",
           "recipe_days": "Recipe ideas \"from leftovers\" use containers that expire within this many days (0 = today only). In the dashboard you can change the period for a single request or turn it off.",
           "soon_days": "From this many days left a container counts as \"expiring soon\" (hint in the dashboard, filter, sensor status and the default for the expiry overview).",
+          "long_soon_days": "Medicines and household items with a date (e.g. sunscreen) count as “expires soon” this many days before and are shown in their section on the start page. They are not part of the daily summary.",
           "shopping_details": "If the brand or package size of a container is known (e.g. after a barcode scan), it goes onto the list with the contents when emptying: \"Oats (Kölln, 500 g)\".",
           "watch_allergens": "Containers whose allergens or contents match get a ⚠ on the card and tile; recipe ideas leave them out and avoid these ingredients. Only a hint, no guarantee.",
           "stock_lead_days": "For the suggested minimum stock: as many packs as are used up in this time.",
@@ -481,7 +485,7 @@
         "step": {
           "scopes": {
             "title": "Assign areas",
-            "description": "Version 4.0 adds household items. An area is for food, for household items or for both – controlled by additional labels (`Larder: Food`, `Larder: Household`). Larder can assign unambiguous areas automatically:\n\n{areas}\n\nLabels are only added; existing labels (e.g. `Larder: Freezer` with temperature and storage time) stay as they are. All other Larder areas are used for both and can be changed in the dashboard under Areas."
+            "description": "Version 4.0 adds household items. An area is for food, for household items or for both – controlled by additional labels (`Larder: Food`, `Larder: Household`, since 4.4 `Larder: Pharmacy`). Larder can assign unambiguous areas automatically:\n\n{areas}\n\nLabels are only added; existing labels (e.g. `Larder: Freezer` with temperature and storage time) stay as they are. All other Larder areas are used for both and can be changed in the dashboard under Areas."
           }
         },
         "abort": {

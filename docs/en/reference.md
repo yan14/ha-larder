@@ -16,6 +16,7 @@ Settings → Devices & services → **Larder** → **Configure** (on any contain
 | Time after thawing | 2 days | The same for the **Thawed** button |
 | Period for recipe ideas | 3 days | Containers that expire within this many days are used for [recipe ideas](kitchen.md#recipe-ideas) (0 = today only) |
 | "Expiring soon" from | 3 days | When a container counts as expiring soon: hint and filter in the dashboards, sensor `status`, default of `larder.get_expiring` |
+| "Expires soon" for medicines and household | 60 days | The same for [medicines](containers.md#medicines-pharmacy) and household items with a date; they are shown on the start page only |
 | Vacuum preset | on | Preset of the **Vacuum** switch for new containers |
 | NFC: notify the phone | on | Notification on the scanning phone after an [NFC scan](scanning.md#nfc-tags) |
 | Repair hints | on | Hints under Settings → System → Repairs, see [Repairs](#repairs) |
@@ -23,6 +24,7 @@ Settings → Devices & services → **Larder** → **Configure** (on any contain
 | Calendar | none | [Best-before dates in your calendar](kitchen.md#best-before-dates-in-your-calendar) |
 | Shopping list (food) | none | Default list for everything Larder puts on a [shopping list](kitchen.md#shopping-list) |
 | Shopping list for household items | none | Default list for [household items](containers.md#household-items); empty = the food list |
+| Shopping list for medicines | none | Default list for [medicines](containers.md#medicines-pharmacy); empty = the food list |
 | Brand and package on the shopping list | on | "Oats (Kölln, 500 g)" instead of "Oats", see [Shopping list](kitchen.md#shopping-list) |
 | Allergens in the household | none | Warning on containers and no such containers in recipe ideas, see [Allergens in the household](containers.md#allergens-in-the-household) |
 | Calendar for the meal plan | none | Planned dishes as all-day events, see [Meal plan](kitchen.md#meal-plan) |
@@ -45,7 +47,7 @@ Larder shows hints under **Settings → System → Repairs** when containers nee
 | **Containers without an area** | A container has no area, so the estimate does not know where the food is stored. |
 | **Filled containers without a best-before date** | A container has contents but no date. It then appears neither in the daily summary nor in the calendar. |
 | **Containers expired more than 7 days ago** | Time to empty them. |
-| **Larder 4.0: assign areas to food and household** | After the update to 4.0, as long as Larder can suggest a use for at least one area (see [Food or household](containers.md#food-or-household-since-40)). **Fix** adds the suggested labels. |
+| **Larder 4.0: assign areas to food and household** | After the update to 4.0, as long as Larder can suggest a use for at least one area (see [Food or household](containers.md#food-household-or-pharmacy)). **Fix** adds the suggested labels. |
 
 A hint disappears by itself as soon as no container is affected any more (checked on every change and once a day). You can switch the hints off in the [settings](#settings) ("Repair hints").
 
@@ -81,7 +83,7 @@ Every container becomes a device (identified by its ID, the `cc` parameter of a 
 | **Days until best before** | `sensor` | Days left until the best-before date (negative = expired). The attribute `status` is `ok`, `soon` (3 days or less, see [Settings](#settings)), `expired` or `none` |
 | **QR code** | `image` | The container's QR code as an image: scanning it with the camera app opens the container in the Larder dashboard, see [Your own QR codes](scanning.md#your-own-qr-codes) |
 
-[Bags](containers.md#bags-and-packs) have the same entities except **Shopping list**, **Flexible storage place** and **Storage place after emptying**; [packs](containers.md#bags-and-packs) only have **Contents**, **Compartment**, **Best before**, **Quantity**, **Unit**, **Days until best before** and **Empty container**. [Household items](containers.md#household-items) have the entities of a pack (the **Best before** entity stays empty and is hidden in the dashboard), with the attributes `pack_size` (pieces per pack) and `piece` (name of a piece) on **Contents** and categories starting with `hh_`. The attribute `kind` of **Contents** is `container`, `bag`, `pack` or `household`. Pressing **Empty container** on a bag, pack or household item removes its device.
+[Bags](containers.md#bags-and-packs) have the same entities except **Shopping list**, **Flexible storage place** and **Storage place after emptying**; [packs](containers.md#bags-and-packs) only have **Contents**, **Compartment**, **Best before**, **Quantity**, **Unit**, **Days until best before** and **Empty container**. [Household items](containers.md#household-items) have the entities of a pack (the **Best before** entity stays empty and is hidden in the dashboard), with the attributes `pack_size` (pieces per pack) and `piece` (name of a piece) on **Contents** and categories starting with `hh_`. [Medicines](containers.md#medicines-pharmacy) have the entities of a pack, categories starting with `md_`. Household items and medicines can have the attribute `pao` (months after opening). The attribute `kind` of **Contents** is `container`, `bag`, `pack`, `household` or `medicine`. Pressing **Empty container** on a bag, pack or household item removes its device.
 
 The values survive restarts. "Empty container" is a regular button entity, so you can use it on dashboards and in automations via `button.press`.
 

@@ -22,6 +22,12 @@ const TEXT = {
     kindHousehold: "Haushaltsartikel",
     kindHouseholdHint: "Ohne Haltbarkeit, z. B. Klopapier, Waschmittel, Batterien",
     titleHousehold: "Haushaltsartikel anlegen",
+    kindMedicine: "Medikament",
+    kindMedicineHint: "Mit Verfallsdatum, z. B. Ibuprofen, Nasenspray, Pflaster",
+    titleMedicine: "Medikamente anlegen",
+    expiry: "Verfallsdatum",
+    expiryOptional: "Ablaufdatum (optional)",
+    createdMedicine: (n) => (n === 1 ? "1 Medikament angelegt." : `${n} Medikamente angelegt.`),
     shopList: "Einkaufsliste",
     shopListDefault: "Standardliste",
     packSize: "Stück je Packung",
@@ -171,6 +177,12 @@ const TEXT = {
     kindHousehold: "Household item",
     kindHouseholdHint: "No best-before date, e.g. toilet paper, detergent, batteries",
     titleHousehold: "Add household items",
+    kindMedicine: "Medicine",
+    kindMedicineHint: "With an expiry date, e.g. ibuprofen, nasal spray, plasters",
+    titleMedicine: "Add medicines",
+    expiry: "Expiry date",
+    expiryOptional: "Expiry date (optional)",
+    createdMedicine: (n) => (n === 1 ? "1 medicine added." : `${n} medicines added.`),
     shopList: "Shopping list",
     shopListDefault: "Default list",
     packSize: "Pieces per pack",
@@ -354,7 +366,7 @@ export function buildItems(kind, rows, vacuum = true) {
       item.quantity = quantity;
       if (UNITS.includes(row.unit)) item.unit = row.unit;
     }
-    if (kind !== "household" && /^\d{4}-\d{2}-\d{2}$/.test(row.date || "")) item.best_before = row.date;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(row.date || "")) item.best_before = row.date; // household items: optional
     if (kind !== "household" && row.product) item.product = row.product;
     const price = parseFloat(String(row.price || "").replace(",", "."));
     if (price > 0) item.product = { ...(item.product || {}), price: Math.round(price * 100) / 100, price_source: row.priceSource || "own" };
@@ -365,7 +377,7 @@ export function buildItems(kind, rows, vacuum = true) {
   return items;
 }
 
-export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment }) {
+export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, scopeOfKind, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment }) {
   const proto = Dashboard.prototype;
 
   const fmtDate = (hass, iso) => {
@@ -413,11 +425,12 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, DOM
     const list = el("div", "codelist");
     res.entries.forEach((entry, i) => {
       const hh = entry.kind === "household";
+      const nonFood = hh || entry.kind === "medicine";
       const row = el("div", `coderow${i === 0 ? " oldest" : ""}`);
       const text = el("span", "text");
       text.append(
         el("span", "name", `${placeName(entry, t)}: ${entry.count}`),
-        el("span", "sub", [entry.opened ? t.openedMark : null, hh ? null : entry.best_before ? t.codeDate(fmtDate(hass, entry.best_before)) : t.noDate].filter(Boolean).join(" · ")),
+        el("span", "sub", [entry.opened ? t.openedMark : null, entry.best_before ? t.codeDate(fmtDate(hass, entry.best_before)) : nonFood ? null : t.noDate].filter(Boolean).join(" · ")),
       );
       const take = (outcome, done) => async (ev) => {
         ev.currentTarget.disabled = true;
@@ -432,7 +445,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, DOM
       thrown.dataset.role = "code-thrown";
       const actions = el("div", "codeactions");
       actions.append(used, thrown);
-      if (!hh && !entry.opened) {
+      if (!entry.opened) {
         const open = button("", t.codeOpen, () => this.openOpenDialog(entry.device_id));
         open.dataset.role = "code-open";
         actions.append(open);
@@ -447,7 +460,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, DOM
     // the price goes into the price field (editable), the rest of the product data stays with the row
     const { price: knownPrice, ...knownProduct } = (known && known.product) || {};
     const another = button("link", `＋ ${t.codeNewPack}`, () =>
-      this.openItemsDialog(known && known.kind === "household" ? "household" : "pack", {
+      this.openItemsDialog(known && ["household", "medicine"].includes(known.kind) ? known.kind : "pack", {
         rows: [{ content: (known && known.content) || res.name, quantity: 1, product: knownProduct, price: knownPrice }],
         area_id: known && known.area_id,
         compartment: known && known.compartment,
@@ -697,7 +710,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, DOM
       const row = el("div", "boughtrow");
       row.dataset.id = item.id;
       const add = button("primary", t.boughtAdd, () =>
-        this.openItemsDialog(item.kind === "household" ? "household" : "pack", {
+        this.openItemsDialog(["household", "medicine"].includes(item.kind) ? item.kind : "pack", {
           rows: [{ content: item.content, quantity: item.count || 1, product: item.product || null }],
           area_id: item.area_id,
           compartment: item.compartment,
@@ -933,8 +946,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, DOM
       frag.append(bar);
     }
     frag.prepend(this._scopeSwitch());
-    const hhScope = this._opts.scope === "household";
-    const products = data.products.filter((p) => (p.kind === "household") === hhScope);
+    const products = data.products.filter((p) => scopeOfKind(p.kind) === this._opts.scope);
     const valued = products.filter((p) => p.value);
     const value = Math.round(valued.reduce((sum, p) => sum + p.value, 0) * 100) / 100;
     frag.append(el("p", "note", t.stockIntro));
@@ -1037,7 +1049,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, DOM
     count.value = String(total);
     const area = el("select");
     area.dataset.f = "area";
-    for (const a of [{ id: "", name: t.noArea }, ...listAreas(hass, this._classic.larderLabel, row.areaId, row.kind === "household" ? "household" : "food")]) {
+    for (const a of [{ id: "", name: t.noArea }, ...listAreas(hass, this._classic.larderLabel, row.areaId, scopeOfKind(row.kind))]) {
       const o = el("option", "", a.name);
       o.value = a.id;
       area.append(o);
@@ -1127,6 +1139,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, DOM
       choice("add-bag", "🛍", t.kindBag, t.kindBagHint, () => this.openItemsDialog("bag")),
       choice("add-pack", "📦", t.kindPack, t.kindPackHint, () => this.openItemsDialog("pack")),
       choice("add-household", "🧻", t.kindHousehold, t.kindHouseholdHint, () => this.openItemsDialog("household")),
+      choice("add-medicine", "💊", t.kindMedicine, t.kindMedicineHint, () => this.openItemsDialog("medicine")),
     );
     this._form.replaceChildren(el("h2", "", t.addTitle), choices, buttonsRow(button("cancel", t.cancel, () => this._closeDialog())));
     this._submit = null;
@@ -1140,10 +1153,11 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, DOM
     const form = this._form;
     const bag = kind === "bag";
     const hh = kind === "household";
+    const med = kind === "medicine";
 
     const area = el("select");
     area.dataset.f = "area";
-    for (const a of [{ id: "", name: t.noArea }, ...listAreas(hass, this._classic.larderLabel, null, hh ? "household" : "food")]) {
+    for (const a of [{ id: "", name: t.noArea }, ...listAreas(hass, this._classic.larderLabel, null, scopeOfKind(kind))]) {
       const o = el("option", "", a.name);
       o.value = a.id;
       area.append(o);
@@ -1202,8 +1216,9 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, DOM
         unit.append(o);
       }
       unit.value = bag ? "grams" : "pieces";
-      const date = input("date", "date", bag ? t.bestBeforeBag : t.bestBefore);
-      date.title = bag ? t.bestBeforeBag : t.bestBefore;
+      const dateText = bag ? t.bestBeforeBag : med ? t.expiry : hh ? t.expiryOptional : t.bestBefore;
+      const date = input("date", "date", dateText);
+      date.title = dateText;
       const second = el("div", "itemsub");
       if (bag) {
         const count = input("count", "number", t.count);
@@ -1216,7 +1231,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, DOM
         times.prepend(count);
         second.append(times);
       }
-      const dateLabel = el("label", "datelabel", bag ? t.bestBeforeBag : t.bestBefore);
+      const dateLabel = el("label", "datelabel", dateText);
       dateLabel.append(date);
       if (hh) {
         // packs × pieces per pack, e.g. 2 × 8 "Rollen"; no unit and no best-before date
@@ -1250,7 +1265,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, DOM
         price.addEventListener("input", () => delete price.dataset.source);
         second.append(price);
       }
-      if (!hh) second.append(dateLabel);
+      second.append(dateLabel);
       const remove = button("remove", "✕", () => {
         if (rows.children.length > 1) row.remove();
         else content.value = "";
@@ -1293,7 +1308,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, DOM
       scan.dataset.role = "item-scan";
       extras.push(scan);
     }
-    if (!bag && !hh && this._canGenerate() && hass.fetchWithAuth) {
+    if (!bag && !hh && !med && this._canGenerate() && hass.fetchWithAuth) {
       // take a photo of the receipt: the AI suggests products with their count
       const file = el("input");
       file.type = "file";
@@ -1353,7 +1368,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, DOM
     error.setAttribute("role", "alert");
     const submit = button("submit", t.create, null, "submit");
     form.replaceChildren(
-      el("h2", "", bag ? t.titleBag : hh ? t.titleHousehold : t.titlePack),
+      el("h2", "", bag ? t.titleBag : hh ? t.titleHousehold : med ? t.titleMedicine : t.titlePack),
       field(t.area, area),
       field(t.compartment, compartment),
       ...(shopList ? [field(t.shopList, shopList)] : []),
@@ -1418,11 +1433,11 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, DOM
   /** After creating: label the bags (NFC stickers one after another or print labels). */
   proto._itemsCreated = function _itemsCreated(kind, created) {
     const t = itemTexts(this._hass);
-    this.setScope(kind === "household" ? "household" : "food");
+    this.setScope(scopeOfKind(kind));
     this.setView("containers");
     if (kind !== "bag") {
       this._closeDialog();
-      this.showNotice(kind === "household" ? t.createdHousehold(created.length) : t.createdPack(created.length));
+      this.showNotice(kind === "household" ? t.createdHousehold(created.length) : kind === "medicine" ? t.createdMedicine(created.length) : t.createdPack(created.length));
       return;
     }
     const ids = created.map((c) => c.device_id).filter(Boolean);

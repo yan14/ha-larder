@@ -126,6 +126,7 @@ Unter Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** k
 |---|---|---|
 | **Einkaufsliste (Lebensmittel)** | Konfigurieren | Lebensmittel und Haushaltsartikel ohne eigene Liste |
 | **Einkaufsliste für Haushaltsartikel** | Konfigurieren (optional) | Haushaltsartikel; leer = die Lebensmittel-Liste |
+| **Einkaufsliste für Medikamente** (seit 4.4) | Konfigurieren (optional) | Medikamente; leer = die Lebensmittel-Liste |
 | **Liste je Produkt** | auf der Karte (**Einkaufsliste**) oder im Anlegen-Dialog | dieses Produkt, z. B. *Metzger* für Leberkäse oder *Apotheke* für Pflaster; gemerkt nach Produktname, die nächste Packung landet also auch dort. **Standardliste** stellt zurück |
 
 *Eingekauft – in den Vorrat?* beobachtet jede Liste, auf die Larder geschrieben hat, und *Marke und Packung mit auf die Einkaufsliste* gilt für alle. Wird eine gewählte Liste aus Home Assistant entfernt, nimmt das Produkt wieder die Standardliste.

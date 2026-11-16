@@ -3,6 +3,13 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 4.4.0
+
+- **Medicines (pharmacy):** a third side next to food and household (**＋ → 💊 Medicine**, tab *Pharmacy*). Expiry date with a **longer warning** (new setting, default 60 days) and a section of its own on the start page; not part of the daily summary, recipes or food statistics. Areas with the label `Larder: Pharmacy` / `Larder: Apotheke` are offered only for medicines (the automatic assignment knows medicine cabinets and first-aid kits). Own default shopping list. Categories for pain, colds, digestion, wounds, allergy and vitamins.
+- **Household items with a date:** optional expiry date (e.g. sunscreen) on the card and in the add dialog, with the longer warning in the household section of the start page.
+- **Period after opening** (*Keeps after opening, months* – the jar symbol): **Open** now also works for household items and medicines and limits the date to that period.
+- The card offers **Convert to …** food pack, household item or medicine.
+
 ## 4.3.0
 
 - **Put away after shopping** (**📥 Put away** on the start page, in the stock view and under ⋮): the app's barcode scanner stays open for one product after another. Known products become one more pack at their usual place right away (household items: a whole pack), confirmed in the scanner; unknown ones are collected and added together at the end. Bought items of these products are taken care of. Without the app's camera the barcode can be typed in.
@@ -24,7 +31,7 @@ Release notes for every version, newest first. They are also used as the text of
 
 ## 4.0.0
 
-**Breaking change:** areas can now be used for food, for household items or for both. After the update every Larder area is offered for both; assign the use once (repair hint *Larder 4.0: assign areas to food and household*, or **Areas → ✏️ → Assign use automatically**). Only labels are added, existing labels and their descriptions stay as they are. See [Food or household](docs/en/containers.md#food-or-household-since-40).
+**Breaking change:** areas can now be used for food, for household items or for both. After the update every Larder area is offered for both; assign the use once (repair hint *Larder 4.0: assign areas to food and household*, or **Areas → ✏️ → Assign use automatically**). Only labels are added, existing labels and their descriptions stay as they are. See [Food or household](docs/en/containers.md#food-household-or-pharmacy).
 
 - **Household items** (**＋ → 🧻 Household item**): toilet paper, detergent, batteries and the like, without a best-before date. Counted in **pieces** (−1, stocktake and minimum stock per piece) with **pieces per pack**; the shopping list gets the number of **packs**, rounded up (*Toilet paper (Zewa, 2 packs)*). Stock and card show *12 rolls · 1.5 packs*. A pack is converted with **→ Household item** on its card (and back); nothing is converted automatically. Household items stay out of *expires soon*, the daily summary, recipes and the food statistics.
 - **Areas for food or household:** an additional label `Larder: Household` or `Larder: Food` (German names work too) limits an area to one side; storage-kind labels with temperature and max. storage time stay untouched. Set it under **Areas → ✏️ → Used for**.

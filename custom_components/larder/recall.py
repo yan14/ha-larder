@@ -33,7 +33,7 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from homeassistant.util import dt as dt_util
 
-from .const import CONF_CC, DOMAIN, KIND_HOUSEHOLD, SIGNAL_STOCK_CHANGED
+from .const import CONF_CC, DOMAIN, KIND_HOUSEHOLD, KIND_MEDICINE, SIGNAL_STOCK_CHANGED
 from .entity import kind_of
 from .estimate import async_get_estimator
 from .singleton import async_singleton
@@ -277,6 +277,8 @@ class Recalls:
                 # food only against food warnings, household items only against the other product types
                 if (item["kind"] == KIND_HOUSEHOLD) != (warning.get("scope", "food") == "other"):
                     continue
+                if item["kind"] == KIND_MEDICINE:
+                    continue  # medicine recalls are not on lebensmittelwarnung.de
                 via = match(warning, item)
                 if via:
                     hits.append({**{k: item[k] for k in ("cc", "device_id", "kind", "content", "brand", "area", "compartment")}, "via": via})

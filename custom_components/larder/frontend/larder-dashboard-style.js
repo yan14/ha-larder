@@ -27,7 +27,8 @@ export const STYLE = `
   .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
   .bar .grow { flex: 1; }
   .scope { display: flex; gap: 0; margin: 0 0 12px; border: 1px solid var(--divider-color, #ddd); border-radius: 18px; overflow: hidden; }
-  .scope button { flex: 1; border: 0; border-radius: 0; background: none; padding: 8px 10px; font: inherit; font-size: 15px; color: inherit; cursor: pointer; }
+  .scope button { flex: 1; border: 0; border-radius: 0; background: none; padding: 8px 4px; font: inherit; font-size: 14px; color: inherit; cursor: pointer;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
   .scope button.on { background: var(--primary-color, #03a9f4); color: var(--text-primary-color, #fff); }
   h2.section { font-size: 18px; font-weight: 500; margin: 22px 0 10px; padding-top: 12px; border-top: 1px solid var(--divider-color, #ddd); }
   .hello + h2.section, .recall + h2.section { border-top: 0; padding-top: 0; margin-top: 4px; }
