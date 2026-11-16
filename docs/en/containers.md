@@ -116,6 +116,10 @@ A bag works like a container (scan it, take a portion, **Opened**, **Thawed**, r
 
 <p align="center"><img src="../images/dashboard-code-en.png" width="250" alt="Take by barcode"></p>
 
+**Put away after shopping.** **📥 Put away** (start page, stock view or ⋮) opens the app's barcode scanner and keeps it open: scan the bought products one after another. A product that is already in stock becomes one more pack at its usual place (where most of it is), with brand, barcode and price; the scanner confirms it right away (*Ketchup → Basement · Shelf*). It joins an entry there without a best-before date, otherwise a new entry is made; **Add date** leads to its card for the printed date. Household items get a whole pack (pieces per pack). Unknown barcodes are collected with the name from the product databases and added together at the end (**Add as packs** / **as household items**). Items of these products under *Bought – add to stock* are taken care of. Without the app's camera (e.g. in a browser) type the barcode instead.
+
+<p align="center"><img src="../images/dashboard-putaway-en.png" width="250" alt="Put away after shopping"></p>
+
 **Opened packs.** **Open** on the card of a pack (ketchup, jam, UHT milk …) asks where the opened pack goes, e.g. the fridge door. With a count of more than one, one pack is split off as its own entry. It is marked **🔓 opened**, and its best-before date is estimated for the new place (table or AI, otherwise *shelf life after opening* from the settings), at most the printed date. Opened packs come first when you scan a barcode and in the stock view.
 
 <p align="center"><img src="../images/dashboard-open-en.png" width="250" alt="Open a pack"></p>

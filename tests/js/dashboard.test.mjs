@@ -2857,3 +2857,53 @@ test("Statistics: household side with spending per month and per product (4.1)",
   assert.equal($$(el, "main .month").length, 2);
   assert.match($(el, "main p.note:last-of-type").textContent, /Nicht für alle Produkte/);
 });
+
+test("Put away (4.3): scan one product after another, unknown ones are added at the end", async () => {
+  const hass = makeHass(DOSES);
+  const answers = {
+    "4000000000001": { status: "added", content: "Ketchup", kind: "pack", device_id: "p1", area: "Keller", compartment: "Regal", count: 1, added: 1, new_entry: true },
+    "4000000000002": { status: "added", content: "Klopapier", kind: "household", device_id: "h1", area: "Bad", compartment: "", count: 13, added: 8, new_entry: false },
+    "5000000000002": { status: "unknown", code: "5000000000002", name: "Senf", product: { brand: "Develey" }, product_type: "food" },
+    "6000000000003": { status: "unknown", code: "6000000000003", name: "Zahnpasta", product: null, product_type: "beauty" },
+  };
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/put_away`) {
+      hass.wsCalls.push(msg);
+      return answers[msg.code];
+    }
+    return base(msg);
+  };
+  // the app's barcode scanner stays open: every result is put away and confirmed in the scanner
+  const sent = [];
+  let handler = null;
+  hass.auth = { external: { config: { hasBarCodeScanner: true }, _commandHandler: () => true, addCommandHandler(h) { handler = h; }, fireMessage: (m) => sent.push(m) } };
+  const el = mount(hass);
+  await flush();
+  $(el, '[data-role="putaway"]').click(); // start page
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelector("h2").textContent, "Einräumen");
+  assert.equal(sent.at(-1).type, "bar_code/scan");
+  for (const code of ["4000000000001", "4000000000001", "4000000000002", "5000000000002", "6000000000003", "5000000000002"]) {
+    handler({ command: "bar_code/scan_result", payload: { rawValue: code } });
+    await flush();
+    await flush();
+  }
+  assert.equal(hass.wsCalls.filter((m) => m.type === `${D}/put_away`).length, 6);
+  assert.deepEqual(sent.filter((m) => m.type === "bar_code/notify").map((m) => m.payload.message).slice(0, 2), ["Ketchup → Keller · Regal", "Ketchup → Keller · Regal"]);
+  assert.deepEqual([...form.querySelectorAll(".putrow:not(.unknown) .name")].map((n) => n.textContent), ["Klopapier +1", "Ketchup +2"]);
+  assert.ok(form.querySelector('.putrow[data-id="p1"] [data-role="putaway-date"]')); // new food entry without a date
+  assert.equal(form.querySelector('.putrow[data-id="h1"] [data-role="putaway-date"]'), null);
+  assert.deepEqual([...form.querySelectorAll(".putrow.unknown")].map((n) => n.textContent), ["Senf", "Zahnpasta"]);
+  // typing a code works too (browser without a camera)
+  form.querySelector('[data-f="putaway-code"]').value = "4000000000002";
+  form.querySelector('[data-role="putaway-add"]').click();
+  await flush();
+  await flush();
+  assert.match(form.querySelector('.putrow[data-id="h1"] .name').textContent, /\+2/);
+  // the unknown food product: one dialog for packs, prefilled with name, brand and barcode
+  handler({ command: "bar_code/aborted" });
+  form.querySelector('[data-role="putaway-new"]').click();
+  assert.match(form.querySelector("h2").textContent, /Packungen anlegen/);
+  assert.equal(form.querySelector('[data-i="content"]').value, "Senf");
+});

@@ -163,6 +163,14 @@ export const STYLE = `
   .dialog .coderow { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--divider-color); border-radius: 10px; }
   .dialog .codelist:not(.placelist) .coderow { flex-direction: column; align-items: stretch; gap: 8px; }
   .dialog .codeactions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .dialog .putcode { display: flex; gap: 8px; }
+  .dialog .putcode input { flex: 1; min-width: 0; }
+  .dialog .putcode button { font: inherit; padding: 6px 14px; border-radius: 8px; cursor: pointer; background: none; color: var(--primary-color); border: 1px solid var(--primary-color); }
+  .dialog .putaway { display: flex; flex-direction: column; gap: 6px; max-height: 45vh; overflow: auto; }
+  .dialog .putaway h3 { margin: 6px 0 0; font-size: 14px; font-weight: 500; }
+  .dialog .putrow { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid var(--divider-color); border-radius: 10px; }
+  .dialog .putrow .text { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .dialog .putrow .sub { font-size: 12px; color: var(--secondary-text-color); }
   .dialog .codeactions button { flex: 1 1 auto; }
   .dialog .coderow.oldest { border-color: var(--primary-color); }
   .dialog .coderow .text { flex: 1; display: flex; flex-direction: column; min-width: 0; }

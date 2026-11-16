@@ -3,6 +3,10 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 4.3.0
+
+- **Put away after shopping** (**📥 Put away** on the start page, in the stock view and under ⋮): the app's barcode scanner stays open for one product after another. Known products become one more pack at their usual place right away (household items: a whole pack), confirmed in the scanner; unknown ones are collected and added together at the end. Bought items of these products are taken care of. Without the app's camera the barcode can be typed in.
+
 ## 4.2.0
 
 - **Barcode dialog:** when a scanned product is in stock, every place (opened and oldest first) offers, for one pack, **Used up**, **Thrown away** (recorded in the history and statistics with its value), **Open** and **Move**. **＋ Add a new pack** adds another pack of the same product, prefilled with name, brand, barcode, price and the place where most of it is. Household items: *−1 piece* instead of *Used up*, no *Open*. Products not in stock: unchanged.

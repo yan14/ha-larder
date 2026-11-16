@@ -256,7 +256,7 @@ export class LarderDashboard extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>${STYLE}</style>
       <header><button id="menu" type="button" aria-label="Menu">☰</button><h1></h1><button id="settings" type="button" hidden>⋮</button></header>
-      <div class="menu" hidden><button type="button" data-role="menu-stats"></button><button type="button" data-role="menu-stock"></button><button type="button" data-role="menu-stocktake"></button><button type="button" data-role="menu-batch"></button><button type="button" data-role="menu-sizes"></button><button type="button" data-role="menu-labels"></button><button type="button" data-role="menu-data"></button><button type="button" data-role="menu-estimates"></button><button type="button" data-role="menu-settings"></button></div>
+      <div class="menu" hidden><button type="button" data-role="menu-stats"></button><button type="button" data-role="menu-stock"></button><button type="button" data-role="menu-stocktake"></button><button type="button" data-role="menu-putaway"></button><button type="button" data-role="menu-batch"></button><button type="button" data-role="menu-sizes"></button><button type="button" data-role="menu-labels"></button><button type="button" data-role="menu-data"></button><button type="button" data-role="menu-estimates"></button><button type="button" data-role="menu-settings"></button></div>
       <div class="notice" role="alert" hidden></div>
       <main></main>
       <nav></nav>
@@ -302,6 +302,10 @@ export class LarderDashboard extends HTMLElement {
     this._menu.querySelector('[data-role="menu-stocktake"]').addEventListener("click", () => {
       this._menu.hidden = true;
       this.setView("stocktake");
+    });
+    this._menu.querySelector('[data-role="menu-putaway"]').addEventListener("click", () => {
+      this._menu.hidden = true;
+      this.openPutAway();
     });
     this._menu.querySelector('[data-role="menu-batch"]').addEventListener("click", () => {
       this._menu.hidden = true;
@@ -678,6 +682,7 @@ export class LarderDashboard extends HTMLElement {
     this._menu.querySelector('[data-role="menu-stats"]').textContent = `📊 ${t.menuStats}`;
     this._menu.querySelector('[data-role="menu-stock"]').textContent = `🥫 ${this.stockTitle()}`;
     this._menu.querySelector('[data-role="menu-stocktake"]').textContent = `📋 ${this.stocktakeTitle()}`;
+    this._menu.querySelector('[data-role="menu-putaway"]').textContent = `📥 ${this.putAwayTitle()}`;
     const cookMenu = this.cookMenuTexts();
     this._menu.querySelector('[data-role="menu-batch"]').textContent = cookMenu.batch;
     this._menu.querySelector('[data-role="menu-batch"]').hidden = !this.canBatch();
@@ -1971,6 +1976,11 @@ export class LarderDashboard extends HTMLElement {
       });
       help.append(recipes);
     }
+    const putAway = el("button", "", `📥 ${this.putAwayTitle()}`);
+    putAway.type = "button";
+    putAway.dataset.role = "putaway";
+    putAway.addEventListener("click", () => this.openPutAway());
+    help.append(putAway);
     const show = el("button", "", t.helpContainers);
     show.type = "button";
     show.dataset.role = "containers";

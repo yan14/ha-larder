@@ -290,6 +290,16 @@ class Stock:
             return True
         return False
 
+    def dismiss_product(self, content: str) -> int:
+        """Bought items of this product are taken care of (put away by scanning). Returns how many."""
+        key = product_key(content)
+        before = len(self.bought)
+        self.bought = [b for b in self.bought if product_key(b.get("content")) != key]
+        if (gone := before - len(self.bought)):
+            self._save()
+            async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
+        return gone
+
     def minimum(self, content: str | None) -> int:
         return int((self.minimums.get(product_key(content)) or {}).get("min") or 0)
 
@@ -934,6 +944,56 @@ async def async_take_one(hass: HomeAssistant, cc: str, outcome: str) -> dict[str
     return {"left": source["count"] - 1}
 
 
+async def async_put_away(hass: HomeAssistant, code: str) -> dict[str, Any]:
+    """Put one bought product away by its barcode (#96).
+
+    Known product: one pack more at its usual place (where most of it is). It joins an entry there without a
+    best-before date, else a new entry is made (the printed date can be added on its card). Household items
+    get a whole pack (pieces per pack). Bought items of the product on the start page are taken care of.
+    Unknown: nothing is made, the dashboard collects it (with the name from the product databases).
+    """
+    from .disposable import async_create_items  # noqa: PLC0415 - avoids an import cycle
+
+    found = await async_find_by_code(hass, code)
+    known = found.get("known")
+    if not known:
+        return {"status": "unknown", **{k: found.get(k) for k in ("code", "name", "product", "product_type")}}
+    key = product_key(known["content"])
+    area_id, compartment = known.get("area_id"), known.get("compartment") or ""
+    size = int(known["product"].get("pack_size") or 1) if known["kind"] == KIND_HOUSEHOLD else 1
+    target = next(
+        (
+            p for p in pack_entries(hass)
+            if product_key(p["content"]) == key and p["kind"] == known["kind"] and not p["best_before"] and not p["opened"]
+            and (p["area_id"] or None) == (area_id or None) and p["compartment"] == compartment
+        ),
+        None,
+    )
+    if target is not None:
+        entry = next(e for e in hass.config_entries.async_entries(DOMAIN) if e.data.get(CONF_CC) == target["cc"])
+        count = target["count"] + size
+        await entry.runtime_data.resettable["portions"].async_set_native_value(float(count))
+        device_id = target["device_id"]
+    else:
+        item = {"content": known["content"], "quantity": size, "unit": "pieces", "product": dict(known["product"])}
+        created = await async_create_items(hass, known["kind"], [item], area_id, compartment)
+        count, device_id = size, created[0]["device_id"]
+    stock = await async_get_stock(hass)
+    stock.dismiss_product(known["content"])
+    area = ar.async_get(hass).async_get_area(area_id) if area_id else None
+    return {
+        "status": "added",
+        "content": known["content"],
+        "kind": known["kind"],
+        "device_id": device_id,
+        "area": area.name if area else None,
+        "compartment": compartment,
+        "count": count,
+        "added": size,
+        "new_entry": target is None,
+    }
+
+
 # ---------- WebSocket ----------
 
 
@@ -1107,6 +1167,18 @@ async def ws_pack_take(hass: HomeAssistant, connection: websocket_api.ActiveConn
     connection.send_result(msg["id"], result)
 
 
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/put_away", vol.Required("code"): vol.All(str, vol.Length(min=1, max=64))})
+@websocket_api.async_response
+async def ws_put_away(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Put away after shopping: one scanned product (for everyone in the household, like adding packs)."""
+    try:
+        result = await async_put_away(hass, msg["code"])
+    except HomeAssistantError as err:
+        connection.send_error(msg["id"], "put_away_failed", str(err))
+        return
+    connection.send_result(msg["id"], result)
+
+
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/running_low"})
 @websocket_api.async_response
 async def ws_running_low(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
@@ -1209,6 +1281,7 @@ def async_setup_stock_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_cook_again_action)
     websocket_api.async_register_command(hass, ws_product_list)
     websocket_api.async_register_command(hass, ws_pack_take)
+    websocket_api.async_register_command(hass, ws_put_away)
     websocket_api.async_register_command(hass, ws_running_low)
     websocket_api.async_register_command(hass, ws_running_low_action)
     domain_data[DATA_WS] = True

@@ -109,6 +109,20 @@ const TEXT = {
     codeLinkFailed: "Verknüpfen fehlgeschlagen.",
     codeLinked: (name) => `Strichcode mit ${name} verknüpft.`,
     codeUnknown: (code) => `Zu ${code} wurde nichts gefunden.`,
+    putAway: "Einräumen",
+    putAwayHint: "Gekaufte Produkte nacheinander scannen: bekannte kommen als Packung an ihren gewohnten Ort, unbekannte legst du am Ende gesammelt an.",
+    putAwayScan: "Scannen",
+    putAwayCode: "Strichcode eingeben",
+    putAwayAddCode: "Einräumen",
+    putAwayAdded: "Eingeräumt",
+    putAwayNow: (n) => `jetzt ${n}`,
+    putAwayDate: "MHD eintragen",
+    putAwayUnknown: (n) => (n === 1 ? "1 unbekanntes Produkt" : `${n} unbekannte Produkte`),
+    putAwayAddPacks: (n) => (n === 1 ? "Als Packung anlegen" : `${n} als Packungen anlegen`),
+    putAwayAddHousehold: (n) => (n === 1 ? "Als Haushaltsartikel anlegen" : `${n} als Haushaltsartikel anlegen`),
+    putAwayEmpty: "Noch nichts gescannt.",
+    putAwayDoneOne: (name, place) => `${name} → ${place}`,
+    putAwayUnknownOne: (name) => `${name}: unbekannt, am Ende anlegen`,
     codeUsed: "Verbraucht",
     codeUsedPiece: "−1 Stück",
     codeThrown: "Entsorgen",
@@ -244,6 +258,20 @@ const TEXT = {
     codeLinkFailed: "Linking failed.",
     codeLinked: (name) => `Barcode linked to ${name}.`,
     codeUnknown: (code) => `Nothing found for ${code}.`,
+    putAway: "Put away",
+    putAwayHint: "Scan the bought products one after another: known ones go to their usual place as a pack, unknown ones you add together at the end.",
+    putAwayScan: "Scan",
+    putAwayCode: "Enter barcode",
+    putAwayAddCode: "Put away",
+    putAwayAdded: "Put away",
+    putAwayNow: (n) => `now ${n}`,
+    putAwayDate: "Add date",
+    putAwayUnknown: (n) => (n === 1 ? "1 unknown product" : `${n} unknown products`),
+    putAwayAddPacks: (n) => (n === 1 ? "Add as a pack" : `Add ${n} as packs`),
+    putAwayAddHousehold: (n) => (n === 1 ? "Add as a household item" : `Add ${n} as household items`),
+    putAwayEmpty: "Nothing scanned yet.",
+    putAwayDoneOne: (name, place) => `${name} → ${place}`,
+    putAwayUnknownOne: (name) => `${name}: unknown, add it at the end`,
     codeUsed: "Used up",
     codeUsedPiece: "−1 piece",
     codeThrown: "Thrown away",
@@ -497,6 +525,138 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, DOM
     } catch {
       if (row && row.dev.entities.button) await hass.callService("button", "press", { entity_id: row.dev.entities.button });
     }
+  };
+
+  proto.putAwayTitle = function putAwayTitle() {
+    return itemTexts(this._hass).putAway;
+  };
+
+  /**
+   * Put away after shopping (#96): scan one product after another. Known products become one more pack at
+   * their usual place right away; unknown ones are collected and added together at the end.
+   */
+  proto.openPutAway = function openPutAway() {
+    const hass = this._hass;
+    const t = itemTexts(hass);
+    const state = { done: [], unknown: [], scanning: false };
+    this._putAway = state;
+    const form = this._form;
+    const list = el("div", "putaway");
+    const status = el("p", "hint");
+    status.dataset.role = "putaway-status";
+    const code = el("input");
+    code.type = "text";
+    code.inputMode = "numeric";
+    code.dataset.f = "putaway-code";
+    code.placeholder = t.putAwayCode;
+    code.setAttribute("aria-label", t.putAwayCode);
+    const placeOf = (r) => [r.area, r.compartment].filter(Boolean).join(" · ") || t.noArea;
+
+    const render = () => {
+      const parts = [];
+      if (state.done.length) {
+        parts.push(el("h3", "", t.putAwayAdded));
+        for (const r of state.done) {
+          const row = el("div", "putrow");
+          row.dataset.id = r.device_id;
+          const text = el("span", "text");
+          text.append(el("span", "name", `${r.content} +${r.times}`), el("span", "sub", `${placeOf(r)} · ${t.putAwayNow(r.count)}`));
+          row.append(text);
+          // a new entry of food has no best-before date yet: one tap to its card
+          if (r.new_entry && r.kind === "pack") {
+            const date = button("link", t.putAwayDate, () => {
+              this._closeDialog();
+              this.openDetail(r.device_id);
+            });
+            date.dataset.role = "putaway-date";
+            row.append(date);
+          }
+          parts.push(row);
+        }
+      }
+      if (state.unknown.length) {
+        parts.push(el("h3", "", t.putAwayUnknown(state.unknown.length)));
+        for (const u of state.unknown) parts.push(el("div", "putrow unknown", u.name || u.code));
+        const food = state.unknown.filter((u) => !u.product_type || u.product_type === "food");
+        const household = state.unknown.filter((u) => u.product_type && u.product_type !== "food");
+        const rows = (items) => items.map((u) => ({ content: u.name || "", quantity: 1, product: { ...(u.product || {}), ...(u.code && u.code.length >= 8 ? { ean: u.code } : {}) } }));
+        if (food.length) {
+          const add = button("primary", t.putAwayAddPacks(food.length), () => this.openItemsDialog("pack", { rows: rows(food) }));
+          add.dataset.role = "putaway-new";
+          parts.push(add);
+        }
+        if (household.length) {
+          const add = button("primary", t.putAwayAddHousehold(household.length), () => this.openItemsDialog("household", { rows: rows(household) }));
+          add.dataset.role = "putaway-new-household";
+          parts.push(add);
+        }
+      }
+      if (!parts.length) parts.push(el("p", "hint", t.putAwayEmpty));
+      list.replaceChildren(...parts);
+    };
+
+    const handle = async (raw) => {
+      const value = String(raw || "").trim();
+      if (!value) return "";
+      let res;
+      try {
+        res = await hass.callWS({ type: `${DOMAIN}/put_away`, code: value });
+      } catch (err) {
+        status.textContent = (err && err.message) || t.failed;
+        return status.textContent;
+      }
+      let message;
+      if (res.status === "added") {
+        const known = state.done.find((r) => r.device_id === res.device_id);
+        if (known) Object.assign(known, res, { times: known.times + 1, new_entry: known.new_entry || res.new_entry });
+        else state.done.unshift({ ...res, times: 1 });
+        message = t.putAwayDoneOne(res.content, placeOf(res));
+      } else {
+        const digits = res.code || value;
+        if (!state.unknown.some((u) => u.code === digits)) state.unknown.push({ ...res, code: digits });
+        message = t.putAwayUnknownOne(res.name || digits);
+      }
+      status.textContent = message;
+      render();
+      if (this._view === "stock") this.loadStock();
+      return message;
+    };
+
+    const add = button("", t.putAwayAddCode, async () => {
+      await handle(code.value);
+      code.value = "";
+      code.focus();
+    });
+    add.dataset.role = "putaway-add";
+    code.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        add.click();
+      }
+    });
+    const manual = el("div", "putcode");
+    manual.append(code, add);
+    const parts = [el("h2", "", t.putAway), el("p", "hint", t.putAwayHint), manual];
+    const canScan = this._classic._hasBarcodeScanner && this._classic._hasBarcodeScanner();
+    if (canScan) {
+      const scan = button("primary", `📷 ${t.putAwayScan}`, () => {
+        state.scanning = this._classic.scanBarcodeSeries(handle, () => (state.scanning = false));
+      });
+      scan.dataset.role = "putaway-scan";
+      parts.splice(2, 0, scan);
+    }
+    const done = button("submit", t.done, () => {
+      this._closeDialog();
+      if (state.done.length) this.loadBought(); // bought items of these products are taken care of
+    });
+    done.dataset.role = "putaway-done";
+    form.replaceChildren(...parts, status, list, buttonsRow(done));
+    this._submit = null;
+    render();
+    this._overlay.hidden = false;
+    // in the app the scanner opens right away
+    if (canScan) state.scanning = this._classic.scanBarcodeSeries(handle, () => (state.scanning = false));
+    return handle;
   };
 
   /** Open the app's barcode scanner and take the scanned goods. */
@@ -767,7 +927,9 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, DOM
       const bar = el("div", "bar");
       const scan = button("", t.codeScan, () => this.scanToTake());
       scan.dataset.role = "stock-scan";
-      bar.append(el("span", "grow"), scan);
+      const putAway = button("", `📥 ${t.putAway}`, () => this.openPutAway());
+      putAway.dataset.role = "stock-putaway";
+      bar.append(el("span", "grow"), putAway, scan);
       frag.append(bar);
     }
     frag.prepend(this._scopeSwitch());

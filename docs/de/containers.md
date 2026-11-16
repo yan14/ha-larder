@@ -116,6 +116,10 @@ Ein Beutel funktioniert wie eine Dose (scannen, Portion entnehmen, **Geöffnet**
 
 <p align="center"><img src="../images/dashboard-code-de.png" width="250" alt="Entnehmen per Strichcode"></p>
 
+**Einräumen nach dem Einkauf.** **📥 Einräumen** (Startseite, Vorrats-Ansicht oder ⋮) öffnet den Strichcode-Scanner der App und lässt ihn offen: die gekauften Produkte nacheinander scannen. Ein Produkt, das schon im Vorrat ist, wird eine Packung mehr an seinem gewohnten Ort (wo das meiste davon liegt), mit Marke, Strichcode und Preis; der Scanner bestätigt es sofort (*Ketchup → Keller · Regal*). Sie kommt zu einem Eintrag dort ohne MHD, sonst entsteht ein neuer Eintrag; **MHD eintragen** führt zu seiner Karte für das aufgedruckte Datum. Haushaltsartikel bekommen eine ganze Packung (Stück je Packung). Unbekannte Strichcodes sammelt Larder mit dem Namen aus den Produktdatenbanken, am Ende legst du sie gesammelt an (**Als Packungen anlegen** / **als Haushaltsartikel**). Einträge dieser Produkte unter *Eingekauft – in den Vorrat?* sind damit erledigt. Ohne Kamera der App (z. B. im Browser) den Strichcode eintippen.
+
+<p align="center"><img src="../images/dashboard-putaway-de.png" width="250" alt="Einräumen nach dem Einkauf"></p>
+
 **Angebrochene Packungen.** **Anbrechen** auf der Karte einer Packung (Ketchup, Marmelade, H-Milch …) fragt, wohin die geöffnete Packung kommt, z. B. in die Kühlschranktür. Bei mehreren wird eine als eigener Eintrag abgetrennt. Sie ist als **🔓 angebrochen** markiert, und ihr MHD wird für den neuen Ort geschätzt (Tabelle oder KI, sonst *Haltbarkeit nach dem Öffnen* aus den Einstellungen), höchstens das aufgedruckte Datum. Angebrochene Packungen kommen beim Strichcode-Scan und in der Vorrats-Ansicht zuerst.
 
 <p align="center"><img src="../images/dashboard-open-de.png" width="250" alt="Packung anbrechen"></p>

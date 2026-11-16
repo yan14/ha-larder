@@ -1717,6 +1717,36 @@ class LarderPanel extends HTMLElement {
   }
 
   /** Open the app's barcode scanner; `onCode` gets the code read (also for the dashboard). */
+  /**
+   * Barcode scanner of the app that stays open for one product after another (put away after shopping).
+   * `onCode(code)` returns a short message that is shown in the scanner; `onClose()` runs when it is closed.
+   */
+  scanBarcodeSeries(onCode, onClose = () => {}) {
+    const hass = this._hass;
+    const external = hass && hass.auth && hass.auth.external;
+    if (!this._hasBarcodeScanner() || typeof external.addCommandHandler !== "function" || this._barcodeScan) return false;
+    const t = strings(hass);
+    const original = external._commandHandler;
+    const scan = {};
+    this._barcodeScan = scan;
+    const notify = (message) => message && external.fireMessage({ type: "bar_code/notify", payload: { message } });
+    external.addCommandHandler((msg) => {
+      if (this._barcodeScan === scan && msg && msg.command === "bar_code/scan_result") {
+        Promise.resolve(onCode(String((msg.payload && msg.payload.rawValue) || ""))).then(notify, () => {});
+      } else if (this._barcodeScan === scan && msg && msg.command === "bar_code/aborted") {
+        this._barcodeScan = null;
+        external.addCommandHandler(original);
+        onClose();
+      }
+      return original(msg);
+    });
+    external.fireMessage({
+      type: "bar_code/scan",
+      payload: { title: t.putAwayTitle, description: t.putAwayDescription, alternative_option_label: t.putAwayDone },
+    });
+    return true;
+  }
+
   scanBarcodeRaw(onCode) {
     const hass = this._hass;
     const external = hass && hass.auth && hass.auth.external;

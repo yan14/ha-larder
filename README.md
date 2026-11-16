@@ -31,6 +31,8 @@ Home Assistant integration for reusable food storage containers: note what is in
 <img src="docs/images/dashboard-cards-en.png" width="250" alt="Cards with all details">
 </p>
 
+> **New in 4.3:** [put away after shopping](docs/en/containers.md#stock): scan one product after another, each goes to its usual place.
+>
 > **New in 4.2:** the [barcode dialog](docs/en/containers.md#stock) shows where a product is and offers *used up*, *thrown away*, *open*, *move* and *add a new pack* right there.
 >
 > **New in 4.1:** [several shopping lists](docs/en/kitchen.md#shopping-list) (food, household, per product), [household statistics](docs/en/dashboard.md#statistics) with spending per month, [recall warnings](docs/en/containers.md#recall-warnings) for cosmetics and consumer goods.

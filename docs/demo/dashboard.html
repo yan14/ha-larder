@@ -182,6 +182,12 @@ const hass = {
       months: [["2026-06", 2, 1], ["2026-07", 4, 0], ["2026-08", 3, 1], ["2026-09", 5, 1], ["2026-10", 6, 1], ["2026-11", 3, 0]].map(([month, eaten, thrown]) => ({ month, eaten, thrown })),
       containers: { total: 10, filled: 9, empty: 1, expired: 1, soon: 3, undated: 0 } };
     if (msg.type === "larder/area_scopes") return { scopes, plan: {} };
+    if (msg.type === "larder/put_away") return ({
+      "1": { status: "added", content: de ? "Tomaten gehackt" : "Chopped tomatoes", kind: "pack", device_id: "demo14", area: de ? "Keller" : "Basement", compartment: de ? "Regal oben" : "Top shelf", count: 6, added: 1, new_entry: false },
+      "2": { status: "added", content: "Ketchup", kind: "pack", device_id: "demo12", area: de ? "Vorratskammer" : "Pantry", compartment: de ? "Schrank" : "Cupboard", count: 1, added: 1, new_entry: true },
+      "3": { status: "added", content: de ? "Klopapier" : "Toilet paper", kind: "household", device_id: "demo16", area: de ? "Bad" : "Bathroom", compartment: de ? "Schrank" : "Cupboard", count: 20, added: 8, new_entry: false },
+      "4": { status: "unknown", code: "4006040000000", name: de ? "Kokosmilch" : "Coconut milk", product: { brand: "Aroy-D" }, product_type: "food" },
+    })[msg.code];
     if (msg.type === "larder/household_statistics") {
       const m = (n) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; };
       return {
@@ -314,6 +320,11 @@ if (q.get("dialog") === "household") {
 }
 if (q.get("edit") === "1") { el.setAreaEdit(true); await new Promise((r) => setTimeout(r, 200)); }
 if (q.get("dialog") === "area") await el.openAreaDialog("bath");
+if (q.get("dialog") === "putaway") {
+  const put = el.openPutAway();
+  for (const c of ["1", "1", "2", "3", "4"]) await put(c);
+  document.activeElement && document.activeElement.blur();
+}
 if (q.get("dialog") === "labels") el.openLabelDialog();
 if (q.get("dialog") === "transfer") el.openTransferDialog("demo12");
 if (q.get("dialog") === "move") el.openMoveDialog("demo12");
