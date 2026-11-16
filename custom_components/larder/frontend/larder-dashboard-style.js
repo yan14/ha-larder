@@ -1,6 +1,6 @@
 /** Larder dashboard: stylesheet (inserted into the shadow DOM). */
 export const STYLE = `
-  /* Fixed height: only main scrolls, header and navigation stay put (iOS: the bar does not bounce along) */
+  /* Fixed height (measured in _fitHeight): only main scrolls, header and navigation stay put */
   :host { position: relative; display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; background: var(--primary-background-color);
     color: var(--primary-text-color); font-family: var(--paper-font-body1_-_font-family, Roboto, sans-serif); }
   [hidden] { display: none !important; }

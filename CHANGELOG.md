@@ -3,6 +3,10 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 4.0.1
+
+- iOS app: the dashboard no longer starts with the bottom navigation half off the screen, and the page can no longer be pushed up so that the header disappears. Since 3.8.1 the dashboard took the full screen height although Home Assistant places it below the status bar; it now measures the space it really has (also after rotating the phone).
+
 ## 4.0.0
 
 **Breaking change:** areas can now be used for food, for household items or for both. After the update every Larder area is offered for both; assign the use once (repair hint *Larder 4.0: assign areas to food and household*, or **Areas → ✏️ → Assign use automatically**). Only labels are added, existing labels and their descriptions stay as they are. See [Food or household](docs/en/containers.md#food-or-household-since-40).

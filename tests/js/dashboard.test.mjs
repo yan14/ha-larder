@@ -2767,3 +2767,16 @@ test("Bereiche bearbeiten: use (scope) per area and automatic assignment", async
   assert.equal(hass.wsCalls.filter((m) => m.type === `${D}/area_scopes_auto`).length, 1);
   assert.equal($(el, '[data-role="scope-auto"]'), null);
 });
+
+test("Fixed height: the dashboard fills exactly the space below its top edge (iOS safe area, 4.0.1)", async () => {
+  const el = mount(makeHass(DOSES));
+  el.getBoundingClientRect = () => ({ top: 47, left: 0, right: 390, bottom: 0, width: 390, height: 0 });
+  window.dispatchEvent(new window.Event("resize"));
+  assert.equal(el.style.height, `${window.innerHeight - 47}px`);
+  assert.equal(el.style.minHeight, "0px");
+  // a scrolled Home Assistant container (negative top) keeps the last good value
+  el.getBoundingClientRect = () => ({ top: -200, left: 0, right: 390, bottom: 0, width: 390, height: 0 });
+  window.dispatchEvent(new window.Event("resize"));
+  assert.equal(el.style.height, `${window.innerHeight - 47}px`);
+  el.remove();
+});

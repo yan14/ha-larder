@@ -363,9 +363,39 @@ export class LarderDashboard extends HTMLElement {
       }
     }
     this._update();
+    this._fitHeight();
+    // Home Assistant may still move the panel into place right after attaching it
+    if (window.requestAnimationFrame) window.requestAnimationFrame(() => this._fitHeight());
+    setTimeout(() => this.isConnected && this._fitHeight(), 400);
+    if (!this._onResize) {
+      this._onResize = () => this._fitHeight();
+      window.addEventListener("resize", this._onResize);
+      window.addEventListener("orientationchange", this._onResize);
+    }
+  }
+
+  /**
+   * Fixed height = the space Home Assistant really leaves below our top edge. `100dvh` alone is too tall in
+   * the app on iOS: the panel starts below the status bar (safe area), so the navigation was pushed off the
+   * screen and the whole page could be scrolled.
+   */
+  _fitHeight() {
+    const top = this.getBoundingClientRect().top + (window.scrollY || 0);
+    // a scrolled container of Home Assistant gives a negative top: keep the last good value
+    if (top >= 0) this._top = top;
+    const viewport = window.innerHeight || document.documentElement.clientHeight || 0;
+    if (!viewport) return;
+    // set on the element itself, so no outer style (min-height: 100vh and the like) can stretch it again
+    this.style.height = `${Math.max(240, Math.floor(viewport - (this._top || 0)))}px`;
+    this.style.minHeight = "0px";
   }
 
   disconnectedCallback() {
+    if (this._onResize) {
+      window.removeEventListener("resize", this._onResize);
+      window.removeEventListener("orientationchange", this._onResize);
+      this._onResize = null;
+    }
     this.stopScan();
     if (this._scanUnsub) {
       try {
