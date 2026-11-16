@@ -248,6 +248,85 @@ def build_monthly_report(
     }
 
 
+def household_statistics(takes: list[dict[str, Any]], names: dict[str, dict[str, Any]], today: date, months: int = 6) -> dict[str, Any]:
+    """Household items: pieces used and money spent per month, per product and in total (#82).
+
+    Built from the takes of household items (−1, stocktake, last piece). Spending = pieces / pieces per pack ×
+    price per pack, both as they were at the time of the take. Averages count the months since the first take
+    in the window (at least one), so a product bought three weeks ago is not spread over half a year.
+    """
+    keys: list[str] = []
+    for i in range(months - 1, -1, -1):
+        y, m = today.year, today.month - i
+        while m <= 0:
+            y, m = y - 1, m + 12
+        keys.append(f"{y:04d}-{m:02d}")
+    first_month = keys[0]
+    per_month: dict[str, dict[str, Any]] = {k: {"month": k, "pieces": 0, "cost": 0.0, "priced": True} for k in keys}
+    products: dict[str, dict[str, Any]] = {}
+    for take in takes:
+        if not take.get("hh"):
+            continue
+        month = str(take.get("day", ""))[:7]
+        if month < first_month or month not in per_month:
+            continue
+        n = int(take.get("n") or 0)
+        size = max(1, int(take.get("size") or 1))
+        cost = n / size * float(take["price"]) if take.get("price") else None
+        info = names.get(take["key"]) or {}
+        product = products.setdefault(
+            take["key"],
+            {"key": take["key"], "name": info.get("name") or take["key"], "piece": info.get("piece"), "pieces": 0,
+             "cost": 0.0, "priced": True, "first": month},
+        )
+        product["pieces"] += n
+        product["first"] = min(product["first"], month)
+        per_month[month]["pieces"] += n
+        if cost is None:
+            product["priced"] = False
+            per_month[month]["priced"] = False
+        else:
+            product["cost"] += cost
+            per_month[month]["cost"] += cost
+
+    def span(first: str) -> int:
+        return max(1, len(keys) - keys.index(first))
+
+    rows = []
+    for product in products.values():
+        n_months = span(product.pop("first"))
+        rows.append({
+            **{k: product[k] for k in ("key", "name", "piece", "pieces")},
+            "pieces_per_month": round(product["pieces"] / n_months, 1),
+            "cost": round(product["cost"], 2) if product["cost"] else None,
+            "cost_per_month": round(product["cost"] / n_months, 2) if product["cost"] else None,
+            "complete": product["priced"],  # False: some takes had no price
+        })
+    rows.sort(key=lambda r: (-(r["cost_per_month"] or 0), -r["pieces_per_month"], r["name"].casefold()))
+    used = [m for m in keys if per_month[m]["pieces"]]
+    total = sum(m["cost"] for m in per_month.values())
+    n_total = span(used[0]) if used else 1
+    return {
+        "months": [{**m, "cost": round(m["cost"], 2)} for m in per_month.values()],
+        "products": rows,
+        "cost_per_month": round(total / n_total, 2) if total else None,
+        "complete": all(p["complete"] for p in rows),
+    }
+
+
+async def async_household_statistics(hass: HomeAssistant, months: int = 6) -> dict[str, Any]:
+    from .stock import async_get_stock, pack_entries, product_key  # noqa: PLC0415 - avoids an import cycle
+
+    stock = await async_get_stock(hass)
+    names: dict[str, dict[str, Any]] = {k: {"name": v.get("name"), "piece": (v.get("product") or {}).get("piece")} for k, v in stock.minimums.items()}
+    for entry in pack_entries(hass):
+        key = product_key(entry["content"])
+        names.setdefault(key, {})
+        names[key]["name"] = names[key].get("name") or entry["content"]
+        names[key]["piece"] = names[key].get("piece") or entry.get("piece")
+    return household_statistics(stock.takes, names, dt_util.now().date(), months)
+
+
 async def async_monthly_report(hass: HomeAssistant, month: str | None = None) -> dict[str, Any]:
     if not month:
         month = _previous_month(dt_util.now().date().strftime("%Y-%m"))
@@ -268,6 +347,14 @@ async def ws_statistics(hass: HomeAssistant, connection: websocket_api.ActiveCon
     connection.send_result(msg["id"], await async_statistics(hass, msg.get("days")))
 
 
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/household_statistics"})
+@websocket_api.async_response
+async def ws_household_statistics(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    connection.send_result(msg["id"], await async_household_statistics(hass))
+
+
 def async_setup_statistics(hass: HomeAssistant) -> None:
     domain_data = hass.data.setdefault(DOMAIN, {})
     if domain_data.get(DATA_STATS):
@@ -284,6 +371,7 @@ def async_setup_statistics(hass: HomeAssistant) -> None:
         supports_response=SupportsResponse.ONLY,
     )
     websocket_api.async_register_command(hass, ws_statistics)
+    websocket_api.async_register_command(hass, ws_household_statistics)
 
     async def handle_report(call: ServiceCall) -> dict[str, Any]:
         return await async_monthly_report(hass, call.data.get("month"))

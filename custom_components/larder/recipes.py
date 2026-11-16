@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv, device_registry as dr, entity_registry as er
 
-from .const import DOMAIN, MAX_RECIPE_DAYS, SERVICE_SUGGEST_RECIPES
+from .const import DOMAIN, MAX_RECIPE_DAYS, SERVICE_SUGGEST_RECIPES, larder_ids
 from .estimate import EstimateError, async_get_estimator
 from .expiry import _TEXT, collect_expiring, quantity_text
 from .product import allergen_name
@@ -127,7 +127,7 @@ def _container_ccs(hass: HomeAssistant, containers: list[str]) -> set[str]:
     for value in containers:
         device = registry.async_get(value)
         if device is not None:
-            out.update(ident for domain, ident in device.identifiers if domain == DOMAIN)
+            out.update(larder_ids(device))
         else:
             out.add(value)
     return out

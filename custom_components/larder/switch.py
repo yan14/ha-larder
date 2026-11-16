@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, KIND_BAG, PACK_KINDS, SIGNAL_SETTINGS_CHANGED
+from .const import KIND_BAG, PACK_KINDS, SIGNAL_SETTINGS_CHANGED
 from .entity import LarderConfigEntry, LarderEntity, kind_of
 from .estimate import async_get_estimator
 
@@ -79,8 +79,10 @@ class LarderShoppingSwitch(SwitchEntity, LarderEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, str | None]:
-        estimator = self.hass.data.get(DOMAIN, {}).get("estimator")
-        return {"list": getattr(estimator, "todo_entity", None)}
+        from .shopping import shopping_list_for  # noqa: PLC0415 - avoids an import cycle
+
+        content = self._sibling_state("text", "content")
+        return {"list": shopping_list_for(self.hass, content.state if content else None, self._kind)}
 
     async def async_turn_on(self, **kwargs) -> None:
         self._attr_is_on = True

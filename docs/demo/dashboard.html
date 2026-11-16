@@ -99,7 +99,7 @@ doses.forEach(([name, area, content, days, category, kind = "container"], i) => 
   const hh = kind === "household";
   if (kind === "pack" || hh) for (const k of ["datetime", "image", "switch"]) delete ids[k]; // Packungen: nur Inhalt, Menge, MHD
   for (const e of Object.values(ids)) entities[e] = { entity_id: e, device_id: id, platform: "larder" };
-  states[ids.text] = { entity_id: ids.text, state: content, attributes: { category, kind, ...(hh ? { pack_size: hhData[category][1], piece: hhData[category][2] || null, ...(category === "hh_paper" ? { brand: "Zewa", min_stock: 8, price: 4.99 } : {}) } : {}), ...(/Hazelnut|Haselnuss/.test(content) ? { brand: "Nutella", package: "450 g", kcal_100g: 539, nutri_score: "E", min_stock: 2, allergen_warning: [de ? "Schalenfrüchte" : "Nuts"] } : {}), ...(/Penne/.test(content) ? { brand: "Barilla", package: "500 g", ean: "8076800195057", kcal_100g: 359, kcal_portion: 449, nutri_score: "A", allergens: de ? "Gluten" : "Gluten", nutrients: de ? "Fett 2 g, Kohlenhydrate 71 g, davon Zucker 3,5 g, Eiweiß 13 g, Salz 0,01 g (pro 100 g)" : "Fat 2 g, carbohydrates 71 g, of which sugars 3.5 g, protein 13 g, salt 0.01 g (per 100 g)", source: "openfoodfacts" } : {}) } };
+  states[ids.text] = { entity_id: ids.text, state: content, attributes: { category, kind, ...(hh ? { pack_size: hhData[category][1], piece: hhData[category][2] || null, ...(category === "hh_paper" ? { brand: "Zewa", min_stock: 8, price: 4.99, shopping_list: "todo.drogerie" } : {}) } : {}), ...(/Hazelnut|Haselnuss/.test(content) ? { brand: "Nutella", package: "450 g", kcal_100g: 539, nutri_score: "E", min_stock: 2, allergen_warning: [de ? "Schalenfrüchte" : "Nuts"] } : {}), ...(/Penne/.test(content) ? { brand: "Barilla", package: "500 g", ean: "8076800195057", kcal_100g: 359, kcal_portion: 449, nutri_score: "A", allergens: de ? "Gluten" : "Gluten", nutrients: de ? "Fett 2 g, Kohlenhydrate 71 g, davon Zucker 3,5 g, Eiweiß 13 g, Salz 0,01 g (pro 100 g)" : "Fat 2 g, carbohydrates 71 g, of which sugars 3.5 g, protein 13 g, salt 0.01 g (per 100 g)", source: "openfoodfacts" } : {}) } };
   // Behältergrößen: feste Größen, Dose 4/5 mit variablem Deckel
   const fixedSizes = { 0: "1 l", 1: "0,5 l", 2: "0,5 l", 5: "1,5 l", 6: "1,5 l", 7: "2 l", 8: "0,5 l", 9: "1 l", 14: "2 l" };
   if (kind === "container") {
@@ -139,6 +139,10 @@ const suggestions = de ? [
 ] : [
   { title: "Salmon pasta", minutes: 20, uses: ["Salmon", "Penne"], extra_ingredients: ["Cream", "Lemon"], steps: ["Cook the penne.", "Cook the salmon in cream and fold it in."] },
 ];
+// to-do lists for the shopping list choice (4.1)
+for (const [id, name] of [["todo.einkaufsliste", de ? "Einkaufsliste" : "Shopping list"], ["todo.drogerie", de ? "Drogerie" : "Drugstore"], ["todo.metzger", de ? "Metzger" : "Butcher"]]) {
+  states[id] = { entity_id: id, state: "0", attributes: { friendly_name: name } };
+}
 const hass = {
   entities, devices, states, language: lang, user: { is_admin: true, name: "Yan" },
   areas: Object.fromEntries(Object.entries(areas).map(([k, v]) => [k, { area_id: k, name: v, labels: areaLabels[k] || [] }])),
@@ -178,6 +182,23 @@ const hass = {
       months: [["2026-06", 2, 1], ["2026-07", 4, 0], ["2026-08", 3, 1], ["2026-09", 5, 1], ["2026-10", 6, 1], ["2026-11", 3, 0]].map(([month, eaten, thrown]) => ({ month, eaten, thrown })),
       containers: { total: 10, filled: 9, empty: 1, expired: 1, soon: 3, undated: 0 } };
     if (msg.type === "larder/area_scopes") return { scopes, plan: {} };
+    if (msg.type === "larder/household_statistics") {
+      const m = (n) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; };
+      return {
+        months: [[5, 0, 0], [4, 14, 6.2], [3, 22, 9.8], [2, 19, 8.4], [1, 25, 11.1], [0, 12, 5.3]].map(([n, pieces, cost]) => ({ month: m(n), pieces, cost, priced: true })),
+        products: de ? [
+          { key: "klopapier", name: "Klopapier", piece: "Rollen", pieces: 52, pieces_per_month: 10.4, cost: 32.4, cost_per_month: 6.48, complete: true },
+          { key: "spuelmaschinentabs", name: "Spülmaschinentabs", piece: "Tabs", pieces: 61, pieces_per_month: 12.2, cost: 9.15, cost_per_month: 1.83, complete: true },
+          { key: "zahnpasta", name: "Zahnpasta", piece: null, pieces: 3, pieces_per_month: 0.6, cost: 2.85, cost_per_month: 0.57, complete: true },
+          { key: "batterien aa", name: "Batterien AA", piece: null, pieces: 4, pieces_per_month: 0.8, cost: null, cost_per_month: null, complete: false },
+        ] : [
+          { key: "toilet paper", name: "Toilet paper", piece: "rolls", pieces: 52, pieces_per_month: 10.4, cost: 32.4, cost_per_month: 6.48, complete: true },
+          { key: "dishwasher tabs", name: "Dishwasher tabs", piece: "Tabs", pieces: 61, pieces_per_month: 12.2, cost: 9.15, cost_per_month: 1.83, complete: true },
+          { key: "toothpaste", name: "Toothpaste", piece: null, pieces: 3, pieces_per_month: 0.6, cost: 2.85, cost_per_month: 0.57, complete: true },
+          { key: "aa batteries", name: "AA batteries", piece: null, pieces: 4, pieces_per_month: 0.8, cost: null, cost_per_month: null, complete: false },
+        ],
+        cost_per_month: 8.88, complete: false };
+    }
     if (msg.type === "larder/recipes") return { recipes };
     if (msg.type === "larder/settings") return { recipe_days: 3, soon_days: 3 };
     if (msg.type === "larder/estimates") return { mode: "table", entries: de ? [

@@ -7,7 +7,7 @@
  */
 // Load with the same version query as this module, so an older copy from the cache is never used.
 const VERSION_QUERY = new URL(import.meta.url).search;
-const { areaAllows, setAreaScopes, attachCompartmentChips, collectDevices, daysUntil, isLarderLabel, knownCompartments, listAreas, rememberCompartment, soonDaysOf, SOON_DAYS } = await import(
+const { areaAllows, setAreaScopes, todoLists, attachCompartmentChips, collectDevices, daysUntil, isLarderLabel, knownCompartments, listAreas, rememberCompartment, soonDaysOf, SOON_DAYS } = await import(
   `./larder-panel.js${VERSION_QUERY}`
 );
 const { installItems } = await import(`./larder-dashboard-items.js${VERSION_QUERY}`);
@@ -718,7 +718,7 @@ export class LarderDashboard extends HTMLElement {
       this._low,
       this._recalls,
       this._view === "stats" ? this._report : null,
-      this._view === "stats" ? [this._stats, this._statsDays] : null,
+      this._view === "stats" ? [this._stats, this._statsDays, this._hhStats] : null,
       this._view === "stock" ? this._stock : null,
       this._view === "stocktake" ? this.stocktakeSig() : null,
       this._view === "areas" ? this._areaSig() : null,
@@ -1438,6 +1438,7 @@ export class LarderDashboard extends HTMLElement {
     if (next === this._opts.scope) return;
     this._opts.scope = next;
     saveOptions(this._opts);
+    if (this._view === "stats" && next === "household") this.loadHouseholdStats();
     // filters belong to the other scope (its areas and categories)
     this._filter = { area: null, category: null, state: null, problem: null };
     this._sig = "";
@@ -2543,9 +2544,23 @@ export class LarderDashboard extends HTMLElement {
 
   // ----- Statistik -----
 
+  /** Household items: use and spending per month (#82). */
+  async loadHouseholdStats() {
+    const hass = this._hass;
+    if (!hass || !hass.callWS) return;
+    try {
+      this._hhStats = await hass.callWS({ type: `${DOMAIN}/household_statistics` });
+    } catch {
+      this._hhStats = { error: true };
+    }
+    this._sig = "";
+    this._update();
+  }
+
   async loadStats() {
     const hass = this._hass;
     if (!hass || !hass.callWS) return;
+    if (this._opts.scope === "household") this.loadHouseholdStats();
     const days = this._statsDays === undefined ? 90 : this._statsDays;
     this._statsDays = days;
     try {
@@ -2558,6 +2573,11 @@ export class LarderDashboard extends HTMLElement {
 
   _renderStats(t) {
     const frag = document.createDocumentFragment();
+    frag.append(this._scopeSwitch(t));
+    if (this._opts.scope === "household") {
+      this._renderHouseholdStats(t, frag);
+      return;
+    }
     const bar = el("div", "bar");
     bar.append(
       this._select(
@@ -2664,6 +2684,65 @@ export class LarderDashboard extends HTMLElement {
       chart.append(col);
     }
     frag.append(box(t.statsMonths, chart), el("p", "note", t.statsHint));
+    this._main.replaceChildren(frag);
+  }
+
+  _renderHouseholdStats(t, frag) {
+    const st = this._hhStats;
+    if (!st || st.error) {
+      if (st) frag.append(el("p", "note", t.statsHhFailed));
+      this._main.replaceChildren(frag);
+      return;
+    }
+    const de = this._lang().startsWith("de");
+    const euro = (v) => (de ? `${v.toFixed(2).replace(".", ",")} €` : `€${v.toFixed(2)}`);
+    if (!st.products.length) {
+      frag.append(el("p", "note", t.statsHhNone));
+      this._main.replaceChildren(frag);
+      return;
+    }
+    const total = el("section", "stat");
+    total.dataset.role = "hh-total";
+    total.append(el("h3", "", t.statsHhTitle));
+    const fig = el("div", "fig");
+    fig.append(el("span", "num", st.cost_per_month ? euro(st.cost_per_month) : "–"), el("span", "lbl", t.statsHhPerMonth));
+    const figs = el("div", "figs");
+    figs.append(fig);
+    total.append(figs);
+    frag.append(total);
+    // months as bars: money if every take had a price, else pieces
+    const byCost = st.months.some((m) => m.cost > 0);
+    const value = (m) => (byCost ? m.cost : m.pieces);
+    const max = Math.max(...st.months.map(value), 0) || 1;
+    const chart = el("div", "months");
+    const lang = this._lang();
+    for (const m of st.months) {
+      const col = el("div", "month");
+      const stack = el("div", "stack");
+      const seg = el("div", "seg spent");
+      seg.style.height = `${(100 * value(m)) / max}%`;
+      stack.append(seg);
+      stack.title = byCost ? euro(m.cost) : `${m.pieces}`;
+      const [y, mo] = m.month.split("-").map(Number);
+      col.append(stack, el("span", "lbl", new Date(y, mo - 1, 1).toLocaleDateString(lang, { month: "short" })));
+      chart.append(col);
+    }
+    const months = el("section", "stat");
+    months.append(el("h3", "", byCost ? t.statsHhMonthsCost : t.statsHhMonthsPieces), chart);
+    frag.append(months);
+    const list = el("section", "stat");
+    list.dataset.role = "hh-products";
+    list.append(el("h3", "", t.statsHhProducts));
+    const ol = el("ol", "rank");
+    list.append(ol);
+    for (const p of st.products) {
+      const row = el("li");
+      const used = t.statsHhUsed(String(p.pieces_per_month).replace(".", de ? "," : "."), p.piece);
+      row.append(el("span", "name", p.name), el("span", "count", p.cost_per_month ? `${used} · ${euro(p.cost_per_month)}` : used));
+      ol.append(row);
+    }
+    frag.append(list);
+    frag.append(el("p", "note", st.complete ? t.statsHhHint : `${t.statsHhHint} ${t.statsHhIncomplete}`));
     this._main.replaceChildren(frag);
   }
 
@@ -2976,7 +3055,7 @@ export class LarderDashboard extends HTMLElement {
   }
 }
 
-installItems(LarderDashboard, { el, isAdmin, listAreas, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment });
+installItems(LarderDashboard, { el, isAdmin, listAreas, todoLists, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment });
 installCook(LarderDashboard, { el, isAdmin, DOMAIN });
 installCare(LarderDashboard, { el, isAdmin, listAreas, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment, CATEGORY_ICONS });
 

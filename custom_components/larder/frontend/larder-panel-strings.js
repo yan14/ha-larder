@@ -95,6 +95,9 @@ export const STRINGS = {
     openedSince: (d) => `🔓 Angebrochen am ${String(d || "").split("-").reverse().join(".")}`,
     olderElsewhere: (place, d) => `Ältere Packung in ${place} (MHD ${String(d || "").split("-").reverse().join(".")}) – die zuerst nehmen.`,
     minStock: "Mindestbestand",
+    shopList: "Einkaufsliste",
+    shopListDefault: "Standardliste",
+    shopListFailed: "Einkaufsliste konnte nicht gespeichert werden.",
     minStockFailed: "Mindestbestand konnte nicht gespeichert werden.",
     allergenWarning: (names) => `⚠ Enthält ${names} (Allergene im Haushalt)`,
     nutritionFields: {
@@ -288,6 +291,9 @@ export const STRINGS = {
     openedSince: (d) => `🔓 Opened on ${d}`,
     olderElsewhere: (place, d) => `Older pack in ${place} (best before ${d}) – take that one first.`,
     minStock: "Minimum stock",
+    shopList: "Shopping list",
+    shopListDefault: "Default list",
+    shopListFailed: "The shopping list could not be saved.",
     minStockFailed: "Could not save the minimum stock.",
     allergenWarning: (names) => `⚠ Contains ${names} (household allergens)`,
     nutritionFields: {

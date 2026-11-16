@@ -30,7 +30,7 @@ from homeassistant.helpers.event import (
     async_track_time_change,
 )
 
-from .const import DOMAIN, PACK_KINDS, SIGNAL_SETTINGS_CHANGED
+from .const import DOMAIN, PACK_KINDS, SIGNAL_SETTINGS_CHANGED, larder_id
 from .entity import kind_of
 from .estimate import storage_context
 from .expiry import days_left
@@ -154,7 +154,7 @@ class Repairs:
     @callback
     def _device_changed(self, event: Event) -> None:
         device = dr.async_get(self.hass).async_get(event.data.get("device_id", ""))
-        if device is None or any(domain == DOMAIN for domain, _ in device.identifiers):
+        if device is None or larder_id(device):
             self.async_schedule()
 
     @callback

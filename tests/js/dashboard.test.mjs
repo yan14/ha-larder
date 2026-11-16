@@ -2780,3 +2780,62 @@ test("Fixed height: the dashboard fills exactly the space below its top edge (iO
   assert.equal(el.style.height, `${window.innerHeight - 47}px`);
   el.remove();
 });
+
+test("Add dialog: shopping list for the new products (4.1), only with several to-do lists", async () => {
+  const hass = householdHass();
+  hass.states["todo.einkaufen"] = { entity_id: "todo.einkaufen", state: "0", attributes: { friendly_name: "Einkaufsliste" } };
+  const el = mount(hass);
+  await flush();
+  await go(el, "containers");
+  $(el, '[data-role="add"]').click();
+  $(el, '[data-role="add-pack"]').click();
+  assert.equal($(el, 'form.dialog [data-f="shopping_list"]'), null); // one list: nothing to choose
+  hass.states["todo.drogerie"] = { entity_id: "todo.drogerie", state: "0", attributes: { friendly_name: "Drogerie" } };
+  $(el, '[data-role="add"]').click();
+  $(el, '[data-role="add-household"]').click();
+  const form = $(el, "form.dialog");
+  const select = form.querySelector('[data-f="shopping_list"]');
+  assert.deepEqual([...select.options].map((o) => o.textContent), ["Standardliste", "Drogerie", "Einkaufsliste"]);
+  select.value = "todo.drogerie";
+  form.querySelector('[data-i="content"]').value = "Zahnpasta";
+  form.querySelector("button.submit").click();
+  await flush();
+  await flush();
+  assert.equal(hass.wsCalls.find((m) => m.type === `${D}/create_items`).shopping_list, "todo.drogerie");
+});
+
+test("Statistics: household side with spending per month and per product (4.1)", async () => {
+  const hass = householdHass();
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/statistics`) return { months: [], containers: { filled: 0, empty: 0, soon: 0, expired: 0 }, eaten: 0, thrown: 0, emptied: 0, top_thrown: [], top_eaten: [], thrown_by_area: [] };
+    if (msg.type === `${D}/household_statistics`) {
+      hass.wsCalls.push(msg);
+      return {
+        months: [{ month: "2026-10", pieces: 6, cost: 3, priced: true }, { month: "2026-11", pieces: 12, cost: 5, priced: false }],
+        products: [
+          { key: "klopapier", name: "Klopapier", piece: "Rollen", pieces: 16, pieces_per_month: 8, cost: 8, cost_per_month: 4, complete: true },
+          { key: "batterien", name: "Batterien AA", piece: null, pieces: 2, pieces_per_month: 2, cost: null, cost_per_month: null, complete: false },
+        ],
+        cost_per_month: 4,
+        complete: false,
+      };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  el.setView("stats");
+  await flush();
+  assert.equal($(el, '[data-role="hh-total"]'), null);
+  $(el, '.scope [data-scope="household"]').click();
+  await flush();
+  await flush();
+  assert.equal(hass.wsCalls.filter((m) => m.type === `${D}/household_statistics`).length, 1);
+  assert.equal($(el, '[data-role="hh-total"] .num').textContent, "4,00 €");
+  assert.deepEqual(
+    $$(el, '[data-role="hh-products"] li').map((li) => li.textContent),
+    ["Klopapier8 Rollen · 4,00 €", "Batterien AA2 Stück"],
+  );
+  assert.equal($$(el, "main .month").length, 2);
+  assert.match($(el, "main p.note:last-of-type").textContent, /Nicht für alle Produkte/);
+});

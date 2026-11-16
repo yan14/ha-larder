@@ -22,6 +22,8 @@ const TEXT = {
     kindHousehold: "Haushaltsartikel",
     kindHouseholdHint: "Ohne Haltbarkeit, z. B. Klopapier, Waschmittel, Batterien",
     titleHousehold: "Haushaltsartikel anlegen",
+    shopList: "Einkaufsliste",
+    shopListDefault: "Standardliste",
     packSize: "Stück je Packung",
     piece: "Einheit, z. B. Rollen",
     createdHousehold: (n) => (n === 1 ? "1 Haushaltsartikel angelegt." : `${n} Haushaltsartikel angelegt.`),
@@ -149,6 +151,8 @@ const TEXT = {
     kindHousehold: "Household item",
     kindHouseholdHint: "No best-before date, e.g. toilet paper, detergent, batteries",
     titleHousehold: "Add household items",
+    shopList: "Shopping list",
+    shopListDefault: "Default list",
     packSize: "Pieces per pack",
     piece: "Unit, e.g. rolls",
     createdHousehold: (n) => (n === 1 ? "1 household item added." : `${n} household items added.`),
@@ -321,7 +325,7 @@ export function buildItems(kind, rows, vacuum = true) {
   return items;
 }
 
-export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment }) {
+export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment }) {
   const proto = Dashboard.prototype;
 
   const fmtDate = (hass, iso) => {
@@ -770,7 +774,9 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
       head.append(minWrap);
       item.append(head);
       const de = String(hass.language || "").toLowerCase().startsWith("de");
-      const sub = [hh && p.pack_size > 1 ? t.stockPacks(packs) : null, p.brand, p.package, p.earliest ? t.stockEarliest(fmtDate(hass, p.earliest)) : null].filter(Boolean).join(" · ");
+      const own = p.list && (hass.states || {})[p.list];
+      const listName = own ? `🛒 ${(own.attributes && own.attributes.friendly_name) || p.list}` : null;
+      const sub = [hh && p.pack_size > 1 ? t.stockPacks(packs) : null, p.brand, p.package, listName, p.earliest ? t.stockEarliest(fmtDate(hass, p.earliest)) : null].filter(Boolean).join(" · ");
       if (sub) item.append(el("div", "sub", sub));
       if (p.usage) {
         const line = el("div", "usage", t.usageLasts(spanText(p.usage.lasts_days, de), p.usage.takes, spanText(p.usage.days, de, true)));
@@ -944,6 +950,19 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
     compartment.dataset.f = "compartment";
     compartment.placeholder = t.compartmentHint;
     if (preset && preset.compartment) compartment.value = preset.compartment;
+
+    // own shopping list for these products (remembered per product; empty = the default list)
+    let shopList = null;
+    const lists = todoLists ? todoLists(hass) : [];
+    if (lists.length > 1) {
+      shopList = el("select");
+      shopList.dataset.f = "shopping_list";
+      for (const l of [{ id: "", name: t.shopListDefault }, ...lists]) {
+        const o = el("option", "", l.name);
+        o.value = l.id;
+        shopList.append(o);
+      }
+    }
 
     const rows = el("div", "itemrows");
     const status = el("p", "hint");
@@ -1131,6 +1150,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
       el("h2", "", bag ? t.titleBag : hh ? t.titleHousehold : t.titlePack),
       field(t.area, area),
       field(t.compartment, compartment),
+      ...(shopList ? [field(t.shopList, shopList)] : []),
       rows,
       ...extras,
       status,
@@ -1168,6 +1188,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
       try {
         const msg = { type: `${DOMAIN}/create_items`, kind, items };
         if (area.value) msg.area_id = area.value;
+        if (shopList && shopList.value) msg.shopping_list = shopList.value;
         if (compartment.value.trim()) {
           msg.compartment = compartment.value.trim();
           rememberCompartment(area.value, msg.compartment);

@@ -21,7 +21,8 @@ Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** (bei ei
 | Reparaturhinweise | an | Hinweise unter Einstellungen → System → Reparaturen, siehe [Reparaturhinweise](#reparaturhinweise) |
 | Temperaturwarnung | an | Warnung, wenn ein Gefrier- oder Kühlschrank mit Temperatursensor zu lange zu warm ist, siehe [Reparaturhinweise](#reparaturhinweise) |
 | Kalender | keiner | [MHD im Kalender](kitchen.md#mhd-im-kalender) |
-| Einkaufsliste | keine | [Einkaufsliste](kitchen.md#einkaufsliste) für geleerte Dosen |
+| Einkaufsliste (Lebensmittel) | keine | Standardliste für alles, was Larder auf eine [Einkaufsliste](kitchen.md#einkaufsliste) setzt |
+| Einkaufsliste für Haushaltsartikel | keine | Standardliste für [Haushaltsartikel](containers.md#haushaltsartikel); leer = die Lebensmittel-Liste |
 | Marke und Packung mit auf die Einkaufsliste | an | „Haferflocken (Kölln, 500 g)“ statt „Haferflocken“, siehe [Einkaufsliste](kitchen.md#einkaufsliste) |
 | Allergene im Haushalt | keine | Warnung an Dosen und keine solchen Dosen in Rezeptideen, siehe [Allergene im Haushalt](containers.md#allergene-im-haushalt) |
 | Kalender für den Wochenplan | keiner | Geplante Gerichte als ganztägige Termine, siehe [Wochenplan](kitchen.md#wochenplan) |

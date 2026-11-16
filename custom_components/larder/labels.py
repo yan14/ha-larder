@@ -24,7 +24,7 @@ from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 
-from .const import DOMAIN, PACK_KINDS, scan_app_url
+from .const import DOMAIN, PACK_KINDS, larder_ids, scan_app_url
 from .entity import kind_of
 from .places import place_app_url, place_name
 
@@ -629,7 +629,7 @@ class LabelSheetView(HomeAssistantView):
         devices = dr.async_get(hass)
         for device_id in (d for d in query.get("device", "").split(",") if d.strip()):
             device = devices.async_get(device_id)
-            codes += [ident for domain, ident in (device.identifiers if device else ()) if domain == DOMAIN]
+            codes += larder_ids(device)
         if (query.get("cc") or query.get("device")) and not codes:
             return self.json_message("no containers", HTTPStatus.NOT_FOUND)
         show_content = query.get("content") == "1"

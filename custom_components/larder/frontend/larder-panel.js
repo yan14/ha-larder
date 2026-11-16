@@ -294,6 +294,15 @@ export function areaAllows(areaId, scope) {
   return !scope || !s || s === "both" || s === scope;
 }
 
+/** All to-do lists of Home Assistant as [{id, name}], sorted by name (for choosing a shopping list). */
+export function todoLists(hass) {
+  const lang = ((hass && hass.language) || "en").toLowerCase();
+  return Object.values((hass && hass.states) || {})
+    .filter((s) => s.entity_id.startsWith("todo."))
+    .map((s) => ({ id: s.entity_id, name: (s.attributes && s.attributes.friendly_name) || s.entity_id }))
+    .sort((a, b) => a.name.localeCompare(b.name, lang, { sensitivity: "base" }));
+}
+
 export function listAreas(hass, labelIds = null, keep = null, scope = null) {
   const lang = ((hass && hass.language) || "en").toLowerCase();
   let areas = Object.values((hass && hass.areas) || {});
@@ -404,6 +413,7 @@ class DoseCard {
       <div class="packline" role="note" hidden></div>
       <div class="olderhint" role="note" hidden></div>
       <div class="row minrow" hidden><label data-l="minStock"></label><input data-f="minStock" type="number" min="0" max="999" step="1" inputmode="numeric"><span class="stockinfo"></span></div>
+      <div class="row listrow" hidden><label data-l="shopList"></label><select data-f="shopList"></select></div>
       <div class="allergen-warning" role="note" hidden></div>
       <details class="nutrition"><summary></summary>
         <div class="nutgrid">
@@ -580,6 +590,15 @@ class DoseCard {
       if (!hass || !hass.callWS || !content) return;
       const value = Math.max(0, Math.min(999, parseInt(ev.target.value, 10) || 0));
       hass.callWS({ type: `${DOMAIN}/stock_min`, content, min: value }).catch(() => this._panel.showError(strings(hass).minStockFailed));
+    });
+    // own shopping list of the product (remembered by product name, "" = the default list)
+    this.q('[data-f="shopList"]').addEventListener("change", (ev) => {
+      const hass = this._panel.hass;
+      const content = this.inputs.content.value.trim();
+      if (!hass || !hass.callWS || !content) return;
+      const msg = { type: `${DOMAIN}/product_list`, content };
+      if (ev.target.value) msg.list = ev.target.value;
+      hass.callWS(msg).catch(() => this._panel.showError(strings(hass).shopListFailed));
     });
     this.q("button.transfer").addEventListener("click", () => {
       this._panel.dispatchEvent(new CustomEvent("larder-transfer", { detail: { deviceId: this.deviceId } }));
@@ -937,6 +956,27 @@ class DoseCard {
     minRow.hidden = !(packLike && hasContentNow);
     this.q('[data-l="minStock"]').textContent = t.minStock;
     if (!minRow.hidden) this._setInput(this.q('[data-f="minStock"]'), text.attributes.min_stock ? String(text.attributes.min_stock) : "");
+    // shopping list of the product: only with content and as soon as there are to-do lists
+    const lists = todoLists(hass);
+    const listRow = this.q(".listrow");
+    listRow.hidden = !(hasContentNow && lists.length);
+    this.q('[data-l="shopList"]').textContent = t.shopList;
+    if (!listRow.hidden) {
+      const select = this.q('[data-f="shopList"]');
+      const sig = JSON.stringify([t.shopListDefault, lists]);
+      if (select.dataset.sig !== sig) {
+        select.replaceChildren(
+          ...[{ id: "", name: t.shopListDefault }, ...lists].map((l) => {
+            const o = document.createElement("option");
+            o.value = l.id;
+            o.textContent = l.name;
+            return o;
+          }),
+        );
+        select.dataset.sig = sig;
+      }
+      this._setInput(select, (text.attributes && text.attributes.shopping_list) || "");
+    }
     if (nfc !== null) {
       this.q(".nfcstate").textContent = { linked: t.nfcLinked, none: t.nfcNone, waiting: t.nfcWaiting }[nfc];
       this.q("button.nfcbtn").textContent = { linked: t.nfcUnlink, none: t.nfcLink, waiting: t.cancel }[nfc];

@@ -113,7 +113,10 @@ class LarderContent(TextEntity, LarderResettable):
         attrs: dict[str, Any] = {"category": category, "kind": self._kind, **self._product}
         estimator = self.hass.data.get(DOMAIN, {}).get(DATA_ESTIMATOR)
         watched = getattr(estimator, "watch_allergens", None)
-        if self._kind in PACK_KINDS and (stock := self.hass.data.get(DOMAIN, {}).get(DATA_STOCK)) is not None:
+        stock = self.hass.data.get(DOMAIN, {}).get(DATA_STOCK)
+        if value and stock is not None and (own := stock.lists.get(product_key(value))):
+            attrs["shopping_list"] = own  # own shopping list of the product (else the default list)
+        if self._kind in PACK_KINDS and stock is not None:
             attrs["min_stock"] = stock.minimum(value)  # minimum stock of the product (for the card)
             if (usage := stock.usage(value)) is not None:
                 attrs["consumption_per_week"] = usage["per_week"]  # consumption of the product (for "lasts another …")

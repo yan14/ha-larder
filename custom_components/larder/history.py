@@ -20,7 +20,7 @@ from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN
+from .const import DOMAIN, larder_id
 from .singleton import async_singleton
 
 DATA_HISTORY = "history"
@@ -133,7 +133,7 @@ def _cc_of_device(hass: HomeAssistant, device_id: str) -> str | None:
     device = dr.async_get(hass).async_get(device_id)
     if device is None:
         return None
-    return next((ident for domain, ident in device.identifiers if domain == DOMAIN), None)
+    return larder_id(device)
 
 
 @websocket_api.websocket_command(

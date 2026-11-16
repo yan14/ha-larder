@@ -123,6 +123,8 @@ A bag works like a container (scan it, take a portion, **Opened**, **Thawed**, r
 
 Every 6 hours Larder fetches the public recalls of the last 30 days from [lebensmittelwarnung.de](https://www.lebensmittelwarnung.de) (the German states' and BVL's portal) and compares them with your containers, bags and packs. A match needs the **barcode**, or the **brand and a word of the contents**, or – without a brand – **every word** of contents with several words. The warning then sits at the top of the start page: product, reason, where it is in stock and how Larder matched it, with a link to the original warning. **Read** hides it for good. The card of the entry shows the hint too.
 
+**Household items (since 4.1):** once there are household items, Larder also fetches the feed of all product types (cosmetics, consumer goods, baby products, tattoo inks) and compares household items with those warnings. Food is still only compared with food warnings.
+
 A match is a hint, not a certainty: batch and best-before date are in the original warning, please check there. Only the public feed is fetched, Larder sends nothing. Switch it off or limit it to one German state in the [settings](reference.md#settings); as a push with the blueprint [Running low and recalls](kitchen.md#running-low-and-recalls) (event `larder_recall`).
 
 ### Stocktake
@@ -147,6 +149,7 @@ Since 4.0 Larder also keeps track of things without a best-before date: toilet p
 - **Barcode.** If Open Food Facts does not know a barcode, Larder also asks its sister databases **Open Beauty Facts**, **Open Products Facts** and **Open Pet Food Facts**. A product found there is offered as a household item.
 - **Converting.** A pack that should have been a household item (or the other way round) is converted with **→ Household item** / **→ Food pack** at the bottom of its card. Nothing is converted automatically.
 - **Categories:** paper & hygiene, laundry, cleaning & dishes, personal care, batteries & bulbs, other.
+- **Statistics** (since 4.1): use and spending per month, per product and in total, on the household side of [Statistics](dashboard.md#statistics). **Recall warnings** for cosmetics and consumer goods, see [Recall warnings](#recall-warnings). **A shopping list of their own**, see [Shopping list](kitchen.md#shopping-list).
 
 **Food | Household.** The pages **Storage**, **Areas**, **Categories** and the **stock view** have a switch at the top and show one side at a time; the device remembers your choice. The **start page** shows both, in two sections: *Food* (expiring soon, running low, bought, cook again, thawing, meal plan) and *Household* (running low, bought).
 

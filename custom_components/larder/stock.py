@@ -26,11 +26,21 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
-from .const import CONF_CC, DATA_STOCK, DOMAIN, KIND_BAG, KIND_HOUSEHOLD, KIND_PACK, PACK_KINDS, SIGNAL_STOCK_CHANGED
+from .const import (
+    CONF_CC,
+    DATA_STOCK,
+    DOMAIN,
+    KIND_BAG,
+    KIND_HOUSEHOLD,
+    KIND_PACK,
+    PACK_KINDS,
+    SIGNAL_STOCK_CHANGED,
+    larder_id,
+)
 from .consumption import async_open_prices, forecast, price_of, suggested_minimum
 from .entity import kind_of
 from .estimate import async_get_estimator, storage_context
-from .shopping import async_add_to_shopping_list
+from .shopping import any_list, async_add_to_shopping_list, shopping_list_for
 from .singleton import async_singleton
 
 _LOGGER = logging.getLogger(__name__)
@@ -74,6 +84,7 @@ class Stock:
         self.recalls_read: list[str] = []  # recall warnings that were read
         self.recalls_sent: list[str] = []  # recall warnings already reported (event only once)
         self.ean_names: dict[str, str] = {}  # barcode → own name of the product
+        self.lists: dict[str, str] = {}  # product → its own shopping list (to-do entity), else the default
         self._unsub = None
 
     async def async_load(self) -> None:
@@ -89,6 +100,7 @@ class Stock:
         self.recalls_read = [str(k) for k in data.get("recalls_read") or []]
         self.recalls_sent = [str(k) for k in data.get("recalls_sent") or []]
         self.ean_names = {str(k): str(v) for k, v in (data.get("ean_names") or {}).items()}
+        self.lists = {str(k): str(v) for k, v in (data.get("lists") or {}).items() if str(v).startswith("todo.")}
 
     def _data(self) -> dict[str, Any]:
         return {
@@ -103,6 +115,7 @@ class Stock:
             "recalls_read": self.recalls_read,
             "recalls_sent": self.recalls_sent,
             "ean_names": self.ean_names,
+            "lists": self.lists,
         }
 
     # ----- Consumption and prices -----
@@ -113,12 +126,28 @@ class Stock:
         if not key or n <= 0:
             return
         today = dt_util.now().date()
-        self.takes.append({"key": key, "day": today.isoformat(), "n": int(n)})
+        take: dict[str, Any] = {"key": key, "day": today.isoformat(), "n": int(n)}
+        # household items: remember pack size and price per pack now, for use and spending per month
+        if (info := self._household_info(key)) is not None:
+            take.update(info)
+        self.takes.append(take)
         cutoff = (today - timedelta(days=MAX_TAKE_AGE)).isoformat()
         self.takes = [t for t in self.takes if t.get("day", "") >= cutoff][-MAX_TAKES:]
         self._save()
         async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
         self.hass.async_create_task(async_check_running_low(self.hass, content), f"{DOMAIN}_running_low")
+
+    def _household_info(self, key: str) -> dict[str, Any] | None:
+        """{"hh": True, "size", "price"?} if the product is a household item, else None."""
+        entry = next((p for p in pack_entries(self.hass) if product_key(p["content"]) == key), None)
+        known = (self.minimums.get(key) or {}).get("product") or {}
+        if (entry["kind"] if entry else known.get("kind")) != KIND_HOUSEHOLD:
+            return None
+        info: dict[str, Any] = {"hh": True, "size": int((entry or {}).get("pack_size") or known.get("pack_size") or 1)}
+        price = (entry or {}).get("price") or (self.prices.get(key) or {}).get("price")
+        if price:
+            info["price"] = round(float(price), 2)
+        return info
 
     def snooze_reorder(self, content: str) -> None:
         today = dt_util.now().date()
@@ -166,6 +195,18 @@ class Stock:
         self.prices[key] = entry
         self._save()
 
+    def set_list(self, content: str, entity_id: str | None) -> None:
+        """Own shopping list for a product (None = back to the default list)."""
+        key = product_key(content)
+        if not key:
+            return
+        if entity_id:
+            self.lists[key] = entity_id
+        else:
+            self.lists.pop(key, None)
+        self._save()
+        async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
+
     def snooze(self, content: str) -> None:
         self.snoozed[product_key(content)] = (dt_util.now().date() + timedelta(days=AGAIN_SNOOZE)).isoformat()
         today = dt_util.now().date().isoformat()
@@ -177,10 +218,11 @@ class Stock:
 
     # ----- Shopping list → stock -----
 
-    def track(self, summary: str, info: dict[str, Any]) -> None:
-        """Remember an item Larder put on the shopping list (for "bought → into the stock")."""
+    def track(self, summary: str, info: dict[str, Any], todo: str | None = None) -> None:
+        """Remember an item Larder put on a shopping list (for "bought → into the stock")."""
         now = dt_util.now()
-        self.tracked[summary.casefold()] = {**info, "summary": summary, "at": now.isoformat(timespec="seconds")}
+        todo = todo or info.get("list") or shopping_list_for(self.hass, info.get("content") or summary, info.get("kind"))
+        self.tracked[summary.casefold()] = {**info, "list": todo, "summary": summary, "at": now.isoformat(timespec="seconds")}
         cutoff = (now - timedelta(days=TRACK_DAYS)).isoformat()
         self.tracked = {k: v for k, v in self.tracked.items() if v.get("at", "") >= cutoff}
         self._save()
@@ -193,9 +235,8 @@ class Stock:
 
         @callback
         def changed(event: Event) -> None:
-            estimator = self.hass.data.get(DOMAIN, {}).get("estimator")
-            todo = getattr(estimator, "todo_entity", None)
-            if todo and event.data.get("entity_id") == todo and self.tracked:
+            # every list Larder wrote to (the item remembers it), not only the default list
+            if self.tracked and event.data.get("entity_id") in self._watched_lists():
                 self.hass.async_create_task(self.async_poll(), f"{DOMAIN}_bought")
 
         self._unsub = self.hass.bus.async_listen(EVENT_STATE_CHANGED, changed)
@@ -206,22 +247,31 @@ class Stock:
             self._unsub()
             self._unsub = None
 
+    def _list_of(self, info: dict[str, Any]) -> str | None:
+        # items tracked before 4.1 have no list: they were on the (food) default list
+        return info.get("list") or shopping_list_for(self.hass, None)
+
+    def _watched_lists(self) -> set[str]:
+        return {todo for info in self.tracked.values() if (todo := self._list_of(info))}
+
     async def async_poll(self) -> list[dict[str, Any]]:
-        """Move ticked-off items that Larder set to "bought"."""
-        estimator = await async_get_estimator(self.hass)
-        todo = estimator.todo_entity
-        if not todo or not self.tracked:
+        """Move ticked-off items that Larder set to "bought" (on every list it wrote to)."""
+        await async_get_estimator(self.hass)
+        if not self.tracked:
             return []
-        try:
-            response = await self.hass.services.async_call(
-                "todo", "get_items", {"entity_id": todo, "status": "completed"}, blocking=True, return_response=True
-            )
-        except HomeAssistantError:
-            _LOGGER.debug("Einkaufsliste %s nicht lesbar", todo, exc_info=True)
-            return []
-        done = {str(i.get("summary", "")).strip().casefold() for i in ((response or {}).get(todo) or {}).get("items") or []}
+        done: set[tuple[str, str]] = set()
+        for todo in self._watched_lists():
+            try:
+                response = await self.hass.services.async_call(
+                    "todo", "get_items", {"entity_id": todo, "status": "completed"}, blocking=True, return_response=True
+                )
+            except HomeAssistantError:
+                _LOGGER.debug("Einkaufsliste %s nicht lesbar", todo, exc_info=True)
+                continue
+            items = ((response or {}).get(todo) or {}).get("items") or []
+            done |= {(todo, str(i.get("summary", "")).strip().casefold()) for i in items}
         moved: list[dict[str, Any]] = []
-        for key in [k for k in self.tracked if k in done]:
+        for key in [k for k, info in self.tracked.items() if (self._list_of(info), k) in done]:
             info = self.tracked.pop(key)
             item = {"id": uuid.uuid4().hex[:10], **info, "bought": dt_util.now().isoformat(timespec="seconds")}
             self.bought = [b for b in self.bought if b.get("summary", "").casefold() != key] + [item]
@@ -374,6 +424,8 @@ def stock_overview(hass: HomeAssistant, minimums: dict[str, dict[str, Any]], sto
         product["piece"] = product.get("piece") or known.get("piece")
         product["packs"] = round(product["count"] / product["pack_size"], 1)
         product["min"] = int((minimums.get(product["key"]) or {}).get("min") or 0)
+        if stock is not None and stock.lists.get(product["key"]):
+            product["list"] = stock.lists[product["key"]]  # own shopping list of the product
         product["low"] = product["min"] > 0 and product["count"] < product["min"]
         # oldest first: earliest date on top, without a date last
         product["places"].sort(key=lambda p: (not p["opened"], p["best_before"] or "9999", str(p["area"] or "￿").casefold(), p["compartment"].casefold()))
@@ -488,7 +540,7 @@ async def async_check_running_low(hass: HomeAssistant, content: str | None = Non
                 "message": message,
             },
         )
-        if getattr(estimator, "reorder_shopping", False) and estimator.todo_entity:
+        if getattr(estimator, "reorder_shopping", False) and shopping_list_for(hass, product["name"], product.get("kind")):
             await async_shop_product(hass, product["name"])
     return new
 
@@ -496,16 +548,17 @@ async def async_check_running_low(hass: HomeAssistant, content: str | None = Non
 async def async_shop_product(hass: HomeAssistant, content: str) -> tuple[bool, str]:
     """Put a product of the stock (with brand and package) on the shopping list and remember it for "bought"."""
     estimator = await async_get_estimator(hass)
-    if not estimator.todo_entity:
-        raise HomeAssistantError("no shopping list chosen in the settings")
     stock = await async_get_stock(hass)
     key = product_key(content)
     product = next((p for p in stock_overview(hass, stock.minimums) if p["key"] == key), None) or {"name": content}
     product = {**(stock.minimums.get(key, {}).get("product") or {}), **{k: v for k, v in product.items() if v}}
+    todo = shopping_list_for(hass, product["name"], product.get("kind"))
+    if not todo:
+        raise HomeAssistantError("no shopping list chosen in the settings")
     text, buy = _shopping_entry(
         hass, product, int(product.get("min") or 1), int(product.get("count") or 0), getattr(estimator, "shopping_details", True)
     )
-    added = await async_add_to_shopping_list(hass, estimator.todo_entity, text)
+    added = await async_add_to_shopping_list(hass, todo, text)
     if added:
         places = product.get("places") or []
         stock.track(text, {
@@ -516,7 +569,7 @@ async def async_shop_product(hass: HomeAssistant, content: str) -> tuple[bool, s
             "compartment": places[0].get("compartment", "") if places else "",
             "count": buy,
             "source": "minimum",
-        })
+        }, todo)
     return added, text
 
 
@@ -527,8 +580,6 @@ async def async_check_stock(hass: HomeAssistant, content: str | None, exclude: s
     if stock is None or not key or key not in stock.minimums:
         return False
     estimator = await async_get_estimator(hass)
-    if not estimator.todo_entity:
-        return False
     count, product = 0, {"name": stock.minimums[key].get("name") or content, "brand": None, "package": None}
     seen = False
     for item in pack_entries(hass, exclude):
@@ -545,8 +596,11 @@ async def async_check_stock(hass: HomeAssistant, content: str | None, exclude: s
         product.update({k: v for k, v in (stock.minimums[key].get("product") or {}).items() if v})
     if count >= stock.minimums[key]["min"]:
         return False
+    todo = shopping_list_for(hass, product["name"], product.get("kind"))
+    if not todo:
+        return False
     text, buy = _shopping_entry(hass, product, stock.minimums[key]["min"], count, getattr(estimator, "shopping_details", True))
-    added = await async_add_to_shopping_list(hass, estimator.todo_entity, text)
+    added = await async_add_to_shopping_list(hass, todo, text)
     if added:
         place = next((p for p in stock_overview(hass, stock.minimums) if p["key"] == key), {}).get("places") or []
         stock.track(
@@ -560,6 +614,7 @@ async def async_check_stock(hass: HomeAssistant, content: str | None, exclude: s
                 "count": buy,
                 "source": "minimum",
             },
+            todo,
         )
     return added
 
@@ -815,7 +870,7 @@ async def async_find_by_code(hass: HomeAssistant, code: str) -> dict[str, Any]:
 
 def _cc_of(hass: HomeAssistant, device_id: str) -> str | None:
     device = dr.async_get(hass).async_get(device_id)
-    return next((ident for domain, ident in (device.identifiers if device else ()) if domain == DOMAIN), None)
+    return larder_id(device)
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/stock"})
@@ -829,7 +884,7 @@ async def ws_stock(hass: HomeAssistant, connection: websocket_api.ActiveConnecti
         msg["id"],
         {
             "products": products,
-            "shopping_list": bool(estimator.todo_entity),
+            "shopping_list": any_list(hass),
             "value": round(sum(valued), 2) if valued else None,
             "valued": len(valued),
             "lead_days": estimator.stock_lead_days,
@@ -939,20 +994,35 @@ async def ws_pack_open(hass: HomeAssistant, connection: websocket_api.ActiveConn
 @websocket_api.async_response
 async def ws_stock_shop(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
     """Put a product of the stock (with brand and package) on the shopping list, e.g. from the stock card."""
-    estimator = await async_get_estimator(hass)
-    if not estimator.todo_entity:
+    try:
+        added, text = await async_shop_product(hass, msg["content"])
+    except HomeAssistantError:
         connection.send_error(msg["id"], "no_shopping_list", "no shopping list chosen in the settings")
         return
-    added, text = await async_shop_product(hass, msg["content"])
     connection.send_result(msg["id"], {"added": added, "item": text})
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/product_list",
+        vol.Required("content"): vol.All(str, vol.Length(min=1, max=255)),
+        vol.Optional("list"): vol.Any(None, vol.All(str, vol.Match(r"^todo\."))),
+    }
+)
+@websocket_api.async_response
+async def ws_product_list(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Own shopping list for a product (from its card); without `list` back to the default list."""
+    stock = await async_get_stock(hass)
+    stock.set_list(msg["content"], msg.get("list"))
+    connection.send_result(msg["id"], {"list": stock.lists.get(product_key(msg["content"]))})
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/running_low"})
 @websocket_api.async_response
 async def ws_running_low(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
     stock = await async_get_stock(hass)
-    estimator = await async_get_estimator(hass)
-    connection.send_result(msg["id"], {"items": running_low(hass, stock), "shopping_list": bool(estimator.todo_entity)})
+    await async_get_estimator(hass)
+    connection.send_result(msg["id"], {"items": running_low(hass, stock), "shopping_list": any_list(hass)})
 
 
 @websocket_api.websocket_command(
@@ -980,10 +1050,8 @@ async def ws_running_low_action(hass: HomeAssistant, connection: websocket_api.A
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/cook_again"})
 @websocket_api.async_response
 async def ws_cook_again(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    estimator = await async_get_estimator(hass)
-    connection.send_result(
-        msg["id"], {"items": await async_cook_again(hass), "shopping_list": bool(estimator.todo_entity)}
-    )
+    await async_get_estimator(hass)
+    connection.send_result(msg["id"], {"items": await async_cook_again(hass), "shopping_list": any_list(hass)})
 
 
 @websocket_api.websocket_command(
@@ -1001,11 +1069,12 @@ async def ws_cook_again_action(
     stock = await async_get_stock(hass)
     added = False
     if msg["action"] == "shop":
-        estimator = await async_get_estimator(hass)
-        if not estimator.todo_entity:
+        await async_get_estimator(hass)
+        todo = shopping_list_for(hass, msg["content"])
+        if not todo:
             connection.send_error(msg["id"], "no_shopping_list", "no shopping list chosen in the settings")
             return
-        added = await async_add_to_shopping_list(hass, estimator.todo_entity, msg["content"])
+        added = await async_add_to_shopping_list(hass, todo, msg["content"])
     stock.snooze(msg["content"])
     connection.send_result(msg["id"], {"added": added, "items": await async_cook_again(hass)})
 
@@ -1048,6 +1117,7 @@ def async_setup_stock_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_pack_open)
     websocket_api.async_register_command(hass, ws_stock_shop)
     websocket_api.async_register_command(hass, ws_cook_again_action)
+    websocket_api.async_register_command(hass, ws_product_list)
     websocket_api.async_register_command(hass, ws_running_low)
     websocket_api.async_register_command(hass, ws_running_low_action)
     domain_data[DATA_WS] = True

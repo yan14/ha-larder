@@ -118,7 +118,17 @@ Unter Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** k
 - Nicht alles gehört auf die Liste: Reste wie „Pizza-Reste“ lässt du einfach ohne Häkchen, sie werden nie eingetragen. Die Einstellung gehört zur Dose und bleibt beim Leeren erhalten. So wird Reis immer nachgekauft und Pizza nie.
 - Steht ein Eintrag schon offen auf der Liste, wird er nicht doppelt angelegt. Bereits abgehakte Einträge zählen nicht, du kannst dasselbe also erneut einkaufen.
 - Ohne gewählte Liste passiert nichts, und das Häkchen ist ausgeblendet. Ist die Liste nicht erreichbar, wird die Dose trotzdem geleert.
-- Geplant: mehrere Ziel-Listen (z. B. Metzger und Supermarkt) und auch abgelaufene Dosen einzutragen.
+- Geplant: auch abgelaufene Dosen einzutragen.
+
+**Mehrere Listen (seit 4.1).** Alles, was Larder auf eine Liste setzt (geleerte Dosen, Mindestbestand, bald leer, Zutaten aus dem Wochenplan, *Mal wieder …?*, 🛒), kommt auf eine dieser Listen:
+
+| Welche Liste | Wo einstellen | Wofür |
+|---|---|---|
+| **Einkaufsliste (Lebensmittel)** | Konfigurieren | Lebensmittel und Haushaltsartikel ohne eigene Liste |
+| **Einkaufsliste für Haushaltsartikel** | Konfigurieren (optional) | Haushaltsartikel; leer = die Lebensmittel-Liste |
+| **Liste je Produkt** | auf der Karte (**Einkaufsliste**) oder im Anlegen-Dialog | dieses Produkt, z. B. *Metzger* für Leberkäse oder *Apotheke* für Pflaster; gemerkt nach Produktname, die nächste Packung landet also auch dort. **Standardliste** stellt zurück |
+
+*Eingekauft – in den Vorrat?* beobachtet jede Liste, auf die Larder geschrieben hat, und *Marke und Packung mit auf die Einkaufsliste* gilt für alle. Wird eine gewählte Liste aus Home Assistant entfernt, nimmt das Produkt wieder die Standardliste.
 
 ## MHD im Kalender
 

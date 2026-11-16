@@ -24,7 +24,7 @@ from homeassistant.helpers import device_registry as dr, entity_registry as er
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.storage import Store
 
-from .const import CONF_CC, DOMAIN, KIND_CONTAINER, SIGNAL_STOCK_CHANGED
+from .const import CONF_CC, DOMAIN, KIND_CONTAINER, SIGNAL_STOCK_CHANGED, larder_id
 from .entity import kind_of
 from .singleton import async_singleton
 
@@ -166,7 +166,7 @@ async def async_get_sizes(hass: HomeAssistant) -> Sizes:
 
 def _cc_of(hass: HomeAssistant, device_id: str) -> str | None:
     device = dr.async_get(hass).async_get(device_id)
-    return next((ident for domain, ident in (device.identifiers if device else ()) if domain == DOMAIN), None)
+    return larder_id(device)
 
 
 def _result(sizes: Sizes) -> dict[str, Any]:

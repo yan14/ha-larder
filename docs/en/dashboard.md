@@ -97,6 +97,10 @@ At the top: the **report of the previous month** (see [Monthly report](kitchen.m
 
 The numbers come from the [history](#export-and-import), so they grow as you empty containers with **Eaten** or **Thrown away**. Containers emptied without an answer count as thrown away if they had expired.
 
+**Household (since 4.1):** the switch at the top shows the household side: what [household items](containers.md#household-items) cost **per month** on average, spending (or, without prices, pieces) per month for the last six months, and per product how much is used and spent per month, e.g. *Toilet paper: 8 rolls · €4.00*. It is worked out from the pieces taken (−1, stocktake, last piece) with the pack size and price per pack at that time; the average counts from the first month with takes. Products without a known price are marked.
+
+<p align="center"><img src="../images/dashboard-household-stats-en.png" width="250" alt="Household statistics"></p>
+
 For your own dashboards and automations the service `larder.get_statistics` returns the same data (`days` optional). A template sensor, for example:
 
 ```yaml

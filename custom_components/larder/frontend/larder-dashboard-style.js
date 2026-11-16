@@ -269,6 +269,7 @@ export const STYLE = `
   .month { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; }
   .month .stack { flex: 1; width: 100%; max-width: 34px; display: flex; flex-direction: column; justify-content: flex-end; }
   .month .seg.eaten { background: var(--success-color, #43a047); border-radius: 0 0 4px 4px; }
+  .month .seg.spent { background: var(--primary-color); border-radius: 4px; }
   .month .seg.thrown { background: var(--error-color, #e53935); border-radius: 4px 4px 0 0; }
   .month .lbl { font-size: 11px; color: var(--secondary-text-color); margin-top: 4px; }
   .dialog .checks { display: flex; flex-direction: column; gap: 6px; max-height: 40vh; overflow: auto; }

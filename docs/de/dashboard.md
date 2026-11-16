@@ -97,6 +97,10 @@ Ganz oben steht der **Bericht des Vormonats** (siehe [Monatsbericht](kitchen.md#
 
 Die Zahlen kommen aus dem [Verlauf](#export-und-import), sie wachsen also, wenn du Dosen mit **Gegessen** oder **Weggeworfen** leerst. Ohne Angabe geleerte Dosen zählen als weggeworfen, wenn sie abgelaufen waren.
 
+**Haushalt (seit 4.1):** Der Umschalter oben zeigt die Haushalts-Seite: was [Haushaltsartikel](containers.md#haushaltsartikel) im Schnitt **pro Monat** kosten, die Ausgaben (ohne Preise: Stück) je Monat der letzten sechs Monate und je Produkt Verbrauch und Ausgaben pro Monat, z. B. *Klopapier: 8 Rollen · 4,00 €*. Gerechnet wird aus den entnommenen Stück (−1, Inventur, letztes Stück) mit Packungsgröße und Preis je Packung zu diesem Zeitpunkt; der Schnitt zählt ab dem ersten Monat mit Entnahmen. Produkte ohne bekannten Preis sind markiert.
+
+<p align="center"><img src="../images/dashboard-household-stats-de.png" width="250" alt="Haushalts-Statistik"></p>
+
 Für eigene Dashboards und Automationen liefert der Service `larder.get_statistics` dieselben Daten (`days` optional). Zum Beispiel als Template-Sensor:
 
 ```yaml

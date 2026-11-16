@@ -1,6 +1,9 @@
 """Recall warnings: the public feed of lebensmittelwarnung.de, matched against the stock.
 
 * Fetched every 6 hours (and shortly after start), only warnings of the last 30 days, optionally one federal state.
+* Food is matched against the food feed. With household items (4.1) the feed of all product types is fetched
+  too; household items are matched only against its other warnings (cosmetics, consumer goods, …), so food
+  gets no new false matches.
 * Matched against containers, bags and packs: barcode in the text, or brand **and** a word of the content,
   or (without a brand) all words of a multi-word content. A match is a hint, not a certainty:
   the warning shows what matched and links to the original notice.
@@ -30,17 +33,21 @@ from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
 from homeassistant.util import dt as dt_util
 
-from .const import CONF_CC, DOMAIN, SIGNAL_STOCK_CHANGED
+from .const import CONF_CC, DOMAIN, KIND_HOUSEHOLD, SIGNAL_STOCK_CHANGED
 from .entity import kind_of
 from .estimate import async_get_estimator
 from .singleton import async_singleton
 
 _LOGGER = logging.getLogger(__name__)
 
-# official RSS feed (all federal states, food)
+# official RSS feeds (all federal states): food, and all product types (food, cosmetics, consumer goods, …)
 FEED_URL = (
     "https://www.lebensmittelwarnung.de/___LMW-Redaktion/RSSNewsfeed/Functions/RssFeeds/"
     "rssnewsfeed_Alle_DE.xml?nn=314268&type=lebensmittel"
+)
+FEED_ALL_URL = (
+    "https://www.lebensmittelwarnung.de/___LMW-Redaktion/RSSNewsfeed/Functions/RssFeeds/"
+    "rssnewsfeed_Alle_DE.xml?nn=314268"
 )
 SOURCE_URL = "https://www.lebensmittelwarnung.de"
 EVENT_RECALL = f"{DOMAIN}_recall"
@@ -234,12 +241,17 @@ class Recalls:
         if not getattr(estimator, "recall_check", True):
             self.warnings = []
             return []
+        state = getattr(estimator, "recall_state", None)
+        household = any(i["kind"] == KIND_HOUSEHOLD for i in stock_items(self.hass))
         try:
-            session = async_get_clientsession(self.hass)
-            async with session.get(FEED_URL, timeout=aiohttp.ClientTimeout(total=TIMEOUT)) as resp:
-                resp.raise_for_status()
-                body = await resp.content.read(MAX_BYTES)
-            self.warnings = parse_feed(body.decode("utf-8", "replace"), state=getattr(estimator, "recall_state", None))
+            food = parse_feed(await self._async_fetch(FEED_URL), state=state)
+            for warning in food:
+                warning["scope"] = "food"
+            other: list[dict[str, Any]] = []
+            if household:
+                food_ids = {w["id"] for w in food}
+                other = [w | {"scope": "other"} for w in parse_feed(await self._async_fetch(FEED_ALL_URL), state=state) if w["id"] not in food_ids]
+            self.warnings = food + other
             self.fetched = dt_util.now().isoformat(timespec="seconds")
             self.error = None
         except (aiohttp.ClientError, TimeoutError, ET.ParseError, UnicodeError) as err:
@@ -248,6 +260,13 @@ class Recalls:
             return []
         return await self.async_notify()
 
+    async def _async_fetch(self, url: str) -> str:
+        session = async_get_clientsession(self.hass)
+        async with session.get(url, timeout=aiohttp.ClientTimeout(total=TIMEOUT)) as resp:
+            resp.raise_for_status()
+            body = await resp.content.read(MAX_BYTES)
+        return body.decode("utf-8", "replace")
+
     def matches(self, read: list[str] | None = None) -> list[dict[str, Any]]:
         """Match warnings against the stock again (read ones left out if `read` is given)."""
         items = stock_items(self.hass)
@@ -255,11 +274,14 @@ class Recalls:
         for warning in self.warnings:
             hits = []
             for item in items:
+                # food only against food warnings, household items only against the other product types
+                if (item["kind"] == KIND_HOUSEHOLD) != (warning.get("scope", "food") == "other"):
+                    continue
                 via = match(warning, item)
                 if via:
                     hits.append({**{k: item[k] for k in ("cc", "device_id", "kind", "content", "brand", "area", "compartment")}, "via": via})
             if hits:
-                out.append({k: v for k, v in warning.items() if k != "text"} | {"items": hits})
+                out.append({k: v for k, v in warning.items() if k not in ("text", "scope")} | {"items": hits})
         out.sort(key=lambda w: w.get("date") or "", reverse=True)
         if [w["id"] for w in out] != [w["id"] for w in self.found] or out != self.found:
             self.found = out

@@ -24,7 +24,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import area_registry as ar, device_registry as dr, label_registry as lr
 
 from . import shelf_life
-from .const import CONF_KIND, DOMAIN, KIND_HOUSEHOLD, KIND_PACK
+from .const import CONF_KIND, DOMAIN, KIND_HOUSEHOLD, KIND_PACK, larder_id
 from .entity import kind_of
 
 SCOPE_FOOD = "food"
@@ -134,7 +134,7 @@ def _areas_in_use(hass: HomeAssistant) -> set[str]:
     return {
         device.area_id
         for device in devices.devices.values()
-        if device.area_id and any(domain == DOMAIN for domain, _ in device.identifiers)
+        if device.area_id and larder_id(device)
     }
 
 
@@ -222,7 +222,7 @@ def ws_area_scopes_auto(hass: HomeAssistant, connection: websocket_api.ActiveCon
 async def ws_convert_kind(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
     """Turn a pack into a household item (or back); the entry is reloaded with the other kind."""
     device = dr.async_get(hass).async_get(msg["device_id"])
-    cc = next((ident for domain, ident in (device.identifiers if device else ()) if domain == DOMAIN), None)
+    cc = larder_id(device)
     entry = next((e for e in hass.config_entries.async_entries(DOMAIN) if e.data.get("cc") == cc), None) if cc else None
     if entry is None or kind_of(entry) not in (KIND_PACK, KIND_HOUSEHOLD):
         connection.send_error(msg["id"], "not_found", "not a pack or household item")

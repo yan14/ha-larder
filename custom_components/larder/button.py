@@ -14,7 +14,7 @@ from .entity import LarderConfigEntry, LarderEntity, LarderRuntime
 from .estimate import storage_context
 from .history import async_get_history, build_record
 from .shelf_life import split_items
-from .shopping import async_add_to_shopping_list
+from .shopping import async_add_to_shopping_list, shopping_list_for
 
 
 async def async_setup_entry(
@@ -57,7 +57,7 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
                 # brand/package only for a single content; with "Salami, Leberwurst" they belong to neither
                 text = f"{part} ({details})" if details and len(parts) == 1 else part
                 if await async_add_to_shopping_list(self.hass, item[0], text) and (stock := self.hass.data.get(DOMAIN, {}).get(DATA_STOCK)):
-                    stock.track(text, {"content": part, "product": product if len(parts) == 1 else {}, "area_id": None, "compartment": "", "count": 1, "source": "emptied"})
+                    stock.track(text, {"content": part, "product": product if len(parts) == 1 else {}, "area_id": None, "compartment": "", "count": 1, "source": "emptied"}, item[0])
         if self._kind in DISPOSABLE_KINDS:
             # bags and packs are gone after emptying (as a task of its own: the entity removes itself)
             from .disposable import async_dispose  # noqa: PLC0415 - avoids an import cycle
@@ -155,8 +155,8 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
         switch = self._sibling_state("switch", "shopping")
         if switch is None or switch.state != STATE_ON:
             return None
-        todo = getattr(self.hass.data.get(DOMAIN, {}).get("estimator"), "todo_entity", None)
         content = self._sibling_state("text", "content")
-        if not todo or content is None or content.state in (STATE_UNKNOWN, STATE_UNAVAILABLE):
+        if content is None or content.state in (STATE_UNKNOWN, STATE_UNAVAILABLE) or not content.state.strip():
             return None
-        return (todo, content.state) if content.state.strip() else None
+        todo = shopping_list_for(self.hass, content.state, self._kind)
+        return (todo, content.state) if todo else None

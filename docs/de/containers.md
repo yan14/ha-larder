@@ -123,6 +123,8 @@ Ein Beutel funktioniert wie eine Dose (scannen, Portion entnehmen, **Geöffnet**
 
 Alle 6 Stunden holt Larder die öffentlichen Rückrufe von [lebensmittelwarnung.de](https://www.lebensmittelwarnung.de) (Portal der Bundesländer und des BVL) der letzten 30 Tage und gleicht sie mit Dosen, Beuteln und Packungen ab. Ein Treffer braucht den **Strichcode**, oder **Marke und ein Wort des Inhalts**, oder – ohne Marke – **alle Wörter** eines mehrteiligen Inhalts. Die Warnung steht dann ganz oben auf der Startseite: Produkt, Grund, wo es im Vorrat liegt und woran Larder es erkannt hat, mit Link zur Originalmeldung. **Gelesen** blendet sie dauerhaft aus. Auch die Karte des Eintrags zeigt den Hinweis.
 
+**Haushaltsartikel (seit 4.1):** Sobald es Haushaltsartikel gibt, holt Larder zusätzlich den Feed aller Produkttypen (Kosmetik, Bedarfsgegenstände, Baby- und Kinderprodukte, Mittel zum Tätowieren) und gleicht Haushaltsartikel mit diesen Meldungen ab. Lebensmittel werden weiter nur mit Lebensmittel-Meldungen verglichen.
+
 Ein Treffer ist ein Hinweis, keine Gewissheit: Charge und MHD stehen in der Originalmeldung, bitte dort prüfen. Abgerufen wird nur der öffentliche Feed, Larder sendet keine Daten. Ausschalten oder auf ein Bundesland beschränken in den [Einstellungen](reference.md#einstellungen); als Push mit dem Blueprint [Bald leer und Rückrufe](kitchen.md#bald-leer-und-rückrufe) (Ereignis `larder_recall`).
 
 ### Inventur
@@ -147,6 +149,7 @@ Seit 4.0 verwaltet Larder auch Dinge ohne Haltbarkeitsdatum: Klopapier, Küchenr
 - **Strichcode.** Kennt Open Food Facts einen Strichcode nicht, fragt Larder auch die Schwester-Datenbanken **Open Beauty Facts**, **Open Products Facts** und **Open Pet Food Facts**. Ein dort gefundenes Produkt wird als Haushaltsartikel angeboten.
 - **Umwandeln.** Eine Packung, die eigentlich ein Haushaltsartikel ist (oder umgekehrt), wandelst du mit **→ Haushaltsartikel** / **→ Lebensmittel-Packung** unten auf ihrer Karte um. Automatisch wird nichts umgewandelt.
 - **Kategorien:** Papier & Hygiene, Waschen, Putzen & Spülen, Körperpflege, Batterien & Leuchtmittel, Sonstiges.
+- **Statistik** (seit 4.1): Verbrauch und Ausgaben je Monat, je Produkt und gesamt, auf der Haushalts-Seite der [Statistik](dashboard.md#statistik). **Rückrufwarnungen** für Kosmetik und Bedarfsgegenstände, siehe [Rückrufwarnungen](#rückrufwarnungen). **Eine eigene Einkaufsliste**, siehe [Einkaufsliste](kitchen.md#einkaufsliste).
 
 **Lebensmittel | Haushalt.** Die Seiten **Lager**, **Bereiche**, **Kategorien** und die **Vorrats-Ansicht** haben oben einen Umschalter und zeigen jeweils eine Seite; das Gerät merkt sich die Wahl. Die **Startseite** zeigt beides in zwei Abschnitten: *Lebensmittel* (läuft bald ab, bald leer, eingekauft, mal wieder, Auftauen, Wochenplan) und *Haushalt* (bald leer, eingekauft).
 

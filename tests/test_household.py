@@ -173,3 +173,26 @@ async def test_lookup_falls_back_to_the_sibling_databases(hass: HomeAssistant, a
     res = await async_lookup(hass, "4000000000555")
     assert res["product_type"] == "food" and aioclient_mock.call_count == calls + 1
     assert dt_util.now() - timedelta(days=1) < dt_util.now()
+
+
+async def test_devices_of_other_integrations_with_three_part_identifiers(hass: HomeAssistant, hass_ws_client) -> None:
+    """4.0.2: identifiers like ("zha", "a", "b") must not break Larder's device listeners."""
+    from pytest_homeassistant_custom_component.common import MockConfigEntry
+
+    from custom_components.larder.const import larder_id, larder_ids
+    from homeassistant.helpers import device_registry as dr
+
+    await _setup(hass, "AAAA")
+    other = MockConfigEntry(domain="other_integration")
+    other.add_to_hass(hass)
+    devices = dr.async_get(hass)
+    device = devices.async_get_or_create(config_entry_id=other.entry_id, identifiers={("other_integration", "x", "y")}, name="Fremd")
+    area = ar.async_get(hass).async_create("Bad")
+    # moving the foreign device fires device_registry_updated: the repair hints listen to it
+    devices.async_update_device(device.id, area_id=area.id)
+    await hass.async_block_till_done()
+    assert larder_id(device) is None and larder_ids(device) == []
+    ours = devices.async_get_device(identifiers={(DOMAIN, "AAAA")})
+    assert larder_id(ours) == "AAAA"
+    res = await _ws(hass, hass_ws_client, type="larder/area_scopes")
+    assert res["success"], res

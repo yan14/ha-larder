@@ -118,7 +118,17 @@ Under Settings → Devices & services → **Larder** → **Configure** you can p
 - Not everything belongs on the list: leftovers like "pizza leftovers" simply stay unchecked and are never added. The setting belongs to the container and is kept when you empty it, so rice is always bought again and pizza never.
 - An item that is already open on the list is not added twice. Items that are already checked off do not count, so you can buy the same thing again.
 - Without a chosen list nothing happens and the checkbox is hidden. If the list is unavailable, the container is still emptied.
-- Planned: several target lists (for example butcher and supermarket), and adding expired containers as well.
+- Planned: adding expired containers as well.
+
+**Several lists (since 4.1).** Everything Larder puts on a list (emptied containers, minimum stock, running low, meal plan ingredients, *Time for … again?*, 🛒) goes to one of these:
+
+| Which list | Set where | Used for |
+|---|---|---|
+| **Shopping list (food)** | Configure | food, and household items without a list of their own |
+| **Shopping list for household items** | Configure (optional) | household items; empty = the food list |
+| **A list per product** | the card (**Shopping list**) or the add dialog | this product, e.g. *Butcher* for liver loaf or *Pharmacy* for plasters; remembered by product name, so the next pack goes there too. **Default list** goes back |
+
+*Bought – add to stock* watches every list Larder wrote to, and *Brand and package on the shopping list* applies to all of them. If a chosen list is removed from Home Assistant, the product falls back to the default list.
 
 ## Best-before dates in your calendar
 

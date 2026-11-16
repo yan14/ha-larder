@@ -172,7 +172,8 @@ export const STYLE = `
   .recallline[hidden] { display: none; }
   .recallline a { color: inherit; font-weight: 500; }
   .openedline { font-size: 13px; font-weight: 500; color: var(--primary-color); }
-  .actions button.move[hidden], .row.minrow[hidden] { display: none; }
+  .actions button.move[hidden], .row.minrow[hidden], .row.listrow[hidden] { display: none; }
+  .row.listrow select { flex: 1; min-width: 0; max-width: 240px; }
   .actions { flex-wrap: wrap; }
   .row.minrow input { max-width: 90px; }
   .row.minrow .stockinfo { font-size: 13px; color: var(--secondary-text-color); }

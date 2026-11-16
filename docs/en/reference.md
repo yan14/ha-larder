@@ -21,7 +21,8 @@ Settings → Devices & services → **Larder** → **Configure** (on any contain
 | Repair hints | on | Hints under Settings → System → Repairs, see [Repairs](#repairs) |
 | Temperature warning | on | Warning when a freezer or fridge with a temperature sensor stays too warm, see [Repairs](#repairs) |
 | Calendar | none | [Best-before dates in your calendar](kitchen.md#best-before-dates-in-your-calendar) |
-| Shopping list | none | [Shopping list](kitchen.md#shopping-list) for emptied containers |
+| Shopping list (food) | none | Default list for everything Larder puts on a [shopping list](kitchen.md#shopping-list) |
+| Shopping list for household items | none | Default list for [household items](containers.md#household-items); empty = the food list |
 | Brand and package on the shopping list | on | "Oats (Kölln, 500 g)" instead of "Oats", see [Shopping list](kitchen.md#shopping-list) |
 | Allergens in the household | none | Warning on containers and no such containers in recipe ideas, see [Allergens in the household](containers.md#allergens-in-the-household) |
 | Calendar for the meal plan | none | Planned dishes as all-day events, see [Meal plan](kitchen.md#meal-plan) |

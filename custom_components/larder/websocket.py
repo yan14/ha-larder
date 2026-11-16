@@ -17,6 +17,7 @@ from .entity import kind_of
 from .estimate import MAX_DAYS, MIN_DAYS, async_get_estimator
 from .nfc import async_get_nfc
 from .qr import parse_qr
+from .shopping import any_list
 
 DATA_WS_REGISTERED = "websocket_registered"
 
@@ -219,7 +220,7 @@ async def ws_settings(
             "recipe_days": estimator.recipe_days,
             "soon_days": estimator.soon_days,
             "vacuum_default": estimator.vacuum_default,
-            "shopping_list": bool(estimator.todo_entity),
+            "shopping_list": any_list(hass),
         },
     )
 

@@ -59,6 +59,7 @@ from .const import (
     CONF_THAW_DAYS,
     CONF_THAWED_DAYS,
     CONF_TODO_ENTITY,
+    CONF_TODO_HOUSEHOLD,
     CONF_VACUUM_DEFAULT,
     CONF_WATCH_ALLERGENS,
     DEFAULT_OPENED_DAYS,
@@ -294,6 +295,9 @@ class LarderOptionsFlow(OptionsFlow):
                     EntitySelectorConfig(domain="calendar")
                 ),
                 vol.Optional(CONF_TODO_ENTITY): EntitySelector(
+                    EntitySelectorConfig(domain="todo")
+                ),
+                vol.Optional(CONF_TODO_HOUSEHOLD): EntitySelector(
                     EntitySelectorConfig(domain="todo")
                 ),
                 vol.Optional(CONF_SHOPPING_DETAILS, default=True): BooleanSelector(),

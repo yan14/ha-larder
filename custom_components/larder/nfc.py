@@ -24,7 +24,7 @@ from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.storage import Store
 from homeassistant.util import slugify
 
-from .const import CONF_CC, DOMAIN, EVENT_DOSE_SCANNED, panel_path
+from .const import CONF_CC, DOMAIN, EVENT_DOSE_SCANNED, larder_ids, panel_path
 from .estimate import async_get_estimator
 from .singleton import async_singleton
 
@@ -115,8 +115,8 @@ class NfcTags:
         """Find the cc from cc, config entry ID or device ID (the dashboard only knows the latter)."""
         if device_id:
             device = dr.async_get(self.hass).async_get(device_id)
-            for domain, identifier in (device.identifiers if device else ()):
-                if domain == DOMAIN and self._entry(identifier):
+            for identifier in larder_ids(device):
+                if self._entry(identifier):
                     return identifier
         elif entry_id:
             entry = self.hass.config_entries.async_get_entry(entry_id)

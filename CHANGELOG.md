@@ -3,6 +3,13 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 4.1.0
+
+- **Several shopping lists:** a default list for food and, optionally, one for household items (empty = the food list). Each product can get a list of its own (e.g. butcher, pharmacy) on its card or in the add dialog; it is remembered by product name. Emptying, minimum stock, running low, meal plan, *Time for … again?* and 🛒 all follow this; *Bought – add to stock* watches every list Larder wrote to.
+- **Household statistics:** the switch on **⋮ → 📊 Statistics** shows what household items cost per month on average, spending per month for six months and per product use and cost per month (from pieces taken, with pack size and price at that time).
+- **Recall warnings for household items:** with household items, Larder also fetches the lebensmittelwarnung.de feed of all product types and matches household items against the cosmetics and consumer goods warnings. Food is still matched only against food warnings.
+- Fixed an error in the log (`ValueError: too many values to unpack` in `repair_hints`) when a device of another integration with identifiers of more than two parts was changed.
+
 ## 4.0.1
 
 - iOS app: the dashboard no longer starts with the bottom navigation half off the screen, and the page can no longer be pushed up so that the header disappears. Since 3.8.1 the dashboard took the full screen height although Home Assistant places it below the status bar; it now measures the space it really has (also after rotating the phone).

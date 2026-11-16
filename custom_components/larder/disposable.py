@@ -37,6 +37,7 @@ from .const import (
     KIND_PACK,
     PACK_KINDS,
     UNITS,
+    larder_id,
 )
 from .entity import kind_of
 from .estimate import async_get_estimator
@@ -285,7 +286,7 @@ _ITEM = vol.Schema(
 
 def _cc_of(hass: HomeAssistant, device_id: str) -> str | None:
     device = dr.async_get(hass).async_get(device_id)
-    return next((ident for domain, ident in (device.identifiers if device else ()) if domain == DOMAIN), None)
+    return larder_id(device)
 
 
 @websocket_api.websocket_command(
@@ -295,6 +296,8 @@ def _cc_of(hass: HomeAssistant, device_id: str) -> str | None:
         vol.Required("items"): vol.All([_ITEM], vol.Length(min=1, max=MAX_ITEMS)),
         vol.Optional("area_id"): vol.Any(str, None),
         vol.Optional("compartment"): vol.All(str, vol.Length(max=60)),
+        # own shopping list for these products (remembered per product)
+        vol.Optional("shopping_list"): vol.Any(None, vol.All(str, vol.Match(r"^todo\."))),
     }
 )
 @websocket_api.async_response
@@ -304,6 +307,12 @@ async def ws_create_items(
     """Create bags or packs (for all users: part of everyday use like filling)."""
     try:
         created = await async_create_items(hass, msg["kind"], msg["items"], msg.get("area_id"), msg.get("compartment"))
+        if msg.get("shopping_list"):
+            from .stock import async_get_stock  # noqa: PLC0415 - avoids an import cycle
+
+            stock = await async_get_stock(hass)
+            for item in msg["items"]:
+                stock.set_list(str(item["content"]), msg["shopping_list"])
     except HomeAssistantError as err:
         connection.send_error(msg["id"], "create_failed", str(err))
         return

@@ -2127,3 +2127,30 @@ test("Card of a household item: no best-before date, pieces and packs, convert t
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/convert_kind`), { type: `${D}/convert_kind`, device_id: "d1", kind: "pack" });
   assert.equal(pack.querySelector("button.convert").dataset.kind, "household");
 });
+
+test("Card: own shopping list per product (4.1), only with content and to-do lists", async () => {
+  const hass = adminHass([
+    { id: "d1", name: "Packung 1", content: "Leberkäse", product: { kind: "pack", shopping_list: "todo.metzger" } },
+    { id: "d2", name: "Dose 2" },
+  ]);
+  hass.states["todo.einkaufen"] = { entity_id: "todo.einkaufen", state: "0", attributes: { friendly_name: "Einkaufsliste" } };
+  hass.states["todo.metzger"] = { entity_id: "todo.metzger", state: "0", attributes: { friendly_name: "Metzger" } };
+  const el = mount(hass);
+  const cards = $$(el, ".card");
+  const card = cards.find((c) => c.querySelector(".name").textContent === "Packung 1");
+  const empty = cards.find((c) => c.querySelector(".name").textContent === "Dose 2");
+  assert.equal(empty.querySelector(".listrow").hidden, true);
+  const row = card.querySelector(".listrow");
+  assert.equal(row.hidden, false);
+  const select = row.querySelector("select");
+  assert.deepEqual([...select.options].map((o) => o.textContent), ["Standardliste", "Einkaufsliste", "Metzger"]);
+  assert.equal(select.value, "todo.metzger");
+  select.value = "";
+  select.dispatchEvent(new Event("change"));
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/product_list`), { type: `${D}/product_list`, content: "Leberkäse" });
+  select.value = "todo.einkaufen";
+  select.dispatchEvent(new Event("change"));
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(hass.wsCalls.filter((m) => m.type === `${D}/product_list`)[1].list, "todo.einkaufen");
+});

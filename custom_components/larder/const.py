@@ -1,5 +1,7 @@
 """Constants for the Larder integration."""
 
+from typing import Any
+
 from homeassistant.const import Platform
 
 DOMAIN = "larder"
@@ -55,7 +57,8 @@ CONF_OPENED_DAYS = "opened_days"
 CONF_THAWED_DAYS = "thawed_days"
 CONF_CALENDAR_ENTITY = "calendar_entity"
 CONF_NFC_NOTIFY = "nfc_notify"
-CONF_TODO_ENTITY = "todo_entity"  # to-do list for "Add to shopping list when emptied"
+CONF_TODO_ENTITY = "todo_entity"  # default shopping list (food; also household without its own list)
+CONF_TODO_HOUSEHOLD = "todo_household"  # default shopping list for household items (optional)
 CONF_MEAL_CALENDAR = "meal_calendar"  # calendar for the week plan (optional)
 CONF_THAW_DAYS = "thaw_days"  # thaw reminder this many days before the planned day
 DEFAULT_THAW_DAYS = 1
@@ -136,3 +139,22 @@ def scan_app_url(cc: str) -> str:
 def panel_app_url(add_code: str | None = None, open_device: str | None = None) -> str:
     """Link that opens the container panel directly in the Home Assistant app."""
     return f"{APP_URL_PREFIX}{panel_path(add_code, open_device)}"
+
+
+def larder_ids(device: Any) -> list[str]:
+    """IDs (cc) of a device that belong to Larder.
+
+    Other integrations may use identifiers with more than two parts, e.g. ("zha", "…", "…"), so they are
+    never unpacked as pairs.
+    """
+    return [
+        str(ident[1])
+        for ident in (getattr(device, "identifiers", None) or ())
+        if len(ident) >= 2 and ident[0] == DOMAIN
+    ]
+
+
+def larder_id(device: Any) -> str | None:
+    """The Larder ID (cc) of a device, or None for devices of other integrations."""
+    ids = larder_ids(device)
+    return ids[0] if ids else None

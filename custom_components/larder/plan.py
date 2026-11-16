@@ -32,7 +32,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from . import shelf_life
-from .const import DOMAIN
+from .const import DOMAIN, larder_id
 from .estimate import storage_context
 from .singleton import async_singleton
 
@@ -51,7 +51,7 @@ def _cc_of_device(hass: HomeAssistant, device_id: str) -> str | None:
     device = dr.async_get(hass).async_get(device_id)
     if device is None:
         return None
-    return next((ident for domain, ident in device.identifiers if domain == DOMAIN), None)
+    return larder_id(device)
 
 
 def _state(hass: HomeAssistant, platform: str, cc: str, key: str) -> str | None:
@@ -230,19 +230,19 @@ class MealPlan:
 
     async def async_shopping(self, plan_id: str) -> dict[str, int] | None:
         """Put missing ingredients on the chosen shopping list (open items not twice)."""
-        from .shopping import async_add_to_shopping_list
+        from .shopping import any_list, async_add_to_shopping_list, shopping_list_for
 
         plan = self.get(plan_id)
         if plan is None:
             return None
-        estimator = self.hass.data.get(DOMAIN, {}).get("estimator")
-        todo = getattr(estimator, "todo_entity", None)
-        if not todo:
+        if not any_list(self.hass):
             raise HomeAssistantError("no shopping list")
         missing = self.missing_ingredients(plan)
         added = 0
         for item in missing:
-            if await async_add_to_shopping_list(self.hass, todo, item):
+            # an ingredient with a list of its own (e.g. the butcher) goes there, the rest to the food list
+            todo = shopping_list_for(self.hass, item, "container")
+            if todo and await async_add_to_shopping_list(self.hass, todo, item):
                 added += 1
         return {"added": added, "missing": len(missing)}
 
