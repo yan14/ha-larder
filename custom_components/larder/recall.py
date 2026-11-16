@@ -1,10 +1,10 @@
-"""Rückrufwarnungen: der öffentliche Feed von lebensmittelwarnung.de, abgeglichen mit dem Vorrat.
+"""Recall warnings: the public feed of lebensmittelwarnung.de, matched against the stock.
 
-* Abruf alle 6 Stunden (und kurz nach dem Start), nur Warnungen der letzten 30 Tage, optional ein Bundesland.
-* Abgleich mit Dosen, Beuteln und Packungen: Strichcode im Text, oder Marke **und** ein Wort des Inhalts,
-  oder (ohne Marke) alle Wörter eines mehrteiligen Inhalts. Ein Treffer ist ein Hinweis, keine Gewissheit:
-  die Warnung zeigt, was übereingestimmt hat, und verlinkt auf die Originalmeldung.
-* Treffer stehen auf der Startseite (bis "Gelesen") und an der Karte; neue Treffer feuern `larder_recall`.
+* Fetched every 6 hours (and shortly after start), only warnings of the last 30 days, optionally one federal state.
+* Matched against containers, bags and packs: barcode in the text, or brand **and** a word of the content,
+  or (without a brand) all words of a multi-word content. A match is a hint, not a certainty:
+  the warning shows what matched and links to the original notice.
+* Matches are shown on the start page (until "Read") and on the card; new matches fire `larder_recall`.
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ from .singleton import async_singleton
 
 _LOGGER = logging.getLogger(__name__)
 
-# offizieller RSS-Feed (alle Bundesländer, Lebensmittel)
+# official RSS feed (all federal states, food)
 FEED_URL = (
     "https://www.lebensmittelwarnung.de/___LMW-Redaktion/RSSNewsfeed/Functions/RssFeeds/"
     "rssnewsfeed_Alle_DE.xml?nn=314268&type=lebensmittel"
@@ -46,17 +46,17 @@ SOURCE_URL = "https://www.lebensmittelwarnung.de"
 EVENT_RECALL = f"{DOMAIN}_recall"
 DATA_RECALLS = "recalls"
 INTERVAL = timedelta(hours=6)
-START_DELAY = 90  # Sekunden nach dem Start
+START_DELAY = 90  # seconds after start
 MAX_AGE_DAYS = 30
 TIMEOUT = 20
 MAX_BYTES = 3_000_000
 
-# Wörter, die in Produktnamen vorkommen, aber nichts über das Produkt sagen
+# words that occur in product names but say nothing about the product
 _STOP = {
     "und", "mit", "ohne", "der", "die", "das", "für", "aus", "von", "vom", "zum", "zur", "the", "and", "with",
     "bio", "frisch", "packung", "glas", "dose", "beutel", "stück", "gramm", "sorte", "sorten", "marke", "classic",
 }
-# Felder der Beschreibung ("<b>Label:</b> Wert"), erkannt am Anfang des Labels
+# fields of the description ("<b>Label:</b> value"), recognised by the start of the label
 _LABELS = (
     ("product", "produktbezeichnung"),
     ("manufacturer", "hersteller"),
@@ -72,14 +72,14 @@ def _norm(text: str) -> str:
 
 
 def _plain(fragment: str) -> str:
-    """HTML zu Text mit Zeilen."""
+    """HTML to text with lines."""
     text = re.sub(r"<\s*br\s*/?>|</p>|</li>|</div>", "\n", fragment or "", flags=re.I)
     text = html.unescape(re.sub(r"<[^>]+>", " ", text))
     return "\n".join(" ".join(line.split()) for line in text.splitlines() if line.strip())
 
 
 def _fields(description: str) -> dict[str, str]:
-    """Felder wie "<b>Grund der Meldung:</b> …" aus der Beschreibung lesen."""
+    """Read fields like "<b>Grund der Meldung:</b> …" from the description."""
     out: dict[str, str] = {}
     for found in re.finditer(r"<b>\s*([^<]+?)\s*</b>(.*?)(?=<b>|$)", description or "", flags=re.S | re.I):
         label = found.group(1).strip().rstrip(":").strip().casefold()
@@ -88,7 +88,7 @@ def _fields(description: str) -> dict[str, str]:
             continue
         value = _plain(found.group(2)).strip(" :")
         if key == "manufacturer":
-            value = re.split(r"[,\n]", value, maxsplit=1)[0]  # Adresse weglassen
+            value = re.split(r"[,\n]", value, maxsplit=1)[0]  # leave out the address
         value = " ".join(value.split()).strip(" ,;")
         if value:
             out[key] = value[:400]
@@ -96,7 +96,7 @@ def _fields(description: str) -> dict[str, str]:
 
 
 def parse_feed(xml_text: str, today: datetime | None = None, state: str | None = None) -> list[dict[str, Any]]:
-    """RSS des Portals lesen: Warnungen der letzten 30 Tage (optional nur für ein Bundesland)."""
+    """Read the portal's RSS: warnings of the last 30 days (optionally only for one federal state)."""
     today = today or dt_util.now()
     root = ET.fromstring(xml_text)
     out = []
@@ -145,7 +145,7 @@ def _has(haystack: str, phrase: str) -> bool:
 
 
 def match(warning: dict[str, Any], item: dict[str, Any]) -> str | None:
-    """Passt die Warnung zu diesem Eintrag? "barcode", "brand" oder "name" (wie), sonst None."""
+    """Does the warning match this entry? "barcode", "brand" or "name" (how), else None."""
     raw = warning["text"]
     haystack = _norm(raw)
     ean = re.sub(r"\D", "", str(item.get("ean") or ""))
@@ -159,14 +159,14 @@ def match(warning: dict[str, Any], item: dict[str, Any]) -> str | None:
         if _has(haystack, brand) and any(_has(haystack, w) for w in words):
             return "brand"
         return None
-    # ohne Marke: nur mehrteilige Inhalte, alle Wörter müssen vorkommen
+    # without a brand: only multi-word contents, all words must occur
     if len(words) >= 2 and all(_has(haystack, w) for w in words):
         return "name"
     return None
 
 
 def stock_items(hass: HomeAssistant) -> list[dict[str, Any]]:
-    """Alles mit Inhalt: Dosen, Beutel, Packungen (Inhalt, Marke, Strichcode, Ort)."""
+    """Everything with content: containers, bags, packs (content, brand, barcode, place)."""
     registry = er.async_get(hass)
     devices = dr.async_get(hass)
     out = []
@@ -201,7 +201,7 @@ def stock_items(hass: HomeAssistant) -> list[dict[str, Any]]:
 
 
 class Recalls:
-    """Zuletzt abgerufene Warnungen und Treffer im Vorrat (gelesen-Markierung liegt im Vorrat-Speicher)."""
+    """Warnings fetched last and matches in the stock (the read marker is kept in the stock store)."""
 
     def __init__(self, hass: HomeAssistant) -> None:
         self.hass = hass
@@ -209,7 +209,7 @@ class Recalls:
         self.fetched: str | None = None
         self.error: str | None = None
         self.notified: set[str] = set()
-        self.found: list[dict[str, Any]] = []  # letzte Treffer (auch gelesene), für die Karten
+        self.found: list[dict[str, Any]] = []  # last matches (also read ones), for the cards
         self._unsubs: list[Any] = []
 
     @callback
@@ -229,7 +229,7 @@ class Recalls:
         await self.async_refresh()
 
     async def async_refresh(self) -> list[dict[str, Any]]:
-        """Feed abrufen (wenn eingeschaltet), neu abgleichen und neue Treffer melden."""
+        """Fetch the feed (if switched on), match again and report new matches."""
         estimator = await async_get_estimator(self.hass)
         if not getattr(estimator, "recall_check", True):
             self.warnings = []
@@ -249,7 +249,7 @@ class Recalls:
         return await self.async_notify()
 
     def matches(self, read: list[str] | None = None) -> list[dict[str, Any]]:
-        """Warnungen mit Treffern im Vorrat neu abgleichen (gelesene weggelassen, wenn `read` übergeben)."""
+        """Match warnings against the stock again (read ones left out if `read` is given)."""
         items = stock_items(self.hass)
         out = []
         for warning in self.warnings:
@@ -263,11 +263,11 @@ class Recalls:
         out.sort(key=lambda w: w.get("date") or "", reverse=True)
         if [w["id"] for w in out] != [w["id"] for w in self.found] or out != self.found:
             self.found = out
-            async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)  # Karten zeigen den Hinweis
+            async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)  # cards show the hint
         return [w for w in out if read is None or w["id"] not in read]
 
     async def async_notify(self) -> list[dict[str, Any]]:
-        from .stock import async_get_stock  # noqa: PLC0415 - vermeidet einen Import-Kreis
+        from .stock import async_get_stock  # noqa: PLC0415 - avoids an import cycle
 
         stock = await async_get_stock(self.hass)
         found = self.matches(stock.recalls_read)
@@ -299,7 +299,7 @@ class Recalls:
         return new
 
     def for_cc(self, cc: str, read: list[str]) -> dict[str, Any] | None:
-        """Ungelesene Warnung für diesen Eintrag (für die Karte)."""
+        """Unread warning for this entry (for the card)."""
         for warning in self.found:
             if warning["id"] in read:
                 continue

@@ -1,11 +1,11 @@
-"""Wochenplan: Gerichte für einen Tag einplanen, mit den Dosen, die dafür gebraucht werden.
+"""Week plan: plan dishes for a day, with the containers needed for them.
 
-- Optional als ganztägiger Termin im gewählten Kalender ("🍽 Bolognese"), mit Markierung in der
-  Beschreibung, damit er beim Löschen des Plans wieder entfernt werden kann.
-- Auftau-Erinnerung: liegt eine benötigte Dose im Gefrierschrank, nennt die tägliche Zusammenfassung
-  sie rechtzeitig (Vorlauf einstellbar, Vorgabe: 1 Tag). Der Knopf "Aufgetaut" in der Push-Nachricht
-  (Aktion LARDER_THAWED) oder im Dashboard markiert sie als aufgetaut (MHD wie beim Knopf
-  "Aufgetaut"); variable Dosen ziehen dabei in den Kühlschrank, wenn es genau einen gibt.
+- Optionally as an all-day event in the chosen calendar ("🍽 Bolognese"), with a marker in the
+  description, so it can be removed again when the plan is deleted.
+- Thaw reminder: if a needed container is in the freezer, the daily summary names it
+  in time (lead adjustable, default: 1 day). The button "Thawed" in the push notification
+  (action LARDER_THAWED) or in the dashboard marks it as thawed (date as with the button
+  "Thawed"); variable containers move to the fridge if there is exactly one.
 """
 
 from __future__ import annotations
@@ -42,7 +42,7 @@ DATA_PLAN = "plan"
 DATA_WS = "plan_ws_registered"
 STORAGE_KEY = f"{DOMAIN}.plan"
 STORAGE_VERSION = 1
-KEEP_DAYS = 30  # vergangene Pläne so lange behalten
+KEEP_DAYS = 30  # keep past plans this long
 THAW_ACTION = "LARDER_THAWED"
 MARKER = "larder-plan:"
 
@@ -63,14 +63,14 @@ def _state(hass: HomeAssistant, platform: str, cc: str, key: str) -> str | None:
 
 
 def storage_kind(hass: HomeAssistant, cc: str) -> str | None:
-    """Art des Lagerorts nach Name/Label (nicht nach Sensor): freezer, fridge, zero, pantry."""
+    """Kind of the storage place by name/label (not by sensor): freezer, fridge, zero, pantry."""
     context = storage_context(hass, cc)
     storage = shelf_life.classify_storage(context.area_name, None, context.label_texts, context.storage_hint)
     return storage.key if storage else None
 
 
 def fridge_area(hass: HomeAssistant) -> str | None:
-    """Der eine Kühlschrank-Bereich (nach Name oder Label), sonst None."""
+    """The one fridge area (by name or label), else None."""
     found = []
     labels = lr.async_get(hass)
     for area in ar.async_get(hass).async_list_areas():
@@ -117,10 +117,10 @@ class MealPlan:
         if event.data.get("action") == THAW_ACTION:
             await self.async_mark_thawed([item["cc"] for item in self.thaw_items()])
 
-    # ----- Pläne -----
+    # ----- Plans -----
 
     def list(self, since: date | None = None) -> list[dict[str, Any]]:
-        """Offene Pläne ab heute (gekochte nicht mehr)."""
+        """Open plans from today on (cooked ones no longer)."""
         since_iso = (since or dt_util.now().date()).isoformat()
         return sorted(
             (p for p in self.plans if p["date"] >= since_iso and not p.get("cooked")),
@@ -180,7 +180,7 @@ class MealPlan:
         return next((p for p in self.plans if p["id"] == plan_id), None)
 
     async def async_cooked(self, plan_id: str) -> dict[str, int] | None:
-        """Gericht gekocht: benutzte Dosen leeren (gegessen) bzw. bei mehreren Portionen eine entnehmen."""
+        """Dish cooked: empty the used containers (eaten) or take one portion if there are several."""
         from .history import async_get_history
 
         plan = self.get(plan_id)
@@ -218,7 +218,7 @@ class MealPlan:
         return {"emptied": emptied, "taken": taken}
 
     def missing_ingredients(self, plan: dict[str, Any]) -> list[str]:
-        """Zutaten des Plans, die in keiner der gewählten Dosen sind (grober Vergleich der Wörter)."""
+        """Ingredients of the plan that are in none of the chosen containers (rough comparison of words)."""
         have = " ".join((_state(self.hass, "text", cc, "content") or "").casefold() for cc in plan.get("ccs", []))
         out = []
         for item in plan.get("ingredients", []):
@@ -229,7 +229,7 @@ class MealPlan:
         return out
 
     async def async_shopping(self, plan_id: str) -> dict[str, int] | None:
-        """Fehlende Zutaten auf die gewählte Einkaufsliste setzen (offene Einträge nicht doppelt)."""
+        """Put missing ingredients on the chosen shopping list (open items not twice)."""
         from .shopping import async_add_to_shopping_list
 
         plan = self.get(plan_id)
@@ -298,7 +298,7 @@ class MealPlan:
     # ----- Auftauen -----
 
     def thaw_items(self, today: date | None = None) -> list[dict[str, Any]]:
-        """Dosen im Gefrierschrank, die für einen bald geplanten Tag aufgetaut werden müssen."""
+        """Containers in the freezer that have to be thawed for a day planned soon."""
         today = today or dt_util.now().date()
         estimator = self.hass.data.get(DOMAIN, {}).get("estimator")
         lead = int(getattr(estimator, "thaw_days", 1))
@@ -332,7 +332,7 @@ class MealPlan:
         return items
 
     async def async_mark_thawed(self, ccs: list[str]) -> int:
-        """Als aufgetaut markieren: MHD wie beim Knopf "Aufgetaut", variable Dosen in den Kühlschrank."""
+        """Mark as thawed: date as with the button "Thawed", variable containers to the fridge."""
         registry = er.async_get(self.hass)
         devices = dr.async_get(self.hass)
         fridge = fridge_area(self.hass)
@@ -375,7 +375,7 @@ _THAW_TEXT = {
 
 
 def thaw_texts(items: list[dict[str, Any]], language: str) -> tuple[str, str, str]:
-    """(Text für die Push-Nachricht, Sprechtext, Titel des Knopfs) für die Auftau-Erinnerung."""
+    """(Text for the push notification, speech text, title of the button) for the thaw reminder."""
     text = _THAW_TEXT["de" if language.lower().startswith("de") else "en"]
     if not items:
         return "", "", text["button"]

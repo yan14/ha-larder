@@ -1,7 +1,7 @@
-"""Gemeinsame Helfer: genau eine Instanz pro Home-Assistant-Lauf, auch bei gleichzeitiger Einrichtung.
+"""Shared helpers: exactly one instance per Home Assistant run, also with concurrent setup.
 
-Home Assistant richtet die Dosen (Config Entries) parallel ein. Ohne Sperre könnten dabei mehrere
-Instanzen z. B. des Kalender-Abgleichs entstehen, die dann alle auf Änderungen reagieren.
+Home Assistant sets up the containers (config entries) in parallel. Without a lock several
+instances of e.g. the calendar sync could appear, all of which would then react to changes.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from .const import DOMAIN
 
 
 async def async_singleton(hass: HomeAssistant, key: str, create: Callable[[], Awaitable[Any]]) -> Any:
-    """Instanz unter `hass.data[DOMAIN][key]` liefern und beim ersten Mal (geschützt) anlegen."""
+    """Return the instance under `hass.data[DOMAIN][key]` and create it the first time (guarded)."""
     domain_data = hass.data.setdefault(DOMAIN, {})
     if (instance := domain_data.get(key)) is not None:
         return instance

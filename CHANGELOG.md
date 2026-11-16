@@ -3,6 +3,17 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 4.0.0
+
+**Breaking change:** areas can now be used for food, for household items or for both. After the update every Larder area is offered for both; assign the use once (repair hint *Larder 4.0: assign areas to food and household*, or **Areas → ✏️ → Assign use automatically**). Only labels are added, existing labels and their descriptions stay as they are. See [Food or household](docs/en/containers.md#food-or-household-since-40).
+
+- **Household items** (**＋ → 🧻 Household item**): toilet paper, detergent, batteries and the like, without a best-before date. Counted in **pieces** (−1, stocktake and minimum stock per piece) with **pieces per pack**; the shopping list gets the number of **packs**, rounded up (*Toilet paper (Zewa, 2 packs)*). Stock and card show *12 rolls · 1.5 packs*. A pack is converted with **→ Household item** on its card (and back); nothing is converted automatically. Household items stay out of *expires soon*, the daily summary, recipes and the food statistics.
+- **Areas for food or household:** an additional label `Larder: Household` or `Larder: Food` (German names work too) limits an area to one side; storage-kind labels with temperature and max. storage time stay untouched. Set it under **Areas → ✏️ → Used for**.
+- **Food | Household:** a switch on the pages Storage, Areas, Categories and in the stock view, remembered per device. The start page shows both in two sections.
+- The page **Containers** is now called **Storage** (German: *Lager*), as it also holds bags, packs and household items.
+- **Barcodes beyond food:** if Open Food Facts does not know a barcode, Larder also asks Open Beauty Facts, Open Products Facts and Open Pet Food Facts; such products are offered as household items.
+- Housekeeping: all code comments are now in English, unused texts removed, documentation and screenshots updated.
+
 ## 3.8.1
 
 - iOS: the bottom navigation no longer moves up (and shows a black bar) when the page is scrolled to the end; only the content scrolls, header and navigation stay put.

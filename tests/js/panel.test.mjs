@@ -2101,3 +2101,29 @@ test("Befüllen mit Vorgaben (Vorkochen): Menge je Dose und Größe der variable
   assert.deepEqual(hass.calls.filter((c) => c.domain === "number").map((c) => [c.data.entity_id, c.data.value]), [["number.d1_portionen", 1000], ["number.d2_portionen", 500]]);
   assert.deepEqual(hass.wsCalls.filter((m) => m.type === `${D}/size_fill`), [{ type: `${D}/size_fill`, device_id: "d2", size: "0,5 l" }]);
 });
+
+test("Card of a household item: no best-before date, pieces and packs, convert to a pack", async () => {
+  const hass = adminHass([
+    { id: "d1", name: "Artikel 1", content: "Klopapier", product: { kind: "household", pack_size: 8, piece: "Rollen" } },
+    { id: "d2", name: "Packung 1", content: "Senf", product: { kind: "pack" } },
+  ]);
+  hass.states["number.d1_portionen"].state = "12";
+  hass.states["select.d1_einheit"].state = "pieces";
+  const el = mount(hass);
+  const [item, pack] = $$(el, ".card");
+  assert.equal(item.querySelector(".bbrow").style.display, "none");
+  assert.equal(pack.querySelector(".bbrow").style.display, "");
+  assert.equal(item.querySelector(".packline").hidden, false);
+  assert.match(item.querySelector(".packline").textContent, /12 Rollen \(1[.,]5 Packungen\)/);
+  assert.equal(pack.querySelector(".packline").hidden, true);
+  assert.equal(item.querySelector("button.transfer").hidden, true);
+  assert.equal(item.querySelector('[data-hh="only"]').hidden, false);
+  assert.equal(item.querySelector('[data-hh="no"]').hidden, true);
+  assert.equal(pack.querySelector('[data-hh="only"]').hidden, true);
+  const convert = item.querySelector("button.convert");
+  assert.equal(convert.hidden, false);
+  convert.click();
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/convert_kind`), { type: `${D}/convert_kind`, device_id: "d1", kind: "pack" });
+  assert.equal(pack.querySelector("button.convert").dataset.kind, "household");
+});

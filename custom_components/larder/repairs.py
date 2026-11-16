@@ -1,8 +1,8 @@
-"""Reparaturen: "Beheben"-Dialoge für die Hinweise aus repair_hints.py.
+"""Repairs: "Fix" dialogs for the hints from repair_hints.py.
 
-- Dosen ohne Bereich: pro Dose ein Bereichsfeld, Speichern weist die Bereiche zu.
-- Gefüllt ohne MHD: MHD für alle schätzen (was die Schätzung nicht schafft, bleibt im Hinweis).
-- Lange abgelaufen: Dosen ankreuzen und leeren (im Verlauf als weggeworfen).
+- Containers without an area: one area field per container, saving assigns the areas.
+- Filled without a date: estimate the date for all (what the estimate cannot do stays in the hint).
+- Long expired: tick containers and empty them (in the history as thrown away).
 """
 
 from __future__ import annotations
@@ -21,16 +21,18 @@ from homeassistant.helpers.selector import AreaSelector
 from .const import DOMAIN
 from .history import async_get_history
 from .repair_hints import (
+    ISSUE_AREA_SCOPES,
     ISSUE_LONG_EXPIRED,
     ISSUE_NO_AREA,
     ISSUE_NO_DATE,
     async_get_repairs,
     find_problem_containers,
+    scope_listing,
 )
 
 
 def _labels(items: list[tuple[str, str]]) -> dict[str, str]:
-    """Feldname je Dose (cc → Anzeigename); gleiche Namen bekommen die ID dazu."""
+    """Field name per container (cc → display name); equal names get the ID added."""
     names = [name for name, _cc in items]
     return {cc: (name if names.count(name) == 1 else f"{name} ({cc})") for name, cc in items}
 
@@ -53,7 +55,25 @@ class LarderFixFlow(RepairsFlow):
             return await self.async_step_estimate()
         if self.issue_id == ISSUE_LONG_EXPIRED:
             return await self.async_step_empty()
+        if self.issue_id == ISSUE_AREA_SCOPES:
+            return await self.async_step_scopes()
         return self.async_abort(reason="nothing_to_fix")
+
+    async def async_step_scopes(self, user_input: dict[str, Any] | None = None) -> data_entry_flow.FlowResult:
+        """Area assignment for 4.0: add the food / household labels to unambiguous areas."""
+        from .household import async_assign_area_scopes, plan_area_scopes  # noqa: PLC0415
+
+        plan = plan_area_scopes(self.hass)
+        if not plan:
+            return await self._done()
+        if user_input is not None:
+            async_assign_area_scopes(self.hass)
+            return await self._done()
+        return self.async_show_form(
+            step_id="scopes",
+            data_schema=vol.Schema({}),
+            description_placeholders={"areas": scope_listing(plan, self.hass.config.language or "en")},
+        )
 
     async def async_step_area(self, user_input: dict[str, Any] | None = None) -> data_entry_flow.FlowResult:
         labels = _labels(self._items())
@@ -84,7 +104,7 @@ class LarderFixFlow(RepairsFlow):
                     DOMAIN, "estimate_best_before", {"entity_id": entity_ids}, blocking=True
                 )
             except HomeAssistantError:
-                pass  # was nicht geschätzt werden konnte, bleibt im Hinweis
+                pass  # what could not be estimated stays in the hint
             return await self._done()
         return self.async_show_form(
             step_id="estimate",

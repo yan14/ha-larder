@@ -1,4 +1,4 @@
-"""Entität 'MHD' (Mindesthaltbarkeitsdatum, schreibbar, bleibt über Neustarts erhalten)."""
+"""Entity 'Best before' (best-before date, writable, kept across restarts)."""
 
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ async def async_setup_entry(
     async_add_entities([best_before])
 
     platform = async_get_current_platform()
-    # Das Datum lässt sich über date.set_value nicht leeren, dafür gibt es diesen Service.
+    # The date cannot be cleared through date.set_value, that is what this service is for.
     platform.async_register_entity_service(SERVICE_CLEAR_BEST_BEFORE, None, "async_reset")
     platform.async_register_entity_service(
         SERVICE_MARK_OPENED,
@@ -73,7 +73,7 @@ async def async_setup_entry(
 
 
 class LarderBestBefore(DateEntity, LarderResettable):
-    """Mindesthaltbarkeitsdatum des Inhalts."""
+    """Best-before date of the content."""
 
     _key = "best_before"
     _attr_native_value: date | None = None
@@ -81,8 +81,8 @@ class LarderBestBefore(DateEntity, LarderResettable):
     def __init__(self, entry: LarderConfigEntry) -> None:
         super().__init__(entry)
         self._lock = asyncio.Lock()
-        # (Schlüssel, Befüll-Datum, übernommenes MHD) der letzten Schätzung; wird die
-        # Schätzung später vom Nutzer korrigiert, merkt sich der Schätzer den neuen Wert.
+        # (key, fill date, applied date) of the last estimate; if the user corrects the
+        # estimate later, the estimator remembers the new value.
         self._pending: tuple[str, date, date] | None = None
 
     async def async_added_to_hass(self) -> None:
@@ -104,7 +104,7 @@ class LarderBestBefore(DateEntity, LarderResettable):
         estimator = self.hass.data.get(DOMAIN, {}).get(DATA_ESTIMATOR)
         return {
             "estimates": bool(estimator and estimator.enabled),
-            "soon_days": getattr(estimator, "soon_days", SOON_DAYS),  # für die Dashboards
+            "soon_days": getattr(estimator, "soon_days", SOON_DAYS),  # for the dashboards
         }
 
     async def async_set_value(self, value: date) -> None:
@@ -132,13 +132,13 @@ class LarderBestBefore(DateEntity, LarderResettable):
         return dt_util.now().date()
 
     async def async_mark_opened(self, days: int | None = None) -> dict[str, Any]:
-        """Dose wurde geöffnet: das MHD wird auf höchstens `days` Tage ab heute verkürzt."""
+        """The container was opened: the date is shortened to at most `days` days from today."""
         if days is None:
             days = (await async_get_estimator(self.hass)).opened_days
         return self._shorten(days)
 
     async def async_mark_thawed(self, days: int | None = None) -> dict[str, Any]:
-        """Inhalt wurde aufgetaut: das MHD wird auf höchstens `days` Tage ab heute verkürzt."""
+        """The content was thawed: the date is shortened to at most `days` days from today."""
         if days is None:
             days = (await async_get_estimator(self.hass)).thawed_days
         return self._shorten(days)
@@ -156,7 +156,7 @@ class LarderBestBefore(DateEntity, LarderResettable):
     async def async_estimate_best_before(
         self, apply: bool = True, overwrite: bool = False
     ) -> dict[str, Any]:
-        """MHD per Tabelle/KI schätzen (Service `larder.estimate_best_before`)."""
+        """Estimate the best-before date by table/AI (service `larder.estimate_best_before`)."""
         async with self._lock:
             if self._attr_native_value is not None and not overwrite:
                 return {

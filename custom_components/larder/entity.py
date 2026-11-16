@@ -1,4 +1,4 @@
-"""Gemeinsame Basis: Gerät, eindeutige IDs, Wiederherstellung des letzten Zustands."""
+"""Common base: device, unique IDs, restoring the last state."""
 
 from __future__ import annotations
 
@@ -16,24 +16,24 @@ from .const import CONF_CC, CONF_INITIAL, CONF_KIND, CONF_SIZE, CONF_TC, DOMAIN,
 
 @dataclass
 class LarderRuntime:
-    """Laufzeitdaten einer Dose: die Entitäten, die 'Behälter leeren' zurücksetzt."""
+    """Runtime data of a container: the entities that 'Empty container' resets."""
 
     resettable: dict[str, LarderResettable] = field(default_factory=dict)
 
 
 type LarderConfigEntry = ConfigEntry[LarderRuntime]
 
-_MODELS = {"bag": "Bag", "pack": "Pack"}
+_MODELS = {"bag": "Bag", "pack": "Pack", "household": "Household item"}
 
 
 def kind_of(entry: ConfigEntry) -> str:
-    """Art des Eintrags: Dose (Vorgabe, auch für alle älteren Einträge), Beutel oder Packung."""
+    """Kind of the entry: container (default, also for all older entries), bag or pack."""
     kind = entry.data.get(CONF_KIND)
     return kind if kind in KINDS else KIND_CONTAINER
 
 
 class LarderEntity(RestoreEntity):
-    """Basis für alle Entitäten einer Dose (alle teilen sich ein Gerät)."""
+    """Base for all entities of a container (they all share one device)."""
 
     _attr_has_entity_name = True
     _key: str
@@ -43,7 +43,7 @@ class LarderEntity(RestoreEntity):
         self._cc = cc
         self._kind = kind_of(entry)
         self._entry_id = entry.entry_id
-        # Vorgaben aus dem Anlegen-Dialog (Vakuum, Einkaufsliste, variabler Lagerort), nur beim ersten Start
+        # presets from the add dialog (vacuum, shopping list, variable storage place), only on first start
         self._initial: dict = dict(entry.data.get(CONF_INITIAL) or {})
         tc: str | None = entry.data.get(CONF_TC)
         size: str | None = entry.data.get(CONF_SIZE)
@@ -63,7 +63,7 @@ class LarderEntity(RestoreEntity):
         )
 
     def _sibling_state(self, domain: str, key: str) -> State | None:
-        """Zustand einer anderen Entität derselben Dose (z. B. Inhalt, Vakuum)."""
+        """State of another entity of the same container (e.g. content, vacuum)."""
         entity_id = er.async_get(self.hass).async_get_entity_id(
             domain, DOMAIN, f"{self._cc}_{key}"
         )
@@ -78,7 +78,7 @@ class LarderEntity(RestoreEntity):
 
 
 class LarderResettable(LarderEntity):
-    """Entität, deren Wert 'Behälter leeren' zurücksetzt (Inhalt, MHD, Befüllt am)."""
+    """Entity whose value 'Empty container' resets (content, best-before date, filled at)."""
 
     async def async_reset(self) -> None:
         raise NotImplementedError

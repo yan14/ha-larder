@@ -1,8 +1,8 @@
-"""Scan-Webhook: QR-Inhalt entgegennehmen und Link zur passenden Geräteseite liefern.
+"""Scan webhook: take the QR content and return a link to the matching device page.
 
-Ein einziger, geheimer Webhook für alle Dosen. Der Kurzbefehl auf dem iPhone schickt
-den gescannten Text (oder nur die ID), die Integration sucht das Gerät dazu und
-antwortet mit einem Link, den der Kurzbefehl in der Home-Assistant-App öffnet.
+One single, secret webhook for all containers. The shortcut on the iPhone sends
+the scanned text (or only the ID), the integration looks up the device and
+answers with a link that the shortcut opens in the Home Assistant app.
 """
 
 from __future__ import annotations
@@ -30,7 +30,7 @@ DATA_WEBHOOK_ID = "webhook_id"
 
 
 async def async_get_webhook_id(hass: HomeAssistant) -> str:
-    """Geheime Webhook-ID laden, beim ersten Mal erzeugen und dauerhaft speichern."""
+    """Load the secret webhook ID, create it the first time and store it permanently."""
     store: Store[dict[str, str]] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
     data = await store.async_load()
     if not data or not data.get(DATA_WEBHOOK_ID):
@@ -40,7 +40,7 @@ async def async_get_webhook_id(hass: HomeAssistant) -> str:
 
 
 def webhook_urls(hass: HomeAssistant, webhook_id: str) -> tuple[str, str]:
-    """Liefert (vollständige URL, Pfad) für die Anzeige im Options-Dialog."""
+    """Returns (full URL, path) for display in the options dialog."""
     path = webhook.async_generate_path(webhook_id)
     try:
         return webhook.async_generate_url(hass, webhook_id), path
@@ -49,7 +49,7 @@ def webhook_urls(hass: HomeAssistant, webhook_id: str) -> tuple[str, str]:
 
 
 async def async_setup_webhook(hass: HomeAssistant) -> None:
-    """Webhook einmalig registrieren (idempotent, egal wie viele Dosen es gibt)."""
+    """Register the webhook once (idempotent, no matter how many containers there are)."""
     domain_data = hass.data.setdefault(DOMAIN, {})
     lock: asyncio.Lock = domain_data.setdefault(DATA_LOCK, asyncio.Lock())
     async with lock:
@@ -69,14 +69,14 @@ async def async_setup_webhook(hass: HomeAssistant) -> None:
 
 
 def async_teardown_webhook(hass: HomeAssistant) -> None:
-    """Webhook abmelden, wenn die letzte Dose entladen wurde."""
+    """Unregister the webhook when the last container was unloaded."""
     domain_data = hass.data.get(DOMAIN, {})
     if webhook_id := domain_data.pop(DATA_WEBHOOK_ID, None):
         webhook.async_unregister(hass, webhook_id)
 
 
 async def _async_extract_code(request: web.Request) -> str | None:
-    """Gescannten Text aus Query (?code=), JSON-Body ({"code": ...}) oder Klartext lesen."""
+    """Read the scanned text from the query (?code=), JSON body ({"code": ...}) or plain text."""
     if code := request.query.get("code") or request.query.get("cc"):
         return code
     if request.method != "POST" or not request.can_read_body:
@@ -88,7 +88,7 @@ async def _async_extract_code(request: web.Request) -> str | None:
     try:
         data: Any = json.loads(body)
     except ValueError:
-        return body  # Klartext-Body: der QR-Inhalt selbst
+        return body  # plain text body: the QR content itself
     if isinstance(data, dict):
         value = data.get("code") or data.get("cc") or data.get("qr_code")
         return str(value) if value is not None else None
@@ -100,17 +100,17 @@ async def _async_extract_code(request: web.Request) -> str | None:
 async def _async_handle_webhook(
     hass: HomeAssistant, webhook_id: str, request: web.Request
 ) -> web.Response:
-    """Passendes Gerät suchen und Link zum Dashboard zurückgeben."""
+    """Find the matching device and return a link to the dashboard."""
     parsed = parse_qr(await _async_extract_code(request))
     if parsed is None:
         return web.json_response({"error": "invalid_code"}, status=400)
 
     device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, parsed.cc)})
     if device is None:
-        from .disposable import async_get_retired, retired_text  # noqa: PLC0415 - vermeidet einen Import-Kreis
+        from .disposable import async_get_retired, retired_text  # noqa: PLC0415 - avoids an import cycle
 
         if info := (await async_get_retired(hass)).by_code(parsed.cc):
-            # Code eines schon geleerten Beutels: nichts öffnen, nur Bescheid sagen
+            # code of a bag that was already emptied: open nothing, only say so
             return web.json_response(
                 {
                     "known": False,
@@ -121,8 +121,8 @@ async def _async_handle_webhook(
                     "app_url": panel_app_url(),
                 }
             )
-        # Dose noch nicht angelegt: ins Panel "Larder" führen, dort öffnet sich
-        # der Dialog "Dose hinzufügen" mit bereits eingetragenem Code.
+        # container not created yet: lead to the panel "Larder", where the dialog
+        # "Add container" opens with the code already entered.
         return web.json_response(
             {
                 "known": False,
@@ -138,7 +138,7 @@ async def _async_handle_webhook(
             "cc": parsed.cc,
             "name": device.name_by_user or device.name,
             "device_id": device.id,
-            # Das Dashboard hebt die Dose hervor und öffnet bei leeren Dosen "Dose befüllen".
+            # The dashboard highlights the container and opens "Fill container" for empty ones.
             "path": panel_path(open_device=device.id),
             "app_url": panel_app_url(open_device=device.id),
             "device_path": device_path(device.id),

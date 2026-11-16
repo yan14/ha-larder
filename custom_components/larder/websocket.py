@@ -1,4 +1,4 @@
-"""WebSocket-Befehle für die Liste der gemerkten Schätzungen im Dashboard (nur Administratoren)."""
+"""WebSocket commands for the list of remembered estimates in the dashboard (administrators only)."""
 
 from __future__ import annotations
 
@@ -156,7 +156,7 @@ async def ws_nfc_link(
     nfc = await async_get_nfc(hass)
     try:
         cc = nfc.resolve_cc(msg.get("cc"), msg.get("entry_id"), msg.get("device_id"))
-        # Beutel kennzeichnet jeder im Haushalt, Dosen nur Administratoren
+        # anyone in the household labels bags, containers only administrators
         entry = nfc._entry(cc)  # noqa: SLF001
         if not connection.user.is_admin and (entry is None or kind_of(entry) != KIND_BAG):
             raise Unauthorized
@@ -202,7 +202,7 @@ async def ws_nfc_unlink(
 async def ws_contents(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
-    """Vorschläge für das Feld Inhalt (für alle Nutzer, enthält nur Inhaltstexte)."""
+    """Suggestions for the content field (for all users, contains only content texts)."""
     connection.send_result(msg["id"], {"contents": (await async_get_estimator(hass)).content_suggestions()})
 
 
@@ -211,7 +211,7 @@ async def ws_contents(
 async def ws_settings(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
-    """Einstellungen, die die Dashboards brauchen (für alle Nutzer, nichts Vertrauliches)."""
+    """Settings the dashboards need (for all users, nothing confidential)."""
     estimator = await async_get_estimator(hass)
     connection.send_result(
         msg["id"],
@@ -229,13 +229,13 @@ async def ws_settings(
 def ws_resolve_code(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
-    """Gescannten QR-Inhalt einer Dose zuordnen (Serien-Scan im Dashboard)."""
+    """Assign scanned QR content to a container (series scan in the dashboard)."""
     parsed = parse_qr(msg["code"])
     if parsed is None:
         connection.send_result(msg["id"], {"valid": False})
         return
     device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, parsed.cc)})
-    # Code eines schon geleerten Beutels: Hinweis statt "unbekannte Dose hinzufügen"
+    # code of a bag that was already emptied: a note instead of "add unknown container"
     retired = hass.data.get(DOMAIN, {}).get(DATA_RETIRED)
     info = retired.by_code(parsed.cc) if retired is not None and device is None else None
     connection.send_result(
@@ -255,9 +255,9 @@ def ws_resolve_code(
 async def ws_tag_scans(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
-    """Gescannte NFC-Tags melden (für Nutzer ohne Administratorrechte, die Beutel kennzeichnen).
+    """Report scanned NFC tags (for users without administrator rights who label bags).
 
-    Ereignisse abonnieren dürfen sonst nur Administratoren; hier geht nur die Tag-ID weiter.
+    Otherwise only administrators may subscribe to events; only the tag ID is passed on here.
     """
 
     @callback
@@ -274,10 +274,10 @@ async def ws_tag_scans(
 async def ws_scan_session(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
-    """Serien-Scan: jeden Scan eines verknüpften NFC-Tags melden, solange das Abo läuft.
+    """Series scan: report every scan of a linked NFC tag as long as the subscription runs.
 
-    Während ein Serien-Scan läuft, bekommt das Handy nach einem NFC-Scan keine Benachrichtigung
-    (sie würde aus dem Dashboard herausführen).
+    While a series scan is running, the phone gets no notification after an NFC scan
+    (it would lead out of the dashboard).
     """
     nfc = await async_get_nfc(hass)
 
@@ -294,7 +294,7 @@ async def ws_scan_session(
 async def ws_report_scan(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
-    """Eigener QR-Code wurde gescannt (das Dashboard meldet es): wie bei NFC `larder_dose_scanned` auslösen."""
+    """An own QR code was scanned (the dashboard reports it): fire `larder_dose_scanned` as with NFC."""
     nfc = await async_get_nfc(hass)
     try:
         cc = nfc.resolve_cc(cc=msg["cc"])

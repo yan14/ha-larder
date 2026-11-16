@@ -1,4 +1,4 @@
-"""Sensor 'Tage bis MHD': positive Zahl = noch haltbar, negative = abgelaufen."""
+"""Sensor 'Days until best before': positive number = still good, negative = expired."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ async def async_setup_entry(
 
 
 class LarderDaysLeftSensor(SensorEntity, LarderEntity):
-    """Verbleibende Tage bis zum MHD; das Attribut `status` ist ok, soon, expired oder none."""
+    """Days left until the best-before date; the attribute `status` is ok, soon, expired or none."""
 
     _key = "days_left"
     _attr_native_unit_of_measurement = UnitOfTime.DAYS
@@ -42,17 +42,17 @@ class LarderDaysLeftSensor(SensorEntity, LarderEntity):
         self._best_before: date | None = None
 
     async def async_added_to_hass(self) -> None:
-        # Der Wert ergibt sich aus der MHD-Entität, nichts muss wiederhergestellt werden.
+        # The value follows from the date entity, nothing has to be restored.
         self.async_on_remove(
             async_track_state_change_filtered(
                 self.hass, TrackStates(False, set(), {"date"}), self._date_changed
             ).async_remove
         )
-        # "Läuft bald ab" ist einstellbar: bei geänderten Einstellungen den Status neu schreiben.
+        # "Expires soon" is adjustable: rewrite the status when the settings change.
         self.async_on_remove(
             async_dispatcher_connect(self.hass, SIGNAL_SETTINGS_CHANGED, self.async_write_ha_state)
         )
-        # Nach Mitternacht ändern sich die Tage, ohne dass sich das MHD ändert.
+        # After midnight the days change without the date changing.
         self.async_on_remove(
             async_track_time_change(self.hass, self._midnight, hour=0, minute=0, second=5)
         )

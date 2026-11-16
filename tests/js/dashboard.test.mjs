@@ -166,7 +166,7 @@ test("Start: Begrüßung, nur bald ablaufende Dosen, Hilfe-Schaltflächen", asyn
   assert.deepEqual($$(el, "main .tile .badge").map((b) => b.textContent), ["abgelaufen", "1 T", "3 T"]);
   assert.ok($(el, '[data-role="recipes"]'));
   assert.equal($$(el, "nav button").length, 5);
-  assert.deepEqual($$(el, "nav button").map((b) => b.textContent), ["🏠Start", "🫙Behälter", "📖Rezepte", "📍Bereiche", "🏷️Kategorien"]);
+  assert.deepEqual($$(el, "nav button").map((b) => b.textContent), ["🏠Start", "🫙Lager", "📖Rezepte", "📍Bereiche", "🏷️Kategorien"]);
 });
 
 test("Start: nichts läuft ab, Benutzer ohne KI und ohne Namen", () => {
@@ -182,7 +182,7 @@ test("Start: 'Behälter anzeigen' zeigt die Behälter, die bald ablaufen, mit Fi
   const el = mount(makeHass(DOSES));
   $(el, '[data-role="containers"]').click();
   await flush();
-  assert.equal($(el, "h1").textContent, "Behälter");
+  assert.equal($(el, "h1").textContent, "Lager");
   assert.deepEqual(names(el), ["Chili", "Lachs", "Reis"]);
   const state = $(el, '[data-role="state"]');
   assert.equal(state.value, "soon");
@@ -445,7 +445,7 @@ test("Bereiche: Kacheln mit Anzahl, Antippen filtert die Behälter", async () =>
 
   $$(el, "main .tile")[1].click(); // Küche
   await flush();
-  assert.equal($(el, "h1").textContent, "Behälter");
+  assert.equal($(el, "h1").textContent, "Lager");
   assert.equal($(el, ".chip span").textContent, "Bereich: Küche");
   assert.deepEqual(names(el), ["Lachs", "Gouda"]);
 });
@@ -497,7 +497,7 @@ test("Navigation setzt Filter zurück", async () => {
 test("Englische Oberfläche", async () => {
   const el = mount(makeHass(DOSES, { language: "en" }));
   assert.equal($(el, ".hello").textContent, "Hello Yan");
-  assert.deepEqual($$(el, "nav button").map((b) => b.textContent), ["🏠Start", "🫙Containers", "📖Recipes", "📍Areas", "🏷️Categories"]);
+  assert.deepEqual($$(el, "nav button").map((b) => b.textContent), ["🏠Start", "🫙Storage", "📖Recipes", "📍Areas", "🏷️Categories"]);
   await go(el, "containers");
   assert.equal($$(el, "main .tile .name").pop().textContent, "Empty");
 });
@@ -1252,7 +1252,7 @@ test("Links aus den Reparaturhinweisen: ?problem filtert die Behälter", async (
   window.history.replaceState(null, "", "/larder?problem=noarea");
   const el = mount(makeHass([...DOSES, { id: "d6", name: "Dose 6", area: "kitchen", content: "Alt", days: -10, category: "dish" }]));
   await flush();
-  assert.equal($(el, "h1").textContent, "Behälter");
+  assert.equal($(el, "h1").textContent, "Lager");
   assert.deepEqual(names(el), ["Leer"]);
   assert.equal($(el, ".chip span").textContent, "Ohne Bereich");
   el.setView("containers", { problem: "longexpired" });
@@ -2537,4 +2537,233 @@ test("Strichcode: umbenannte Packung behält die EAN; nicht im Vorrat → mit Pr
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/stock_code_link`), { type: `${D}/stock_code_link`, code: "4000000000017", content: "Curryketchup" });
   assert.equal(form.querySelector("h2").textContent, "Curryketchup");
   assert.match($(el, ".notice").textContent, /Strichcode mit Curryketchup verknüpft/);
+});
+
+// ----- 4.0: household items, area scopes -----
+
+test("buildItems: household items count pieces (packs × pieces per pack), no date", () => {
+  const items = buildItems("household", [
+    { content: "Klopapier", quantity: "2", packSize: "8", piece: " Rollen ", date: "2030-01-01", price: "3,99", product: { ean: "4" } },
+    { content: "Spülmittel", quantity: "", packSize: "" },
+  ]);
+  assert.deepEqual(items, [
+    { content: "Klopapier", quantity: 16, unit: "pieces", product: { ean: "4", pack_size: 8, piece: "Rollen", price: 3.99, price_source: "own" } },
+    { content: "Spülmittel", quantity: 1, unit: "pieces" },
+  ]);
+});
+
+function householdHass() {
+  const hass = makeHass([
+    ...DOSES,
+    { id: "h1", name: "Artikel 1", area: "cellar", content: "Klopapier", days: null, category: "hh_paper" },
+  ]);
+  hass.states["text.h1_inhalt"].attributes.kind = "household";
+  hass.areas = {
+    ...AREAS,
+    bath: { area_id: "bath", name: "Bad", labels: ["l_hh", "l"] },
+    fridge: { area_id: "fridge", name: "Kühlschrank", labels: ["l_food", "l"] },
+  };
+  hass.areas.kitchen = { ...AREAS.kitchen, labels: ["l"] };
+  hass.areas.cellar = { ...AREAS.cellar, labels: ["l"] };
+  const base = hass.callWS;
+  hass.scopes = { bath: "household", fridge: "food", kitchen: "both", cellar: "both" };
+  hass.plan = {};
+  hass.callWS = async (msg) => {
+    if (msg.type === "config/label_registry/list") {
+      return [{ label_id: "l", name: "Larder" }, { label_id: "l_hh", name: "Larder: Haushalt" }, { label_id: "l_food", name: "Larder: Lebensmittel" }];
+    }
+    if (msg.type === `${D}/area_scopes`) return { scopes: hass.scopes, plan: hass.plan };
+    if (msg.type === `${D}/area_scope_set`) {
+      hass.wsCalls.push(msg);
+      hass.scopes = { ...hass.scopes, [msg.area_id]: msg.scope };
+      return {};
+    }
+    if (msg.type === `${D}/area_scopes_auto`) {
+      hass.wsCalls.push(msg);
+      hass.plan = {};
+      return {};
+    }
+    if (msg.type === `${D}/create_items`) {
+      hass.wsCalls.push(msg);
+      return { items: msg.items.map((_, i) => ({ device_id: `n${i}`, cc: `HA-${i}`, name: `Artikel ${i + 2}` })) };
+    }
+    if (msg.type === "config/area_registry/update") {
+      hass.wsCalls.push(msg);
+      return {};
+    }
+    return base(msg);
+  };
+  return hass;
+}
+
+test("Switch Lebensmittel | Haushalt: filters storage, areas and categories and is remembered", async () => {
+  const hass = householdHass();
+  const el = mount(hass);
+  el._classic.larderLabel = ["l", "l_hh", "l_food"];
+  await flush();
+  await flush();
+  await go(el, "containers");
+  assert.equal($(el, "h1").textContent, "Lager");
+  assert.deepEqual($$(el, ".scope button").map((b) => [b.textContent, b.classList.contains("on")]), [["🥫 Lebensmittel", true], ["🧻 Haushalt", false]]);
+  assert.ok(!names(el).includes("Klopapier"));
+  $(el, '.scope [data-scope="household"]').click();
+  await flush();
+  assert.deepEqual(names(el), ["Klopapier"]);
+  assert.equal($(el, 'main .tile[data-id="h1"] .ico').textContent, "🧻");
+  assert.equal($(el, 'main .tile[data-id="h1"] .kindmark'), null);
+  await go(el, "areas");
+  assert.deepEqual($$(el, "main .tile .name").map((n) => n.textContent).sort(), ["Bad", "Keller", "Küche"]);
+  await go(el, "categories");
+  assert.deepEqual($$(el, "main .tile .name").map((n) => n.textContent), ["Papier & Hygiene"]);
+  assert.equal($(el, "main .tile .sub").textContent, "1 Artikel");
+  // remembered on this device
+  const again = mount(hass);
+  await flush();
+  await go(again, "areas");
+  assert.equal($(again, '.scope [data-scope="household"]').classList.contains("on"), true);
+  $(again, '.scope [data-scope="food"]').click();
+  await flush();
+  assert.ok(!$$(again, "main .tile .name").map((n) => n.textContent).includes("Bad"));
+});
+
+test("Haushaltsartikel anlegen: own dialog, only household areas, pieces and packs", async () => {
+  const hass = householdHass();
+  const el = mount(hass);
+  el._classic.larderLabel = ["l", "l_hh", "l_food"];
+  await flush();
+  await flush();
+  await go(el, "containers");
+  $(el, '[data-role="add"]').click();
+  $(el, '[data-role="add-household"]').click();
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelector("h2").textContent, "Haushaltsartikel anlegen");
+  assert.equal(form.querySelector('[data-i="date"]'), null);
+  assert.equal(form.querySelector('[data-i="unit"]'), null);
+  assert.equal(form.querySelector('[data-role="item-receipt"]'), null);
+  const areas = [...form.querySelector('[data-f="area"]').options].map((o) => o.textContent);
+  assert.ok(areas.includes("Bad") && !areas.includes("Kühlschrank"));
+  form.querySelector('[data-i="content"]').value = "Küchenrolle";
+  form.querySelector('[data-i="quantity"]').value = "2";
+  form.querySelector('[data-i="packSize"]').value = "4";
+  form.querySelector('[data-i="piece"]').value = "Rollen";
+  form.querySelector("button.submit").click();
+  await flush();
+  await flush();
+  const created = hass.wsCalls.find((m) => m.type === `${D}/create_items`);
+  assert.equal(created.kind, "household");
+  assert.deepEqual(created.items, [{ content: "Küchenrolle", quantity: 8, unit: "pieces", product: { pack_size: 4, piece: "Rollen" } }]);
+  // afterwards the storage shows the household side
+  assert.equal($(el, '.scope [data-scope="household"]').classList.contains("on"), true);
+  // the pack dialog offers the food areas
+  $(el, '[data-role="add"]').click();
+  $(el, '[data-role="add-pack"]').click();
+  const foodAreas = [...$(el, "form.dialog").querySelector('[data-f="area"]').options].map((o) => o.textContent);
+  assert.ok(foodAreas.includes("Kühlschrank") && !foodAreas.includes("Bad"));
+});
+
+test("Start: sections Lebensmittel and Haushalt; bought household item opens the household dialog", async () => {
+  const hass = householdHass();
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/bought`) {
+      return { items: [
+        { id: "b1", summary: "Senf", content: "Senf", count: 1 },
+        { id: "b2", summary: "Klopapier (2 Packungen)", content: "Klopapier", count: 2, kind: "household", product: { pack_size: 8, piece: "Rollen" } },
+      ] };
+    }
+    if (msg.type === `${D}/running_low`) {
+      return { shopping_list: true, items: [{ key: "spuelmittel", name: "Spülmittel", count: 1, min: 1, lasts_days: 3, kind: "household" }] };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await flush();
+  const heads = $$(el, "main h2.section").map((h) => h.textContent);
+  assert.deepEqual(heads, ["🥫 Lebensmittel", "🧻 Haushalt"]);
+  const household = $(el, '[data-role="household-section"]');
+  const before = [...$(el, "main").children];
+  const idx = before.indexOf(household);
+  const boxes = $$(el, "main .stat.bought, main .stat.low");
+  // food: bought mustard above the household heading; household: low dish soap and bought toilet paper below
+  assert.ok(before.indexOf($$(el, "main .stat.bought")[0]) < idx);
+  assert.ok(before.indexOf($(el, "main .stat.low")) > idx);
+  assert.equal(boxes.length, 3);
+  assert.equal($$(el, "main .stat.bought")[1].querySelector(".name").textContent, "Klopapier (2 Packungen)");
+  $$(el, "main .stat.bought")[1].querySelector('[data-role="bought-add"]').click();
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelector("h2").textContent, "Haushaltsartikel anlegen");
+  assert.deepEqual(
+    ["quantity", "packSize", "piece"].map((n) => form.querySelector(`[data-i="${n}"]`).value),
+    ["2", "8", "Rollen"],
+  );
+  // without household items the start page has no sections
+  const plain = mount(makeHass(DOSES));
+  await flush();
+  assert.equal($$(plain, "main h2.section").length, 0);
+});
+
+test("Vorrat: household products show pieces and packs, minimum in pieces", async () => {
+  const hass = householdHass();
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/stock`) {
+      return { shopping_list: true, products: [
+        { key: "senf", name: "Senf", count: 2, min: 0, low: false, places: [], kind: "pack", value: 3 },
+        { key: "klopapier", name: "Klopapier", count: 12, min: 8, low: false, places: [], kind: "household", pack_size: 8, piece: "Rollen", packs: 1.5, value: 6 },
+      ] };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  $(el, "#settings").click();
+  $(el, '[data-role="menu-stock"]').click();
+  await flush();
+  await flush();
+  assert.deepEqual($$(el, ".stockitem .name").map((n) => n.textContent), ["Senf"]);
+  $(el, '.scope [data-scope="household"]').click();
+  await flush();
+  assert.deepEqual($$(el, ".stockitem .name").map((n) => n.textContent), ["Klopapier"]);
+  assert.equal($(el, ".stockitem .count").textContent, "12 Rollen");
+  assert.equal($(el, ".stockitem .sub").textContent, "1,5 Packungen");
+  assert.equal($(el, ".stockitem .stockmin").textContent, "Mindestens");
+  assert.match($(el, '[data-role="stock-value"]').textContent, /6,00/);
+  await go(el, "containers");
+  assert.equal($(el, "main .count").textContent, "1 Artikel");
+  assert.equal($(el, '[data-role="state"]').options.length, 1);
+});
+
+test("Bereiche bearbeiten: use (scope) per area and automatic assignment", async () => {
+  const hass = householdHass();
+  hass.plan = { bath: "household" };
+  hass.scopes = { ...hass.scopes, bath: "both" };
+  const el = mount(hass);
+  el._classic.larderLabel = ["l", "l_hh", "l_food"];
+  await flush();
+  await go(el, "areas");
+  $(el, '[data-role="area-edit"]').click();
+  await flush();
+  await flush();
+  const auto = $(el, '[data-role="scope-auto"]');
+  assert.equal(auto.textContent, "Nutzung automatisch zuordnen (1 Bereich)");
+  assert.match($(el, 'main [data-area="fridge"] .sub').textContent, /nur Lebensmittel/);
+  $(el, 'main [data-area="kitchen"]').click();
+  await flush();
+  const form = $(el, "form.dialog");
+  // scope labels are not offered as a storage kind
+  assert.deepEqual([...form.querySelector('[data-f="kind"]').options].map((o) => o.textContent).slice(0, 2), ["kein Larder-Label", "Larder"]);
+  const scope = form.querySelector('[data-f="scope"]');
+  assert.equal(scope.value, "both");
+  scope.value = "food";
+  form.querySelector("button.submit").click();
+  await flush();
+  await flush();
+  await flush();
+  assert.deepEqual(hass.wsCalls.filter((m) => m.type === `${D}/area_scope_set`).map((m) => [m.area_id, m.scope]), [["kitchen", "food"]]);
+  $(el, '[data-role="scope-auto"]').click();
+  await flush();
+  await flush();
+  await flush();
+  assert.equal(hass.wsCalls.filter((m) => m.type === `${D}/area_scopes_auto`).length, 1);
+  assert.equal($(el, '[data-role="scope-auto"]'), null);
 });

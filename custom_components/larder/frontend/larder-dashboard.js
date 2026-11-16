@@ -1,13 +1,13 @@
 /**
- * Larder-Dashboard (seit 2.0): kachelbasierte Oberfläche mit Start, Behältern, Bereichen, Kategorien und
- * Rezepten, unten eine Leiste zum Wechseln.
+ * Larder dashboard (since 2.0): tile-based interface with start, storage, areas, categories and
+ * recipes, with a bar at the bottom to switch.
  *
- * Für Dialoge (Hinzufügen, Befüllen, NFC), die Karten mit allen Details und die Schätzungen bettet sie die
- * Komponente <larder-panel-embedded embedded> aus larder-panel.js ein (die frühere Oberfläche).
+ * For dialogs (add, fill, NFC), the cards with all details and the estimates it embeds the
+ * component <larder-panel-embedded embedded> from larder-panel.js (the former interface).
  */
-// Mit derselben Versionsangabe laden wie dieses Modul, damit nie eine ältere Kopie aus dem Cache benutzt wird.
+// Load with the same version query as this module, so an older copy from the cache is never used.
 const VERSION_QUERY = new URL(import.meta.url).search;
-const { attachCompartmentChips, collectDevices, daysUntil, isLarderLabel, knownCompartments, listAreas, rememberCompartment, soonDaysOf, SOON_DAYS } = await import(
+const { areaAllows, setAreaScopes, attachCompartmentChips, collectDevices, daysUntil, isLarderLabel, knownCompartments, listAreas, rememberCompartment, soonDaysOf, SOON_DAYS } = await import(
   `./larder-panel.js${VERSION_QUERY}`
 );
 const { installItems } = await import(`./larder-dashboard-items.js${VERSION_QUERY}`);
@@ -15,7 +15,7 @@ const { installCare } = await import(`./larder-dashboard-care.js${VERSION_QUERY}
 const { installCook } = await import(`./larder-dashboard-cook.js${VERSION_QUERY}`);
 
 const DOMAIN = "larder";
-const STORAGE_KEY = `${DOMAIN}.experimental`; // historischer Name, bleibt, damit gespeicherte Ansichten erhalten bleiben
+const STORAGE_KEY = `${DOMAIN}.experimental`; // historic name, kept so saved views survive
 
 const { TEXTS } = await import(`./larder-dashboard-strings.js${VERSION_QUERY}`);
 export { TEXTS };
@@ -34,15 +34,21 @@ export const CATEGORY_ICONS = {
   coffee: "☕",
   mixed: "🍱",
   other: "📦",
+  hh_paper: "🧻",
+  hh_laundry: "🧺",
+  hh_cleaning: "🧽",
+  hh_care: "🧴",
+  hh_batteries: "🔋",
+  hh_other: "🧰",
   empty: "🫙",
 };
 
 const VIEWS = ["start", "containers", "recipes", "areas", "categories"];
-const ALL_VIEWS = [...VIEWS, "estimates", "stats", "stock", "stocktake"]; // "estimates" und "stats" erreicht man über ☰/⚙
+const ALL_VIEWS = [...VIEWS, "estimates", "stats", "stock", "stocktake"]; // "estimates" and "stats" are reached through ☰/⚙
 const MODES = ["grid", "list", "cards"];
 const VIEW_ICONS = { start: "🏠", containers: "🫙", recipes: "📖", areas: "📍", categories: "🏷️" };
 
-/** QR-Etikett eines Fachs (…/larder?place=<Bereich>&compartment=<Fach>) erkennen. */
+/** Recognise the QR label of a compartment (…/larder?place=<area>&compartment=<compartment>). */
 export function placeFromCode(code) {
   const text = String(code || "").trim();
   const at = text.indexOf("?");
@@ -66,7 +72,7 @@ function isValid(state) {
   return !!state && state.state !== "unknown" && state.state !== "unavailable";
 }
 
-/** Eine Dose mit Inhalt, Resttagen und Kategorie, wie sie die Kacheln brauchen. */
+/** A container with content, days left and category, as the tiles need it. */
 export function describeDevices(hass, devices, now = new Date()) {
   const states = hass.states || {};
   return devices.map((dev) => {
@@ -78,7 +84,7 @@ export function describeDevices(hass, devices, now = new Date()) {
     const comp = states[dev.entities.compartment];
     const compartment = isValid(comp) ? comp.state.trim() : "";
     const attrs = (content && text.attributes) || {};
-    const kind = (text && text.attributes && text.attributes.kind) || "container"; // Dose, Beutel (bag) oder Packung (pack)
+    const kind = (text && text.attributes && text.attributes.kind) || "container"; // container, bag, pack or household item
     const kcal = attrs.kcal_portion !== undefined ? { value: attrs.kcal_portion, per: "portion" } : attrs.kcal_100g !== undefined ? { value: attrs.kcal_100g, per: "100g" } : null;
     return { dev, id: dev.deviceId, name: dev.name, content, days, soon: soonDaysOf(date), category, areaId: dev.areaId, areaName: dev.areaName, compartment, kcal, nutriScore: attrs.nutri_score || null, allergens: Array.isArray(attrs.allergen_warning) ? attrs.allergen_warning : [], kind, opened: attrs.opened || null, size: (text && text.attributes && (content ? text.attributes.size : text.attributes.size_fixed)) || null };
   });
@@ -134,10 +140,10 @@ function navigate(path) {
   window.dispatchEvent(new Event("location-changed"));
 }
 
-/** Zeitraum für Rezeptideen: Einstellung der Integration, feste Tage oder "all" (ohne Zeitraum). */
+/** Period for recipe ideas: setting of the integration, fixed days or "all" (no period). */
 export const RECIPE_PERIODS = ["default", "1", "3", "7", "14", "30", "all"];
 
-/** Daten für den Service `suggest_recipes` je nach gewähltem Zeitraum. */
+/** Data for the service `suggest_recipes` depending on the chosen period. */
 export function recipeServiceData(period) {
   if (period === "all") return { all_containers: true };
   if (period === "default" || !RECIPE_PERIODS.includes(period)) return {};
@@ -148,9 +154,9 @@ export const PHOTO_MAX_FILES = 4;
 const PHOTO_MAX_SIDE = 2000;
 
 /**
- * Foto für den Upload vorbereiten: auf höchstens 2000 px verkleinern und als JPEG senden (spart
- * Datenvolumen und KI-Kosten, iPhone-Fotos werden dabei zu JPEG). PDFs und alles, was der Browser
- * nicht zeichnen kann, gehen unverändert.
+ * Prepare a photo for the upload: scale down to at most 2000 px and send as JPEG (saves
+ * data volume and AI cost, iPhone photos become JPEG this way). PDFs and everything the browser
+ * cannot draw go unchanged.
  */
 export async function preparePhoto(file) {
   if (!file || !String(file.type).startsWith("image/") || typeof createImageBitmap !== "function") return file;
@@ -169,12 +175,12 @@ export async function preparePhoto(file) {
   }
 }
 
-/** Etikettenbögen wie in labels.py (Felder pro Bogen für "überspringen"). */
+/** Label sheets as in labels.py (fields per sheet for "skip"). */
 const LABEL_LAYOUTS = {
   "3x8": { per: 24, size: "70 × 36 mm" },
   "3x7": { per: 21, size: "70 × 42,3 mm" },
   "2x4": { per: 8, size: "105 × 74 mm" },
-  // Etikettendrucker: eine Seite pro Etikett
+  // label printer: one page per label
   "62x29": { per: 1, size: "Brother DK-11209", printer: true },
   "54x25": { per: 1, size: "Dymo 11352", printer: true },
   "89x36": { per: 1, size: "Dymo 99012", printer: true },
@@ -196,6 +202,7 @@ function loadOptions() {
       labelParts: raw.labelParts && typeof raw.labelParts === "object" ? raw.labelParts : { qr: true, name: true, content: false },
       labelLook: raw.labelLook && typeof raw.labelLook === "object" ? raw.labelLook : { color: "black", inverted: false, logo: false },
       itemArea: raw.itemArea && typeof raw.itemArea === "object" ? raw.itemArea : {},
+      scope: raw.scope === "household" ? "household" : "food",
     };
   } catch {
     return { mode: "grid", sort: "date", areaSort: "name", recipeSort: "newest", recipePeriod: "default" };
@@ -206,14 +213,24 @@ function saveOptions(opts) {
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(opts));
   } catch {
-    /* Speicher nicht verfügbar: Einstellungen gelten nur für diese Sitzung */
+    /* storage not available: settings only apply to this session */
   }
 }
 
 const { STYLE } = await import(`./larder-dashboard-style.js${VERSION_QUERY}`);
 
+/** Views that show either food or household items. */
+const SCOPED_VIEWS = ["containers", "areas", "categories"];
+const SCOPE_LABELS = ["haushalt", "household", "lebensmittel", "food"];
+
+/** "Larder: Household" / "Larder: Food" (and the German names): extra labels that only set the scope. */
+export function isScopeLabel(label) {
+  const name = String((label && label.name) || "").trim().toLowerCase();
+  return SCOPE_LABELS.includes(name.replace(/^larder\s*:\s*/, "")) && name.startsWith("larder");
+}
+
 export class LarderDashboard extends HTMLElement {
-  /** Titel auf der Startseite. */
+  /** Title on the start page. */
   static appTitle = "Larder";
 
   constructor() {
@@ -223,18 +240,18 @@ export class LarderDashboard extends HTMLElement {
     this._detail = null;
     this._filter = { area: null, category: null, state: null, problem: null };
     this._opts = loadOptions();
-    this._recipeDays = SOON_DAYS; // bis die Einstellung geladen ist
+    this._recipeDays = SOON_DAYS; // until the setting is loaded
     this._sig = "";
     this._recipes = null;
     this._recipesLoading = false;
-    this._suggestions = null; // null = nicht angefordert, "busy", Liste oder { error }
+    this._suggestions = null; // null = not requested, "busy", list or { error }
     this._savedSuggestions = new Set();
     this._openRecipe = null;
-    this._photo = null; // null, "busy" oder { error }
-    this._selecting = false; // Auswahlmodus in der Behälter-Ansicht
-    this._selected = new Set(); // Geräte-IDs
-    this._scan = null; // laufender Serien-Scan
-    this._chosenFor = null; // Geräte-IDs, aus denen die aktuellen Vorschläge stammen
+    this._photo = null; // null, "busy" or { error }
+    this._selecting = false; // selection mode in the storage view
+    this._selected = new Set(); // device IDs
+    this._scan = null; // running series scan
+    this._chosenFor = null; // device IDs the current suggestions come from
     this.attachShadow({ mode: "open" });
     this.shadowRoot.innerHTML = `
       <style>${STYLE}</style>
@@ -309,12 +326,12 @@ export class LarderDashboard extends HTMLElement {
     this.shadowRoot.addEventListener("click", (ev) => {
       if (!this._menu.hidden && !this._menu.contains(ev.target)) this._menu.hidden = true;
     });
-    // Die eingebettete klassische Ansicht steht zwischen Inhalt und Leiste (für Karten und Schätzungen)
+    // The embedded classic view sits between content and bar (for cards and estimates)
     this._nav.before(this._classic);
     this._classic.addEventListener("larder-detail-closed", () => this._closeDetail());
     this._classic.addEventListener("larder-filled", (ev) => {
       if (this._selecting) this.stopSelecting();
-      // Etikett gleich nach dem Befüllen (z. B. für Gefrierbeutel): ein Tipp öffnet den Etiketten-Dialog
+      // label right after filling (e.g. for freezer bags): one tap opens the label dialog
       const ids = (ev.detail && ev.detail.deviceIds) || [];
       const t = texts(this._hass);
       if (ids.length) this.showNotice(t.filledNotice(ids.length), { label: t.labelNow, run: () => this.openLabelDialog(ids) });
@@ -332,10 +349,10 @@ export class LarderDashboard extends HTMLElement {
   }
 
   /**
-   * Home Assistant legt das Panel-Element beim Neuladen der Seite unter Umständen an, bevor dieses
-   * Modul fertig geladen ist (es wartet auf das klassische Dashboard). Dann landen hass, narrow,
-   * route und panel als einfache Eigenschaften am noch nicht aufgewerteten Element und verdecken
-   * die Setter dieser Klasse; die Seite bliebe leer. Hier werden sie nachträglich übernommen.
+   * On reloading the page Home Assistant may create the panel element before this
+   * module has finished loading (it waits for the classic dashboard). Then hass, narrow,
+   * route and panel end up as plain properties on the not yet upgraded element and shadow
+   * the setters of this class; the page would stay empty. Here they are applied afterwards.
    */
   connectedCallback() {
     for (const prop of ["narrow", "route", "panel", "hass"]) {
@@ -354,7 +371,7 @@ export class LarderDashboard extends HTMLElement {
       try {
         this._scanUnsub();
       } catch {
-        /* Verbindung schon weg */
+        /* connection already gone */
       }
       this._scanUnsub = null;
     }
@@ -362,7 +379,7 @@ export class LarderDashboard extends HTMLElement {
       try {
         this._placeUnsub();
       } catch {
-        /* Verbindung schon weg */
+        /* connection already gone */
       }
       this._placeUnsub = null;
     }
@@ -384,6 +401,7 @@ export class LarderDashboard extends HTMLElement {
       this.loadCookAgain();
       this.loadRunningLow();
       this.loadRecalls();
+      this.loadScopes();
       this.loadSettings();
       this._handleViewParam();
       this._subscribeScans();
@@ -391,8 +409,8 @@ export class LarderDashboard extends HTMLElement {
   }
 
   /**
-   * Eigener QR-Code gescannt (`?cc=<ID der Dose>`): wie bei NFC die Dose öffnen (eine leere zum Befüllen)
-   * und den Scan melden (Ereignis `larder_dose_scanned`); unbekannte Codes führen zum Hinzufügen.
+   * Own QR code scanned (`?cc=<container ID>`): open the container as with NFC (an empty one for filling)
+   * and report the scan (event `larder_dose_scanned`); unknown codes lead to adding.
    */
   async _openScanned(cc) {
     const hass = this._hass;
@@ -402,7 +420,7 @@ export class LarderDashboard extends HTMLElement {
       const res = await hass.callWS({ type: `${DOMAIN}/resolve_code`, code: cc });
       deviceId = res && res.device_id;
       if (res && res.retired) {
-        this.showNotice(res.retired); // Etikett eines schon geleerten Beutels
+        this.showNotice(res.retired); // label of a bag that was already emptied
         return;
       }
     } catch {
@@ -418,12 +436,12 @@ export class LarderDashboard extends HTMLElement {
     if (row) this.openContainer(row);
   }
 
-  /** Kurzer Hinweis unter der Kopfleiste (antippen schließt ihn). */
+  /** Short notice below the header (tapping closes it). */
   showNotice(text, action = null) {
     this._notice.textContent = text || "";
     this._notice.hidden = !text;
     if (text && action) {
-      // z. B. "🖨 Etikett" direkt nach dem Befüllen
+      // e.g. "🖨 Label" right after filling
       const btn = el("button", "", action.label);
       btn.type = "button";
       btn.dataset.role = "notice-action";
@@ -436,7 +454,7 @@ export class LarderDashboard extends HTMLElement {
     }
   }
 
-  /** Gescannter NFC-Tag einer Dose, während das Dashboard offen ist: Dose öffnen (leere zum Befüllen). */
+  /** Scanned NFC tag of a container while the dashboard is open: open the container (empty ones for filling). */
   async _subscribeScans() {
     const hass = this._hass;
     if (this._scanUnsub || !isAdmin(hass) || !hass.connection || !hass.connection.subscribeEvents) return;
@@ -444,20 +462,20 @@ export class LarderDashboard extends HTMLElement {
       this._scanUnsub = await hass.connection.subscribeEvents((ev) => {
         const id = ev && ev.data && ev.data.device_id;
         if (this._view === "stocktake" && this._take && this._take.started && ev && ev.data && ev.data.device_id) {
-          this.stocktakeTick(ev.data.device_id); // Inventur: NFC-Scan hakt ab statt zu öffnen
+          this.stocktakeTick(ev.data.device_id); // stocktake: an NFC scan ticks off instead of opening
           return;
         }
         if (ev && ev.data && ev.data.retired && this.isConnected) {
-          this.showNotice(ev.data.message); // NFC-Sticker eines schon geleerten Beutels
+          this.showNotice(ev.data.message); // NFC sticker of a bag that was already emptied
           return;
         }
-        if (!id || this._scan || this._selecting || !this.isConnected) return; // Serien-Scan wählt nur aus
+        if (!id || this._scan || this._selecting || !this.isConnected) return; // series scan only selects
         const row = this._rows().find((r) => r.id === id);
         if (!row) return;
         if (this._view !== "containers") this.setView("containers");
         this.openContainer(row);
       }, `${DOMAIN}_dose_scanned`);
-      // NFC-Tag eines Fachs (nicht über das Dashboard gemeldet: source nfc)
+      // NFC tag of a compartment (not reported through the dashboard: source nfc)
       this._placeUnsub = await hass.connection.subscribeEvents((ev) => {
         const d = (ev && ev.data) || {};
         if (!d.place || d.source !== "nfc" || this._scan || this._selecting || !this.isConnected) return;
@@ -468,7 +486,7 @@ export class LarderDashboard extends HTMLElement {
     }
   }
 
-  /** `?view=recipes` usw. (z. B. Knopf "Rezepte" in der täglichen Benachrichtigung). */
+  /** `?view=recipes` etc. (e.g. button "Recipes" in the daily notification). */
   _handleViewParam() {
     const params = new URLSearchParams(window.location.search);
     const view = params.get("view");
@@ -483,18 +501,18 @@ export class LarderDashboard extends HTMLElement {
     else if (problem && ["noarea", "nodate", "longexpired"].includes(problem)) this.setView("containers", { problem });
     else if (view && ALL_VIEWS.includes(view)) this.setView(view);
     if (place) {
-      // NFC-Tag oder QR-Etikett eines Fachs: Fach-Ansicht
+      // NFC tag or QR label of a compartment: compartment view
       this.setView("containers");
       this.openPlace(place === "-" ? "" : place, params.get("compartment") || "");
     } else if (cc) {
       this._openScanned(cc);
     } else if (open) {
-      // Scan (Kurzbefehl, NFC-Benachrichtigung): Dose öffnen, eine leere gleich befüllen
+      // scan (shortcut, NFC notification): open the container, fill an empty one right away
       this.setView("containers");
       const row = this._rows().find((r) => r.id === open);
       if (row) this.openContainer(row);
     } else if (add) {
-      // unbekannte Dose gescannt: Dialog "Dose hinzufügen" mit dem Code
+      // unknown container scanned: dialog "Add container" with the code
       this.setView("containers");
       if (isAdmin(this._hass)) this._classic.openAddDialog(add);
       else this.showNotice(texts(this._hass).adminOnly(add));
@@ -513,7 +531,7 @@ export class LarderDashboard extends HTMLElement {
 
   setView(view, filter = null) {
     if (!ALL_VIEWS.includes(view)) return;
-    if (view !== this._view && this._main) this._main.scrollTop = 0; // neue Seite beginnt oben
+    if (view !== this._view && this._main) this._main.scrollTop = 0; // a new page starts at the top
     if (view === "estimates" && !isAdmin(this._hass)) return;
     if (view !== "areas") this._areaEdit = false;
     if (view !== "containers") {
@@ -556,7 +574,7 @@ export class LarderDashboard extends HTMLElement {
     this._update();
   }
 
-  /** Antippen einer Dose: leere Dosen gleich befüllen, gefüllte in der Detailansicht öffnen. */
+  /** Tapping a container: fill empty ones right away, open filled ones in the detail view. */
   openContainer(row) {
     if (this._selecting) {
       this.toggleSelected(row.id);
@@ -593,7 +611,7 @@ export class LarderDashboard extends HTMLElement {
     if (!hass) return;
     const t = texts(hass);
     if (this._detail && !this._rows().some((r) => r.id === this._detail)) {
-      // geleerter Beutel oder leere Packung: das Gerät gibt es nicht mehr
+      // emptied bag or empty pack: the device no longer exists
       this._detail = null;
       this._classic.removeAttribute("only");
     }
@@ -615,7 +633,7 @@ export class LarderDashboard extends HTMLElement {
               : this._view === "stocktake"
                 ? this.stocktakeTitle()
                 : t.views[this._view];
-    // ⋮: Statistik und Etiketten für alle, Export, Schätzungen und Einstellungen nur für Administratoren
+    // ⋮: statistics and labels for everyone, export, estimates and settings for administrators only
     const admin = isAdmin(hass);
     this._settingsBtn.hidden = false;
     this._settingsBtn.setAttribute("aria-label", t.moreActions);
@@ -635,8 +653,13 @@ export class LarderDashboard extends HTMLElement {
     this._menu.querySelector('[data-role="menu-batch"]').hidden = !this.canBatch();
     this._menu.querySelector('[data-role="menu-sizes"]').textContent = cookMenu.sizes;
 
-    const rows = this._rows();
+    // storage, areas and categories show either food or household items (the switch is remembered)
+    const everything = this._rows();
+    const household = this._opts.scope === "household";
+    const rows = SCOPED_VIEWS.includes(this._view) ? everything.filter((r) => (r.kind === "household") === household) : everything;
     const sig = JSON.stringify([
+      this._scopes,
+      this._scopePlan,
       this._view,
       this._filter,
       this._opts,
@@ -707,7 +730,7 @@ export class LarderDashboard extends HTMLElement {
     this._syncClassic();
   }
 
-  /** Die eingebettete klassische Ansicht zeigt Karten (alle Details) oder die Schätzungen, sonst nur ihre Dialoge. */
+  /** The embedded classic view shows cards (all details) or the estimates, else only its dialogs. */
   _syncClassic() {
     const c = this._classic;
     const show = this._detail ? null : this._classicShow;
@@ -743,7 +766,7 @@ export class LarderDashboard extends HTMLElement {
     tile.type = "button";
     tile.dataset.id = row.id;
     tile.append(el("span", "ico", CATEGORY_ICONS[row.category] || CATEGORY_ICONS.other));
-    if (row.kind !== "container") tile.append(el("span", "kindmark", row.kind === "bag" ? "🛍" : row.opened ? "📦🔓" : "📦"));
+    if (row.kind !== "container" && row.kind !== "household") tile.append(el("span", "kindmark", row.kind === "bag" ? "🛍" : row.opened ? "📦🔓" : "📦"));
     tile.append(el("span", "name", empty ? t.empty : row.content));
     tile.append(el("span", "sub", [row.name, showArea ? row.areaName : null, row.compartment, row.size].filter(Boolean).join(" · ")));
     if (!empty && row.days !== null) tile.append(el("span", `badge ${dayClass(row)}`, daysLabel(t, row.days)));
@@ -777,7 +800,7 @@ export class LarderDashboard extends HTMLElement {
     if (on) node.append(el("span", "check", "✓"));
   }
 
-  // ----- Auswahl (mehrere Dosen befüllen, Rezeptideen aus gewählten Dosen, Serien-Scan) -----
+  // ----- Selection (fill several containers, recipe ideas from chosen containers, series scan) -----
 
   startSelecting(preselect = []) {
     if (this._view !== "containers") this.setView("containers");
@@ -807,7 +830,7 @@ export class LarderDashboard extends HTMLElement {
     if (rows.length) this._classic.openFillDialog(rows.map((r) => r.id));
   }
 
-  /** Rezeptideen aus den gewählten Dosen: zur Rezeptseite wechseln und die KI fragen. */
+  /** Recipe ideas from the chosen containers: switch to the recipe page and ask the AI. */
   recipesFromSelected() {
     const ids = this._rows().filter((r) => this._selected.has(r.id) && r.content !== "").map((r) => r.id);
     if (!ids.length) return;
@@ -816,7 +839,7 @@ export class LarderDashboard extends HTMLElement {
     this.generateRecipes(ids);
   }
 
-  /** Serien-Scan: NFC-Scans (Ereignis larder_dose_scanned) und, in der Companion-App, deren QR-Scanner. */
+  /** Series scan: NFC scans (event larder_dose_scanned) and, in the Companion app, its QR scanner. */
   async startScan() {
     const hass = this._hass;
     if (!hass || this._scan || !isAdmin(hass)) return;
@@ -832,7 +855,7 @@ export class LarderDashboard extends HTMLElement {
     };
     try {
       if (hass.connection && hass.connection.subscribeMessage) {
-        // Eigenes Abo: meldet NFC-Scans und unterdrückt solange die Benachrichtigung aufs Handy
+        // Own subscription: reports NFC scans and suppresses the notification to the phone meanwhile
         scan.unsub = await hass.connection.subscribeMessage((data) => add(data && data.device_id), {
           type: `${DOMAIN}/scan_session`,
         });
@@ -841,12 +864,12 @@ export class LarderDashboard extends HTMLElement {
       }
       if (this._scan !== scan && scan.unsub) scan.unsub();
     } catch {
-      /* ohne Abo bleibt der QR-Scanner der App */
+      /* without a subscription the app's QR scanner remains */
     }
     if (this._scan === scan && scan.mode === "qr") this.openQrScanner();
   }
 
-  /** Zwischen QR-Code und NFC wechseln: QR öffnet den Scanner der App, NFC schließt ihn (sonst liest das iPhone keine Tags). */
+  /** Switch between QR code and NFC: QR opens the app's scanner, NFC closes it (otherwise the iPhone reads no tags). */
   setScanMode(mode) {
     const scan = this._scan;
     if (!scan || (mode !== "qr" && mode !== "nfc") || scan.mode === mode) return;
@@ -865,7 +888,7 @@ export class LarderDashboard extends HTMLElement {
     external.fireMessage({ type: "bar_code/close" });
   }
 
-  /** Kann die App einen QR-Scanner öffnen (Home-Assistant-App mit Kamera)? */
+  /** Can the app open a QR scanner (Home Assistant app with camera)? */
   _hasQrScanner() {
     const external = this._hass && this._hass.auth && this._hass.auth.external;
     return !!(external && external.config && external.config.hasBarCodeScanner && typeof external._commandHandler === "function");
@@ -878,9 +901,9 @@ export class LarderDashboard extends HTMLElement {
   }
 
   /**
-   * QR-Scanner der Home-Assistant-App (iOS/Android) öffnen. Er bleibt offen, bis man ihn schließt;
-   * jeder Treffer wählt die Dose aus und meldet sich kurz im Scanner. Die Befehle der App laufen
-   * über einen einzigen Empfänger des Frontends, der hier nur ergänzt (und danach wiederhergestellt) wird.
+   * Open the QR scanner of the Home Assistant app (iOS/Android). It stays open until it is closed;
+   * every hit selects the container and shows a short note in the scanner. The app's commands run
+   * through a single receiver of the frontend that is only extended here (and restored afterwards).
    */
   _startExternalScanner(scan) {
     const external = this._hass && this._hass.auth && this._hass.auth.external;
@@ -893,7 +916,7 @@ export class LarderDashboard extends HTMLElement {
       if (this._scan === scan && msg && msg.command === "bar_code/scan_result") {
         this._handleScannedCode(String((msg.payload && msg.payload.rawValue) || ""), notify, t);
       } else if (this._scan === scan && msg && msg.command === "bar_code/aborted") {
-        // QR-Scanner geschlossen oder "NFC" im Scanner gewählt: weiter mit NFC, bis "Scan beenden"
+        // QR scanner closed or "NFC" chosen in the scanner: go on with NFC until "Stop scan"
         scan.external = null;
         scan.mode = "nfc";
         external.addCommandHandler(original);
@@ -926,8 +949,8 @@ export class LarderDashboard extends HTMLElement {
   }
 
   /**
-   * Einzel-Scan mit dem QR-Scanner der Home-Assistant-App (iOS und Android): eigene Codes und
-   * Zwilling-Codes. Bekannte Dose öffnen (eine leere gleich zum Befüllen), unbekannte hinzufügen.
+   * Single scan with the QR scanner of the Home Assistant app (iOS and Android): own codes and
+   * Zwilling codes. Open a known container (an empty one right away for filling), add an unknown one.
    */
   scanOne() {
     const external = this._hass && this._hass.auth && this._hass.auth.external;
@@ -953,7 +976,7 @@ export class LarderDashboard extends HTMLElement {
               finish();
               external.fireMessage({ type: "bar_code/close" });
             } else {
-              // kein Larder-Code: Scanner bleibt offen für den nächsten Versuch
+              // not a Larder code: the scanner stays open for the next try
               external.fireMessage({ type: "bar_code/notify", payload: { message: t.scanInvalid } });
             }
           });
@@ -970,7 +993,7 @@ export class LarderDashboard extends HTMLElement {
     });
   }
 
-  /** Gescannten Code auswerten; false, wenn es kein Larder-Code ist. */
+  /** Evaluate a scanned code; false if it is not a Larder code. */
   async _resolveSingle(code) {
     const hass = this._hass;
     const place = placeFromCode(code);
@@ -985,8 +1008,8 @@ export class LarderDashboard extends HTMLElement {
     } catch {
       return false;
     }
-    // Strichcode gekaufter Ware (EAN, 8–14 Ziffern): Packung im Vorrat suchen statt "Dose hinzufügen".
-    // Eine EAN sieht für Larder auch wie eine gültige Dosen-ID aus, daher zählt nur eine bekannte Dose.
+    // Barcode of bought goods (EAN, 8–14 digits): look for the pack in the stock instead of "Add container".
+    // To Larder an EAN also looks like a valid container ID, so only a known container counts.
     const ean = /^\d{8,14}$/.test(String(code).trim());
     if (ean && !(res && (res.device_id || res.retired))) {
       await this.takeByCode(String(code).trim());
@@ -995,11 +1018,11 @@ export class LarderDashboard extends HTMLElement {
     if (!res || !res.valid) return false;
     this.setView("containers");
     if (res.retired) {
-      this.showNotice(res.retired); // Etikett eines schon geleerten Beutels
+      this.showNotice(res.retired); // label of a bag that was already emptied
       return true;
     }
     if (!res.device_id) {
-      // unbekannt: hinzufügen, mit dem ganzen Code (Zwilling-Codes enthalten Typ und Größe)
+      // unknown: add, with the whole code (Zwilling codes contain type and size)
       if (isAdmin(hass)) this._classic.openAddDialog(code.trim());
       else this.showNotice(texts(hass).adminOnly(res.cc));
       return true;
@@ -1025,7 +1048,7 @@ export class LarderDashboard extends HTMLElement {
     const scan = this._scan;
     if (!scan) return;
     this._scan = null;
-    // Inventur: welche gefüllten Dosen wurden nicht gescannt (schon gegessen, aber nicht geleert?)
+    // stocktake: which filled containers were not scanned (already eaten but not emptied?)
     if (inventory && scan.scanned && scan.scanned.size) {
       const missing = this._rows().filter((r) => r.content !== "" && !scan.scanned.has(r.id));
       this._inventory = { scanned: scan.scanned.size, missing: missing.map((r) => r.id) };
@@ -1034,14 +1057,14 @@ export class LarderDashboard extends HTMLElement {
       try {
         scan.unsub();
       } catch {
-        /* Verbindung schon weg */
+        /* connection already gone */
       }
     }
     this._closeQrScanner(scan);
     this._update();
   }
 
-  /** Umschalter QR-Code / NFC (antippen oder wischen) mit kurzer Anleitung. */
+  /** Toggle QR code / NFC (tap or swipe) with short instructions. */
   _scanPanel(t) {
     const scan = this._scan;
     const box = el("div", "scanpanel");
@@ -1110,7 +1133,7 @@ export class LarderDashboard extends HTMLElement {
     return box;
   }
 
-  /** Gewählte gefüllte Dosen leeren; vorher fragen, ob gegessen oder weggeworfen. */
+  /** Empty the chosen filled containers; ask first whether eaten or thrown away. */
   openEmptyDialog(ids) {
     const t = texts(this._hass);
     const form = this._form;
@@ -1211,7 +1234,7 @@ export class LarderDashboard extends HTMLElement {
   }
 
   _modeButton(t) {
-    // Kacheln → Liste → Karten mit allen Details → Kacheln; der Knopf zeigt die nächste Ansicht
+    // tiles → list → cards with all details → tiles; the button shows the next view
     const next = MODES[(MODES.indexOf(this._opts.mode) + 1) % MODES.length];
     const icons = { grid: "▦", list: "☰", cards: "🗂" };
     const labels = { grid: t.viewGrid, list: t.viewList, cards: t.viewCards };
@@ -1229,7 +1252,7 @@ export class LarderDashboard extends HTMLElement {
     return btn;
   }
 
-  /** "＋": Dose, Beutel oder Packung (Dosen nur für Administratoren, siehe larder-dashboard-items.js). */
+  /** "＋": container, bag, pack or household item (containers for administrators only, see larder-dashboard-items.js). */
   _addButton(t) {
     const btn = el("button", "icon", "＋");
     btn.type = "button";
@@ -1276,7 +1299,11 @@ export class LarderDashboard extends HTMLElement {
     return box;
   }
 
-  /** Dosen nach Filtern (Zustand, Bereich, Kategorie, Suche) und Sortierung. */
+  _countText(t, shown, all) {
+    return this._opts.scope === "household" ? t.countItems(shown, all) : t.count(shown, all);
+  }
+
+  /** Containers after filters (state, area, category, search) and sorting. */
   _containerRows(allRows) {
     let rows = allRows;
     const state = this._filter.state;
@@ -1288,7 +1315,7 @@ export class LarderDashboard extends HTMLElement {
     else if (state === "packs") rows = rows.filter((r) => r.kind === "pack");
     if (this._filter.area !== null) rows = rows.filter((r) => (r.areaId || "") === this._filter.area);
     if (this._filter.category !== null) rows = rows.filter((r) => r.category === this._filter.category);
-    // aus den Reparaturhinweisen (Link "Mehr erfahren")
+    // from the repair hints (link "Learn more")
     const problem = this._filter.problem;
     if (problem === "noarea") rows = rows.filter((r) => !r.areaId);
     else if (problem === "nodate") rows = rows.filter((r) => r.content !== "" && r.days === null);
@@ -1298,7 +1325,7 @@ export class LarderDashboard extends HTMLElement {
     return sortRows(rows, this._opts.sort, this._lang());
   }
 
-  /** Suchfeld und Zustands-Filter (wie im bisherigen Dashboard). */
+  /** Search field and state filter (as in the former dashboard). */
   _searchRow(t, allRows) {
     const row = el("div", "bar search");
     if (!this._searchInput) {
@@ -1316,7 +1343,9 @@ export class LarderDashboard extends HTMLElement {
     this._searchInput.setAttribute("aria-label", t.search);
     if (this._searchInput.value !== (this._query || "")) this._searchInput.value = this._query || "";
     const state = this._select(
-      [["all", t.filterAll], ["soon", t.filterSoon], ["expired", t.filterExpired], ["filled", t.filterFilled], ["empty", t.filterEmpty], ["bags", t.filterBags], ["packs", t.filterPacks]],
+      this._opts.scope === "household"
+        ? [["all", t.filterAll]] // household items have no date and are never empty
+        : [["all", t.filterAll], ["soon", t.filterSoon], ["expired", t.filterExpired], ["filled", t.filterFilled], ["empty", t.filterEmpty], ["bags", t.filterBags], ["packs", t.filterPacks]],
       this._filter.state || "all",
       (value) => {
         this._filter.state = value === "all" ? null : value;
@@ -1330,7 +1359,7 @@ export class LarderDashboard extends HTMLElement {
     return row;
   }
 
-  /** Nur die Ergebnisliste neu zeichnen (beim Tippen in die Suche, ohne den Fokus zu verlieren). */
+  /** Redraw only the result list (while typing into the search, without losing focus). */
   _refreshResults() {
     if (!this._results || this._view !== "containers") return;
     const t = texts(this._hass);
@@ -1339,8 +1368,50 @@ export class LarderDashboard extends HTMLElement {
     this._classicShow = null;
     this._classicIds = null;
     this._results.replaceChildren(this._renderResults(t, allRows, rows));
-    if (this._countEl) this._countEl.textContent = t.count(rows.length, allRows.length);
+    if (this._countEl) this._countEl.textContent = this._countText(t, rows.length, allRows.length);
     this._syncClassic();
+  }
+
+  /** Area scopes (food, household, both) from the Larder labels, see household.py. */
+  async loadScopes() {
+    try {
+      const res = await this._hass.callWS({ type: `${DOMAIN}/area_scopes` });
+      this._scopes = (res && res.scopes) || null;
+      this._scopePlan = (res && res.plan) || {};
+    } catch {
+      this._scopes = null;
+      this._scopePlan = {};
+    }
+    setAreaScopes(this._scopes);
+    this._sig = "";
+    this._update();
+  }
+
+  /** Switch "Food | Household" above storage, areas, categories and stock. */
+  _scopeSwitch(t = texts(this._hass)) {
+    const box = el("div", "scope");
+    box.setAttribute("role", "tablist");
+    for (const [scope, icon] of [["food", "🥫"], ["household", "🧻"]]) {
+      const btn = el("button", scope === this._opts.scope ? "on" : "", `${icon} ${t.scopes[scope]}`);
+      btn.type = "button";
+      btn.dataset.scope = scope;
+      btn.setAttribute("role", "tab");
+      btn.setAttribute("aria-selected", scope === this._opts.scope ? "true" : "false");
+      btn.addEventListener("click", () => this.setScope(scope));
+      box.append(btn);
+    }
+    return box;
+  }
+
+  setScope(scope) {
+    const next = scope === "household" ? "household" : "food";
+    if (next === this._opts.scope) return;
+    this._opts.scope = next;
+    saveOptions(this._opts);
+    // filters belong to the other scope (its areas and categories)
+    this._filter = { area: null, category: null, state: null, problem: null };
+    this._sig = "";
+    this._update();
   }
 
   _renderContainers(t, allRows) {
@@ -1384,16 +1455,16 @@ export class LarderDashboard extends HTMLElement {
     }
 
     const frag = document.createDocumentFragment();
-    frag.append(bar);
+    frag.append(this._scopeSwitch(t), bar);
     if (this._scan) frag.append(this._scanPanel(t));
     if (this._inventory && this._selecting) frag.append(this._inventoryPanel(t));
     const chips = this._chips(t, allRows);
     if (chips) frag.append(chips);
 
     frag.append(this._searchRow(t, allRows));
-    this._countEl = el("p", "count", t.count(rows.length, allRows.length));
+    this._countEl = el("p", "count", this._countText(t, rows.length, allRows.length));
     frag.append(this._countEl);
-    const free = this._freeLine();
+    const free = this._opts.scope === "household" ? null : this._freeLine(); // free containers belong to food
     if (free) frag.append(free);
     this._results = el("div", "results");
     this._results.append(this._renderResults(t, allRows, rows));
@@ -1417,7 +1488,7 @@ export class LarderDashboard extends HTMLElement {
         return box;
       };
       if (mode === "cards") {
-        // alle Details: die Karten der klassischen Ansicht, in dieser Sortierung und mit diesen Filtern
+        // all details: the cards of the classic view, in this order and with these filters
         this._classicShow = "cards";
         this._classicIds = rows.map((r) => r.id).join(",");
       } else if (!grouped) {
@@ -1459,7 +1530,7 @@ export class LarderDashboard extends HTMLElement {
     return tile;
   }
 
-  /** IDs der Larder-Labels, sobald die eingebettete Ansicht sie geladen hat (sonst null). */
+  /** IDs of the Larder labels once the embedded view has loaded them (else null). */
   _larderLabelIds() {
     const ids = this._classic && this._classic.larderLabel;
     return Array.isArray(ids) && ids.length ? ids : null;
@@ -1479,13 +1550,13 @@ export class LarderDashboard extends HTMLElement {
       if (isSoon(row)) g.soon += 1;
       groups.set(key, g);
     }
-    // Lagerorte ohne Dosen zeigen: mit Larder-Label, beim Bearbeiten alle Bereiche von Home Assistant
+    // show storage places without containers: with a Larder label, when editing all areas of Home Assistant
     const labelIds = this._larderLabelIds();
     const admin = isAdmin(this._hass);
     const editing = admin && this._areaEdit;
     for (const area of Object.values(this._hass.areas || {})) {
       const tagged = labelIds && (area.labels || []).some((l) => labelIds.includes(l));
-      if ((editing || tagged) && !groups.has(area.area_id)) {
+      if ((editing || (tagged && areaAllows(area.area_id, this._opts.scope))) && !groups.has(area.area_id)) {
         groups.set(area.area_id, { key: area.area_id, name: area.name, count: 0, soon: 0 });
       }
     }
@@ -1542,15 +1613,38 @@ export class LarderDashboard extends HTMLElement {
     }
     bar.append(this._modeButton(t));
     const frag = document.createDocumentFragment();
+    if (!editing) frag.append(this._scopeSwitch(t));
     frag.append(bar);
     if (editing) frag.append(el("p", "note", t.areaEditHint));
+    const planned = Object.keys(this._scopePlan || {}).length;
+    if (editing && planned) {
+      // 4.0: suggest "food" for fridges and freezers, "household" for bathroom and utility rooms
+      const auto = el("button", "", t.scopeAuto(planned));
+      auto.type = "button";
+      auto.dataset.role = "scope-auto";
+      auto.addEventListener("click", async () => {
+        auto.disabled = true;
+        try {
+          await this._hass.callWS({ type: `${DOMAIN}/area_scopes_auto` });
+          this._labels = null;
+          await this._loadLabels();
+          if (this._classic.loadAreaLabel) await this._classic.loadAreaLabel();
+          await this.loadScopes();
+          this.showNotice(t.scopeAutoDone(planned));
+        } catch (err) {
+          this.showNotice(t.areaSaveFailed((err && err.message) || String(err)));
+          auto.disabled = false;
+        }
+      });
+      frag.append(auto);
+    }
     if (!list.length) {
       frag.append(el("p", "note", t.noneYet));
     } else {
       const box = el("div", this._opts.mode === "grid" ? "tiles" : "list");
       for (const g of list) {
         const open = editing ? () => this.openAreaDialog(g.key) : () => this.setView("containers", { area: g.key });
-        const sub = editing ? this._areaKindText(g.key, t) : t.containersCount(g.count);
+        const sub = editing ? this._areaKindText(g.key, t) : (this._opts.scope === "household" ? t.itemsCount : t.containersCount)(g.count);
         if (this._opts.mode === "grid") {
           const tile = this._groupTile(editing ? "✏️" : "📍", g.name, sub, !editing && g.soon ? t.soonCount(g.soon) : "", open);
           tile.dataset.area = g.key;
@@ -1572,15 +1666,18 @@ export class LarderDashboard extends HTMLElement {
     this._main.replaceChildren(frag);
   }
 
-  // ----- Bereiche verwalten -----
+  // ----- Managing areas -----
 
   setAreaEdit(on) {
     this._areaEdit = !!on && isAdmin(this._hass);
-    if (this._areaEdit) this._loadLabels();
+    if (this._areaEdit) {
+      this._loadLabels();
+      this.loadScopes();
+    }
     this._update();
   }
 
-  /** Alle Labels von Home Assistant laden (für Lagerart und Anzeige beim Bearbeiten). */
+  /** Load all labels of Home Assistant (for the storage kind and display when editing). */
   async _loadLabels() {
     const hass = this._hass;
     try {
@@ -1594,7 +1691,7 @@ export class LarderDashboard extends HTMLElement {
     return this._labels;
   }
 
-  /** "Larder: Freezer" → "Freezer"; das schlichte "Larder" bleibt. */
+  /** "Larder: Freezer" → "Freezer"; the plain "Larder" stays. */
   _kindName(label) {
     const name = String((label && label.name) || "").trim();
     const short = name.replace(/^larder\s*:\s*/i, "");
@@ -1604,18 +1701,23 @@ export class LarderDashboard extends HTMLElement {
   _areaKindText(areaId, t) {
     const area = (this._hass.areas || {})[areaId];
     const larder = (this._labels || []).filter(isLarderLabel);
-    const kinds = larder.filter((l) => area && (area.labels || []).includes(l.label_id)).map((l) => this._kindName(l));
-    return kinds.length ? kinds.join(", ") : t.areaKindNone;
+    const kinds = larder
+      .filter((l) => !isScopeLabel(l) && area && (area.labels || []).includes(l.label_id))
+      .map((l) => this._kindName(l));
+    const scope = (this._scopes || {})[areaId];
+    if (!kinds.length && !scope) return t.areaKindNone;
+    return [...kinds, scope ? t.scopeNames[scope] : null].filter(Boolean).join(" · ");
   }
 
-  /** Bereich anlegen (ohne ID) oder bearbeiten: Name und Lagerart (Larder-Label). */
+  /** Create an area (without ID) or edit one: name, storage kind (Larder label) and use. */
   async openAreaDialog(areaId = null) {
     const hass = this._hass;
     if (!isAdmin(hass)) return;
     const t = texts(hass);
     const area = areaId ? (hass.areas || {})[areaId] : null;
     const labels = this._labels || (await this._loadLabels());
-    const larder = labels.filter(isLarderLabel);
+    // the scope labels ("Larder: Household", "Larder: Food") are extra and set with their own dropdown
+    const larder = labels.filter((l) => isLarderLabel(l) && !isScopeLabel(l));
     const form = this._form;
     this._editing = null;
     const field = (label, control) => {
@@ -1637,7 +1739,7 @@ export class LarderDashboard extends HTMLElement {
     };
     kind.append(option("", t.areaKindNone), ...larder.map((l) => option(l.label_id, this._kindName(l))), option("__new", t.areaKindNew));
     const current = area ? larder.find((l) => (area.labels || []).includes(l.label_id)) : null;
-    // neuer Bereich: gibt es Larder-Labels, gleich das erste vorschlagen (sonst taucht er in den Listen nicht auf)
+    // new area: if there are Larder labels, suggest the first one right away (otherwise it does not show in the lists)
     kind.value = current ? current.label_id : !area && larder.length ? larder[0].label_id : "";
     const newName = el("input");
     newName.type = "text";
@@ -1669,11 +1771,16 @@ export class LarderDashboard extends HTMLElement {
     const submit = el("button", "submit", t.save);
     submit.type = "submit";
     buttons.append(cancel, submit);
+    const scope = el("select");
+    scope.dataset.f = "scope";
+    for (const key of ["both", "food", "household"]) scope.append(option(key, t.scopeNames[key]));
+    scope.value = (area && (this._scopes || {})[area.area_id]) || "both";
     form.replaceChildren(
       el("h2", "", area ? t.areaEditTitle : t.areaAdd),
       field(t.areaName, name),
       field(t.areaKind, kind),
       newWrap,
+      field(t.areaScope, scope),
       el("p", "hint", t.areaKindHint),
       ...(link ? [link] : []),
       error,
@@ -1708,18 +1815,26 @@ export class LarderDashboard extends HTMLElement {
         const created = await hass.callWS({ type: "config/label_registry/create", name: `Larder: ${kindName}`, icon: "mdi:fridge-outline" });
         labelId = created.label_id;
       }
-      // fremde Labels bleiben, nur die Larder-Labels werden ersetzt
+      // foreign labels stay, only the Larder labels are replaced
       const larderIds = larder.map((l) => l.label_id);
       const labels = [...((area && area.labels) || []).filter((l) => !larderIds.includes(l)), ...(labelId ? [labelId] : [])];
+      let id = area && area.area_id;
       if (area) {
         await hass.callWS({ type: "config/area_registry/update", area_id: area.area_id, name, labels });
       } else {
-        await hass.callWS({ type: "config/area_registry/create", name, labels });
+        id = ((await hass.callWS({ type: "config/area_registry/create", name, labels })) || {}).area_id;
+      }
+      const scope = form.querySelector('[data-f="scope"]').value;
+      const before = (area && (this._scopes || {})[area.area_id]) || "both";
+      // only with a Larder label the area is offered at all, so only then the scope matters
+      if (id && scope !== before && (labelId || scope !== "both")) {
+        await hass.callWS({ type: `${DOMAIN}/area_scope_set`, area_id: id, scope });
       }
       this._closeDialog();
       this._labels = null;
       await this._loadLabels();
       if (this._classic.loadAreaLabel) await this._classic.loadAreaLabel();
+      await this.loadScopes();
     } catch (err) {
       error.textContent = t.areaSaveFailed((err && err.message) || String(err));
     } finally {
@@ -1747,7 +1862,7 @@ export class LarderDashboard extends HTMLElement {
     if (add) bar.append(add);
     bar.append(this._modeButton(t));
     const frag = document.createDocumentFragment();
-    frag.append(bar);
+    frag.append(this._scopeSwitch(t), bar);
     if (!list.length) {
       frag.append(el("p", "note", t.noneYet));
     } else {
@@ -1757,12 +1872,12 @@ export class LarderDashboard extends HTMLElement {
         const icon = CATEGORY_ICONS[g.key] || CATEGORY_ICONS.other;
         const open = () => this.setView("containers", { category: g.key });
         if (this._opts.mode === "grid") {
-          box.append(this._groupTile(icon, name, t.containersCount(g.count), g.soon ? t.soonCount(g.soon) : "", open));
+          box.append(this._groupTile(icon, name, (this._opts.scope === "household" ? t.itemsCount : t.containersCount)(g.count), g.soon ? t.soonCount(g.soon) : "", open));
         } else {
           const btn = el("button", "row");
           btn.type = "button";
           const text = el("span", "text");
-          text.append(el("span", "name", name), el("span", "sub", t.containersCount(g.count)));
+          text.append(el("span", "name", name), el("span", "sub", (this._opts.scope === "household" ? t.itemsCount : t.containersCount)(g.count)));
           btn.append(el("span", "ico", icon), text);
           if (g.soon) btn.append(el("span", "badge soon", t.soonCount(g.soon)));
           btn.addEventListener("click", open);
@@ -1779,6 +1894,12 @@ export class LarderDashboard extends HTMLElement {
     const frag = document.createDocumentFragment();
     frag.append(el("div", "hello", t.hello(hass.user && hass.user.name)));
     const soon = sortRows(rows.filter(isSoon), "date", this._lang());
+    const isHh = (item) => item.kind === "household";
+    const hhLow = this._lowBox(isHh);
+    const hhBought = this._boughtBox(isHh);
+    const hasHousehold = rows.some((r) => r.kind === "household") || !!hhLow || !!hhBought;
+    // two sections once household items are in use: food first, household below
+    if (hasHousehold) frag.append(el("h2", "section", `🥫 ${t.scopes.food}`));
     if (soon.length) {
       frag.append(el("p", "lead", t.soonTitle));
       const box = el("div", "tiles");
@@ -1789,9 +1910,9 @@ export class LarderDashboard extends HTMLElement {
     }
     const recall = this._recallBox();
     if (recall) frag.insertBefore(recall, frag.childNodes[1] || null);
-    const low = this._lowBox();
+    const low = this._lowBox((item) => !isHh(item));
     if (low) frag.append(low);
-    const bought = this._boughtBox();
+    const bought = this._boughtBox((item) => !isHh(item));
     if (bought) frag.append(bought);
     const again = this._againBox();
     if (again) frag.append(again);
@@ -1799,6 +1920,14 @@ export class LarderDashboard extends HTMLElement {
     if (thaw) frag.append(thaw);
     const planned = this._plannedBox(t, false);
     if (planned) frag.append(planned);
+    if (hasHousehold) {
+      const head = el("h2", "section", `🧻 ${t.scopes.household}`);
+      head.dataset.role = "household-section";
+      frag.append(head);
+      if (hhLow) frag.append(hhLow);
+      if (hhBought) frag.append(hhBought);
+      if (!hhLow && !hhBought) frag.append(el("p", "lead", t.householdFine));
+    }
     frag.append(el("p", "lead", t.help));
     const help = el("div", "help");
     if (this._canGenerate()) {
@@ -1827,7 +1956,7 @@ export class LarderDashboard extends HTMLElement {
     this._main.replaceChildren(frag);
   }
 
-  // ----- Rezepte -----
+  // ----- Recipes -----
 
   async loadRecipes() {
     const hass = this._hass;
@@ -1844,7 +1973,7 @@ export class LarderDashboard extends HTMLElement {
     }
   }
 
-  /** Einstellungen der Integration lesen (Standard-Zeitraum für Rezeptideen). */
+  /** Read the settings of the integration (default period for recipe ideas). */
   async loadSettings() {
     const hass = this._hass;
     if (!hass || !hass.callWS) return;
@@ -1857,7 +1986,7 @@ export class LarderDashboard extends HTMLElement {
         this._update();
       }
     } catch {
-      /* ältere Version der Integration: Standard bleibt */
+      /* older version of the integration: the default stays */
     }
   }
 
@@ -1892,7 +2021,7 @@ export class LarderDashboard extends HTMLElement {
     this._update();
   }
 
-  /** Fotos (oder ein PDF) hochladen, die KI liest das Rezept; der Entwurf öffnet sich zum Prüfen. */
+  /** Upload photos (or a PDF), the AI reads the recipe; the draft opens for checking. */
   async readRecipePhotos(files) {
     const hass = this._hass;
     if (!hass || !hass.fetchWithAuth || this._photo === "busy") return;
@@ -1964,7 +2093,7 @@ export class LarderDashboard extends HTMLElement {
       this._recipes = (this._recipes || []).filter((r) => r.id !== recipe.id);
       if (this._openRecipe === recipe.id) this._openRecipe = null;
     } catch {
-      /* wurde schon gelöscht: Liste neu laden */
+      /* was already deleted: reload the list */
       this.loadRecipes();
     }
     this._sig = "";
@@ -2228,7 +2357,7 @@ export class LarderDashboard extends HTMLElement {
       try {
         await this._hass.callWS({ type: `${DOMAIN}/thawed`, device_ids: thaw.map((i) => i.device_id).filter(Boolean) });
       } catch {
-        /* bleibt stehen */
+        /* stays as it is */
       }
       this.loadPlans();
     });
@@ -2236,7 +2365,7 @@ export class LarderDashboard extends HTMLElement {
     return box;
   }
 
-  /** Geplante Gerichte; auf der Startseite die nächsten sieben Tage, auf der Rezeptseite alle mit Löschen. */
+  /** Planned dishes; on the start page the next seven days, on the recipe page all with delete. */
   _plannedBox(t, withDelete) {
     let plans = (this._plans && this._plans.plans) || [];
     if (!withDelete) {
@@ -2295,7 +2424,7 @@ export class LarderDashboard extends HTMLElement {
           try {
             await this._hass.callWS({ type: `${DOMAIN}/plan_delete`, plan_id: plan.id });
           } catch {
-            /* schon weg */
+            /* already gone */
           }
           this.loadPlans();
         });
@@ -2307,7 +2436,7 @@ export class LarderDashboard extends HTMLElement {
     return box;
   }
 
-  /** Dialog: Gericht für einen Tag einplanen, mit den Dosen, die dafür gebraucht werden. */
+  /** Dialog: plan a dish for a day, with the containers needed for it. */
   openPlanDialog(recipe, suggestion = false) {
     const t = texts(this._hass);
     const form = this._form;
@@ -2329,7 +2458,7 @@ export class LarderDashboard extends HTMLElement {
     tomorrow.setDate(tomorrow.getDate() + 1);
     const pad = (n) => String(n).padStart(2, "0");
     day.value = `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`;
-    // gefüllte Dosen; vorausgewählt, was im Rezept vorkommt (bei Vorschlägen die "uses")
+    // filled containers; preselected what occurs in the recipe (for suggestions the "uses")
     const words = ((recipe && (suggestion ? recipe.uses : recipe.ingredients)) || []).map((w) => String(w).toLowerCase());
     const filled = sortRows(this._rows().filter((r) => r.content !== ""), "name", this._lang());
     const boxes = el("div", "checks");
@@ -2487,7 +2616,7 @@ export class LarderDashboard extends HTMLElement {
     ]) {
       if (node) frag.append(node);
     }
-    // Monate als einfache Balken (gegessen grün, weggeworfen rot)
+    // months as simple bars (eaten green, thrown away red)
     const max = Math.max(1, ...st.months.map((m) => m.eaten + m.thrown));
     const chart = el("div", "months");
     const lang = this._lang();
@@ -2508,9 +2637,9 @@ export class LarderDashboard extends HTMLElement {
     this._main.replaceChildren(frag);
   }
 
-  // ----- Export und Import -----
+  // ----- Export and import -----
 
-  /** Signierte Download-Adresse (gilt fünf Minuten, funktioniert auch im Browser der App). */
+  /** Signed download address (valid for five minutes, also works in the app's browser). */
   async _signedUrl(path) {
     const signed = await this._hass.callWS({ type: "auth/sign_path", path, expires: 300 });
     return this._hass.hassUrl ? this._hass.hassUrl(signed.path) : signed.path;
@@ -2587,9 +2716,9 @@ export class LarderDashboard extends HTMLElement {
     input.value = "";
   }
 
-  // ----- QR-Etiketten -----
+  // ----- QR labels -----
 
-  /** Dialog für den Etikettenbogen; ohne IDs für alle Dosen. */
+  /** Dialog for the label sheet; without IDs for all containers. */
   openLabelDialog(deviceIds = null, places = null) {
     const hass = this._hass;
     const t = texts(hass);
@@ -2658,7 +2787,7 @@ export class LarderDashboard extends HTMLElement {
       check(t.labelsQr, "qr", parts.qr !== false),
       check(t.labelsName, "name", parts.name !== false),
       check(t.labelsContent, "content", !!parts.content),
-      // vor 2.12.1 gab es nur "Inhalt und MHD": gespeicherte Auswahl übernimmt das MHD vom Inhalt
+      // before 2.12.1 there was only "content and date": a saved choice takes the date from the content
       check(t.labelsBestBefore, "bestBefore", parts.bestBefore === undefined ? !!parts.content : !!parts.bestBefore),
       check(t.labelsNutrition, "nutrition", !!parts.nutrition),
     );
@@ -2671,7 +2800,7 @@ export class LarderDashboard extends HTMLElement {
     const skipField = field(t.labelsSkip, skip);
     const syncMax = () => {
       skip.max = String(LABEL_LAYOUTS[layout.value].per - 1);
-      skipField.hidden = !!LABEL_LAYOUTS[layout.value].printer; // Etikettendrucker: nichts zu überspringen
+      skipField.hidden = !!LABEL_LAYOUTS[layout.value].printer; // label printer: nothing to skip
     };
     syncMax();
     layout.addEventListener("change", syncMax);
@@ -2684,7 +2813,7 @@ export class LarderDashboard extends HTMLElement {
     const submit = el("button", "submit", t.labelsCreate);
     submit.type = "submit";
     buttons.append(cancel, submit);
-    if (places) what.hidden = true; // Fach-Etikett: Name des Fachs und QR-Code
+    if (places) what.hidden = true; // compartment label: name of the compartment and QR code
     form.replaceChildren(
       el("h2", "", places ? t.labelsPlaceTitle : t.labelsTitle),
       el("p", "hint", places ? t.labelsForPlaces(places.map((p) => p.name).join(", ")) : t.labelsFor(deviceIds ? deviceIds.length : null)),
@@ -2702,7 +2831,7 @@ export class LarderDashboard extends HTMLElement {
       error,
       buttons,
     );
-    // geänderte Optionen: alten Link verwerfen; mindestens eins von QR-Code, Name, Inhalt
+    // changed options: drop the old link; at least one of QR code, name, content
     const syncParts = () => {
       submit.disabled = !places && !["qr", "name", "content", "bestBefore", "nutrition"].some((f) => form.querySelector(`[data-f="${f}"]`).checked);
     };
@@ -2719,7 +2848,7 @@ export class LarderDashboard extends HTMLElement {
     this._overlay.hidden = false;
   }
 
-  /** URL des PDFs (signiert, damit sie sich ohne Anmeldung im Browser der App öffnen lässt). */
+  /** URL of the PDF (signed, so it opens in the app's browser without logging in). */
   async labelUrl(deviceIds, { layout, skip, content, bestBefore = false, border, qr = true, name = true, nutrition = false, design = "plain", color = "black", inverted = false, logo = false, places = null }) {
     const params = new URLSearchParams();
     if (places && places.length) for (const p of places) params.append("place", `${p.areaId || ""}|${p.compartment || ""}`);
@@ -2727,7 +2856,7 @@ export class LarderDashboard extends HTMLElement {
     params.set("layout", layout);
     params.set("skip", String(skip));
     if (content) params.set("content", "1");
-    if (bestBefore !== !!content) params.set("bestbefore", bestBefore ? "1" : "0"); // Standard: wie Inhalt
+    if (bestBefore !== !!content) params.set("bestbefore", bestBefore ? "1" : "0"); // default: like content
     if (border) params.set("border", "1");
     if (!qr) params.set("qr", "0");
     if (!name) params.set("name", "0");
@@ -2742,8 +2871,8 @@ export class LarderDashboard extends HTMLElement {
   }
 
   /**
-   * Link zum PDF erzeugen und im Dialog zeigen. Antippen öffnet es (ein echter Link funktioniert auch
-   * in der App und ohne Pop-up-Sperre; in der App öffnet es sich im Browser zum Teilen und Drucken).
+   * Create the link to the PDF and show it in the dialog. Tapping opens it (a real link also works
+   * in the app and without a pop-up blocker; in the app it opens in the browser for sharing and printing).
    */
   async _openLabels(deviceIds, places = null) {
     const t = texts(this._hass);

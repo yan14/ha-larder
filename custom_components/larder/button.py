@@ -1,4 +1,4 @@
-"""Button 'Behälter leeren': setzt Inhalt, MHD und Befüllt-am der Dose zurück."""
+"""Button 'Empty container': resets content, best-before date and fill date."""
 
 from __future__ import annotations
 
@@ -26,7 +26,7 @@ async def async_setup_entry(
 
 
 class LarderEmptyButton(ButtonEntity, LarderEntity):
-    """Leert die Dose: Inhalt, MHD und 'Befüllt am' werden zurückgesetzt."""
+    """Empty the container: content, best-before date and 'Filled at' are reset."""
 
     _key = "empty_container"
 
@@ -42,7 +42,7 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
                 translation_key="nothing_to_reset",
             )
         item = self._shopping_item()
-        details = self._shopping_details() if item else ""  # vor dem Leeren, danach sind die Produktdaten weg
+        details = self._shopping_details() if item else ""  # before emptying, afterwards the product data is gone
         product = {k: v for k, v in (self._product_data() or {}).items() if k in ("brand", "package", "ean", "kcal_100g", "kcal_portion", "nutri_score", "allergens", "nutrients", "source")}
         history = await async_get_history(self.hass)
         record = self._history_record(history.pop_pending(self._cc))
@@ -52,15 +52,15 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
         if record is not None:
             history.add(record)
         if item:
-            parts = split_items(item[1])  # "Salami, Leberwurst" → zwei Einträge
+            parts = split_items(item[1])  # "Salami, Leberwurst" → two entries
             for part in parts:
-                # Marke/Packung nur bei einem Inhalt, bei "Salami, Leberwurst" gehören sie zu keinem bestimmt
+                # brand/package only for a single content; with "Salami, Leberwurst" they belong to neither
                 text = f"{part} ({details})" if details and len(parts) == 1 else part
                 if await async_add_to_shopping_list(self.hass, item[0], text) and (stock := self.hass.data.get(DOMAIN, {}).get(DATA_STOCK)):
                     stock.track(text, {"content": part, "product": product if len(parts) == 1 else {}, "area_id": None, "compartment": "", "count": 1, "source": "emptied"})
         if self._kind in DISPOSABLE_KINDS:
-            # Beutel und Packungen sind nach dem Leeren weg (als eigene Aufgabe: die Entität entfernt sich selbst)
-            from .disposable import async_dispose  # noqa: PLC0415 - vermeidet einen Import-Kreis
+            # bags and packs are gone after emptying (as a task of its own: the entity removes itself)
+            from .disposable import async_dispose  # noqa: PLC0415 - avoids an import cycle
 
             self.hass.async_create_task(
                 async_dispose(self.hass, self._entry_id, record["content"] if record else ""),
@@ -68,7 +68,7 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
             )
 
     def _history_record(self, outcome: str | None) -> dict | None:
-        """Was gerade drin ist, für den Verlauf (None bei leerer Dose)."""
+        """What is inside right now, for the history (None for an empty container)."""
 
         def value(platform: str, key: str) -> str | None:
             state = self._sibling_state(platform, key)
@@ -100,16 +100,16 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
         )
 
     def _product_data(self) -> dict | None:
-        """Produktdaten und Nährwerte des Inhalts (für Verlauf und spätere Statistik)."""
+        """Product data and nutrition of the content (for the history and later statistics)."""
         content = self._runtime.resettable.get("content")
         return getattr(content, "product", None) or None
 
     def _product_with_price(self, content: str) -> dict | None:
-        """Produktdaten für den Verlauf; ohne eigenen Preis den gemerkten Preis des Produkts (für "weggeworfen in €")."""
+        """Product data for the history; without an own price the remembered price of the product (for "thrown away in €")."""
         product = dict(self._product_data() or {})
         stock = self.hass.data.get(DOMAIN, {}).get(DATA_STOCK)
         if "price" not in product and stock is not None and self._kind != "container":
-            from .stock import product_key  # noqa: PLC0415 - vermeidet einen Import-Kreis
+            from .stock import product_key  # noqa: PLC0415 - avoids an import cycle
 
             if remembered := stock.prices.get(product_key(content)):
                 product["price"] = remembered["price"]
@@ -123,7 +123,7 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
         return self._cc
 
     async def _async_return_home(self) -> None:
-        """Variabler Lagerort mit festem "Lagerort nach dem Leeren": Dose dorthin zurückstellen."""
+        """Variable storage place with a fixed "place after emptying": put the container back there."""
         flexible = self._sibling_state("switch", "flexible")
         home = self._sibling_state("select", "home_area")
         if flexible is None or flexible.state != STATE_ON or home is None:
@@ -135,7 +135,7 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
         device = registry.async_get_device(identifiers={(DOMAIN, self._cc)})
         if device is not None and device.area_id != area_id:
             registry.async_update_device(device.id, area_id=area_id)
-            # zurück am festen Platz: das Fach vom vorigen Ort gilt nicht mehr
+            # back at its fixed place: the compartment of the previous place no longer applies
             compartment = self._sibling_state("text", "compartment")
             if compartment is not None and compartment.state not in ("", STATE_UNKNOWN, STATE_UNAVAILABLE):
                 await self.hass.services.async_call(
@@ -143,7 +143,7 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
                 )
 
     def _shopping_details(self) -> str:
-        """Marke und Packung für die Einkaufsliste ("Kölln, 500 g"), wenn bekannt und eingeschaltet."""
+        """Brand and package for the shopping list ("Kölln, 500 g"), if known and switched on."""
         estimator = self.hass.data.get(DOMAIN, {}).get("estimator")
         if not getattr(estimator, "shopping_details", True):
             return ""
@@ -151,7 +151,7 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
         return ", ".join(str(product[k]).strip() for k in ("brand", "package") if str(product.get(k) or "").strip())
 
     def _shopping_item(self) -> tuple[str, str] | None:
-        """(To-do-Liste, Eintrag), wenn die Dose beim Leeren etwas auf die Liste setzen soll."""
+        """(To-do list, item) if the container should put something on the list when emptied."""
         switch = self._sibling_state("switch", "shopping")
         if switch is None or switch.state != STATE_ON:
             return None

@@ -1,14 +1,14 @@
-"""Die Schätzung lernt aus dem Verlauf: Vorschläge für kürzere oder längere Haltbarkeit.
+"""The estimate learns from the history: suggestions for a shorter or longer shelf life.
 
-Für jede gemerkte Schätzung (Inhalt + Bereich + Vakuum) schaut Larder in den Verlauf:
+For every remembered estimate (content + area + vacuum) Larder looks into the history:
 
-* **Kürzer:** wurde der Inhalt mehrmals *vor* dem MHD weggeworfen (und nie nach dem MHD noch gegessen),
-  schlägt Larder vor, wie lange er tatsächlich gehalten hat (Median der Lagerzeiten).
-* **Länger:** wurde er mehrmals deutlich *nach* dem MHD noch gegessen und nie vorher weggeworfen, schlägt
-  Larder die kürzeste dieser Lagerzeiten vor (vorsichtig) – höchstens das Doppelte des bisherigen Werts.
+* **Shorter:** if the content was thrown away several times *before* the date (and never eaten after it),
+  Larder suggests how long it actually kept (median of the storage times).
+* **Longer:** if it was eaten several times clearly *after* the date and never thrown away before, Larder
+  suggests the shortest of these storage times (cautious) – at most twice the previous value.
 
-Es wird nie still geändert: Die Vorschläge stehen in "Gemerkte Schätzungen" zum Übernehmen oder Ignorieren.
-Ein ignorierter Vorschlag kommt erst wieder, wenn sich der vorgeschlagene Wert ändert.
+Nothing is changed silently: the suggestions are listed in "Remembered estimates" to accept or ignore.
+An ignored suggestion only comes back when the suggested value changes.
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ from .singleton import async_singleton
 
 MIN_RECORDS = 2  # so oft muss es passiert sein
 LOOKBACK_DAYS = 365
-LATE_DAYS = 2  # "deutlich" nach dem MHD: mindestens so viele Tage
+LATE_DAYS = 2  # "clearly" after the date: at least this many days
 DATA_LEARNING = "learning"
 DATA_WS = "learning_ws_registered"
 STORAGE_KEY = f"{DOMAIN}.learning"
@@ -58,7 +58,7 @@ def build_suggestions(
 ) -> list[dict[str, Any]]:
     today = today or dt_util.now().date()
     since = today - timedelta(days=LOOKBACK_DAYS)
-    # Verlauf nach Schlüssel (ohne Vakuum-Angabe: passt zu beiden Varianten)
+    # history by key (without the vacuum flag: matches both variants)
     by_key: dict[str, list[dict[str, Any]]] = {}
     for record in records:
         filled, emptied, best = _day(record.get("filled_at")), _day(record.get("emptied")), _day(record.get("best_before"))
@@ -77,7 +77,7 @@ def build_suggestions(
         current = int(entry["days"])
         suggestion: dict[str, Any] | None = None
         if len(early) >= MIN_RECORDS and not late:
-            days = max(MIN_DAYS, int(median(i["lived"] for i in early)))  # abgerundet: lieber etwas zu kurz
+            days = max(MIN_DAYS, int(median(i["lived"] for i in early)))  # rounded down: rather a bit too short
             if days < current:
                 suggestion = {"suggested": days, "direction": "shorter", "count": len(early)}
         elif len(late) >= MIN_RECORDS and not any(i["outcome"] == "thrown" and i["margin"] < 0 for i in items):
@@ -91,7 +91,7 @@ def build_suggestions(
 
 
 class Learning:
-    """Ignorierte Vorschläge (Schlüssel → vorgeschlagene Tage)."""
+    """Ignored suggestions (key → suggested days)."""
 
     def __init__(self, hass: HomeAssistant) -> None:
         self.hass = hass

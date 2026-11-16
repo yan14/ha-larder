@@ -1,18 +1,18 @@
-"""Optional: MHD jeder Dose als Ganztags-Termin in einen vorhandenen Kalender schreiben.
+"""Optional: write the best-before date of every container as an all-day event into an existing calendar.
 
-Der Kalender wird in den Einstellungen gewählt (z. B. Google, CalDAV oder "Lokaler Kalender").
-Pro Dose gibt es höchstens einen Termin. Er wird angelegt, wenn ein MHD gesetzt ist, verschoben,
-wenn sich MHD oder Inhalt ändern, und gelöscht, wenn das MHD gelöscht oder die Dose entfernt
-wird. Erkannt werden die eigenen Termine an einer Kennung in der Beschreibung. Dafür muss der
-Kalender Termine anlegen UND löschen können (reine Leser wie ein iCal-Link gehen nicht).
+The calendar is chosen in the settings (e.g. Google, CalDAV or "Local calendar").
+There is at most one event per container. It is created when a date is set, moved
+when the date or the content changes, and deleted when the date is cleared or the container
+is removed. Our own events are recognised by a marker in the description. For this the
+calendar must be able to create AND delete events (read-only ones like an iCal link do not work).
 
-Home Assistants CalDAV-Kalender (iCloud, Nextcloud, …) kann selbst nur anlegen; für ihn liest und
-löscht `CalDavBackend` direkt über die CalDAV-Verbindung.
+Home Assistant's CalDAV calendar (iCloud, Nextcloud, …) can only create; for it
+`CalDavBackend` reads and deletes directly through the CalDAV connection.
 
-Der Abgleich ist selbstheilend: Er sucht die Termine einer Dose im ganzen Kalender (nicht nur am
-zuletzt gemerkten Tag), behält genau einen passenden Termin, löscht alle übrigen und legt nur dann
-einen neuen an, wenn keiner passt. Dadurch entstehen auch dann keine Doppelten, wenn ein Kalender
-Änderungen verzögert zeigt oder ein früheres Löschen nicht geklappt hat.
+The sync is self-healing: it looks for the events of a container in the whole calendar (not only on
+the day remembered last), keeps exactly one matching event, deletes all others and only creates
+a new one if none matches. This way no duplicates appear even if a calendar
+shows changes with a delay or an earlier deletion failed.
 """
 
 from __future__ import annotations
@@ -69,7 +69,7 @@ def marker(cc: str) -> str:
 
 
 def event_texts(language: str, content: str, name: str, area: str | None, cc: str) -> tuple[str, str]:
-    """(Titel, Beschreibung) des Termins."""
+    """(Title, description) of the event."""
     prefix = "MHD" if language.lower().startswith("de") else "Best before"
     title = f"{prefix}: {content or name}"
     details = f"{name} · {area}" if area else name
@@ -78,17 +78,17 @@ def event_texts(language: str, content: str, name: str, area: str | None, cc: st
 
 @dataclass(frozen=True)
 class CalendarItem:
-    """Ein Termin, unabhängig vom Kalenderanbieter."""
+    """An event, independent of the calendar provider."""
 
     uid: str | None
     day: date
     summary: str
     description: str
-    ref: Any = None  # anbieterspezifisches Objekt (zum Löschen)
+    ref: Any = None  # provider-specific object (for deleting)
 
 
 class CalendarBackend:
-    """Zugriff über die Kalender-Entität von Home Assistant (Lokaler Kalender, Google, …)."""
+    """Access through Home Assistant's calendar entity (Local calendar, Google, …)."""
 
     def __init__(self, hass: HomeAssistant, entity: CalendarEntity) -> None:
         self.hass = hass
@@ -105,7 +105,7 @@ class CalendarBackend:
 
     @staticmethod
     def _range(start: datetime | None, end: datetime | None) -> tuple[datetime, datetime]:
-        """Ohne Angabe: ein weiter Zeitraum um heute."""
+        """Without arguments: a wide period around today."""
         if start is None or end is None:
             start = dt_util.start_of_local_day() - timedelta(days=SCAN_DAYS_BACK)
             end = start + timedelta(days=SCAN_DAYS_BACK + SCAN_DAYS_AHEAD)
@@ -123,10 +123,10 @@ class CalendarBackend:
 
 
 class CalDavBackend(CalendarBackend):
-    """CalDAV: Home Assistants CalDAV-Kalender kann Termine nur anlegen und nennt keine Termin-IDs.
+    """CalDAV: Home Assistant's CalDAV calendar can only create events and gives no event IDs.
 
-    Lesen und Löschen laufen deshalb direkt über die CalDAV-Verbindung, die die CalDAV-Integration
-    ohnehin offen hält (`entity.coordinator.calendar`). Angelegt wird weiter über Home Assistant.
+    Reading and deleting therefore go directly through the CalDAV connection that the CalDAV
+    integration keeps open anyway (`entity.coordinator.calendar`). Creating still goes through Home Assistant.
     """
 
     @staticmethod
@@ -170,7 +170,7 @@ def backend_for(hass: HomeAssistant, entity: CalendarEntity) -> CalendarBackend:
 
 
 class CalendarSync:
-    """Hält pro Dose einen Termin im gewählten Kalender aktuell."""
+    """Keeps one event per container up to date in the chosen calendar."""
 
     def __init__(self, hass: HomeAssistant) -> None:
         self.hass = hass
@@ -185,7 +185,7 @@ class CalendarSync:
     async def async_load(self) -> None:
         self._records = (await self._store.async_load()) or {}
 
-    # ----- Überwachung -----
+    # ----- Watching -----
 
     @callback
     def async_start(self) -> None:
@@ -214,13 +214,13 @@ class CalendarSync:
     @callback
     def _state_changed(self, event: Event[EventStateChangedData]) -> None:
         old, new = event.data["old_state"], event.data["new_state"]
-        # Nur echte Wertänderungen zählen (nicht reine Attributwechsel); "nicht verfügbar" ist kein MHD-Wechsel
+        # Only real value changes count (not mere attribute changes); "unavailable" is not a date change
         if new is None or new.state == STATE_UNAVAILABLE or (old is not None and old.state == new.state):
             return
         entry = er.async_get(self.hass).async_get(event.data["entity_id"])
         if entry is None or entry.platform != DOMAIN:
             return
-        # unique_id = "<cc>_best_before" oder "<cc>_content"; cc selbst enthält keinen Unterstrich
+        # unique_id = "<cc>_best_before" or "<cc>_content"; cc itself contains no underscore
         cc, _, key = entry.unique_id.partition("_")
         if key in ("best_before", "content"):
             self._schedule(cc)
@@ -237,7 +237,7 @@ class CalendarSync:
 
         self._timers[cc] = async_call_later(self.hass, DEBOUNCE_SECONDS, run)
 
-    # ----- Einstellungen -----
+    # ----- Settings -----
 
     @property
     def calendar_entity_id(self) -> str | None:
@@ -247,7 +247,7 @@ class CalendarSync:
     # ----- Abgleich -----
 
     def _desired(self, cc: str) -> tuple[date, str, str] | None:
-        """(MHD, Titel, Beschreibung) laut den Entitäten der Dose, oder None ohne MHD."""
+        """(Best-before date, title, description) from the container's entities, or None without a date."""
         registry = er.async_get(self.hass)
         date_id = registry.async_get_entity_id("date", DOMAIN, f"{cc}_best_before")
         state = self.hass.states.get(date_id) if date_id else None
@@ -282,11 +282,11 @@ class CalendarSync:
         return component.get_entity(entity_id) if component else None
 
     def _date_unavailable(self, cc: str) -> bool:
-        """Datum der Dose (noch) nicht verfügbar, z. B. direkt nach dem Start: dann nichts verändern."""
+        """The container's date is not available (yet), e.g. right after start: change nothing then."""
         date_id = er.async_get(self.hass).async_get_entity_id("date", DOMAIN, f"{cc}_best_before")
         state = self.hass.states.get(date_id) if date_id else None
         if state is None:
-            # Dose gibt es noch, ihr Datum hat aber (noch) keinen Zustand: nicht als "kein MHD" werten
+            # the container still exists but its date has no state (yet): do not treat as "no date"
             return any(e.data.get(CONF_CC) == cc for e in self.hass.config_entries.async_entries(DOMAIN))
         return state.state == STATE_UNAVAILABLE
 
@@ -295,17 +295,17 @@ class CalendarSync:
         return backend_for(self.hass, entity) if entity is not None else None
 
     def supports(self, entity_id: str) -> bool | None:
-        """Kann Larder in diesem Kalender Termine anlegen UND löschen? None: Kalender (noch) nicht geladen."""
+        """Can Larder create AND delete events in this calendar? None: calendar not loaded (yet)."""
         backend = self._backend(entity_id)
         return None if backend is None else backend.can_create and backend.can_delete
 
     def _ours(
         self, events: list[CalendarItem], cc: str, record: dict[str, Any] | None, entity_id: str
     ) -> list[CalendarItem]:
-        """Termine dieser Dose.
+        """Events of this container.
 
-        Erkannt an der Kennung in der Beschreibung, an der gemerkten Termin-ID oder (nur wenn keine
-        ID bekannt ist und der Kalender Beschreibungen verwirft) am gemerkten Titel und Tag.
+        Recognised by the marker in the description, by the remembered event ID or (only if no
+        ID is known and the calendar drops descriptions) by the remembered title and day.
         """
         same_calendar = bool(record) and record.get("entity") == entity_id
         uid = record.get("uid") if same_calendar else None
@@ -330,24 +330,24 @@ class CalendarSync:
         return found
 
     async def _delete_events(self, backend: CalendarBackend, events: list[CalendarItem]) -> bool:
-        """Termine löschen. True, wenn alle weg sind."""
+        """Delete events. True if all are gone."""
         ok = True
         for event in events:
             try:
                 await backend.async_delete(event)
-            except Exception:  # noqa: BLE001 - Kalenderanbieter können vieles werfen
+            except Exception:  # noqa: BLE001 - calendar providers can raise many things
                 _LOGGER.warning("Termin %s in %s konnte nicht gelöscht werden", event.summary, backend.entity_id, exc_info=True)
                 ok = False
         return ok
 
     async def _purge(self, entity_id: str, cc: str, record: dict[str, Any] | None) -> bool:
-        """Alle Termine der Dose in einem Kalender entfernen. True, wenn nichts mehr zu tun ist."""
+        """Remove all events of the container from a calendar. True if nothing is left to do."""
         backend = self._backend(entity_id)
         if backend is None:
-            return False  # Kalender (noch) nicht geladen: Eintrag behalten und später erneut versuchen
+            return False  # calendar not loaded (yet): keep the entry and try again later
         if not backend.can_delete:
             _LOGGER.warning("Kalender %s kann keine Termine löschen", entity_id)
-            return True  # nicht lösbar: Eintrag nicht ewig behalten
+            return True  # cannot be solved: do not keep the entry forever
         try:
             ours = self._ours(await backend.async_scan(), cc, record, entity_id)
         except Exception:  # noqa: BLE001
@@ -356,7 +356,7 @@ class CalendarSync:
         return await self._delete_events(backend, ours)
 
     async def async_sync(self, cc: str, *, verify: bool = False) -> None:
-        """Termin einer Dose mit dem gewählten Kalender abgleichen (verify: auch bei unverändertem Stand prüfen)."""
+        """Sync a container's event with the chosen calendar (verify: check even if nothing changed)."""
         async with self._lock:
             await self._sync_locked(cc, verify=verify)
 
@@ -380,7 +380,7 @@ class CalendarSync:
         if record is None and desired is None and not (verify and target):
             return
 
-        # Anderer (oder kein) Kalender gewählt: Termine im alten Kalender entfernen
+        # another (or no) calendar chosen: remove the events from the old calendar
         if record and record.get("entity") != target:
             if not await self._purge(record["entity"], cc, record):
                 return
@@ -393,7 +393,7 @@ class CalendarSync:
                 _LOGGER.debug("Kalender %s nicht verfügbar", target)
                 return
             if not (backend.can_create and backend.can_delete):
-                # Ohne Löschen entstünde bei jeder Änderung ein weiterer Termin: lieber gar nichts schreiben
+                # without deleting, every change would add another event: rather write nothing at all
                 if target not in self._warned:
                     self._warned.add(target)
                     _LOGGER.warning(
@@ -412,7 +412,7 @@ class CalendarSync:
         desired: tuple[date, str, str] | None,
         events: list[CalendarItem] | None = None,
     ) -> None:
-        """Genau einen passenden Termin sicherstellen (oder keinen, wenn kein MHD gesetzt ist)."""
+        """Make sure there is exactly one matching event (or none if no date is set)."""
         target = backend.entity_id
         try:
             if events is None:
@@ -461,7 +461,7 @@ class CalendarSync:
     async def _find_created(
         self, backend: CalendarBackend, cc: str, best: date, title: str, known: set[str | None]
     ) -> str | None:
-        """Termin-ID des eben angelegten Termins ermitteln (None, wenn der Kalender ihn noch nicht zeigt)."""
+        """Find the event ID of the event just created (None if the calendar does not show it yet)."""
         claimed = {r.get("uid") for other, r in self._records.items() if other != cc}
         try:
             start = dt_util.start_of_local_day(best)
@@ -477,10 +477,10 @@ class CalendarSync:
         return chosen[0].uid if chosen else None
 
     async def async_sync_all(self) -> None:
-        """Alle Dosen gründlich abgleichen, auch solche, die nur noch im Protokoll stehen (z. B. Kalender gewechselt)."""
+        """Sync all containers thoroughly, also those only left in the log (e.g. calendar changed)."""
         ccs = {e.data[CONF_CC] for e in self.hass.config_entries.async_entries(DOMAIN) if CONF_CC in e.data}
         async with self._lock:
-            # Den Kalender nur einmal lesen, nicht einmal pro Dose (neu angelegte Termine werden nachgetragen)
+            # read the calendar only once, not once per container (newly created events are added)
             events: list[CalendarItem] | None = None
             if (backend := self._backend(self.calendar_entity_id)) is not None and backend.can_delete:
                 try:
@@ -492,10 +492,10 @@ class CalendarSync:
                 await self._sync_locked(cc, verify=True, events=events)
 
     async def async_rebuild(self, include_unmarked: bool = False) -> dict[str, int]:
-        """Aufräumen: alle Termine neu abgleichen und Reste entfernen, die zu keiner Dose mehr gehören.
+        """Clean up: sync all events again and remove leftovers that belong to no container any more.
 
-        Mit include_unmarked werden zusätzlich Termine ohne Kennung entfernt, die wie MHD-Termine
-        heißen ("MHD: …" / "Best before: …"), aber keiner Dose mehr zugeordnet werden können.
+        With include_unmarked, events without a marker are removed too if they are named like
+        best-before events ("MHD: …" / "Best before: …") but can no longer be assigned to a container.
         """
         removed = 0
         async with self._lock:
@@ -518,7 +518,7 @@ class CalendarSync:
                     if is_orphan or is_unmarked:
                         orphans.append(event)
                 if include_unmarked:
-                    # ohne Kennung lässt sich der aktuelle Termin einer Dose nicht erkennen: alles löschen, neu anlegen
+                    # without a marker the current event of a container cannot be recognised: delete all, create anew
                     for cc in ccs:
                         self._records.pop(cc, None)
                 if await self._delete_events(backend, orphans):
@@ -527,7 +527,7 @@ class CalendarSync:
         return {"removed": removed}
 
     async def async_remove_dose(self, cc: str) -> None:
-        """Dose wurde entfernt: Termin löschen."""
+        """A container was removed: delete its event."""
         if cancel := self._timers.pop(cc, None):
             cancel()
         async with self._lock:

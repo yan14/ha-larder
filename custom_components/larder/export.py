@@ -1,7 +1,7 @@
-"""Export und Import: Bestand als CSV, gemerkte Schätzungen als JSON-Datei (Sichern und Teilen).
+"""Export and import: stock as CSV, remembered estimates as a JSON file (backup and sharing).
 
-Die Dateien werden über signierte URLs geladen (wie der Etikettenbogen), damit der Download auch
-in der Home-Assistant-App im Browser funktioniert. Der Import läuft über den WebSocket.
+The files are loaded through signed URLs (like the label sheet), so the download also
+works in the browser of the Home Assistant app. The import runs over the WebSocket.
 """
 
 from __future__ import annotations
@@ -49,8 +49,8 @@ _UNITS = {
 }
 _YES = {"de": ("ja", "nein"), "en": ("yes", "no")}
 _KINDS = {
-    "de": {"container": "Dose", "bag": "Beutel", "pack": "Packung"},
-    "en": {"container": "Container", "bag": "Bag", "pack": "Pack"},
+    "de": {"container": "Dose", "bag": "Beutel", "pack": "Packung", "household": "Haushalt"},
+    "en": {"container": "Container", "bag": "Bag", "pack": "Pack", "household": "Household"},
 }
 _HISTORY_COLUMNS = {
     "de": ["Name", "ID", "Bereich", "Inhalt", "Menge", "Einheit", "Eingelagert am", "MHD", "Geleert am", "Tage gelagert", "Abgelaufen", "Ergebnis", "Art"],
@@ -75,7 +75,7 @@ _PRODUCT_COLUMNS = ("brand", "package", "ean", "kcal_100g", "kcal_portion", "nut
 
 
 def _product(hass: HomeAssistant, registry: er.EntityRegistry, cc: str) -> dict[str, Any]:
-    """Produktdaten und Nährwerte (Attribute der Entität "Inhalt")."""
+    """Product data and nutrition (attributes of the "Content" entity)."""
     entity_id = registry.async_get_entity_id("text", DOMAIN, f"{cc}_content")
     state = hass.states.get(entity_id) if entity_id else None
     if state is None:
@@ -89,7 +89,7 @@ def _product(hass: HomeAssistant, registry: er.EntityRegistry, cc: str) -> dict[
 
 
 def inventory_rows(hass: HomeAssistant) -> list[dict[str, Any]]:
-    """Alle Dosen mit den wichtigsten Werten (Sprache von Home Assistant), sortiert nach Name."""
+    """All containers with the most important values (Home Assistant's language), sorted by name."""
     registry = er.async_get(hass)
     lang = _lang(hass)
     soon = soon_days(hass)
@@ -138,7 +138,7 @@ def inventory_rows(hass: HomeAssistant) -> list[dict[str, Any]]:
 
 
 def inventory_csv(hass: HomeAssistant) -> bytes:
-    """CSV mit BOM (Excel erkennt so UTF-8); auf Deutsch mit Semikolon, wie Excel es dort erwartet."""
+    """CSV with BOM (Excel recognises UTF-8 this way); in German with semicolons, as Excel expects there."""
     lang = _lang(hass)
     out = io.StringIO()
     writer = csv.writer(out, delimiter=";" if lang == "de" else ",", lineterminator="\r\n")
@@ -154,7 +154,7 @@ def _local(value: str | None) -> str:
 
 
 async def history_csv(hass: HomeAssistant) -> bytes:
-    """Verlauf aller Dosen (neueste zuerst) als CSV."""
+    """History of all containers (newest first) as CSV."""
     lang = _lang(hass)
     history = await async_get_history(hass)
     out = io.StringIO()
@@ -198,10 +198,10 @@ async def estimates_json(hass: HomeAssistant) -> bytes:
 
 
 async def async_import_estimates(hass: HomeAssistant, data: Any, replace: bool = False) -> dict[str, int]:
-    """Schätzungen aus einer exportierten Datei übernehmen.
+    """Apply estimates from an exported file.
 
-    Ohne `replace` bleiben eigene Korrekturen (Quelle "learned") erhalten, wenn die Datei für dieselbe
-    Kombination nur einen Tabellen- oder KI-Wert hat. Ungültige Einträge werden übersprungen.
+    Without `replace`, own corrections (source "learned") are kept if the file only has a table
+    or AI value for the same combination. Invalid entries are skipped.
     """
     if not isinstance(data, dict) or data.get("domain") != DOMAIN or not isinstance(data.get("entries"), list):
         raise vol.Invalid("not a Larder estimates file")

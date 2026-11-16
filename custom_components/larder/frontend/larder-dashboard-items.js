@@ -1,9 +1,9 @@
 /**
- * Larder-Dashboard: Beutel (Einweg, mit NFC-Sticker oder QR-Code) und Packungen (Vorrat ohne Dose).
+ * Larder dashboard: bags (disposable, with NFC sticker or QR code) and packs (stock without a container).
  *
- * Eigenes Modul, damit larder-dashboard.js nicht weiter wächst. `installItems` hängt die Dialoge als
- * Methoden an die Dashboard-Klasse: Auswahl "Was anlegen?", Beutel/Packungen anlegen, NFC-Sticker der Reihe
- * nach beschreiben und "Packung in Dose umfüllen".
+ * A module of its own so larder-dashboard.js does not grow further. `installItems` attaches the dialogs as
+ * methods to the dashboard class: choice "Add what?", creating bags/packs, writing NFC stickers one after
+ * another and "Transfer pack into a container".
  */
 const MAX_ITEMS = 30;
 const UNITS = ["portions", "pieces", "slices", "grams", "milliliters"];
@@ -19,6 +19,13 @@ const TEXT = {
     kindPackHint: "Vorrat ohne Dose, z. B. Konserven: ohne Code",
     titleBag: "Beutel anlegen",
     titlePack: "Packungen anlegen",
+    kindHousehold: "Haushaltsartikel",
+    kindHouseholdHint: "Ohne Haltbarkeit, z. B. Klopapier, Waschmittel, Batterien",
+    titleHousehold: "Haushaltsartikel anlegen",
+    packSize: "Stück je Packung",
+    piece: "Einheit, z. B. Rollen",
+    createdHousehold: (n) => (n === 1 ? "1 Haushaltsartikel angelegt." : `${n} Haushaltsartikel angelegt.`),
+    stockPacks: (packs) => `${packs} ${packs === "1" ? "Packung" : "Packungen"}`,
     area: "Bereich",
     compartment: "Fach (optional)",
     compartmentHint: "z. B. Schublade 2",
@@ -65,7 +72,6 @@ const TEXT = {
     transferFailed: "Umfüllen fehlgeschlagen.",
     stockTitle: "Vorrat",
     usageLasts: (weeks, takes, months) => `reicht noch ca. ${weeks} · aus ${takes} Entnahmen in ${months}`,
-    usageNone: "noch zu wenig Entnahmen für eine Prognose",
     suggestMin: (n) => `Vorschlag: mindestens ${n}`,
     priceEach: (p, est) => `${est ? "ca. " : ""}${p} € je Packung${est ? " (Open Prices)" : ""}`,
     valueOf: (v) => `Wert ca. ${v} €`,
@@ -140,6 +146,13 @@ const TEXT = {
     kindPackHint: "Stock without a container, e.g. cans: no code",
     titleBag: "Add bags",
     titlePack: "Add packs",
+    kindHousehold: "Household item",
+    kindHouseholdHint: "No best-before date, e.g. toilet paper, detergent, batteries",
+    titleHousehold: "Add household items",
+    packSize: "Pieces per pack",
+    piece: "Unit, e.g. rolls",
+    createdHousehold: (n) => (n === 1 ? "1 household item added." : `${n} household items added.`),
+    stockPacks: (packs) => `${packs} ${packs === "1" ? "pack" : "packs"}`,
     area: "Area",
     compartment: "Compartment (optional)",
     compartmentHint: "e.g. drawer 2",
@@ -186,7 +199,6 @@ const TEXT = {
     transferFailed: "Moving failed.",
     stockTitle: "Stock",
     usageLasts: (weeks, takes, months) => `lasts about ${weeks} · from ${takes} takes in ${months}`,
-    usageNone: "not enough takes for a forecast yet",
     suggestMin: (n) => `Suggested: at least ${n}`,
     priceEach: (p, est) => `${est ? "approx. " : ""}€${p} per pack${est ? " (Open Prices)" : ""}`,
     valueOf: (v) => `value approx. €${v}`,
@@ -253,7 +265,7 @@ const TEXT = {
   },
 };
 
-/** Dauer in Worten: "3 Tage", "2 Wochen", "4 Monate" (bzw. englisch). */
+/** Duration in words: "3 Tage", "2 Wochen", "4 Monate" (or English). */
 export function spanText(days, de, dative = false) {
   const d = Math.max(0, Math.round(days));
   if (d < 14) return de ? `${d} ${d === 1 ? "Tag" : dative ? "Tagen" : "Tage"}` : `${d} day${d === 1 ? "" : "s"}`;
@@ -266,7 +278,7 @@ export function spanText(days, de, dative = false) {
   return `${m} ${m === 1 ? "Monat" : dative ? "Monaten" : "Monate"}`;
 }
 
-/** Betrag mit zwei Nachkommastellen, auf Deutsch mit Komma. */
+/** Amount with two decimals, in German with a comma. */
 export function money(value, de) {
   const text = Number(value).toFixed(2);
   return de ? text.replace(".", ",") : text;
@@ -276,7 +288,7 @@ export function itemTexts(hass) {
   return String((hass && hass.language) || "en").toLowerCase().startsWith("de") ? TEXT.de : TEXT.en;
 }
 
-/** Zeilen des Dialogs in die Einträge für `larder/create_items` umrechnen (ein Beutel je "Anzahl"). */
+/** Convert the rows of the dialog into the entries for `larder/create_items` (one bag per "count"). */
 export function buildItems(kind, rows, vacuum = true) {
   const items = [];
   for (const row of rows) {
@@ -284,12 +296,22 @@ export function buildItems(kind, rows, vacuum = true) {
     if (!content) continue;
     const item = { content };
     const quantity = parseInt(row.quantity, 10);
-    if (quantity > 0) {
+    if (kind === "household") {
+      // household items are counted in pieces: packs × pieces per pack
+      const size = Math.max(1, parseInt(row.packSize, 10) || 1);
+      item.quantity = Math.max(1, quantity || 1) * size;
+      item.unit = "pieces";
+      const piece = (row.piece || "").trim();
+      const product = { ...(row.product || {}) };
+      if (size > 1) product.pack_size = size;
+      if (piece) product.piece = piece;
+      if (Object.keys(product).length) item.product = product;
+    } else if (quantity > 0) {
       item.quantity = quantity;
       if (UNITS.includes(row.unit)) item.unit = row.unit;
     }
-    if (/^\d{4}-\d{2}-\d{2}$/.test(row.date || "")) item.best_before = row.date;
-    if (row.product) item.product = row.product;
+    if (kind !== "household" && /^\d{4}-\d{2}-\d{2}$/.test(row.date || "")) item.best_before = row.date;
+    if (kind !== "household" && row.product) item.product = row.product;
     const price = parseFloat(String(row.price || "").replace(",", "."));
     if (price > 0) item.product = { ...(item.product || {}), price: Math.round(price * 100) / 100, price_source: row.priceSource || "own" };
     if (kind === "bag") item.vacuum = !!vacuum;
@@ -309,7 +331,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
   };
   const placeName = (p, t) => [p.area, p.compartment].filter(Boolean).join(" · ") || t.noArea;
 
-  /** Gekaufte Packung per Strichcode entnehmen: zeigt alle Orte, die mit dem frühesten MHD zuerst. */
+  /** Take a bought pack by barcode: shows all places, the one with the earliest date first. */
   proto.takeByCode = async function takeByCode(code) {
     const hass = this._hass;
     const t = itemTexts(hass);
@@ -329,7 +351,9 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
       if (res && res.name) {
         parts.push(el("p", "hint", t.codeNone(res.name)));
         const add = button("submit", t.codeAdd, () =>
-          this.openItemsDialog("pack", { rows: [{ content: res.name, quantity: 1, product: res.product }] }),
+          this.openItemsDialog(res.product_type && res.product_type !== "food" ? "household" : "pack", {
+            rows: [{ content: res.name, quantity: 1, product: res.product }],
+          }),
         );
         add.dataset.role = "code-add";
         parts.push(buttonsRow(...[close, link, add].filter(Boolean)));
@@ -369,7 +393,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
     return res;
   };
 
-  /** Strichcode einem Produkt im Vorrat zuordnen (Packung ohne EAN, z. B. umbenannt angelegt). */
+  /** Assign a barcode to a product in the stock (pack without EAN, e.g. created under another name). */
   proto._linkCode = async function _linkCode(code) {
     const hass = this._hass;
     const t = itemTexts(hass);
@@ -412,7 +436,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
     this._overlay.hidden = false;
   };
 
-  /** Eine Packung entnehmen: Anzahl −1, die letzte leert den Eintrag (als gegessen). */
+  /** Take one pack: count −1, the last one empties the entry (as eaten). */
   proto._takeOne = async function _takeOne(entry) {
     const hass = this._hass;
     const row = this._rows().find((r) => r.id === entry.device_id);
@@ -427,7 +451,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
     }
   };
 
-  /** Strichcode-Scanner der App öffnen und die gescannte Ware entnehmen. */
+  /** Open the app's barcode scanner and take the scanned goods. */
   proto.scanToTake = function scanToTake() {
     this._classic.scanBarcodeRaw((code) => this.takeByCode(code));
   };
@@ -444,9 +468,9 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
     this._update();
   };
 
-  /** Startseite: abgehakte Einträge von der Einkaufsliste, die Larder gesetzt hat, als Packung anbieten. */
-  proto._boughtBox = function _boughtBox() {
-    const items = this._bought || [];
+  /** Start page: offer ticked-off items from the shopping list that Larder set as a pack. */
+  proto._boughtBox = function _boughtBox(only = null) {
+    const items = (this._bought || []).filter((item) => !only || only(item));
     if (!items.length) return null;
     const hass = this._hass;
     const t = itemTexts(hass);
@@ -465,7 +489,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
       const row = el("div", "boughtrow");
       row.dataset.id = item.id;
       const add = button("primary", t.boughtAdd, () =>
-        this.openItemsDialog("pack", {
+        this.openItemsDialog(item.kind === "household" ? "household" : "pack", {
           rows: [{ content: item.content, quantity: item.count || 1, product: item.product || null }],
           area_id: item.area_id,
           compartment: item.compartment,
@@ -495,7 +519,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
     this._update();
   };
 
-  /** Startseite: oft gegessen, gerade nicht da → auf die Einkaufsliste oder für 30 Tage ausblenden. */
+  /** Start page: eaten often, not there right now → onto the shopping list or hide for 30 days. */
   proto._againBox = function _againBox() {
     const data = this._again;
     if (!data || !data.items || !data.items.length) return null;
@@ -514,7 +538,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
           this._again = { ...this._again, items: res.items || [] };
           if (action === "shop") this.showNotice(t.againShopped(item.content));
         } catch {
-          /* bleibt stehen */
+          /* stays as it is */
         }
         this._sig = "";
         this._update();
@@ -546,9 +570,9 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
     this._update();
   };
 
-  /** Startseite: Produkte mit Mindestbestand, die laut Prognose bald leer sind. */
-  proto._lowBox = function _lowBox() {
-    const data = this._low;
+  /** Start page: products with a minimum stock that will run out soon according to the forecast. */
+  proto._lowBox = function _lowBox(only = null) {
+    const data = this._low && { ...this._low, items: (this._low.items || []).filter((item) => !only || only(item)) };
     if (!data || !data.items || !data.items.length) return null;
     const hass = this._hass;
     const t = itemTexts(hass);
@@ -566,7 +590,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
           this._low = { ...this._low, items: res.items || [] };
           if (action === "shop") this.showNotice(t.lowShopped(item.name));
         } catch {
-          /* bleibt stehen */
+          /* stays as it is */
         }
         this._sig = "";
         this._update();
@@ -598,7 +622,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
     this._update();
   };
 
-  /** Startseite: Rückrufwarnungen mit Treffern im Vorrat, bis "Gelesen". */
+  /** Start page: recall warnings with matches in the stock, until "Read". */
   proto._recallBox = function _recallBox() {
     const items = this._recalls || [];
     if (!items.length) return null;
@@ -654,7 +678,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
     this._update();
   };
 
-  /** Statistik: Bericht des Vormonats (wie ihn der Blueprint "Monatsbericht" schickt). */
+  /** Statistics: report of the previous month (as the blueprint "Monthly report" sends it). */
   proto._reportBox = function _reportBox() {
     const r = this._report;
     if (!r || r.empty || !r.label) return null;
@@ -681,7 +705,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
     this._update();
   };
 
-  /** Vorrats-Ansicht: alle Produkte mit Bestand, Orten und Mindestbestand (direkt bearbeitbar). */
+  /** Stock view: all products with stock, places and minimum stock (editable directly). */
   proto._renderStock = function _renderStock() {
     const hass = this._hass;
     const t = itemTexts(hass);
@@ -698,21 +722,28 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
       bar.append(el("span", "grow"), scan);
       frag.append(bar);
     }
+    frag.prepend(this._scopeSwitch());
+    const hhScope = this._opts.scope === "household";
+    const products = data.products.filter((p) => (p.kind === "household") === hhScope);
+    const valued = products.filter((p) => p.value);
+    const value = Math.round(valued.reduce((sum, p) => sum + p.value, 0) * 100) / 100;
     frag.append(el("p", "note", t.stockIntro));
-    if (data.value) {
+    if (value) {
       const de = String(hass.language || "").toLowerCase().startsWith("de");
-      const total = el("p", "note", t.stockValue(money(data.value, de), data.valued));
+      const total = el("p", "note", t.stockValue(money(value, de), valued.length));
       total.dataset.role = "stock-value";
       frag.append(total);
     }
-    if (!data.shopping_list && data.products.some((p) => p.min > 0)) frag.append(el("p", "note warn", t.stockNoList));
-    if (!data.products.length) frag.append(el("p", "note", t.stockEmpty));
+    if (!data.shopping_list && products.some((p) => p.min > 0)) frag.append(el("p", "note warn", t.stockNoList));
+    if (!products.length) frag.append(el("p", "note", t.stockEmpty));
     const list = el("div", "stocklist");
-    for (const p of data.products) {
+    for (const p of products) {
+      const hh = p.kind === "household";
+      const packs = String(p.packs ?? "").replace(".", String(hass.language || "").toLowerCase().startsWith("de") ? "," : ".");
       const item = el("section", `stockitem${p.low ? " low" : ""}`);
       item.dataset.key = p.key;
       const head = el("div", "stockhead");
-      head.append(el("span", "name", p.name), el("span", "count", String(p.count)));
+      head.append(el("span", "name", p.name), el("span", "count", hh && p.piece ? `${p.count} ${p.piece}` : String(p.count)));
       if (p.low) head.append(el("span", "badge expired", p.count ? t.stockLow : t.stockNone));
       const min = el("input");
       min.type = "number";
@@ -739,7 +770,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
       head.append(minWrap);
       item.append(head);
       const de = String(hass.language || "").toLowerCase().startsWith("de");
-      const sub = [p.brand, p.package, p.earliest ? t.stockEarliest(fmtDate(hass, p.earliest)) : null].filter(Boolean).join(" · ");
+      const sub = [hh && p.pack_size > 1 ? t.stockPacks(packs) : null, p.brand, p.package, p.earliest ? t.stockEarliest(fmtDate(hass, p.earliest)) : null].filter(Boolean).join(" · ");
       if (sub) item.append(el("div", "sub", sub));
       if (p.usage) {
         const line = el("div", "usage", t.usageLasts(spanText(p.usage.lasts_days, de), p.usage.takes, spanText(p.usage.days, de, true)));
@@ -775,7 +806,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
     this._main.replaceChildren(frag);
   };
 
-  /** Packung verschieben oder aufteilen (ein Teil an einen anderen Ort). */
+  /** Move or split a pack (a part to another place). */
   proto.openMoveDialog = function openMoveDialog(deviceId, onDone = null) {
     const hass = this._hass;
     const t = itemTexts(hass);
@@ -794,7 +825,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
     count.value = String(total);
     const area = el("select");
     area.dataset.f = "area";
-    for (const a of [{ id: "", name: t.noArea }, ...listAreas(hass, this._classic.larderLabel, row.areaId)]) {
+    for (const a of [{ id: "", name: t.noArea }, ...listAreas(hass, this._classic.larderLabel, row.areaId, row.kind === "household" ? "household" : "food")]) {
       const o = el("option", "", a.name);
       o.value = a.id;
       area.append(o);
@@ -860,7 +891,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
     return wrap;
   };
 
-  /** "＋": Dose (nur Administratoren), Beutel oder Packung. */
+  /** "＋": container (administrators only), bag, pack or household item. */
   proto.openAddMenu = function openAddMenu() {
     const t = itemTexts(this._hass);
     const choice = (role, icon, name, hint, run) => {
@@ -883,22 +914,24 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
     choices.append(
       choice("add-bag", "🛍", t.kindBag, t.kindBagHint, () => this.openItemsDialog("bag")),
       choice("add-pack", "📦", t.kindPack, t.kindPackHint, () => this.openItemsDialog("pack")),
+      choice("add-household", "🧻", t.kindHousehold, t.kindHouseholdHint, () => this.openItemsDialog("household")),
     );
     this._form.replaceChildren(el("h2", "", t.addTitle), choices, buttonsRow(button("cancel", t.cancel, () => this._closeDialog())));
     this._submit = null;
     this._overlay.hidden = false;
   };
 
-  /** Beutel oder Packungen anlegen: mehrere Zeilen, je Zeile ein Inhalt. */
+  /** Create bags, packs or household items: several rows, one content per row. */
   proto.openItemsDialog = function openItemsDialog(kind, preset = null) {
     const hass = this._hass;
     const t = itemTexts(hass);
     const form = this._form;
     const bag = kind === "bag";
+    const hh = kind === "household";
 
     const area = el("select");
     area.dataset.f = "area";
-    for (const a of [{ id: "", name: t.noArea }, ...listAreas(hass, this._classic.larderLabel)]) {
+    for (const a of [{ id: "", name: t.noArea }, ...listAreas(hass, this._classic.larderLabel, null, hh ? "household" : "food")]) {
       const o = el("option", "", a.name);
       o.value = a.id;
       area.append(o);
@@ -960,7 +993,26 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
       }
       const dateLabel = el("label", "datelabel", bag ? t.bestBeforeBag : t.bestBefore);
       dateLabel.append(date);
-      second.append(quantity, unit);
+      if (hh) {
+        // packs × pieces per pack, e.g. 2 × 8 "Rollen"; no unit and no best-before date
+        const product = values.product || {};
+        const size = input("packSize", "number", t.packSize);
+        size.min = "1";
+        size.max = "999";
+        size.inputMode = "numeric";
+        size.title = t.packSize;
+        size.value = product.pack_size > 1 ? String(product.pack_size) : "";
+        const piece = input("piece", "text", t.piece);
+        piece.maxLength = 30;
+        piece.title = t.piece;
+        piece.value = product.piece || "";
+        quantity.title = t.packs;
+        const times = el("label", "times", "×");
+        times.prepend(quantity);
+        second.append(times, size, piece);
+      } else {
+        second.append(quantity, unit);
+      }
       if (!bag) {
         const price = input("price", "text", t.price);
         price.inputMode = "decimal";
@@ -973,7 +1025,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
         price.addEventListener("input", () => delete price.dataset.source);
         second.append(price);
       }
-      second.append(dateLabel);
+      if (!hh) second.append(dateLabel);
       const remove = button("remove", "✕", () => {
         if (rows.children.length > 1) row.remove();
         else content.value = "";
@@ -982,8 +1034,8 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
       const first = el("div", "itemmain");
       first.append(content, remove);
       row.append(first, second);
-      // gescannte Produktdaten (EAN, Marke, Nährwerte) bleiben, auch wenn der Name geändert wird:
-      // so findet ein späterer Scan desselben Strichcodes die Packung wieder
+      // scanned product data (EAN, brand, nutrition) stays even if the name is changed:
+      // this way a later scan of the same barcode finds the pack again
       row._product = values.product || null;
       rows.append(row);
       return row;
@@ -1016,8 +1068,8 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
       scan.dataset.role = "item-scan";
       extras.push(scan);
     }
-    if (!bag && this._canGenerate() && hass.fetchWithAuth) {
-      // Kassenbon fotografieren: die KI schlägt Produkte mit Anzahl vor
+    if (!bag && !hh && this._canGenerate() && hass.fetchWithAuth) {
+      // take a photo of the receipt: the AI suggests products with their count
       const file = el("input");
       file.type = "file";
       file.accept = "image/*";
@@ -1076,7 +1128,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
     error.setAttribute("role", "alert");
     const submit = button("submit", t.create, null, "submit");
     form.replaceChildren(
-      el("h2", "", bag ? t.titleBag : t.titlePack),
+      el("h2", "", bag ? t.titleBag : hh ? t.titleHousehold : t.titlePack),
       field(t.area, area),
       field(t.compartment, compartment),
       rows,
@@ -1098,6 +1150,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
         const priceNode = row.querySelector('[data-i="price"]');
         return {
           content: v("content"), quantity: v("quantity"), unit: v("unit"), date: v("date"), count: v("count"), product: row._product,
+          packSize: v("packSize"), piece: v("piece"),
           price: v("price"), priceSource: priceNode && priceNode.dataset.source,
         };
       });
@@ -1135,20 +1188,21 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
     rows.querySelector('[data-i="content"]').focus();
   };
 
-  /** Nach dem Anlegen: Beutel kennzeichnen (NFC-Sticker der Reihe nach oder Etiketten drucken). */
+  /** After creating: label the bags (NFC stickers one after another or print labels). */
   proto._itemsCreated = function _itemsCreated(kind, created) {
     const t = itemTexts(this._hass);
+    this.setScope(kind === "household" ? "household" : "food");
     this.setView("containers");
     if (kind !== "bag") {
       this._closeDialog();
-      this.showNotice(t.createdPack(created.length));
+      this.showNotice(kind === "household" ? t.createdHousehold(created.length) : t.createdPack(created.length));
       return;
     }
     const ids = created.map((c) => c.device_id).filter(Boolean);
     const list = el("ul", "created");
     for (const c of created) list.append(el("li", "", `${c.name} · ${c.content}`));
     const actions = [];
-    const nfc = button("", t.nfc, () => this.openNfcSeries(created)); // Beutel kennzeichnet jeder (Dosen nur Administratoren)
+    const nfc = button("", t.nfc, () => this.openNfcSeries(created)); // anyone labels bags (containers only administrators)
     nfc.dataset.role = "items-nfc";
     actions.push(nfc);
     const labels = button("", t.labels, () => this.openLabelDialog(ids));
@@ -1159,7 +1213,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
     this._overlay.hidden = false;
   };
 
-  /** NFC-Sticker für mehrere Beutel nacheinander: beschreiben (App) oder einen beschriebenen scannen. */
+  /** NFC stickers for several bags one after another: write (app) or scan a written one. */
   proto.openNfcSeries = function openNfcSeries(created) {
     const hass = this._hass;
     const t = itemTexts(hass);
@@ -1189,7 +1243,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
         index += 1;
         show(index < items.length ? text : "");
       };
-      // schon beschriebenen Sticker scannen: verknüpfen und weiter
+      // scan a sticker that is already written: link and go on
       classic.cancelCapture("series");
       classic.startCapture(
         async (tag) => {
@@ -1242,7 +1296,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, DOMAIN, attach
     show();
   };
 
-  /** Packung öffnen: leere Dose wählen, Inhalt und Nährwerte wandern hinein. */
+  /** Open a pack: choose an empty container, content and nutrition move into it. */
   proto.openTransferDialog = function openTransferDialog(deviceId) {
     const hass = this._hass;
     const t = itemTexts(hass);

@@ -44,6 +44,7 @@ Larder zeigt unter **Einstellungen → System → Reparaturen** Hinweise, wenn D
 | **Dosen ohne Bereich** | Eine Dose hat keinen Bereich, die Schätzung weiß also nicht, wo das Essen lagert. |
 | **Gefüllte Dosen ohne MHD** | Eine Dose hat einen Inhalt, aber kein MHD. Sie taucht dann weder in der täglichen Zusammenfassung noch im Kalender auf. |
 | **Dosen seit über 7 Tagen abgelaufen** | Zeit, sie zu leeren. |
+| **Larder 4.0: Bereiche für Lebensmittel und Haushalt zuordnen** | Nach dem Update auf 4.0, solange Larder für mindestens einen Bereich eine Nutzung vorschlagen kann (siehe [Lebensmittel oder Haushalt](containers.md#lebensmittel-oder-haushalt-seit-40)). **Beheben** fügt die vorgeschlagenen Labels hinzu. |
 
 Ein Hinweis verschwindet von selbst, sobald keine Dose mehr betroffen ist (geprüft bei jeder Änderung und einmal täglich). In den [Einstellungen](#einstellungen) lassen sich die Hinweise abschalten („Reparaturhinweise“).
 
@@ -53,7 +54,7 @@ Ein Hinweis verschwindet von selbst, sobald keine Dose mehr betroffen ist (gepr�
 - **ohne MHD**: schätzt das MHD für alle (was die Schätzung nicht kennt, bleibt im Hinweis),
 - **lange abgelaufen**: Dosen ankreuzen und leeren; sie kommen als weggeworfen in den Verlauf.
 
-**Mehr erfahren** öffnet das Larder-Dashboard: eine Dose direkt, mehrere auf der Behälter-Seite, gefiltert auf genau diese (`/larder?problem=noarea`, `nodate` oder `longexpired`).
+**Mehr erfahren** öffnet das Larder-Dashboard: eine Dose direkt, mehrere auf der Seite **Lager**, gefiltert auf genau diese (`/larder?problem=noarea`, `nodate` oder `longexpired`).
 
 **Temperaturwarnung.** Hat ein Bereich einen **Temperatursensor** (Einstellungen → Bereiche → Bereich → Temperatursensor) und ist er nach Name oder Label ein Gefrierschrank, Kühlschrank oder 0-°C-Fach, warnt Larder, wenn er zu lange zu warm ist: Gefrierschrank über −12 °C für 30 Minuten, Kühlschrank über 8 °C bzw. 0-°C-Fach über 6 °C für 60 Minuten. Der Reparaturhinweis nennt die gefüllten Dosen dort; das Ereignis `larder_temperature_warning` (`area_id`, `area`, `temperature`, `limit`, `containers`) ist für eigene Push-Nachrichten oder eine Sirene, `larder_temperature_ok` folgt, wenn es wieder kalt ist (1 °C unter der Grenze). Abschalten mit der Einstellung **Temperaturwarnung**.
 
@@ -79,7 +80,7 @@ Pro Dose entsteht ein Gerät (eindeutig über die ID, den Parameter `cc` eines Z
 | **Tage bis MHD** | `sensor` | Verbleibende Tage bis zum MHD (negativ = abgelaufen). Das Attribut `status` ist `ok`, `soon` (3 Tage oder weniger, siehe [Einstellungen](#einstellungen)), `expired` oder `none` |
 | **QR-Code** | `image` | QR-Code der Dose als Bild: Scannen mit der Kamera-App öffnet die Dose im Larder-Dashboard, siehe [Eigene QR-Codes](scanning.md#eigene-qr-codes) |
 
-[Beutel](containers.md#beutel-und-packungen) haben dieselben Entitäten außer **Einkaufsliste**, **Variabler Lagerort** und **Lagerort nach dem Leeren**; [Packungen](containers.md#beutel-und-packungen) haben nur **Inhalt**, **Fach**, **MHD**, **Menge**, **Einheit**, **Tage bis MHD** und **Behälter leeren**. Das Attribut `kind` von **Inhalt** ist `container`, `bag` oder `pack`. **Behälter leeren** entfernt bei einem Beutel oder einer Packung das Gerät.
+[Beutel](containers.md#beutel-und-packungen) haben dieselben Entitäten außer **Einkaufsliste**, **Variabler Lagerort** und **Lagerort nach dem Leeren**; [Packungen](containers.md#beutel-und-packungen) haben nur **Inhalt**, **Fach**, **MHD**, **Menge**, **Einheit**, **Tage bis MHD** und **Behälter leeren**. [Haushaltsartikel](containers.md#haushaltsartikel) haben die Entitäten einer Packung (die Entität **MHD** bleibt leer und wird im Dashboard ausgeblendet), dazu an **Inhalt** die Attribute `pack_size` (Stück je Packung) und `piece` (Name eines Stücks) und Kategorien, die mit `hh_` beginnen. Das Attribut `kind` von **Inhalt** ist `container`, `bag`, `pack` oder `household`. **Behälter leeren** entfernt bei einem Beutel, einer Packung oder einem Haushaltsartikel das Gerät.
 
 Die Werte bleiben über Neustarts erhalten. „Behälter leeren“ ist eine normale Button-Entität, lässt sich also auf Dashboards und in Automationen über `button.press` verwenden.
 

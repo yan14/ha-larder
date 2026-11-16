@@ -1,8 +1,8 @@
-"""Inhalt einer Dose aus einem Foto erkennen (KI über "AI Task"), z. B. "Chili con carne".
+"""Recognise the content of a container from a photo (AI via "AI Task"), e.g. "Chili con carne".
 
-Der Befüllen-Dialog lädt ein Foto hoch (`POST /api/larder/content_photo`). Es liegt kurz im
-Medienordner, geht als Anhang an `ai_task.generate_data` und wird gleich wieder gelöscht. Zurück
-kommt nur ein Vorschlag für das Feld "Inhalt"; gespeichert wird erst mit "Speichern" im Dialog.
+The fill dialog uploads a photo (`POST /api/larder/content_photo`). It is kept briefly in the
+media folder, goes to `ai_task.generate_data` as an attachment and is deleted right away. Only a
+suggestion for the "Content" field comes back; it is saved only with "Save" in the dialog.
 """
 
 from __future__ import annotations
@@ -55,7 +55,7 @@ def build_instructions(language: str) -> str:
 async def async_ask_photo(
     hass: HomeAssistant, mime: str, content: bytes, task_name: str, instructions: str, structure: dict[str, Any]
 ) -> Any:
-    """Ein Foto mit Anweisung und Antwort-Schema an "AI Task" geben; liefert `data` der Antwort."""
+    """Give a photo with instructions and an answer schema to "AI Task"; returns `data` of the answer."""
     if not hass.services.has_service("ai_task", "generate_data"):
         raise EstimateError("ai_unavailable")
     key, media = _media_dir(hass)
@@ -111,7 +111,7 @@ async def async_content_from_photo(hass: HomeAssistant, mime: str, content: byte
 
 
 async def read_photo(view: HomeAssistantView, request: web.Request) -> tuple[str, bytes] | web.Response:
-    """Ein Foto aus dem Formular lesen (Feld `file`); bei Fehlern die fertige Antwort."""
+    """Read a photo from the form (field `file`); on errors the finished response."""
     hass = request.app[KEY_HASS]
     request._client_max_size = MAX_FILE_BYTES + 1024 * 1024  # noqa: SLF001
     try:

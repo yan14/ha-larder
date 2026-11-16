@@ -1,10 +1,10 @@
-"""Rezept aus einem Foto (oder PDF) ins Rezeptbuch übernehmen: die KI liest es über "AI Task".
+"""Take a recipe from a photo (or PDF) into the recipe book: the AI reads it via "AI Task".
 
-Das Dashboard lädt ein bis vier Bilder (oder ein PDF) per HTTP hoch (`POST /api/larder/recipe_photo`,
-nur für Administratoren). Die Dateien landen kurz im Medienordner von Home Assistant
-(`<media>/larder/recipe_photos`), gehen als Anhang an `ai_task.generate_data` und werden danach
-sofort wieder gelöscht. Zurück kommt ein Entwurf (Titel, Dauer, Zutaten, Schritte), den der Nutzer
-im Dashboard prüft und erst dann speichert.
+The dashboard uploads one to four images (or a PDF) by HTTP (`POST /api/larder/recipe_photo`,
+administrators only). The files are kept briefly in Home Assistant's media folder
+(`<media>/larder/recipe_photos`), go to `ai_task.generate_data` as attachments and are deleted
+right afterwards. A draft comes back (title, duration, ingredients, steps) that the user
+checks in the dashboard and only then saves.
 """
 
 from __future__ import annotations
@@ -36,7 +36,7 @@ MAX_TOTAL_BYTES = 30 * 1024 * 1024
 TIMEOUT = 180
 DATA_VIEW = "recipe_photo_view"
 
-# MIME-Typ → Dateiendung (nur diese gehen an die KI)
+# MIME type → file extension (only these go to the AI)
 TYPES = {
     "image/jpeg": ".jpg",
     "image/png": ".png",
@@ -82,7 +82,7 @@ def build_instructions(language: str, count: int, hint: str = "") -> str:
 
 
 def parse_recipe(data: Any, language: str) -> dict[str, Any]:
-    """Antwort der KI prüfen und in die Form des Rezeptbuchs bringen."""
+    """Check the AI's answer and bring it into the shape of the recipe book."""
     if not isinstance(data, dict):
         raise EstimateError("recipe_photo_failed", error="unexpected answer")
     title = str(data.get("title") or "").strip()[:MAX_TITLE]
@@ -101,7 +101,7 @@ def parse_recipe(data: Any, language: str) -> dict[str, Any]:
     except (TypeError, ValueError, OverflowError):
         servings = None
     if servings and 1 <= servings <= 100:
-        # Das Rezeptbuch kennt keine Portionen: als erste Zeile der Zutaten mitnehmen
+        # the recipe book has no servings: keep them as the first line of the ingredients
         label = "Portionen" if language.lower().startswith("de") else "Servings"
         ingredients = [f"{label}: {servings}", *ingredients][:MAX_LINES]
     return {
@@ -114,7 +114,7 @@ def parse_recipe(data: Any, language: str) -> dict[str, Any]:
 
 
 def _media_dir(hass: HomeAssistant) -> tuple[str, Path]:
-    """(Name, Pfad) des ersten Medienordners von Home Assistant."""
+    """(Name, path) of Home Assistant's first media folder."""
     if not hass.config.media_dirs:
         raise EstimateError("recipe_photo_no_media")
     key, folder = next(iter(hass.config.media_dirs.items()))
@@ -124,7 +124,7 @@ def _media_dir(hass: HomeAssistant) -> tuple[str, Path]:
 async def async_recipe_from_files(
     hass: HomeAssistant, files: list[tuple[str, bytes]], hint: str = ""
 ) -> dict[str, Any]:
-    """Dateien (MIME-Typ, Inhalt) an die KI geben und den gelesenen Rezeptentwurf liefern."""
+    """Give files (MIME type, content) to the AI and return the recipe draft it read."""
     if not files:
         raise EstimateError("recipe_photo_none")
     if not hass.services.has_service("ai_task", "generate_data"):
@@ -172,7 +172,7 @@ async def async_recipe_from_files(
         if "attachment" in str(err).lower():
             raise EstimateError("recipe_photo_unsupported") from err
         raise EstimateError("recipe_photo_failed", error=str(err)) from err
-    except Exception as err:  # noqa: BLE001 - Schema- und Anbieterfehler sauber melden
+    except Exception as err:  # noqa: BLE001 - report schema and provider errors cleanly
         _LOGGER.debug("AI recipe photo task failed", exc_info=True)
         raise EstimateError("recipe_photo_failed", error=str(err)) from err
     finally:
@@ -182,7 +182,7 @@ async def async_recipe_from_files(
 
 
 class RecipePhotoView(HomeAssistantView):
-    """Upload der Fotos aus dem Dashboard; Antwort: Rezeptentwurf oder Fehlertext."""
+    """Upload of the photos from the dashboard; response: recipe draft or error text."""
 
     url = URL
     name = f"api:{DOMAIN}:recipe_photo"
@@ -192,7 +192,7 @@ class RecipePhotoView(HomeAssistantView):
         user = request.get("hass_user")
         if user is None or not user.is_admin:
             return self.json_message("admin required", HTTPStatus.UNAUTHORIZED)
-        request._client_max_size = MAX_TOTAL_BYTES + 1024 * 1024  # noqa: SLF001 - wie image_upload
+        request._client_max_size = MAX_TOTAL_BYTES + 1024 * 1024  # noqa: SLF001 - like image_upload
         try:
             form = await request.post()
         except ValueError:

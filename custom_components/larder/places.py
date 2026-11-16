@@ -1,9 +1,9 @@
-"""Fächer mit eigenem NFC-Tag oder QR-Etikett: scannen → was liegt dort, entnehmen oder Inventur.
+"""Compartments with their own NFC tag or QR label: scan → what is there, take or stocktake.
 
-Ein *Ort* ist Bereich + Fach (z. B. "Keller · Regal oben"); ohne Fach der ganze Bereich. Fächer sind kein
-eigenes Objekt in Home Assistant, sondern der Text im Feld "Fach" der Einträge. Hier wird nur gemerkt,
-welcher Tag zu welchem Ort gehört. Ein Scan löst `larder_compartment_scanned` aus, meldet sich bei einem
-offenen Dashboard (Serien-Scan) oder schickt dem scannenden Handy eine Benachrichtigung, die das Fach öffnet.
+A *place* is area + compartment (e.g. "Basement · Top shelf"); without a compartment the whole area. Compartments are
+not objects of their own in Home Assistant but the text in the "Compartment" field of the entries. Only the
+tag that belongs to a place is remembered here. A scan fires `larder_compartment_scanned`, reports to an
+open dashboard (series scan) or sends the scanning phone a notification that opens the compartment.
 """
 
 from __future__ import annotations
@@ -42,12 +42,12 @@ def place_key(area_id: str | None, compartment: str | None) -> str:
 
 
 def place_path(area_id: str | None, compartment: str | None) -> str:
-    """Dashboard beim Fach öffnen."""
+    """Open the dashboard at the compartment."""
     return f"/{PANEL_URL_PATH}?" + urlencode({"place": area_id or "-", "compartment": norm_compartment(compartment)})
 
 
 def place_app_url(area_id: str | None, compartment: str | None) -> str:
-    """Inhalt des QR-Etiketts eines Fachs (öffnet in der Home-Assistant-App das Fach)."""
+    """Content of a compartment's QR label (opens the compartment in the Home Assistant app)."""
     return f"{APP_URL_PREFIX}{place_path(area_id, compartment)}"
 
 
@@ -61,7 +61,7 @@ def place_name(hass: HomeAssistant, area_id: str | None, compartment: str | None
 
 
 def items_at(hass: HomeAssistant, area_id: str | None, compartment: str | None) -> list[str]:
-    """Inhalte aller gefüllten Einträge an diesem Ort (ohne Fach: der ganze Bereich)."""
+    """Contents of all filled entries at this place (without a compartment: the whole area)."""
     registry = er.async_get(hass)
     devices = dr.async_get(hass)
     wanted = norm_compartment(compartment).casefold()
@@ -90,7 +90,7 @@ class PlaceError(HomeAssistantError):
 
 
 class PlaceTags:
-    """Zuordnung Tag-ID → Ort (Bereich + Fach)."""
+    """Mapping tag ID → place (area + compartment)."""
 
     def __init__(self, hass: HomeAssistant) -> None:
         self.hass = hass
@@ -112,7 +112,7 @@ class PlaceTags:
         return next((t for t, p in self._tags.items() if place_key(p.get("area_id"), p.get("compartment")) == key), None)
 
     async def async_link(self, tag_id: str, area_id: str | None, compartment: str | None, nfc: NfcTags) -> None:
-        """Tag mit einem Ort verknüpfen (ein Tag je Ort; ein Tag einer Dose bleibt bei der Dose)."""
+        """Link a tag with a place (one tag per place; a container's tag stays with the container)."""
         tag_id = tag_id.strip()
         if not tag_id:
             raise PlaceError("nfc_no_tag")
@@ -183,8 +183,8 @@ async def ws_place_tags(hass: HomeAssistant, connection: websocket_api.ActiveCon
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/place_link", vol.Required("tag_id"): str, **_PLACE})
 @websocket_api.async_response
 async def ws_place_link(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    """Fach mit einem Tag verknüpfen (jeder im Haushalt, wie bei Beuteln)."""
-    from .nfc import async_get_nfc  # noqa: PLC0415 - vermeidet einen Import-Kreis
+    """Link a compartment with a tag (anyone in the household, as with bags)."""
+    from .nfc import async_get_nfc  # noqa: PLC0415 - avoids an import cycle
 
     places = await async_get_places(hass)
     try:
@@ -206,7 +206,7 @@ async def ws_place_unlink(hass: HomeAssistant, connection: websocket_api.ActiveC
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/report_place_scan", **_PLACE})
 @websocket_api.async_response
 async def ws_report_place_scan(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    """QR-Etikett eines Fachs wurde gescannt (das Dashboard meldet es): Ereignis wie bei NFC."""
+    """A compartment's QR label was scanned (the dashboard reports it): event as with NFC."""
     places = await async_get_places(hass)
     data = places.scan_data({"area_id": msg["area_id"] or "", "compartment": msg["compartment"]}, None, "qr")
     data["user_id"] = connection.user.id if connection.user else None

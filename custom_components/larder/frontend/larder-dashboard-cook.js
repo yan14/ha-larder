@@ -1,8 +1,8 @@
 /**
- * Larder-Dashboard: Vorkochen und Planen – Behältergrößen, freie Behälter, Vorkochen (ein Gericht auf mehrere
- * Dosen aufteilen) und der Wochenplan-Vorschlag aus Dosen, die bald ablaufen.
+ * Larder dashboard: batch cooking and planning – container sizes, free containers, batch cooking (splitting one
+ * dish over several containers) and the week plan suggestion from containers that expire soon.
  *
- * `installCook` hängt die Methoden an die Dashboard-Klasse (wie larder-dashboard-items.js).
+ * `installCook` attaches the methods to the dashboard class (like larder-dashboard-items.js).
  */
 
 const TEXT = {
@@ -104,7 +104,7 @@ export function cookTexts(hass) {
   return String((hass && hass.language) || "en").toLowerCase().startsWith("de") ? TEXT.de : TEXT.en;
 }
 
-/** Größe in Litern ("500 ml" → 0.5, "1,5 l" → 1.5); null, wenn nicht erkennbar. */
+/** Size in litres ("500 ml" → 0.5, "1,5 l" → 1.5); null if not recognisable. */
 export function litres(size) {
   const m = /^(\d+(?:[.,]\d+)?)\s*(ml|cl|l|liter|litre)?$/i.exec(String(size || "").trim());
   if (!m) return null;
@@ -114,15 +114,15 @@ export function litres(size) {
 }
 
 /**
- * Menge auf die gewählten Dosen verteilen. Mit Millilitern und bekannten Größen: jede Dose so voll wie sie fasst
- * (der Rest in die letzte); sonst gleichmäßig (ganze Zahlen, der Rest auf die ersten).
+ * Distribute a quantity over the chosen containers. With millilitres and known sizes: every container as full
+ * as it holds (the rest into the last one); else evenly (whole numbers, the remainder to the first ones).
  */
 export function splitAmount(total, unit, sizes) {
   const n = sizes.length;
   if (!n || !(total > 0)) return sizes.map(() => 0);
   const caps = sizes.map((s) => litres(s));
   if (unit === "milliliters" && caps.every((c) => c)) {
-    // jede Dose so voll, wie sie fasst; was übrig bleibt, passt nicht (siehe overflow)
+    // every container as full as it holds; what is left does not fit (see overflow)
     let rest = total;
     return caps.map((c) => {
       const take = Math.min(rest, Math.round(c * 1000));
@@ -135,7 +135,7 @@ export function splitAmount(total, unit, sizes) {
   return sizes.map((_, i) => base + (i < extra ? 1 : 0));
 }
 
-/** Für Milliliter die kleinste Auswahl an Dosen (größte zuerst), die die Menge fasst. */
+/** For millilitres the smallest selection of containers (largest first) that holds the quantity. */
 export function suggestContainers(total, options) {
   const sorted = options.filter((o) => litres(o.size)).sort((a, b) => litres(b.size) - litres(a.size));
   const chosen = [];
@@ -145,7 +145,7 @@ export function suggestContainers(total, options) {
     chosen.push(o);
     rest -= litres(o.size) * 1000;
   }
-  // zu viel genommen: die größte, die gerade noch reicht, durch eine kleinere ersetzen
+  // took too much: replace the largest one that is just enough by a smaller one
   if (chosen.length && rest < 0) {
     const last = chosen[chosen.length - 1];
     const fit = sorted.filter((o) => !chosen.includes(o) && litres(o.size) * 1000 >= litres(last.size) * 1000 + rest).pop();
@@ -173,7 +173,7 @@ export function installCook(Dashboard, { el, isAdmin, DOMAIN }) {
     return row;
   };
 
-  // ---------- Größen ----------
+  // ---------- Sizes ----------
 
   proto.loadSizes = async function loadSizes() {
     const hass = this._hass;
@@ -187,7 +187,7 @@ export function installCook(Dashboard, { el, isAdmin, DOMAIN }) {
     this._update();
   };
 
-  /** Zeile "Frei: 3 × 1 l, 1 × 0,5 l" für die Lager-Ansicht (null ohne Größen). */
+  /** Line "Free: 3 × 1 l, 1 × 0.5 l" for the storage view (null without sizes). */
   proto._freeLine = function _freeLine() {
     const rows = (this._sizes && this._sizes.overview) || [];
     if (!rows.length) return null;
@@ -242,7 +242,7 @@ export function installCook(Dashboard, { el, isAdmin, DOMAIN }) {
       try {
         this._sizes = await hass.callWS({ type: `${DOMAIN}/loose_set`, loose });
       } catch {
-        /* bleibt offen */
+        /* stays open */
         return;
       }
       this._closeDialog();
@@ -385,7 +385,7 @@ export function installCook(Dashboard, { el, isAdmin, DOMAIN }) {
     this._overlay.hidden = false;
   };
 
-  // ---------- Wochenplan-Vorschlag ----------
+  // ---------- Week plan suggestion ----------
 
   proto.openWeekSuggest = async function openWeekSuggest() {
     const hass = this._hass;
@@ -447,7 +447,7 @@ export function installCook(Dashboard, { el, isAdmin, DOMAIN }) {
               ingredients: day.ingredients || [],
             });
           } catch {
-            /* weiter mit den anderen Tagen */
+            /* continue with the other days */
           }
         }
         this._closeDialog();

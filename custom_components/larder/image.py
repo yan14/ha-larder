@@ -1,4 +1,4 @@
-"""Entität 'QR-Code': PNG mit Deep Link auf die Geräteseite (scanbar mit der Kamera-App)."""
+"""Entity 'QR code': PNG with a deep link to the device page (scannable with the camera app)."""
 
 from __future__ import annotations
 
@@ -12,12 +12,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
-from .const import KIND_PACK, scan_app_url
+from .const import PACK_KINDS, scan_app_url
 from .entity import LarderConfigEntry, LarderEntity, kind_of
 
 
 def render_qr_png(content: str) -> bytes:
-    """QR-Code als PNG (schwarz auf weiß, mit Ruhezone) erzeugen."""
+    """Create a QR code as PNG (black on white, with quiet zone)."""
     buffer = io.BytesIO()
     segno.make_qr(content, error="m").save(buffer, kind="png", scale=10, border=4)
     return buffer.getvalue()
@@ -28,16 +28,16 @@ async def async_setup_entry(
     entry: LarderConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    if kind_of(entry) != KIND_PACK:  # Packungen haben keinen Code
+    if kind_of(entry) not in PACK_KINDS:  # packs have no code
         async_add_entities([ZwillingQrCode(hass, entry)])
 
 
 class ZwillingQrCode(ImageEntity, LarderEntity):
-    """QR-Code, der die Home-Assistant-App direkt im Dashboard bei dieser Dose öffnet.
+    """QR code that opens the Home Assistant app directly in the dashboard at this container.
 
-    Wie bei NFC-Tags: Das Dashboard öffnet die Dose (eine leere gleich zum Befüllen) und löst
-    `larder_dose_scanned` aus. Der Code enthält die ID der Dose (cc), nicht die Geräte-ID, und
-    bleibt deshalb auch gültig, wenn die Dose gelöscht und neu angelegt wird.
+    As with NFC tags: the dashboard opens the container (an empty one right away for filling) and fires
+    `larder_dose_scanned`. The code contains the container's ID (cc), not the device ID, and
+    therefore stays valid even if the container is deleted and created again.
     """
 
     _key = "qr_code"
@@ -50,7 +50,7 @@ class ZwillingQrCode(ImageEntity, LarderEntity):
 
     @property
     def qr_content(self) -> str | None:
-        """Inhalt des QR-Codes (erst bekannt, wenn die Entität am Gerät hängt)."""
+        """Content of the QR code (only known once the entity is attached to the device)."""
         return scan_app_url(self._cc)
 
     @property

@@ -1,4 +1,4 @@
-"""Config Flow: QR-Code-Inhalt einfügen, Dose als Gerät anlegen."""
+"""Config flow: paste the QR code content, create the container as a device."""
 
 from __future__ import annotations
 
@@ -88,7 +88,7 @@ _INITIAL_KEYS = ("vacuum", "shopping", "flexible", "home_area")
 
 
 def _area_data(user_input: dict[str, Any]) -> dict[str, Any]:
-    """Gewählten Bereich und die Vorgaben der Dose (falls angegeben) einmalig in den Eintrag schreiben."""
+    """Write the chosen area and the container's presets (if given) into the entry once."""
     data: dict[str, Any] = {}
     if area_id := user_input.get(CONF_AREA):
         data[CONF_AREA] = area_id
@@ -99,7 +99,7 @@ def _area_data(user_input: dict[str, Any]) -> dict[str, Any]:
 
 
 def _option_fields() -> dict:
-    """Optionale Vorgaben der Dose (im Dialog des Dashboards gesetzt)."""
+    """Optional presets of the container (set in the dashboard dialog)."""
     return {
         vol.Optional("vacuum"): BooleanSelector(),
         vol.Optional("shopping"): BooleanSelector(),
@@ -109,7 +109,7 @@ def _option_fields() -> dict:
 
 
 class LarderConfigFlow(ConfigFlow, domain=DOMAIN):
-    """Eine Config Entry entspricht einer Dose (eindeutig über 'cc')."""
+    """One config entry is one container (unique by 'cc')."""
 
     VERSION = 1
 
@@ -121,13 +121,13 @@ class LarderConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Auswahl: vorhandenen Zwilling-QR-Code einlesen oder neuen erstellen."""
+        """Choice: read an existing Zwilling QR code or create a new one."""
         return self.async_show_menu(step_id="user", menu_options=["scan", "create"])
 
     async def async_step_scan(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Inhalt eines vorhandenen Zwilling-QR-Codes einfügen."""
+        """Paste the content of an existing Zwilling QR code."""
         errors: dict[str, str] = {}
 
         if user_input is not None:
@@ -167,7 +167,7 @@ class LarderConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_create(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Neue Dose mit selbst erzeugter, eindeutiger ID anlegen."""
+        """Create a new container with a generated, unique ID."""
         if user_input is not None:
             code = generate_code(self._async_current_ids())
             await self.async_set_unique_id(code)
@@ -198,11 +198,11 @@ class LarderConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
     async def async_step_import(self, data: dict[str, Any]) -> ConfigFlowResult:
-        """Beutel oder Packung aus dem Dashboard anlegen (siehe disposable.py), immer mit neuer ID."""
-        from .disposable import async_get_retired  # noqa: PLC0415 - vermeidet einen Import-Kreis
+        """Create a bag or pack from the dashboard (see disposable.py), always with a new ID."""
+        from .disposable import async_get_retired  # noqa: PLC0415 - avoids an import cycle
 
         retired = await async_get_retired(self.hass)
-        code = generate_code({*self._async_current_ids(), *retired.codes})  # Codes nie wiederverwenden
+        code = generate_code({*self._async_current_ids(), *retired.codes})  # never reuse codes
         await self.async_set_unique_id(code)
         self._abort_if_unique_id_configured()
         kind = data.get(CONF_KIND)
@@ -221,7 +221,7 @@ class LarderConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Dose umbenennen (die ID bleibt, damit gedruckte Codes und NFC-Tags gültig bleiben)."""
+        """Rename a container (the ID stays, so printed codes and NFC tags remain valid)."""
         entry = self._get_reconfigure_entry()
         errors: dict[str, str] = {}
         if user_input is not None:
@@ -241,7 +241,7 @@ class LarderConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
 class LarderOptionsFlow(OptionsFlow):
-    """Globale Einstellungen: Webhook-URL (nur Anzeige) und Schätzung des MHD (Tabelle/KI)."""
+    """Global settings: webhook URL (display only) and best-before estimate (table/AI)."""
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -255,7 +255,7 @@ class LarderOptionsFlow(OptionsFlow):
             if calendar and sync.supports(calendar) is False:
                 errors[CONF_CALENDAR_ENTITY] = "calendar_not_supported"
             else:
-                # Leere Auswahlfelder fehlen in user_input: dann ist die Einstellung bewusst geleert
+                # empty selectors are missing in user_input: the setting was cleared on purpose
                 await estimator.async_update_settings(
                     {conf: user_input.get(conf, default) for conf, (_attr, default, _n) in SETTINGS.items()}
                 )

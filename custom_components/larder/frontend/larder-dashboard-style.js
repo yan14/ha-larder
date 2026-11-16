@@ -1,6 +1,6 @@
-/** Larder-Dashboard: Stylesheet (wird in das Shadow DOM eingefügt). */
+/** Larder dashboard: stylesheet (inserted into the shadow DOM). */
 export const STYLE = `
-  /* Feste Höhe: nur main scrollt, Kopfzeile und Navigation bleiben stehen (iOS: kein Mitfedern der Leiste) */
+  /* Fixed height: only main scrolls, header and navigation stay put (iOS: the bar does not bounce along) */
   :host { position: relative; display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; background: var(--primary-background-color);
     color: var(--primary-text-color); font-family: var(--paper-font-body1_-_font-family, Roboto, sans-serif); }
   [hidden] { display: none !important; }
@@ -15,7 +15,7 @@ export const STYLE = `
     padding: 12px 16px 16px; box-sizing: border-box; display: flex; flex-direction: column; }
   main > * { flex: 0 0 auto; }
   main > .selbar { margin-top: auto; }
-  /* Karten-Ansicht: oben die Leiste (main), darunter scrollt die eingebettete Ansicht */
+  /* Cards view: the bar on top (main), below it the embedded view scrolls */
   :host([classic-view]) main { flex: 0 0 auto; padding-bottom: 0; overflow: visible; }
   larder-panel-embedded { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
   .menu { position: absolute; top: 52px; right: 8px; z-index: 5; display: flex; flex-direction: column; min-width: 220px;
@@ -26,6 +26,11 @@ export const STYLE = `
   .menu button + button { border-top: 1px solid var(--divider-color); }
   .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
   .bar .grow { flex: 1; }
+  .scope { display: flex; gap: 0; margin: 0 0 12px; border: 1px solid var(--divider-color, #ddd); border-radius: 18px; overflow: hidden; }
+  .scope button { flex: 1; border: 0; border-radius: 0; background: none; padding: 8px 10px; font: inherit; font-size: 15px; color: inherit; cursor: pointer; }
+  .scope button.on { background: var(--primary-color, #03a9f4); color: var(--text-primary-color, #fff); }
+  h2.section { font-size: 18px; font-weight: 500; margin: 22px 0 10px; padding-top: 12px; border-top: 1px solid var(--divider-color, #ddd); }
+  .hello + h2.section, .recall + h2.section { border-top: 0; padding-top: 0; margin-top: 4px; }
   .bar.ai select { flex: 1 1 40%; min-width: 0; }
   .bar.ai button { flex: 1 1 100%; }
   .bar.search input { flex: 1; min-width: 0; font: inherit; font-size: 15px; padding: 8px 14px; border-radius: 18px;

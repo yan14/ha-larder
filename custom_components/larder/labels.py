@@ -1,10 +1,10 @@
-"""QR-Etikettenbogen (A4) als PDF: eigene QR-Codes mehrerer Dosen zum Ausdrucken.
+"""QR label sheet (A4) as PDF: own QR codes of several containers for printing.
 
-Das PDF wird hier ohne Zusatzbibliothek geschrieben: die QR-Codes als Vektor-Rechtecke (scharf
-in jeder Druckgröße), Text in Helvetica oder (Design "Handschrift") in der eingebetteten freien
-Schrift Kalam (SIL Open Font License, fonts/OFL-Kalam.txt). Immer schwarz-weiß. Aufgerufen wird es aus dem
-Dashboard über eine signierte URL (`/api/larder/labels.pdf?...`), damit es sich in der App im
-Browser öffnen, teilen und drucken lässt.
+The PDF is written here without an extra library: the QR codes as vector rectangles (sharp
+at every print size), text in Helvetica or (design "Handwriting") in the embedded free
+font Kalam (SIL Open Font License, fonts/OFL-Kalam.txt). Black and white by default, a text colour is optional. It is called from the
+dashboard through a signed URL (`/api/larder/labels.pdf?...`), so it can be opened, shared
+and printed in the browser inside the app.
 """
 
 from __future__ import annotations
@@ -24,47 +24,47 @@ from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 
-from .const import DOMAIN, KIND_PACK, scan_app_url
+from .const import DOMAIN, PACK_KINDS, scan_app_url
 from .entity import kind_of
 from .places import place_app_url, place_name
 
 URL = f"/api/{DOMAIN}/labels.pdf"
 DATA_VIEW = "labels_view"
-MM = 72 / 25.4  # PDF-Punkte pro Millimeter
+MM = 72 / 25.4  # PDF points per millimetre
 A4 = (210.0, 297.0)
 
 
 @dataclass(frozen=True)
 class Layout:
-    """Etikettenformat auf A4 (alle Maße in mm)."""
+    """Label format on A4 (all measures in mm)."""
 
     cols: int
     rows: int
     width: float
     height: float
-    top: float  # Rand oben
-    left: float  # Rand links
+    top: float  # top margin
+    left: float  # left margin
     gap_x: float = 0.0
     gap_y: float = 0.0
-    page: tuple[float, float] = A4  # Etikettendrucker: eine Seite pro Etikett
+    page: tuple[float, float] = A4  # label printer: one page per label
 
     @property
     def per_page(self) -> int:
         return self.cols * self.rows
 
 
-# Gängige Bögen (z. B. Avery Zweckform 3475 = 70 × 36, 3652 = 70 × 42,3, 3655 = 105 × 74 … ähnliche Formate passen)
+# Common sheets (e.g. Avery Zweckform 3475 = 70 × 36, 3652 = 70 × 42.3, 3655 = 105 × 74 … similar formats fit)
 LAYOUTS: dict[str, Layout] = {
     "3x8": Layout(3, 8, 70.0, 36.0, 4.5, 0.0),
     "3x7": Layout(3, 7, 70.0, 42.3, 0.15, 0.0),
     "2x4": Layout(2, 4, 105.0, 74.0, 0.5, 0.0),
-    # Etikettendrucker (eine Seite = ein Etikett), z. B. Brother DK-11209, Dymo 11352, Dymo 99012
+    # Label printers (one page = one label), e.g. Brother DK-11209, Dymo 11352, Dymo 99012
     "62x29": Layout(1, 1, 62.0, 29.0, 0.0, 0.0, page=(62.0, 29.0)),
     "54x25": Layout(1, 1, 54.0, 25.0, 0.0, 0.0, page=(54.0, 25.0)),
     "89x36": Layout(1, 1, 89.0, 36.0, 0.0, 0.0, page=(89.0, 36.0)),
 }
 DESIGNS = ("plain", "frame", "notched", "handwritten")
-# Schriftfarben (dunkel und gut lesbar); QR-Code und Rahmen bleiben schwarz
+# text colours (dark and easy to read); QR code and border stay black
 COLORS: dict[str, tuple[float, float, float]] = {
     "black": (0.0, 0.0, 0.0),
     "blue": (0.06, 0.2, 0.45),
@@ -72,8 +72,8 @@ COLORS: dict[str, tuple[float, float, float]] = {
     "red": (0.5, 0.08, 0.08),
     "brown": (0.38, 0.22, 0.1),
 }
-LOGO_MIN_QR = 22 * 72 / 25.4  # kleiner als 22 mm: kein Symbol in der Mitte (Scannen wird unsicher)
-_K = 0.5523  # Bézier-Annäherung eines Viertelkreises
+LOGO_MIN_QR = 22 * 72 / 25.4  # smaller than 22 mm: no symbol in the middle (scanning becomes unreliable)
+_K = 0.5523  # Bézier approximation of a quarter circle
 FONT_FILE = Path(__file__).parent / "fonts" / "Kalam-Bold.ttf"
 DEFAULT_LAYOUT = "3x8"
 
@@ -84,7 +84,7 @@ class Label:
     qr: str
     content: str = ""
     best_before: str = ""
-    nutrition: str = ""  # z. B. "372 kcal/100 g · Nutri-Score A · Gluten"
+    nutrition: str = ""  # e.g. "372 kcal/100 g · Nutri-Score A · Gluten"
 
 
 _TEXT = {
@@ -94,13 +94,13 @@ _TEXT = {
 
 
 def _pdf_text(value: str) -> bytes:
-    """Text für Helvetica (WinAnsi): Umlaute bleiben, Unbekanntes wird '?', Klammern werden maskiert."""
+    """Text for Helvetica (WinAnsi): umlauts stay, unknown characters become '?', brackets are escaped."""
     raw = value.encode("cp1252", errors="replace")
     return raw.replace(b"\\", b"\\\\").replace(b"(", b"\\(").replace(b")", b"\\)")
 
 
 def _logo_ops(cx: float, cy: float, s: float) -> list[bytes]:
-    """Larder-Symbol (Dose mit Deckel und Clips) in Schwarz auf weißem Feld, Mitte (cx, cy), Kantenlänge s."""
+    """Larder symbol (container with lid and clips) in black on a white field, centre (cx, cy), edge length s."""
     box = s * 1.0
     ops = [b"1 g", _rounded(cx - box / 2, cy - box / 2, box, box, box * 0.18) + b" f", b"0 g"]
     lid_w, lid_h = s * 0.7, s * 0.17
@@ -115,9 +115,9 @@ def _logo_ops(cx: float, cy: float, s: float) -> list[bytes]:
 
 
 def _qr_ops(content: str, x: float, y: float, size: float, logo: bool = False) -> list[bytes]:
-    """QR-Code als gefüllte Rechtecke; (x, y) = linke untere Ecke, size = Kantenlänge in pt (ohne Ruhezone).
+    """QR code as filled rectangles; (x, y) = lower left corner, size = edge length in pt (without quiet zone).
 
-    Mit `logo` (und groß genug) höchste Fehlerkorrektur und das Larder-Symbol in der Mitte (ca. 20 %).
+    With `logo` (and large enough) highest error correction and the Larder symbol in the middle (approx. 20 %).
     """
     logo = logo and size >= LOGO_MIN_QR
     matrix = segno.make_qr(content, error="h" if logo else "m").matrix
@@ -149,7 +149,7 @@ _HELVETICA_BOLD = [278, 333, 474, 556, 556, 889, 722, 238, 333, 333, 389, 584, 2
 
 @cache
 def _kalam() -> tuple[bytes, list[int], dict[str, int]]:
-    """Schriftdatei, Breiten für WinAnsi 32–255 (in 1/1000 em) und Kennzahlen für den Font-Deskriptor."""
+    """Font file, widths for WinAnsi 32–255 (in 1/1000 em) and metrics for the font descriptor."""
     data = FONT_FILE.read_bytes()
     count = struct.unpack(">H", data[4:6])[0]
     tables = {}
@@ -167,7 +167,7 @@ def _kalam() -> tuple[bytes, list[int], dict[str, int]]:
     ascent, descent = struct.unpack(">hh", hhea[4:8])
     metrics = struct.unpack(">H", hhea[34:36])[0]
     advances = [struct.unpack(">H", hmtx[4 * i : 4 * i + 2])[0] for i in range(metrics)]
-    # cmap Format 4 (Unicode BMP)
+    # cmap format 4 (Unicode BMP)
     cmap = table("cmap")
     glyph_of: dict[int, int] = {}
     for i in range(struct.unpack(">H", cmap[2:4])[0]):
@@ -213,7 +213,7 @@ def _kalam() -> tuple[bytes, list[int], dict[str, int]]:
     return data, widths, info
 
 
-# Schriften im PDF: F1 Helvetica, F2 Helvetica-Bold, F3 Kalam (Handschrift)
+# fonts in the PDF: F1 Helvetica, F2 Helvetica-Bold, F3 Kalam (handwriting)
 def _widths(font: str) -> list[int]:
     if font == "F3":
         return _kalam()[1]
@@ -227,7 +227,7 @@ def _measure(text: str, font: str, size: float) -> float:
 
 
 def _fit(text: str, width_pt: float, size: float, font: str = "F1") -> str:
-    """Text so kürzen, dass er in die Breite passt (mit … am Ende)."""
+    """Shorten text so that it fits the width (with … at the end)."""
     text = " ".join(text.split())
     if _measure(text, font, size) <= width_pt:
         return text
@@ -237,7 +237,7 @@ def _fit(text: str, width_pt: float, size: float, font: str = "F1") -> str:
 
 
 def _wrap(text: str, width_pt: float, size: float, max_lines: int, font: str = "F1") -> list[str] | None:
-    """Wortweise umbrechen; None, wenn es in `max_lines` Zeilen nicht passt (ohne Wort zu zerschneiden)."""
+    """Wrap by words; None if it does not fit into `max_lines` lines (without cutting a word)."""
     words = text.split()
     lines: list[str] = []
     while words:
@@ -267,7 +267,7 @@ def _rounded(x: float, y: float, w: float, h: float, r: float) -> bytes:
 
 
 def _notched(x: float, y: float, w: float, h: float, r: float) -> bytes:
-    """Rechteck mit nach innen gewölbten Ecken (wie ein Eintrittskarten-Etikett)."""
+    """Rectangle with corners curved inwards (like a ticket label)."""
     k = _K * r
     return (
         f"{x + r:.2f} {y:.2f} m {x + w - r:.2f} {y:.2f} l "
@@ -282,11 +282,11 @@ def _notched(x: float, y: float, w: float, h: float, r: float) -> bytes:
 
 
 def _bracket(x: float, y: float, w: float, h: float) -> bytes:
-    """Klassisches Glas-Etikett: gewölbte Ecken, oben und unten leicht nach außen, seitlich nach innen geschwungen."""
+    """Classic jar label: curved corners, top and bottom slightly outwards, sides curved inwards."""
     r = min(w, h) * 0.16
     k = _K * r
-    bump = h * 0.06  # Wölbung oben/unten
-    dent = w * 0.035  # Einzug an den Seiten
+    bump = h * 0.06  # curve at top/bottom
+    dent = w * 0.035  # indent at the sides
     mx, my = x + w / 2, y + h / 2
     return (
         f"{x + r:.2f} {y + bump:.2f} m "
@@ -304,7 +304,7 @@ def _bracket(x: float, y: float, w: float, h: float) -> bytes:
 
 
 def _design_ops(design: str, x: float, y: float, w: float, h: float) -> tuple[list[bytes], float, float]:
-    """(Rahmen, Abstand nach innen waagrecht, senkrecht in pt) – alles schwarz, keine Flächen."""
+    """(Border, inner margin horizontal, vertical in pt) – all black, no filled areas."""
     m = 1.5 * MM
     x, y, w, h = x + m, y + m, w - 2 * m, h - 2 * m
     if design == "frame":
@@ -332,15 +332,15 @@ def _layout_text(
     label: Label, show_name: bool, show_content: bool, show_nutrition: bool, width: float, height: float,
     language: str, bold: str, regular: str, big: bool, show_best_before: bool = False,
 ) -> list[tuple[str, float, str]]:
-    """Zeilen (Text, Größe, Schrift) so groß wie möglich, die in width × height passen.
+    """Lines (text, size, font) as large as possible that fit into width × height.
 
-    Der Name (bzw. der Inhalt, wenn kein Name gedruckt wird) bricht auf bis zu zwei Zeilen um, statt
-    abgeschnitten zu werden; Inhalt, MHD und Nährwerte sind kleiner.
+    The name (or the content if no name is printed) wraps to up to two lines instead of
+    being cut off; content, best-before date and nutrition are smaller.
     """
     main = label.name if show_name else (label.content if show_content and label.content else "")
     content = label.content if show_content and show_name else ""
     if content and content.casefold() == main.casefold():
-        content = ""  # Name und Inhalt gleich ("Zucker"): nicht doppelt drucken
+        content = ""  # name and content are the same ("Zucker"): do not print twice
     extras: list[str] = []
     if show_best_before and label.best_before:
         extras.append(f"{_TEXT[language]['best_before']}: {label.best_before}")
@@ -348,7 +348,7 @@ def _layout_text(
         extras.append(label.nutrition)
     if not main and not content and not extras:
         main = label.name
-    # Obergrenze, damit kurze Namen ("Zucker") nicht viel größer werden als lange
+    # upper limit, so short names ("Zucker") do not get much larger than long ones
     top = min(height * 0.34, 40.0) if big else min(height * 0.24, 22.0)
     size = top
     while size >= 6.0:
@@ -371,7 +371,7 @@ def _layout_text(
         if total <= height:
             return lines
         size -= 0.5
-    # passt auch klein nicht: eine gekürzte Zeile
+    # does not fit even small: one shortened line
     return [(_fit(main or label.name, width, 6.0, bold), 6.0, bold)]
 
 
@@ -395,7 +395,7 @@ def _label_ops(
     x_mm = layout.left + col * (layout.width + layout.gap_x)
     y_top_mm = layout.top + row * (layout.height + layout.gap_y)
     x = x_mm * MM
-    y = (layout.page[1] - y_top_mm - layout.height) * MM  # PDF zählt von unten
+    y = (layout.page[1] - y_top_mm - layout.height) * MM  # PDF counts from the bottom
     w, h = layout.width * MM, layout.height * MM
     frame, inset_x, inset_y = _design_ops(design, x, y, w, h)
     pad = 2.5 * MM
@@ -406,7 +406,7 @@ def _label_ops(
     if border:
         ops += [b"0.6 G 0.3 w", f"{x:.3f} {y:.3f} {w:.3f} {h:.3f} re S".encode(), b"0 G"]
     if inverted:
-        # Tafel-Look: Etikett schwarz gefüllt, Schrift und Rahmen weiß, QR-Code auf weißem Feld (sicher lesbar)
+        # chalkboard look: label filled black, text and border white, QR code on a white field (reads safely)
         m = 0.8 * MM
         ops += [b"0 g", _rounded(x + m, y + m, w - 2 * m, h - 2 * m, 3 * MM) + b" f"]
         frame = [op.replace(b"0 G", b"1 G") if op.startswith(b"0 G") else op for op in frame]
@@ -466,9 +466,9 @@ def build_pdf(
     inverted: bool = False,
     logo: bool = False,
 ) -> bytes:
-    """PDF mit allen Etiketten; `skip` lässt am Anfang schon benutzte Felder eines Bogens frei."""
+    """PDF with all labels; `skip` leaves fields of a sheet that were already used free at the start."""
     if design == "vintage":
-        design = "handwritten"  # früherer Name
+        design = "handwritten"  # former name
     layout = LAYOUTS.get(layout_key, LAYOUTS[DEFAULT_LAYOUT])
     language = "de" if language.lower().startswith("de") else "en"
     skip = max(0, min(skip, layout.per_page - 1))
@@ -490,7 +490,7 @@ def build_pdf(
         objects.append(body)
         return len(objects)
 
-    catalog = add(b"")  # wird unten gefüllt
+    catalog = add(b"")  # filled below
     pages_id = add(b"")
     font_regular = add(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>")
     font_bold = add(b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>")
@@ -556,7 +556,7 @@ _NUTRITION_TEXT = {"de": {"portion": "Portion"}, "en": {"portion": "portion"}}
 
 
 def nutrition_line(attrs: dict, language: str) -> str:
-    """Kurze Nährwertzeile fürs Etikett: kcal (pro Portion bzw. 100 g), Nutri-Score, Allergene."""
+    """Short nutrition line for the label: kcal (per portion or 100 g), Nutri-Score, allergens."""
     de = language.lower().startswith("de")
     parts = []
 
@@ -582,7 +582,7 @@ def collect_labels(
     with_nutrition: bool = False,
     with_best_before: bool | None = None,
 ) -> list[Label]:
-    """Etiketten der gewünschten Dosen (alle, wenn `codes` leer ist), alphabetisch nach Name."""
+    """Labels of the wanted containers (all if `codes` is empty), alphabetically by name."""
     registry = er.async_get(hass)
     wanted = {c.upper() for c in codes or []}
     language = hass.config.language or "en"
@@ -591,8 +591,8 @@ def collect_labels(
         cc = entry.data.get("cc")
         if not cc or (wanted and cc.upper() not in wanted):
             continue
-        if not wanted and kind_of(entry) == KIND_PACK:
-            continue  # Packungen haben keinen Code: nur auf ausdrücklichen Wunsch
+        if not wanted and kind_of(entry) in PACK_KINDS:
+            continue  # packs have no code: only on explicit request
         content = best = nutrition = ""
         if with_nutrition:
             entity_id = registry.async_get_entity_id("text", DOMAIN, f"{cc}_content")
@@ -617,7 +617,7 @@ def collect_labels(
 
 
 class LabelSheetView(HomeAssistantView):
-    """GET /api/larder/labels.pdf?device=<id>,<id>&layout=3x8&skip=0&content=1&bestbefore=1&border=0 (oder cc=A,B; ohne: alle)"""
+    """GET /api/larder/labels.pdf?device=<id>,<id>&layout=3x8&skip=0&content=1&bestbefore=1&border=0 (or cc=A,B; without: all)"""
 
     url = URL
     name = f"api:{DOMAIN}:labels"
@@ -634,11 +634,11 @@ class LabelSheetView(HomeAssistantView):
             return self.json_message("no containers", HTTPStatus.NOT_FOUND)
         show_content = query.get("content") == "1"
         show_nutrition = query.get("nutrition") == "1"
-        # Inhalt und MHD getrennt (seit 2.12.1); alte Links mit nur content=1 drucken beides
+        # content and date separately (since 2.12.1); old links with only content=1 print both
         show_best_before = query.get("bestbefore", "1" if show_content else "0") == "1"
         places = [p.split("|", 1) for p in query.getall("place", []) if "|" in p]
         if places:
-            # Etiketten für Fächer: Name des Orts und QR-Code, der das Fach öffnet
+            # labels for compartments: name of the place and a QR code that opens the compartment
             labels = [Label(place_name(hass, a or None, c), place_app_url(a or None, c)) for a, c in places]
             show_content = show_nutrition = show_best_before = False
         else:

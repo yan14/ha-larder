@@ -1,4 +1,4 @@
-"""Diagnosedaten einer Dose (Einstellungen → Geräte & Dienste → Larder → ⋮ → Diagnose herunterladen)."""
+"""Diagnostics of a container (Settings → Devices & services → Larder → ⋮ → Download diagnostics)."""
 
 from __future__ import annotations
 
@@ -13,9 +13,9 @@ from .estimate import async_get_estimator, storage_context
 
 
 async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: LarderConfigEntry) -> dict[str, Any]:
-    """Was zur Fehlersuche hilft: Einstellungen, die Dose, ihr Bereich und die Zustände ihrer Entitäten.
+    """What helps with troubleshooting: settings, the container, its area and the states of its entities.
 
-    Nicht enthalten: die geheime Webhook-ID des Kurzbefehls und die gemerkten Schätzungen selbst (nur ihre Anzahl).
+    Not included: the secret webhook ID of the shortcut and the remembered estimates themselves (only their number).
     """
     cc = entry.data.get("cc")
     estimator = await async_get_estimator(hass)

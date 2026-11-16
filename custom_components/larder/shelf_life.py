@@ -1,13 +1,13 @@
-"""Eingebaute Haltbarkeits-Tabelle für gängige Lebensmittel (ohne KI, ohne Internet).
+"""Built-in shelf-life table for common foods (no AI, no internet).
 
-Die Werte sind bewusst **vorsichtig** gewählt und orientieren sich an den üblichen
+The values are chosen **cautiously** on purpose and follow the usual
 Lagerempfehlungen (u. a. USDA Cold Food Storage Chart, FoodKeeper, Verbraucherzentralen).
-Es sind Richtwerte für zu Hause, keine Garantie für Lebensmittelsicherheit.
+They are guide values for home use, no guarantee of food safety.
 
-Aufbau: Jeder Eintrag kennt vier Lagerorte (Kühlschrank, 0-Grad-Fach, Gefrierschrank,
-Vorrat/Raumtemperatur) und gibt die Tage an, die das Lebensmittel dort gut bleibt.
-`None` bedeutet: dort nicht lagern. Der Lagerort wird aus dem Bereich der Dose abgeleitet
-(Temperatursensor, Temperatur im Namen/Label, sonst Stichwörter im Namen).
+Structure: every entry knows four storage places (fridge, 0-degree compartment, freezer,
+pantry/room temperature) and gives the days the food stays good there.
+`None` means: do not store there. The storage place is derived from the container's area
+(temperature sensor, temperature in the name/label, else keywords in the name).
 """
 
 from __future__ import annotations
@@ -26,13 +26,13 @@ STORAGE_LABELS = {
     "en": {FRIDGE: "fridge", ZERO: "0 °C compartment", FREEZER: "freezer", PANTRY: "pantry"},
 }
 
-# Wie stark Vakuum die Haltbarkeit verlängert. Leicht verderbliche Speisen im Kühlschrank
-# bleiben bewusst bei Faktor 1: Vakuum macht sie nicht sicherer.
+# How much vacuum extends the shelf life. Perishable food in the fridge
+# deliberately stays at factor 1: vacuum does not make it safer.
 VACUUM_FACTOR = {FRIDGE: 1.3, ZERO: 1.3, FREEZER: 1.5, PANTRY: 1.5}
 
 
 def norm(text: str) -> str:
-    """Klein, ohne Umlaute/Akzente (ä→ae, ß→ss), nur Buchstaben, Ziffern und Leerzeichen."""
+    """Lower case, without umlauts/accents (ä→ae, ß→ss), only letters, digits and spaces."""
     text = text.casefold()
     for src, dst in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
         text = text.replace(src, dst)
@@ -51,11 +51,11 @@ class Entry:
     keywords: tuple[str, ...]
     days: dict[str, int | None]
     priority: int = 1
-    perishable: bool = False  # Vakuum verlängert die Kühlhaltbarkeit nicht
+    perishable: bool = False  # vacuum does not extend the shelf life in the fridge
 
 
 def _kw(raw: str) -> str:
-    """Stichwort normalisieren; "~" (schwach) und "+" (alle Teile, beliebige Reihenfolge) bleiben erhalten."""
+    """Normalise a keyword; "~" (weak) and "+" (all parts, any order) are kept."""
     weak = raw.startswith("~")
     parts = [norm(p) for p in raw.lstrip("~").split("+")]
     return ("~" if weak else "") + "+".join(p for p in parts if p)
@@ -70,7 +70,7 @@ def _e(id_, de, en, cat, kw, fridge, zero, freezer, pantry, *, pri=1, perishable
     )
 
 
-# Kurze Lagerhinweise je Kategorie: (de, en)
+# Short storage tips per category: (de, en)
 TIPS: dict[str, tuple[str, str]] = {
     "dish": (
         "Schnell abkühlen lassen, gut verschlossen lagern und vor dem Essen gut durcherhitzen (mind. 70 °C).",
@@ -118,15 +118,15 @@ TIPS: dict[str, tuple[str, str]] = {
     ),
 }
 
-# Reihenfolge ist egal: Treffer mit höherer Priorität, dann am Wortende (Grundwort eines
-# zusammengesetzten Worts: "Butter|kekse"), dann mit dem längsten Stichwort, gewinnen.
-# Stichwörter: "a+b" heißt beide Teile kommen vor (beliebige Reihenfolge, "Eier gekocht"),
-# "~a" ist ein schwaches Stichwort, das nur zählt, wenn sonst nichts passt ("filet").
-# TABLE_VERSION erhöhen, wenn sich Einträge oder die Erkennung ändern: gemerkte Tabellenwerte
-# werden dann neu berechnet (eigene Korrekturen bleiben).
-TABLE_VERSION = 3  # 3: mehrere Inhalte (Komma) werden einzeln geschätzt
+# The order does not matter: matches with a higher priority, then at the end of a word (base word of a
+# compound: "Butter|kekse"), then with the longest keyword win.
+# Keywords: "a+b" means both parts occur (any order, "Eier gekocht"),
+# "~a" is a weak keyword that only counts if nothing else matches ("filet").
+# Increase TABLE_VERSION when entries or the detection change: remembered table values
+# are then calculated anew (own corrections stay).
+TABLE_VERSION = 3  # 3: several contents (comma) are estimated one by one
 ENTRIES: tuple[Entry, ...] = (
-    # --- Gerichte und Reste (Priorität 3) ---
+    # --- Dishes and leftovers (priority 3) ---
     _e("dish", "Gericht / Reste", "Dish / leftovers", "dish",
        "reste|leftover|gekocht|cooked|auflauf|lasagne|gratin|gericht|meal prep|pfanne|bratkartoffel|eintopf|quiche|pizza|dal|chili|curry|bolognese|gulasch|goulash|ragout|frikadelle|bulette|knoedel|gemuesepfanne|milchreis|griessbrei|pudding|pueree|kartoffelbrei|pfannkuchen|crepe|kaiserschmarrn|risotto|paella|gebraten|fried rice|bratreis",
        3, 4, 90, None, pri=3, perishable=True),
@@ -154,7 +154,7 @@ ENTRIES: tuple[Entry, ...] = (
     _e("curry_powder", "Gewürze", "Spices", "dry",
        "currypulver|curry powder|gewuerz|spice|paprikapulver|pfeffer|zimt|oregano|thymian trocken",
        365, 365, 365, 365, pri=3),
-    # --- Fleisch, Fisch, Wurst (Priorität 2) ---
+    # --- Meat, fish, sausages (priority 2) ---
     _e("ground_meat", "Hackfleisch", "Ground meat", "raw_meat",
        "hackfleisch|gehacktes|mett|ground beef|ground meat|ground pork|mince|hack|rinderhack|schweinehack|gemischtes hack|hackbaellchen",
        1, 2, 90, None, pri=2, perishable=True),
@@ -206,7 +206,7 @@ ENTRIES: tuple[Entry, ...] = (
     _e("juice", "Saft / Smoothie", "Juice / smoothie", "dairy",
        "saft|juice|smoothie",
        4, 6, 90, None, pri=2, perishable=True),
-    # --- Obst, Gemüse (Priorität 1-2) ---
+    # --- Fruit, vegetables (priority 1-2) ---
     _e("leafy", "Salat / Blattgemüse", "Salad greens", "produce",
        "salat|kopfsalat|rucola|spinat|blattspinat|feldsalat|lettuce|spinach|arugula|mangold|pak choi",
        5, 7, None, None, pri=1),
@@ -234,7 +234,7 @@ ENTRIES: tuple[Entry, ...] = (
     _e("vegetables", "Gemüse (frisch)", "Vegetables (fresh)", "produce",
        "gemuese|tomate|gurke|paprika|zucchini|karotte|moehre|brokkoli|blumenkohl|kohl|lauch|sellerie|spargel|aubergine|radieschen|vegetable|carrot|broccoli|cucumber|pepper|erbse|bohne|edamame|mais|rosenkohl|gruenkohl|rotkohl|wirsing|kohlrabi|fenchel|pastinake|rote bete|peas|beans|corn|sweetcorn",
        7, 12, 90, 3, pri=1),
-    # --- Backwaren, Süßes ---
+    # --- Baked goods, sweets ---
     _e("bread", "Brot / Brötchen", "Bread / rolls", "bread",
        "brot|broetchen|semmel|toast|bread|brioche|baguette|croissant",
        7, 7, 90, 4, pri=2),
@@ -256,7 +256,7 @@ ENTRIES: tuple[Entry, ...] = (
     _e("stable", "Honig / Zucker / Salz / Essig", "Honey / sugar / salt / vinegar", "dry",
        "honig|honey|sirup|syrup|ahornsirup|essig|vinegar|zucker|sugar|salz|salt",
        730, 730, 730, 730, pri=2),
-    # --- Trockenware und Vorrat ---
+    # --- Dry goods and pantry ---
     _e("pasta", "Nudeln (trocken) / gekocht", "Pasta (dry) / cooked", "dry",
        "nudel|pasta|spaghetti|penne|fusilli|makkaroni|macaroni|tagliatelle|spaetzle|farfalle|rigatoni|tortellini",
        3, 4, 90, 365, pri=1),
@@ -300,16 +300,16 @@ _PLURAL = r"(?:e|en|n|s|es|er|ern)?"
 
 
 def _part_match(part: str, text: str) -> tuple[bool, bool]:
-    """(passt, am Wortende). Kurze Teile nur am Wortanfang oder als Grundwort am Wortende
-    (reis ≠ kreis, aber Milch|reis), lange auch in der Wortmitte (Tomaten|suppe)."""
+    """(matches, at the end of a word). Short parts only at the start of a word or as the base word at its end
+    (reis ≠ kreis, but Milch|reis), long ones also in the middle of a word (Tomaten|suppe)."""
     if (patterns := _KEYWORD_RES.get(part)) is None:
         word_start = re.compile(rf"(?<![a-z0-9]){re.escape(part)}")
-        # Grundwort: allein oder nach mindestens drei Buchstaben (Milch|reis, aber nicht K|reis)
+        # base word: alone or after at least three letters (Milch|reis, but not K|reis)
         word_end = re.compile(rf"(?:(?<![a-z0-9])|(?<=[a-z]{{3}})){re.escape(part)}{_PLURAL}(?![a-z0-9])")
         patterns = _KEYWORD_RES[part] = (word_start, word_end)
     word_start, word_end = patterns
     if len(part) <= 2:
-        # "ei" nur als eigenes Wort (sonst steckt es in "Reis", "Brei" …)
+        # "ei" only as a word of its own (otherwise it is inside "Reis", "Brei" …)
         return bool(re.search(rf"(?<![a-z0-9]){re.escape(part)}(?![a-z0-9])", text)), True
     at_end = len(part) >= 4 and bool(word_end.search(text))
     if at_end:
@@ -320,7 +320,7 @@ def _part_match(part: str, text: str) -> tuple[bool, bool]:
 
 
 def _keyword_score(keyword: str, text: str) -> tuple[bool, bool, int] | None:
-    """(schwach, am Wortende, Länge) des Treffers, oder None."""
+    """(weak, at the end of a word, length) of the match, or None."""
     weak = keyword.startswith("~")
     parts = keyword.lstrip("~").split("+")
     at_end = False
@@ -336,19 +336,19 @@ def _keyword_matches(keyword: str, text: str) -> bool:
     return _keyword_score(keyword, f" {norm(text)} " if text.strip() == text else text) is not None
 
 
-MIXED = "mixed"  # Kategorie für Dosen mit Inhalten verschiedener Art
+MIXED = "mixed"  # category for containers with contents of different kinds
 
 
 def split_items(content: str) -> list[str]:
-    """Mehrere Inhalte einer Dose: "Salami, Kochschinken; Leberwurst" → drei Einträge (sonst einer)."""
-    # Komma trennt, außer zwischen Ziffern ("1,5 kg Reis")
+    """Several contents of a container: "Salami, Kochschinken; Leberwurst" → three entries (else one)."""
+    # a comma separates, except between digits ("1,5 kg Reis")
     parts = [p.strip() for p in re.split(r";|,(?!\d)|(?<!\d),", content or "")]
     parts = [p for p in parts if p]
     return parts
 
 
 def category_for(content: str) -> str | None:
-    """Kategorie der Dose; bei Inhalten verschiedener Art "mixed"."""
+    """Category of the container; "mixed" for contents of different kinds."""
     cats = {e.cat for e in (find_entry(p) for p in split_items(content)) if e is not None}
     if not cats:
         return None
@@ -356,8 +356,8 @@ def category_for(content: str) -> str | None:
 
 
 def find_entry(content: str) -> Entry | None:
-    """Besten Tabelleneintrag zum Inhalt finden: kein schwaches Stichwort, höhere Priorität,
-    Grundwort am Wortende, dann längstes Stichwort."""
+    """Find the best table entry for the content: no weak keyword, higher priority,
+    base word at the end of a word, then the longest keyword."""
     text = f" {norm(content)} "
     best: tuple[int, int, int, int] | None = None
     best_entry: Entry | None = None
@@ -375,13 +375,13 @@ def find_entry(content: str) -> Entry | None:
     return best_entry
 
 
-# ---------- Lagerort aus dem Bereich ableiten ----------
+# ---------- Derive the storage place from the area ----------
 
 
 @dataclass(frozen=True)
 class Storage:
     key: str
-    factor: float = 1.0  # < 1: z. B. Gefrierfach, nicht ganz so kalt wie ein Gefrierschrank
+    factor: float = 1.0  # < 1: e.g. freezer compartment, not quite as cold as a freezer
 
 
 _TEMP_RE = re.compile(r"(?<![\w.,])([-−–]?\s?\d{1,2}(?:[.,]\d+)?)\s*(?:°|grad|degrees?)", re.IGNORECASE)
@@ -396,7 +396,7 @@ _WORDS = (
 
 
 def parse_temperature(text: str) -> float | None:
-    """Temperatur aus Text wie 'ca. -18 °C' oder '0 Grad Fach' lesen."""
+    """Read the temperature from text like 'ca. -18 °C' or '0 Grad Fach'."""
     if match := _TEMP_RE.search(text.replace("−", "-").replace("–", "-")):
         try:
             return float(match.group(1).replace(" ", "").replace(",", "."))
@@ -417,16 +417,16 @@ def storage_from_temperature(temp_c: float) -> Storage:
     return Storage(PANTRY)
 
 
-# ---------- Vorlage für die Beschreibung eines Bereichs-Labels ----------
+# ---------- Template for the description of an area label ----------
 #
 #   Storage: freezer
 #   Temperature: -18 °C
 #   Max storage: 18 months
 #   Notes: meat and fish
 #
-# Eine Angabe pro Zeile (oder durch ";" getrennt), Groß-/Kleinschreibung egal, alle Zeilen optional.
-# Deutsche Schlüssel gehen auch (Lagerort, Temperatur, Max. Lagerzeit, Hinweis). Text ohne Schlüssel
-# bleibt ein freier Hinweis wie bisher.
+# One statement per line (or separated by ";"), case-insensitive, all lines optional.
+# German keys work too (Lagerort, Temperatur, Max. Lagerzeit, Hinweis). Text without a key
+# stays a free note as before.
 
 TEMPLATE_KEYS = {
     "storage": ("storage", "storage place", "lagerort", "lagerung"),
@@ -449,7 +449,7 @@ _UNITS = (
 
 
 def _key_pattern() -> re.Pattern[str]:
-    aliases = sorted(_KEY_LOOKUP, key=len, reverse=True)  # längste zuerst ("max storage time" vor "storage")
+    aliases = sorted(_KEY_LOOKUP, key=len, reverse=True)  # longest first ("max storage time" before "storage")
     words = "|".join(r"\s+".join(re.escape(w) for w in alias.split()) for alias in aliases)
     return re.compile(rf"(?:^|(?<=[\s;,]))({words})\s*:", re.IGNORECASE)
 
@@ -458,11 +458,11 @@ _KEY_RE = _key_pattern()
 
 
 def parse_label_template(text: str | None) -> dict[str, str]:
-    """`Schlüssel: Wert`-Angaben der Vorlage lesen, auch alle in einer Zeile.
+    """Read the `key: value` statements of the template, also all in one line.
 
-    Üblich ist eine Angabe pro Zeile; ein Wert reicht aber auch nur bis zum nächsten bekannten
-    Schlüssel, so dass alles in einer Zeile stehen darf (";" trennt ebenfalls). Freier Text ohne
-    Schlüssel wird ignoriert.
+    One statement per line is usual; but a value also only reaches to the next known
+    key, so everything may be in one line (";" separates too). Free text without a
+    key is ignored.
     """
     text = text or ""
     matches = list(_KEY_RE.finditer(text))
@@ -477,7 +477,7 @@ def parse_label_template(text: str | None) -> dict[str, str]:
 
 
 def parse_duration(text: str | None) -> int | None:
-    """'3 years', '18 Monate', '6 weeks', '90' (Tage) → Tage. None, wenn nicht lesbar."""
+    """'3 years', '18 Monate', '6 weeks', '90' (days) → days. None if not readable."""
     match = _DURATION_RE.search(text or "")
     if not match:
         return None
@@ -490,7 +490,7 @@ def parse_duration(text: str | None) -> int | None:
 
 
 def format_duration(days: int, language: str) -> str:
-    """Tage lesbar: 1095 → '3 Jahre' / '3 years', 540 → '18 Monate', 42 → '6 Wochen'."""
+    """Days readable: 1095 → '3 Jahre' / '3 years', 540 → '18 Monate', 42 → '6 Wochen'."""
     de = language.lower().startswith("de")
     for size, one, many in (
         (365, ("Jahr", "year"), ("Jahre", "years")),
@@ -519,7 +519,7 @@ def classify_storage(
     label_texts: tuple[str, ...] | list[str] = (),
     storage_hint: str | None = None,
 ) -> Storage | None:
-    """Lagerort bestimmen: Sensor, "Storage:" der Vorlage, Temperatur im Label/Namen, dann Stichwörter."""
+    """Determine the storage place: sensor, "Storage:" of the template, temperature in the label/name, then keywords."""
     if temperature_c is not None:
         return storage_from_temperature(temperature_c)
     if storage_hint:
@@ -540,15 +540,15 @@ def classify_storage(
 
 
 class TableNoMatch(Exception):
-    """Zum Inhalt gibt es keinen Eintrag."""
+    """There is no entry for the content."""
 
 
 class TableUnknownStorage(Exception):
-    """Der Bereich lässt sich keinem Lagerort zuordnen."""
+    """The area cannot be assigned to a storage place."""
 
 
 class TableUnsuitable(Exception):
-    """Dieses Lebensmittel sollte an diesem Lagerort nicht gelagert werden."""
+    """This food should not be stored at this storage place."""
 
     def __init__(self, food: str, place: str) -> None:
         super().__init__(f"{food} / {place}")
@@ -573,11 +573,11 @@ def lookup(
     language: str,
     storage_hint: str | None = None,
 ) -> TableResult:
-    """Haltbarkeit aus der Tabelle berechnen oder eine passende Ausnahme auslösen.
+    """Calculate the shelf life from the table or raise a matching exception.
 
-    Mehrere Inhalte (mit Komma getrennt) werden einzeln nachgeschlagen; es gilt der kürzeste Wert.
-    Kennt die Tabelle einen davon nicht, gilt das als kein Treffer (sonst könnte gerade das
-    Unbekannte zuerst verderben).
+    Several contents (separated by commas) are looked up one by one; the shortest value applies.
+    If the table does not know one of them, that counts as no match (otherwise exactly the
+    unknown one could spoil first).
     """
     items = split_items(content)
     if len(items) <= 1:

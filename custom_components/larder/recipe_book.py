@@ -1,7 +1,7 @@
-"""Rezeptbuch: gespeicherte Rezepte (von Hand eingetragen oder aus den KI-Vorschlägen übernommen).
+"""Recipe book: saved recipes (entered by hand or taken from the AI suggestions).
 
-Die Rezepte liegen in Home Assistants `.storage/larder.recipes`. Lesen dürfen alle Benutzer, ändern
-nur Administratoren (WebSocket-Befehle `larder/recipes`, `larder/recipe_save`, `larder/recipe_delete`).
+The recipes are kept in Home Assistant's `.storage/larder.recipes`. All users may read, only
+administrators may change (WebSocket commands `larder/recipes`, `larder/recipe_save`, `larder/recipe_delete`).
 """
 
 from __future__ import annotations
@@ -33,7 +33,7 @@ def _clean(lines: list[str]) -> list[str]:
 
 
 class RecipeBook:
-    """Liste der gespeicherten Rezepte."""
+    """List of the saved recipes."""
 
     def __init__(self, hass: HomeAssistant) -> None:
         self._store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
@@ -56,7 +56,7 @@ class RecipeBook:
         source: str = "manual",
         recipe_id: str | None = None,
     ) -> dict[str, Any]:
-        """Rezept anlegen oder (mit `recipe_id`) ersetzen."""
+        """Create a recipe or (with `recipe_id`) replace it."""
         existing = self._recipes.get(recipe_id) if recipe_id else None
         if recipe_id and existing is None:
             raise KeyError(recipe_id)

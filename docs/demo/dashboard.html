@@ -34,10 +34,16 @@ const demoLabels = [
   { label_id: "larder_fridge", name: "Larder: Fridge" },
   { label_id: "larder_freezer", name: "Larder: Freezer" },
   { label_id: "larder_pantry", name: "Larder: Pantry" },
+  { label_id: "larder_food", name: de ? "Larder: Lebensmittel" : "Larder: Food" },
+  { label_id: "larder_household", name: de ? "Larder: Haushalt" : "Larder: Household" },
+  { label_id: "larder", name: "Larder" },
 ];
-const areaLabels = { kitchen: ["larder_fridge"], freezer: ["larder_freezer"], pantry: ["larder_pantry"], cellar: ["larder_pantry"] };
-const areas = de ? { kitchen: "Küche", cellar: "Keller", pantry: "Vorratskammer", freezer: "Gefrierschrank" }
-                 : { kitchen: "Kitchen", cellar: "Basement", pantry: "Pantry", freezer: "Freezer" };
+const scopes = { kitchen: "food", freezer: "food", pantry: "both", cellar: "both", bath: "household", utility: "household" };
+const areaLabels = { kitchen: ["larder_fridge"], freezer: ["larder_freezer"], pantry: ["larder_pantry"], cellar: ["larder_pantry"], bath: ["larder", "larder_household"], utility: ["larder", "larder_household"] };
+areaLabels.kitchen.push("larder_food");
+areaLabels.freezer.push("larder_food");
+const areas = de ? { kitchen: "Küche", cellar: "Keller", pantry: "Vorratskammer", freezer: "Gefrierschrank", bath: "Bad", utility: "Hauswirtschaftsraum" }
+                 : { kitchen: "Kitchen", cellar: "Basement", pantry: "Pantry", freezer: "Freezer", bath: "Bathroom", utility: "Utility room" };
 // [Name, Bereich, Inhalt, Tage, Kategorie]
 const doses = de ? [
   ["Dose 1", "kitchen", "Lachs", 1, "fish"],
@@ -56,6 +62,11 @@ const doses = de ? [
   ["Packung 2", "cellar", "Haselnusscreme", 90, "sweet", "pack"],
   ["Dose 11", "kitchen", "", null, null],
   ["Dose 12", "cellar", "", null, null],
+  ["Artikel 1", "bath", "Klopapier", null, "hh_paper", "household"],
+  ["Artikel 2", "utility", "Spülmaschinentabs", null, "hh_cleaning", "household"],
+  ["Artikel 3", "utility", "Waschmittel", null, "hh_laundry", "household"],
+  ["Artikel 4", "cellar", "Batterien AA", null, "hh_batteries", "household"],
+  ["Artikel 5", "bath", "Zahnpasta", null, "hh_care", "household"],
 ] : [
   ["Box 1", "kitchen", "Salmon", 1, "fish"],
   ["Box 2", "kitchen", "Chicken curry", 2, "dish"],
@@ -73,15 +84,23 @@ const doses = de ? [
   ["Pack 2", "cellar", "Hazelnut spread", 90, "sweet", "pack"],
   ["Box 11", "kitchen", "", null, null],
   ["Box 12", "cellar", "", null, null],
+  ["Item 1", "bath", "Toilet paper", null, "hh_paper", "household"],
+  ["Item 2", "utility", "Dishwasher tabs", null, "hh_cleaning", "household"],
+  ["Item 3", "utility", "Laundry detergent", null, "hh_laundry", "household"],
+  ["Item 4", "cellar", "AA batteries", null, "hh_batteries", "household"],
+  ["Item 5", "bath", "Toothpaste", null, "hh_care", "household"],
 ];
+// household demo data: [pieces, pieces per pack, piece name]
+const hhData = { hh_paper: [12, 8, de ? "Rollen" : "rolls"], hh_cleaning: [55, 40, "Tabs"], hh_laundry: [2, 1, ""], hh_batteries: [6, 4, ""], hh_care: [3, 1, ""] };
 const entities = {}, devices = {}, states = {};
 doses.forEach(([name, area, content, days, category, kind = "container"], i) => {
   const id = `demo${String(i).padStart(2, "0")}`;
   devices[id] = { id, name, name_by_user: null, area_id: area };
   const ids = { text: `text.${id}_c`, date: `date.${id}_b`, datetime: `datetime.${id}_f`, button: `button.${id}_e`, image: `image.${id}_q`, switch: `switch.${id}_v`, number: `number.${id}_p`, select: `select.${id}_u` };
-  if (kind === "pack") for (const k of ["datetime", "image", "switch"]) delete ids[k]; // Packungen: nur Inhalt, Menge, MHD
+  const hh = kind === "household";
+  if (kind === "pack" || hh) for (const k of ["datetime", "image", "switch"]) delete ids[k]; // Packungen: nur Inhalt, Menge, MHD
   for (const e of Object.values(ids)) entities[e] = { entity_id: e, device_id: id, platform: "larder" };
-  states[ids.text] = { entity_id: ids.text, state: content, attributes: { category, kind, ...(/Hazelnut|Haselnuss/.test(content) ? { brand: "Nutella", package: "450 g", kcal_100g: 539, nutri_score: "E", min_stock: 2, allergen_warning: [de ? "Schalenfrüchte" : "Nuts"] } : {}), ...(/Penne/.test(content) ? { brand: "Barilla", package: "500 g", ean: "8076800195057", kcal_100g: 359, kcal_portion: 449, nutri_score: "A", allergens: de ? "Gluten" : "Gluten", nutrients: de ? "Fett 2 g, Kohlenhydrate 71 g, davon Zucker 3,5 g, Eiweiß 13 g, Salz 0,01 g (pro 100 g)" : "Fat 2 g, carbohydrates 71 g, of which sugars 3.5 g, protein 13 g, salt 0.01 g (per 100 g)", source: "openfoodfacts" } : {}) } };
+  states[ids.text] = { entity_id: ids.text, state: content, attributes: { category, kind, ...(hh ? { pack_size: hhData[category][1], piece: hhData[category][2] || null, ...(category === "hh_paper" ? { brand: "Zewa", min_stock: 8, price: 4.99 } : {}) } : {}), ...(/Hazelnut|Haselnuss/.test(content) ? { brand: "Nutella", package: "450 g", kcal_100g: 539, nutri_score: "E", min_stock: 2, allergen_warning: [de ? "Schalenfrüchte" : "Nuts"] } : {}), ...(/Penne/.test(content) ? { brand: "Barilla", package: "500 g", ean: "8076800195057", kcal_100g: 359, kcal_portion: 449, nutri_score: "A", allergens: de ? "Gluten" : "Gluten", nutrients: de ? "Fett 2 g, Kohlenhydrate 71 g, davon Zucker 3,5 g, Eiweiß 13 g, Salz 0,01 g (pro 100 g)" : "Fat 2 g, carbohydrates 71 g, of which sugars 3.5 g, protein 13 g, salt 0.01 g (per 100 g)", source: "openfoodfacts" } : {}) } };
   // Behältergrößen: feste Größen, Dose 4/5 mit variablem Deckel
   const fixedSizes = { 0: "1 l", 1: "0,5 l", 2: "0,5 l", 5: "1,5 l", 6: "1,5 l", 7: "2 l", 8: "0,5 l", 9: "1 l", 14: "2 l" };
   if (kind === "container") {
@@ -93,13 +112,13 @@ doses.forEach(([name, area, content, days, category, kind = "container"], i) => 
   states[ids.date] = { entity_id: ids.date, state: days === null ? "unknown" : day(days), attributes: { estimates: true } };
   if (ids.datetime) states[ids.datetime] = { entity_id: ids.datetime, state: "unknown", attributes: {} };
   if (ids.switch) states[ids.switch] = { entity_id: ids.switch, state: "on", attributes: {} };
-  states[ids.number] = { entity_id: ids.number, state: kind === "pack" ? "3" : content && area === "freezer" ? "3" : "0", attributes: {} };
-  states[ids.select] = { entity_id: ids.select, state: kind === "pack" ? "pieces" : "portions", attributes: { options: ["portions", "pieces", "slices", "grams", "milliliters"] } };
+  states[ids.number] = { entity_id: ids.number, state: hh ? String(hhData[category][0]) : kind === "pack" ? "3" : content && area === "freezer" ? "3" : "0", attributes: {} };
+  states[ids.select] = { entity_id: ids.select, state: kind === "pack" || hh ? "pieces" : "portions", attributes: { options: ["portions", "pieces", "slices", "grams", "milliliters"] } };
   states[ids.button] = { entity_id: ids.button, state: "unknown", attributes: {} };
   if (ids.image) states[ids.image] = { entity_id: ids.image, state: "x", attributes: {} };
   const comp = `text.${id}_compartment`;
   entities[comp] = { entity_id: comp, device_id: id, platform: "larder", translation_key: "compartment" };
-  states[comp] = { entity_id: comp, state: kind === "pack" ? (de ? "Regal oben" : "Top shelf") : "", attributes: {} };
+  states[comp] = { entity_id: comp, state: hh ? (area === "bath" ? (de ? "Schrank" : "Cupboard") : de ? "Regal" : "Shelf") : kind === "pack" ? (de ? "Regal oben" : "Top shelf") : "", attributes: {} };
   if (kind !== "container") return; // Beutel und Packungen haben keinen festen Platz
   // variabler Lagerort (Vakuumdosen im Kühlschrank) mit "nach dem Leeren zurück in"
   const flex = `switch.${id}_flexible`, home = `select.${id}_home_area`;
@@ -159,6 +178,7 @@ const hass = {
       thrown_by_area: [{ area: "Kitchen", count: 3 }, { area: "Basement", count: 1 }],
       months: [["2026-06", 2, 1], ["2026-07", 4, 0], ["2026-08", 3, 1], ["2026-09", 5, 1], ["2026-10", 6, 1], ["2026-11", 3, 0]].map(([month, eaten, thrown]) => ({ month, eaten, thrown })),
       containers: { total: 10, filled: 9, empty: 1, expired: 1, soon: 3, undated: 0 } };
+    if (msg.type === "larder/area_scopes") return { scopes, plan: {} };
     if (msg.type === "larder/recipes") return { recipes };
     if (msg.type === "larder/settings") return { recipe_days: 3, soon_days: 3 };
     if (msg.type === "larder/estimates") return { mode: "table", entries: de ? [
@@ -182,7 +202,7 @@ const hass = {
       { date: day(4), title: "Lasagne", source: "book", recipe_id: "r2", ingredients: [], uses: [{ device_id: "demo07", content: "Bolognese sauce" }] },
     ] };
     if (msg.type === "larder/place_tags") return { links: [{ tag_id: "t", area_id: "cellar", compartment: de ? "Regal oben" : "Top shelf" }] };
-    if (msg.type === "larder/running_low") return { shopping_list: true, items: q.get("alerts") ? [{ key: "m", name: de ? "Milch" : "Milk", count: 2, min: 1, lasts_days: 4 }] : [] };
+    if (msg.type === "larder/running_low") return { shopping_list: true, items: q.get("alerts") ? [{ key: "m", name: de ? "Milch" : "Milk", count: 2, min: 1, lasts_days: 4 }, { key: "t", name: de ? "Spülmaschinentabs" : "Dishwasher tabs", count: 55, min: 40, lasts_days: 6, kind: "household", piece: "Tabs" }] : [] };
     if (msg.type === "larder/recalls") return { items: q.get("alerts") ? [{ id: "r1", title: de ? "Tomatenketchup 500 ml, Marke Heinz" : "Tomato ketchup 500 ml, brand Heinz", reason: de ? "Glassplitter können nicht ausgeschlossen werden" : "Glass fragments cannot be ruled out", date: day(-2), link: "https://www.lebensmittelwarnung.de", items: [{ cc: "P", device_id: "demo12", content: "Ketchup", brand: "Heinz", area: de ? "Küche" : "Kitchen", compartment: de ? "Tür" : "Door", via: "brand" }] }] : [] };
     if (msg.type === "larder/recall_read") return { items: [] };
     if (msg.type === "larder/running_low_action") return { added: true, items: [] };
@@ -195,7 +215,10 @@ const hass = {
       : { key: "b", content: "Boiled eggs", area: "Fridge", vacuum: false, days: 7, suggested: 5, direction: "shorter", count: 2 }] };
     if (msg.type === "larder/bought") return { items: q.get("view") === "start" ? [de
       ? { id: "b1", summary: "Senf (Develey)", content: "Senf", product: { brand: "Develey" }, area_id: "pantry", compartment: "Schrank", count: 1 }
-      : { id: "b1", summary: "Mustard (Develey)", content: "Mustard", product: { brand: "Develey" }, area_id: "pantry", compartment: "Cupboard", count: 1 }] : [] };
+      : { id: "b1", summary: "Mustard (Develey)", content: "Mustard", product: { brand: "Develey" }, area_id: "pantry", compartment: "Cupboard", count: 1 },
+      de
+      ? { id: "b2", summary: "Klopapier (Zewa, 2 Packungen)", content: "Klopapier", kind: "household", product: { brand: "Zewa", pack_size: 8, piece: "Rollen" }, area_id: "bath", compartment: "Schrank", count: 2 }
+      : { id: "b2", summary: "Toilet paper (Zewa, 2 packs)", content: "Toilet paper", kind: "household", product: { brand: "Zewa", pack_size: 8, piece: "rolls" }, area_id: "bath", compartment: "Cupboard", count: 2 }] : [] };
     if (msg.type === "larder/stock_code") return de
       ? { code: msg.code, name: "Ketchup", entries: [{ device_id: "demo12", area: "Küche", compartment: "Tür", count: 1, best_before: day(25) }, { device_id: "demo12", area: "Vorratskammer", compartment: "Schrank", count: 2, best_before: day(240) }] }
       : { code: msg.code, name: "Ketchup", entries: [{ device_id: "demo12", area: "Kitchen", compartment: "Door", count: 1, best_before: day(25) }, { device_id: "demo12", area: "Pantry", compartment: "Cupboard", count: 2, best_before: day(240) }] };
@@ -203,12 +226,20 @@ const hass = {
       { key: "haselnusscreme", name: "Haselnusscreme", count: 3, min: 2, low: false, brand: "Nutella", package: "450 g", places: [{ device_id: "demo13", area: "Keller", compartment: "Regal oben", count: 3 }] },
       { key: "ketchup", name: "Ketchup", count: 3, min: 4, low: true, brand: "Heinz", package: "500 ml", earliest: day(25), places: [{ device_id: "demo12", area: "Küche", compartment: "Tür", count: 1, best_before: day(25) }, { device_id: "demo12", area: "Vorratskammer", compartment: "Schrank", count: 2, best_before: day(240) }] },
       { key: "senf", name: "Senf", count: 0, min: 1, low: true, places: [] },
+      { key: "klopapier", name: "Klopapier", kind: "household", count: 12, pack_size: 8, piece: "Rollen", packs: 1.5, min: 8, low: false, brand: "Zewa", places: [{ device_id: "demo16", area: "Bad", compartment: "Schrank", count: 12 }], usage: { per_week: 3, lasts_days: 28, takes: 9, days: 60 }, price: { price: 4.99, source: "own" }, value: 7.49 },
+      { key: "spuelmaschinentabs", name: "Spülmaschinentabs", kind: "household", count: 55, pack_size: 40, piece: "Tabs", packs: 1.4, min: 40, low: false, places: [{ device_id: "demo17", area: "Hauswirtschaftsraum", compartment: "Regal", count: 55 }] },
+      { key: "waschmittel", name: "Waschmittel", kind: "household", count: 2, pack_size: 1, packs: 2, min: 1, low: false, places: [{ device_id: "demo18", area: "Hauswirtschaftsraum", compartment: "Regal", count: 2 }] },
+      { key: "batterien aa", name: "Batterien AA", kind: "household", count: 6, pack_size: 4, packs: 1.5, min: 8, low: true, places: [{ device_id: "demo19", area: "Keller", compartment: "Regal", count: 6 }] },
       { key: "tomaten gehackt", name: "Tomaten gehackt", count: 6, min: 0, low: false, brand: "Mutti", package: "400 g", places: [{ device_id: "demo12", area: "Keller", compartment: "Regal oben", count: 4 }, { device_id: "demo12", area: "Vorratskammer", compartment: "", count: 2 }] },
     ] : [
       { key: "chopped tomatoes", name: "Chopped tomatoes", count: 6, min: 0, low: false, brand: "Mutti", package: "400 g", places: [{ device_id: "demo12", area: "Basement", compartment: "Top shelf", count: 4 }, { device_id: "demo12", area: "Pantry", compartment: "", count: 2 }] },
       { key: "hazelnut spread", name: "Hazelnut spread", count: 3, min: 2, low: false, brand: "Nutella", package: "450 g", places: [{ device_id: "demo13", area: "Basement", compartment: "Top shelf", count: 3 }] },
       { key: "ketchup", name: "Ketchup", count: 3, min: 4, low: true, brand: "Heinz", package: "500 ml", earliest: day(25), places: [{ device_id: "demo12", area: "Kitchen", compartment: "Door", count: 1, best_before: day(25) }, { device_id: "demo12", area: "Pantry", compartment: "Cupboard", count: 2, best_before: day(240) }] },
       { key: "mustard", name: "Mustard", count: 0, min: 1, low: true, places: [] },
+      { key: "toilet paper", name: "Toilet paper", kind: "household", count: 12, pack_size: 8, piece: "rolls", packs: 1.5, min: 8, low: false, brand: "Zewa", places: [{ device_id: "demo16", area: "Bathroom", compartment: "Cupboard", count: 12 }], usage: { per_week: 3, lasts_days: 28, takes: 9, days: 60 }, price: { price: 4.99, source: "own" }, value: 7.49 },
+      { key: "dishwasher tabs", name: "Dishwasher tabs", kind: "household", count: 55, pack_size: 40, piece: "Tabs", packs: 1.4, min: 40, low: false, places: [{ device_id: "demo17", area: "Utility room", compartment: "Shelf", count: 55 }] },
+      { key: "laundry detergent", name: "Laundry detergent", kind: "household", count: 2, pack_size: 1, packs: 2, min: 1, low: false, places: [{ device_id: "demo18", area: "Utility room", compartment: "Shelf", count: 2 }] },
+      { key: "aa batteries", name: "AA batteries", kind: "household", count: 6, pack_size: 4, packs: 1.5, min: 8, low: true, places: [{ device_id: "demo19", area: "Basement", compartment: "Shelf", count: 6 }] },
     ]).map((p) => ({ ...p, ...({
       ketchup: { usage: { per_week: 0.5, lasts_days: 42, takes: 4, days: 180 }, suggested_min: 2, price: { price: 1.99, source: "receipt" }, value: 5.97 },
       haselnusscreme: { usage: { per_week: 0.4, lasts_days: 52, takes: 5, days: 90 }, price: { price: 4.49, source: "own" }, value: 13.47 },
@@ -225,6 +256,7 @@ document.body.style.width = width + "px";
 const opts = {};
 if (q.get("mode")) opts.mode = q.get("mode");
 if (q.get("sort")) opts.sort = q.get("sort");
+if (q.get("scope")) opts.scope = q.get("scope");
 if (Object.keys(opts).length) localStorage.setItem("larder.experimental", JSON.stringify(opts));
 const el = document.createElement("larder-dashboard");
 document.body.appendChild(el);
@@ -250,6 +282,16 @@ if (q.get("dialog") === "bag" || q.get("dialog") === "pack") {
   }
   document.activeElement && document.activeElement.blur();
 }
+if (q.get("dialog") === "household") {
+  el.openItemsDialog("household");
+  const form = el.shadowRoot.querySelector("form.dialog");
+  form.querySelector('[data-f="area"]').value = "bath";
+  const row = form.querySelector(".itemrow");
+  for (const [k, v] of Object.entries({ content: de ? "Küchenrolle" : "Kitchen roll", quantity: 2, packSize: 4, piece: de ? "Rollen" : "rolls", price: de ? "2,49" : "2.49" })) row.querySelector(`[data-i="${k}"]`).value = v;
+  document.activeElement && document.activeElement.blur();
+}
+if (q.get("edit") === "1") { el.setAreaEdit(true); await new Promise((r) => setTimeout(r, 200)); }
+if (q.get("dialog") === "area") await el.openAreaDialog("bath");
 if (q.get("dialog") === "labels") el.openLabelDialog();
 if (q.get("dialog") === "transfer") el.openTransferDialog("demo12");
 if (q.get("dialog") === "move") el.openMoveDialog("demo12");

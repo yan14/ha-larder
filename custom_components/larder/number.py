@@ -1,4 +1,4 @@
-"""Entität 'Portionen': wie viele Portionen sind in der Dose? (0 = nicht angegeben)"""
+"""Entity 'Portions': how many portions are in the container? (0 = not given)"""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from homeassistant.components.number import NumberEntity, NumberMode
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, KIND_PACK
+from .const import DOMAIN, PACK_KINDS
 from .entity import LarderConfigEntry, LarderResettable
 
 
@@ -21,7 +21,7 @@ async def async_setup_entry(
 
 
 class LarderPortions(NumberEntity, LarderResettable):
-    """Anzahl der Portionen im Inhalt. 0 heißt: nicht angegeben. 'Behälter leeren' setzt auf 0."""
+    """Number of portions of the content. 0 means: not given. 'Empty container' resets to 0."""
 
     _key = "portions"
     _attr_native_min_value = 0
@@ -43,9 +43,9 @@ class LarderPortions(NumberEntity, LarderResettable):
         before = self._attr_native_value
         self._attr_native_value = value
         self.async_write_ha_state()
-        if self._kind == KIND_PACK and 0 < value < (before or 0):
-            # Packung entnommen: Mindestbestand prüfen (Einkaufsliste)
-            from .stock import async_check_stock  # noqa: PLC0415 - vermeidet einen Import-Kreis
+        if self._kind in PACK_KINDS and 0 < value < (before or 0):
+            # pack taken: check the minimum stock (shopping list)
+            from .stock import async_check_stock  # noqa: PLC0415 - avoids an import cycle
 
             content = self._sibling_state("text", "content")
             if content is not None:

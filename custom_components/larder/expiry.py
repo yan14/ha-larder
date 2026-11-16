@@ -1,4 +1,4 @@
-"""Ablauf-Übersicht über alle Dosen: Service `get_expiring` und Tage-bis-MHD-Berechnung."""
+"""Expiry overview of all containers: service `get_expiring` and days-until-date calculation."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.helpers import config_validation as cv, entity_registry as er
 from homeassistant.util import dt as dt_util
 
-from .const import DEFAULT_UNIT, DOMAIN, SERVICE_GET_EXPIRING, SOON_DAYS, UNITS
+from .const import DEFAULT_UNIT, DOMAIN, KIND_HOUSEHOLD, SERVICE_GET_EXPIRING, SOON_DAYS, UNITS
 from .entity import kind_of
 from .estimate import storage_context
 
@@ -25,7 +25,7 @@ STATUS_EXPIRED = "expired"
 
 
 def soon_days(hass: HomeAssistant) -> int:
-    """Einstellung "läuft bald ab" (Tage); Vorgabe, solange die Einstellungen nicht geladen sind."""
+    """Setting "expires soon" (days); default as long as the settings are not loaded."""
     estimator = hass.data.get(DOMAIN, {}).get("estimator")
     return getattr(estimator, "soon_days", SOON_DAYS)
 
@@ -109,12 +109,12 @@ def _when(text: dict[str, Any], days: int) -> str:
 
 
 def quantity_text(text: dict[str, Any], item: dict[str, Any]) -> str:
-    """'4 Portionen', '5 Scheiben' ... in der Sprache der Zusammenfassung."""
+    """'4 portions', '5 slices' ... in the language of the summary."""
     return text["units"].get(item.get("unit"), text["units"][DEFAULT_UNIT])(item["quantity"])
 
 
 def build_summary(items: list[dict[str, Any]], language: str) -> str:
-    """Kurzer Text für Benachrichtigungen, in der Sprache von Home Assistant."""
+    """Short text for notifications, in Home Assistant's language."""
     text = _TEXT["de" if language.lower().startswith("de") else "en"]
     if not items:
         return text["none"]
@@ -126,7 +126,7 @@ def build_summary(items: list[dict[str, Any]], language: str) -> str:
         expired_item = item["days_left"] is not None and item["days_left"] < 0
         extras = []
         if expired_item and item["content"] and item["name"]:
-            extras.append(item["name"])  # welche Dose geleert werden muss
+            extras.append(item["name"])  # which container has to be emptied
         if item.get("quantity"):
             extras.append(quantity_text(text, item))
         if item["area"]:
@@ -139,7 +139,7 @@ def build_summary(items: list[dict[str, Any]], language: str) -> str:
     return "\n".join(lines)
 
 
-MAX_SPOKEN = 6  # so viele Dosen nennt die Sprachausgabe, der Rest wird gezählt
+MAX_SPOKEN = 6  # the speech output names this many containers, the rest is counted
 
 _SPEECH = {
     "de": {
@@ -181,9 +181,9 @@ def _join(words: list[str], conj: str) -> str:
 
 
 def build_speech(items: list[dict[str, Any]], language: str, limit: int = MAX_SPOKEN) -> str:
-    """Kurzer Text zum Vorlesen (Alexa, Assist): ganze Sätze, keine Symbole, höchstens `limit` Dosen.
+    """Short text to read aloud (Alexa, Assist): full sentences, no symbols, at most `limit` containers.
 
-    Reihenfolge: heute, morgen, später, zuletzt Abgelaufenes.
+    Order: today, tomorrow, later, expired last.
     """
     text = _SPEECH["de" if language.lower().startswith("de") else "en"]
     if not items:
@@ -196,7 +196,7 @@ def build_speech(items: list[dict[str, Any]], language: str, limit: int = MAX_SP
         if item["days_left"] is None:
             continue
         if item["days_left"] < 0:
-            # beim Abgelaufenen auch die Dose nennen, damit man weiß, welche zu leeren ist
+            # name the container for expired food too, so it is clear which one to empty
             box = (item.get("name") or "").strip()
             expired.append(f"{name} {text['in']} {box}" if item["content"] and box and box != name else name)
         else:
@@ -235,17 +235,17 @@ def collect_expiring(
     include_expired: bool = True,
     include_undated: bool = False,
 ) -> list[dict[str, Any]]:
-    """Alle Dosen mit MHD innerhalb der nächsten `days` Tage (und ggf. abgelaufene), früheste zuerst.
+    """All containers with a date within the next `days` days (and expired ones if wanted), earliest first.
 
-    `days=None` heißt ohne Zeitgrenze; mit `include_undated` kommen auch Dosen ohne MHD dazu
-    (dann mit `best_before` und `days_left` = None, ganz hinten einsortiert).
+    `days=None` means no time limit; with `include_undated` containers without a date are added too
+    (then with `best_before` and `days_left` = None, sorted last).
     """
     registry = er.async_get(hass)
     soon = soon_days(hass)
     items: list[dict[str, Any]] = []
     for entry in hass.config_entries.async_entries(DOMAIN):
         cc = entry.data.get("cc")
-        if not cc:
+        if not cc or kind_of(entry) == KIND_HOUSEHOLD:  # household items have no best-before date
             continue
         date_id = registry.async_get_entity_id("date", DOMAIN, f"{cc}_best_before")
         state = hass.states.get(date_id) if date_id else None
@@ -308,7 +308,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
         return
 
     async def handle(call: ServiceCall) -> dict[str, Any]:
-        from .plan import async_get_plan, thaw_texts  # noqa: PLC0415 - plan importiert expiry nicht
+        from .plan import async_get_plan, thaw_texts  # noqa: PLC0415 - plan does not import expiry
 
         language = hass.config.language
         items = collect_expiring(hass, call.data.get("days", soon_days(hass)), call.data["include_expired"])
@@ -317,7 +317,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
         summary = build_summary(items, language)
         speech = build_speech(items, language)
         if thaw:
-            # Auftau-Erinnerung zuerst; ohne ablaufende Dosen nur sie
+            # thaw reminder first; without expiring containers only that
             summary = f"{thaw_summary}\n\n{summary}" if items else thaw_summary
             speech = f"{thaw_speech} {speech}" if items else thaw_speech
         return {

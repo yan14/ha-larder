@@ -1,4 +1,4 @@
-"""Larder: pro Dose ein Gerät mit Befüll-Datum, Inhalt und Leeren-Button."""
+"""Larder: one device per container with fill date, content and an empty button."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from .estimate import async_get_estimator
 from .expiry import async_setup_services
 from .export import async_setup_export
 from .history import async_setup_history_websocket
+from .household import async_setup_household_websocket
 from .labels import async_setup_labels
 from .learning import async_setup_learning_websocket
 from .nfc import async_get_nfc
@@ -37,7 +38,7 @@ from .week_plan import async_setup_week_plan_websocket
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bool:
-    """Dose einrichten (der Scan-Webhook wird einmalig für alle Dosen registriert)."""
+    """Set up a container (the scan webhook is registered once for all containers)."""
     entry.runtime_data = LarderRuntime()
     await async_get_estimator(hass)
     async_setup_websocket(hass)
@@ -61,6 +62,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_place_websocket(hass)
     await async_get_places(hass)
     async_setup_sizes_websocket(hass)
+    async_setup_household_websocket(hass)
     async_setup_week_plan_websocket(hass)
     await async_get_sizes(hass)
     async_setup_learning_websocket(hass)
@@ -79,10 +81,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
 
 
 def _async_apply_initial_area(hass: HomeAssistant, entry: LarderConfigEntry) -> None:
-    """Beim Anlegen gewählten Bereich einmalig auf das Gerät übertragen.
+    """Apply the area chosen on creation to the device once.
 
-    Danach wird der Wert aus dem Eintrag entfernt, damit ein später im Gerät geänderter
-    oder geleerter Bereich nicht bei jedem Neuladen überschrieben wird.
+    After that the value is removed from the entry, so an area changed or cleared later
+    on the device is not overwritten on every reload.
     """
     area_id = entry.data.get(CONF_AREA)
     if CONF_AREA not in entry.data and CONF_INITIAL not in entry.data:
@@ -98,7 +100,7 @@ def _async_apply_initial_area(hass: HomeAssistant, entry: LarderConfigEntry) -> 
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bool:
-    """Dose entladen; beim Entladen der letzten Dose werden Webhook und Panel abgemeldet."""
+    """Unload a container; with the last one the webhook and the panel are removed."""
     unloaded = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
     if unloaded and not any(
         other.entry_id != entry.entry_id
@@ -117,7 +119,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> b
 
 
 async def async_remove_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> None:
-    """Dose wurde gelöscht: Kalendertermin entfernen."""
+    """A container was deleted: remove its calendar event."""
     if cc := entry.data.get(CONF_CC):
         await (await async_get_calendar_sync(hass)).async_remove_dose(cc)
         await (await async_get_nfc(hass)).async_unlink(cc)

@@ -1,4 +1,4 @@
-# Containers, bags and packs
+# Containers, bags, packs and household items
 
 [← Overview](../../README.md) · [🇩🇪 Deutsch](../de/containers.md)
 
@@ -17,7 +17,7 @@ There are four ways. The two NFC ways need the Home Assistant app on a phone wit
 
 ### From the dashboard (recommended)
 
-**＋** on the containers page of the dashboard offers all four ways:
+**＋** on the **Storage** page of the dashboard offers all four ways:
 
 <p align="center"><img src="../images/add-dialog-en.png" width="560" alt="Add container dialog"></p>
 
@@ -53,7 +53,7 @@ Settings → Devices & services → **Larder** → the container's entry → ⋮
 
 ## Bags and packs
 
-Not everything lives in a reusable box. **＋** on the containers page asks what you want to add:
+Not everything lives in a reusable box. **＋** on the **Storage** page asks what you want to add:
 
 | Kind | Code | After emptying | Typical use |
 |---|---|---|---|
@@ -105,7 +105,7 @@ A bag works like a container (scan it, take a portion, **Opened**, **Thawed**, r
 
 **Prices and value.** A pack can have a **price** (one pack): in the pack dialog, on the card, or read from the **📷 Receipt**. Larder remembers it per product. Without a price of your own, packs with a barcode get an estimate from [Open Prices](https://prices.openfoodfacts.org) (Open Food Facts, ODbL): the median of the last year in euro, marked *(Open Prices)*. The card of a pack and the stock view show the price per pack, the value of each product and the **total value**; the statistics and the monthly report add **about €X thrown away**.
 
-**Take by barcode.** Scan the barcode of a pack with **📷** (start page, containers page) or **📷 Barcode** in the stock view (Home Assistant app). Larder shows every place where this product is, with count and best-before date, the **oldest first**. If you are holding a newer one, take it from its own place with **−1**; the last pack of an entry empties it. A product that is not in stock can be added as a pack right away. If you renamed the product, the barcode is remembered; packs added without a barcode can be linked with **🔗 Link to a product in stock**.
+**Take by barcode.** Scan the barcode of a pack with **📷** (start page, **Storage** page) or **📷 Barcode** in the stock view (Home Assistant app). Larder shows every place where this product is, with count and best-before date, the **oldest first**. If you are holding a newer one, take it from its own place with **−1**; the last pack of an entry empties it. A product that is not in stock can be added as a pack right away. If you renamed the product, the barcode is remembered; packs added without a barcode can be linked with **🔗 Link to a product in stock**.
 
 <p align="center"><img src="../images/dashboard-code-en.png" width="250" alt="Take by barcode"></p>
 
@@ -137,6 +137,25 @@ A match is a hint, not a certainty: batch and best-before date are in the origin
 
 <p align="center"><img src="../images/dashboard-stocktake-en.png" width="250" alt="Stocktake"></p>
 
+## Household items
+
+Since 4.0 Larder also keeps track of things without a best-before date: toilet paper, kitchen roll, detergent, dishwasher tabs, batteries, toothpaste. **＋ → 🧻 Household item** adds them, by hand or with **📷 Scan barcode** (see below).
+
+- **Pieces and packs.** One row per product with the number of **packs**, the **pieces per pack** and a name for the piece (e.g. 2 × 8 *rolls*). Larder counts **pieces**: **−1** takes one roll, the stocktake counts rolls, and the **minimum stock is in pieces** too. The stock view and the card show both, e.g. *12 rolls · 1.5 packs*.
+- **Shopping list in packs.** When the stock drops below the minimum, the shopping list gets the number of packs needed, rounded up: *Toilet paper (Zewa, 2 packs)*. Ticked off, it is offered on the start page under **Bought** and opens the household dialog with the pack size filled in.
+- **No best-before date.** Household items have no date, do not appear in *expires soon*, the daily summary, recipes, the calendar or the food statistics. *Lasts about …*, *running low*, prices and the value work as for packs.
+- **Barcode.** If Open Food Facts does not know a barcode, Larder also asks its sister databases **Open Beauty Facts**, **Open Products Facts** and **Open Pet Food Facts**. A product found there is offered as a household item.
+- **Converting.** A pack that should have been a household item (or the other way round) is converted with **→ Household item** / **→ Food pack** at the bottom of its card. Nothing is converted automatically.
+- **Categories:** paper & hygiene, laundry, cleaning & dishes, personal care, batteries & bulbs, other.
+
+**Food | Household.** The pages **Storage**, **Areas**, **Categories** and the **stock view** have a switch at the top and show one side at a time; the device remembers your choice. The **start page** shows both, in two sections: *Food* (expiring soon, running low, bought, cook again, thawing, meal plan) and *Household* (running low, bought).
+
+<p align="center">
+<img src="../images/dashboard-household-en.png" width="250" alt="Household items in the storage view">
+<img src="../images/dashboard-household-add-en.png" width="250" alt="Adding household items">
+<img src="../images/dashboard-household-stock-en.png" width="250" alt="Stock of household items">
+</p>
+
 ## Areas and labels
 
 Every container belongs to an **area** of Home Assistant (the area of its device). The area tells the estimate where the food is stored and groups the dashboard. Change it right on the container's card in the dashboard.
@@ -146,6 +165,26 @@ Every container belongs to an **area** of Home Assistant (the area of its device
 **Which areas the dashboard offers.** With many areas the dropdown gets long. Give the areas you use for food storage a **label** whose name is `Larder` or starts with `Larder:` (Settings → Areas, labels & zones → open an area → Labels). The dashboard then offers only these areas, in the dropdown and in the add dialog. The current area of a container always stays in its list. If no area has such a label, all areas are shown.
 
 **Recommended:** one label per kind of storage place, named `Larder: Freezer`, `Larder: Fridge`, `Larder: 0 °C`, `Larder: Pantry` …, with the template below in its description. One label per area is enough. Do not put limits into a plain `Larder` label: it is shared by all your storage areas.
+
+### Food or household (since 4.0)
+
+An area can be used for food, for household items or for both. This is set with an **additional** label next to the storage-kind label:
+
+| Labels of the area | Offered for |
+|---|---|
+| no Larder label | not offered (as before, once any area has a Larder label) |
+| `Larder` or a storage-kind label such as `Larder: Freezer` | food **and** household |
+| additionally `Larder: Household` (or `Larder: Haushalt`) | household only |
+| additionally `Larder: Food` (or `Larder: Lebensmittel`) | food only |
+
+The scope labels carry no description; temperature and max. storage time stay in the storage-kind label (template below). Set the use in the dashboard: **Areas → ✏️ →** tap an area **→ Used for**. Larder creates the label when it is needed.
+
+> **Upgrading to 4.0 (breaking change).** Until you assign the use, every Larder area is offered for food and household alike, so nothing disappears, but household items would be offered the freezer. After the update a repair hint **Larder 4.0: assign areas to food and household** (and the button **Assign use automatically** while editing areas) suggests the obvious ones: freezer, fridge and 0 °C drawer → food; bathroom, utility room, laundry → household. It **only adds labels**; existing labels and their descriptions are not changed. Everything else stays *food and household* until you change it.
+
+<p align="center">
+<img src="../images/dashboard-household-areas-en.png" width="250" alt="Areas for household items">
+<img src="../images/dashboard-area-scope-en.png" width="250" alt="Editing an area: storage kind and use">
+</p>
 
 ### Template for the area label
 

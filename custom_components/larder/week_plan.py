@@ -1,12 +1,12 @@
-"""Wochenplan-Vorschlag: Gerichte für die nächsten Tage, die zuerst die Dosen verbrauchen, die bald ablaufen.
+"""Week plan suggestion: dishes for the next days that first use up the containers expiring soon.
 
-Quelle (Einstellung, wie bei der MHD-Schätzung): nur Rezeptbuch, nur KI, Rezeptbuch sonst KI, oder beides
-zusammen. Rezepte aus dem Rezeptbuch passen, wenn eine Zutatenzeile den Inhalt einer Dose nennt; die KI bekommt
-die Dosen, die noch übrig sind, und sagt, welche ein Gericht verbraucht.
+Source (setting, as with the best-before estimate): recipe book only, AI only, recipe book else AI, or both
+together. Recipes from the recipe book fit if an ingredient line names the content of a container; the AI gets
+the containers still left and says which ones a dish uses up.
 
-Ausgewählt wird Tag für Tag das Gericht, das die dringendsten noch freien Dosen verbraucht (je früher das MHD,
-desto mehr zählt eine Dose). Tage, für die schon etwas geplant ist, werden übersprungen. Gespeichert wird erst,
-wenn man den Vorschlag im Dashboard übernimmt (wie ein normaler Eintrag im Wochenplan).
+Day by day the dish is chosen that uses up the most urgent containers still free (the earlier the date,
+the more a container counts). Days that already have a plan are skipped. Nothing is saved until
+the suggestion is accepted in the dashboard (like a normal entry in the week plan).
 """
 
 from __future__ import annotations
@@ -44,11 +44,11 @@ def _words(text: str) -> list[str]:
 
 
 def uses_content(line: str, content: str) -> bool:
-    """Nennt diese Zutatenzeile den Inhalt einer Dose? (alle Wörter des Inhalts, auch als Wortanfang)"""
+    """Does this ingredient line name the content of a container? (all words of the content, also as the start of a word)"""
     words = _words(content)
     have = _words(line)
     def hit(w: str, h: str) -> bool:
-        # Wortanfang in beide Richtungen ("Tomaten"/"Tomatensoße"), bei längeren Wörtern auch zusammengesetzt ("Rinderhack")
+        # start of a word in both directions ("Tomaten"/"Tomatensoße"), for longer words also compounds ("Rinderhack")
         return h == w or (len(h) >= 4 and (h.startswith(w) or w.startswith(h))) or (len(w) >= 4 and w in h)
 
     return bool(words) and all(any(hit(w, h) for h in have) for w in words)
@@ -60,7 +60,7 @@ def _weight(item: dict[str, Any]) -> float:
 
 
 def choose(candidates: list[dict[str, Any]], items: list[dict[str, Any]], days: list[date]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
-    """Gierig je Tag das Gericht mit den dringendsten noch freien Dosen. Liefert (Tage, übrige Kandidaten)."""
+    """Greedily per day the dish with the most urgent containers still free. Returns (days, remaining candidates)."""
     free = {i["cc"] for i in items}
     by_cc = {i["cc"]: i for i in items}
     pool = list(candidates)
@@ -162,7 +162,7 @@ async def async_suggest_week(hass: HomeAssistant, days: int | None = None, sourc
 
 
 def _public(hass: HomeAssistant, result: dict[str, Any], items: list[dict[str, Any]]) -> dict[str, Any]:
-    """Für das Dashboard: Geräte-IDs und Inhalte statt cc."""
+    """For the dashboard: device IDs and contents instead of cc."""
     devices = dr.async_get(hass)
     by_cc = {i["cc"]: i for i in items}
 

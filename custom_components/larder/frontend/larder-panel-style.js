@@ -1,4 +1,4 @@
-/** Karten und Dialoge (larder-panel.js): Stylesheet (wird in das Shadow DOM eingefügt). */
+/** Cards and dialogs (larder-panel.js): stylesheet (inserted into the shadow DOM). */
 export const STYLE = `
   :host { display: block; min-height: 100%; background: var(--primary-background-color);
     color: var(--primary-text-color); font-family: var(--paper-font-body1_-_font-family, Roboto, sans-serif); }
@@ -152,6 +152,9 @@ export const STYLE = `
   .actions button.transfer { font: inherit; padding: 7px 14px; border-radius: 8px; cursor: pointer;
     background: none; color: var(--primary-color); border: 1px solid var(--primary-color); }
   .actions button.transfer[hidden] { display: none; }
+  .actions button.convert { font: inherit; font-size: 13px; padding: 7px 10px; border: 0; background: none; cursor: pointer;
+    color: var(--secondary-text-color); text-decoration: underline; }
+  .actions button.convert[hidden] { display: none; }
   .actions button.move { font: inherit; padding: 7px 14px; border-radius: 8px; cursor: pointer;
     background: none; color: var(--primary-color); border: 1px solid var(--primary-color); }
   .actions button.openpack { font: inherit; padding: 7px 14px; border-radius: 8px; cursor: pointer;
@@ -163,6 +166,8 @@ export const STYLE = `
   .usageline[hidden] { display: none; }
   .priceline { font-size: 13px; color: var(--secondary-text-color); }
   .priceline[hidden] { display: none; }
+  .packline { font-size: 13px; color: var(--secondary-text-color); }
+  .packline[hidden], .nutgrid label[hidden] { display: none; }
   .recallline { font-size: 13px; color: var(--error-color, #db4437); border: 1px solid var(--error-color, #db4437); border-radius: 8px; padding: 6px 8px; }
   .recallline[hidden] { display: none; }
   .recallline a { color: inherit; font-weight: 500; }
@@ -174,7 +179,7 @@ export const STYLE = `
   .dialog .nfcstatus { font-size: 14px; color: var(--secondary-text-color); }
   .dialog .nfcstatus[hidden] { display: none; }
   header .count { white-space: nowrap; }
-  /* Eingebetteter Modus (im Dashboard): nur die Dialoge, oder mit Attribut "only" die Karte einer Dose. */
+  /* Embedded mode (in the dashboard): only the dialogs, or with the attribute "only" the card of one container. */
   #back { display: none; background: none; border: 0; color: inherit; font-size: 24px; cursor: pointer; padding: 4px 8px; }
   :host([embedded]) { min-height: 0; background: none; }
   :host([embedded]) header, :host([embedded]) .toolbar { display: none; }
@@ -184,8 +189,8 @@ export const STYLE = `
   :host([embedded][only]) #back { display: inline-block; }
   :host([embedded][only]) #menu, :host([embedded][only]) .count, :host([embedded][only]) .tabs,
   :host([embedded][only]) header button.ideas, :host([embedded][only]) header button.add { display: none !important; }
-  /* Schmale Fenster (Handy, Tablet hochkant): zweizeilige Kopfleiste statt überstehender Schaltflächen.
-     Zeile 1: Menü, Titel, Anzahl, "Dose hinzufügen"; Zeile 2: Reiter und "Rezeptideen". */
+  /* Narrow windows (phone, tablet upright): two-line header instead of overflowing buttons.
+     Line 1: menu, title, count, "Add container"; line 2: tabs and "Recipe ideas". */
   @media (max-width: 960px) {
     header { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: 0 10px;
       height: auto; min-height: 56px; padding: 8px 12px; }

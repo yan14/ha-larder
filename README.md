@@ -10,11 +10,12 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 ## Highlights
 
-- 🖥️ **[Own dashboard](docs/en/dashboard.md#dashboard-larder)** in the sidebar, made for the phone: start page, containers as tiles, list or cards with every detail, areas, categories and a recipe book; updates itself
+- 🖥️ **[Own dashboard](docs/en/dashboard.md#dashboard-larder)** in the sidebar, made for the phone: start page, storage as tiles, list or cards with every detail, areas, categories and a recipe book; updates itself
 - 🔖 **[Zwilling Fresh & Save QR codes](docs/en/scanning.md#scanning-in-the-app)**: the original codes on the lids keep working, with the 📷 scanner in the app (iOS and Android) or an [iOS Shortcut](docs/en/scanning.md#ios-shortcut-for-the-original-zwilling-codes)
 - 🏷️ **[Your own QR code](docs/en/scanning.md#your-own-qr-codes)** and **[NFC tags](docs/en/scanning.md#nfc-tags)** for any container, and for [compartments](docs/en/scanning.md#compartments) to take something or start a stocktake; QR codes print as a [label sheet](docs/en/scanning.md#label-sheet) in several designs and colours
 - 🛍 **[Bags and packs](docs/en/containers.md#bags-and-packs)**: single-use vacuum bags with an NFC sticker or QR code that disappear after emptying, and stock without a container (cans, jars) by barcode, receipt photo or by hand
 - 🥫 **[Stock](docs/en/containers.md#stock)**: packs summed over every place, oldest first, minimum stock that fills the shopping list, *lasts about …* and *running low*, prices (own, from the receipt or [Open Prices](https://prices.openfoodfacts.org)), opened packs, a [stocktake](docs/en/containers.md#stocktake) per compartment and [recall warnings](docs/en/containers.md#recall-warnings) from lebensmittelwarnung.de
+- 🧻 **[Household items](docs/en/containers.md#household-items)**: toilet paper, detergent, batteries and the like without a best-before date, counted in pieces and bought in packs, with their own areas and a switch *Food | Household*
 - ✏️ **[Quick filling](docs/en/containers.md#filling-containers)**: contents, quantity, best-before date and vacuum in a few taps, also for several containers at once, with a [serial scan](docs/en/dashboard.md#selecting-several-containers) or as [batch cooking](docs/en/containers.md#batch-cooking) with free containers by [size](docs/en/containers.md#container-sizes)
 - 🧮 **[Best-before estimate](docs/en/best-before.md#best-before-estimate)**: built-in shelf-life table, optionally with AI, with limits per storage place
 - 🍳 **[Recipes](docs/en/kitchen.md#recipes)**: ideas from what expires soon or from selected containers, a recipe book, and recipes read from a photo
@@ -26,10 +27,12 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 <p align="center">
 <img src="docs/images/dashboard-start-en.png" width="250" alt="Start page (demo data)">
-<img src="docs/images/dashboard-containers-en.png" width="250" alt="Containers as tiles">
+<img src="docs/images/dashboard-containers-en.png" width="250" alt="Storage as tiles">
 <img src="docs/images/dashboard-cards-en.png" width="250" alt="Cards with all details">
 </p>
 
+> **New in 4.0:** [household items](docs/en/containers.md#household-items), areas for food or household, the *Containers* page is now called **Storage**, barcodes from Open Beauty / Products / Pet Food Facts. **Breaking change:** after the update, assign your areas to food or household, see [Food or household](docs/en/containers.md#food-or-household-since-40).
+>
 > **New in 3.x:** single-use **bags** and **packs** (3.0), the stock view with minimum stock (3.2), stocktake and opened packs (3.4), consumption and prices (3.5), *running low* and recall warnings (3.6), compartment tags and new label options (3.7), batch cooking, container sizes and the week suggestion (3.8). See the [changelog](CHANGELOG.md).
 
 ## Documentation
@@ -38,7 +41,7 @@ The details live on their own pages:
 
 | Page | What is in it |
 |---|---|
-| [Containers, bags and packs](docs/en/containers.md) | Adding containers, single-use bags and packs, areas and labels, filling, nutrition and allergens |
+| [Containers, bags, packs and household items](docs/en/containers.md) | Adding containers, single-use bags and packs, household items, areas and labels, filling, nutrition and allergens |
 | [Dashboard, statistics and data](docs/en/dashboard.md) | The Larder dashboard, selecting several containers, the Lovelace card, statistics, export and import |
 | [Best-before estimate](docs/en/best-before.md) | How the best-before date is estimated: table, AI, remembered values |
 | [Recipes, daily summary, meal plan and shopping](docs/en/kitchen.md) | Recipe ideas and recipe book, daily summary (blueprint), meal plan with thaw reminder, shopping list, calendar |

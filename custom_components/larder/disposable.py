@@ -1,12 +1,12 @@
-"""Beutel und Packungen: Einträge, die nach dem Leeren verschwinden.
+"""Bags and packs: entries that disappear after emptying.
 
-* **Beutel** (z. B. Vakuumbeutel): wie eine Dose mit eigenem QR-Code und NFC-Tag, aber für den
-  einmaligen Gebrauch. Nach dem Leeren wird der Eintrag samt Gerät und NFC-Tag entfernt; im Verlauf
-  bleibt er stehen.
-* **Packung** (Vorrat ohne Dose, z. B. Konserven): ohne Code, nur Inhalt, Menge und MHD.
+* **Bag** (e.g. vacuum bag): like a container with its own QR code and NFC tag, but for
+  single use. After emptying, the entry is removed with its device and NFC tag; it stays
+  in the history.
+* **Pack** (stock without a container, e.g. cans): no code, only content, quantity and best-before date.
 
-Codes und Tags geleerter Beutel werden gemerkt, damit ein versehentlicher Scan eines alten
-Etiketts oder Stickers nicht "unbekannte Dose" meldet, sondern sagt, wann der Beutel geleert wurde.
+Codes and tags of emptied bags are remembered, so an accidental scan of an old
+label or sticker does not report "unknown container" but says when the bag was emptied.
 """
 
 from __future__ import annotations
@@ -33,7 +33,9 @@ from .const import (
     DISPOSABLE_KINDS,
     DOMAIN,
     KIND_BAG,
+    KIND_HOUSEHOLD,
     KIND_PACK,
+    PACK_KINDS,
     UNITS,
 )
 from .entity import kind_of
@@ -48,13 +50,13 @@ DATA_WS = "disposable_ws_registered"
 STORAGE_KEY = f"{DOMAIN}.retired"
 STORAGE_VERSION = 1
 MAX_RETIRED = 1000
-MAX_ITEMS = 30  # so viele Beutel/Packungen auf einmal
+MAX_ITEMS = 30  # this many bags/packs at once
 
-_NAMES = {KIND_BAG: ("Beutel", "Bag"), KIND_PACK: ("Packung", "Pack")}
+_NAMES = {KIND_BAG: ("Beutel", "Bag"), KIND_PACK: ("Packung", "Pack"), KIND_HOUSEHOLD: ("Artikel", "Item")}
 
 
 class Retired:
-    """Codes und NFC-Tags geleerter Beutel (cc → Name, Inhalt, wann geleert)."""
+    """Codes and NFC tags of emptied bags (cc → name, content, emptied when)."""
 
     def __init__(self, hass: HomeAssistant) -> None:
         self.hass = hass
@@ -88,7 +90,7 @@ class Retired:
         return self.codes.get(cc) if cc else None
 
     def forget_tag(self, tag_id: str) -> None:
-        """Sticker wird für etwas Neues benutzt: gilt nicht mehr als alter Beutel."""
+        """The sticker is used for something new: no longer counts as an old bag."""
         if self.tags.pop(tag_id, None) is not None:
             self._save()
 
@@ -103,7 +105,7 @@ async def async_get_retired(hass: HomeAssistant) -> Retired:
 
 
 def retired_text(info: dict[str, Any], language: str) -> str:
-    """"Beutel 3 (Rehgulasch) wurde am 12.11.2026 geleert." für Benachrichtigung und Dashboard."""
+    """"Bag 3 (venison goulash) was emptied on 12 Nov 2026." for notification and dashboard."""
     de = language.lower().startswith("de")
     name = info.get("name") or ("Beutel" if de else "Bag")
     if info.get("content"):
@@ -119,19 +121,19 @@ def retired_text(info: dict[str, Any], language: str) -> str:
 
 
 async def async_delete_ha_tag(hass: HomeAssistant, tag_id: str) -> None:
-    """Tag aus der Tag-Liste von Home Assistant (Einstellungen → Tags) entfernen, falls vorhanden."""
+    """Remove the tag from Home Assistant's tag list (Settings → Tags), if present."""
     try:
-        from homeassistant.components.tag import TAG_DATA  # noqa: PLC0415 - Tag-Integration ist optional
+        from homeassistant.components.tag import TAG_DATA  # noqa: PLC0415 - the tag integration is optional
 
         collection = hass.data.get(TAG_DATA)
         if collection is not None and tag_id in collection.data:
             await collection.async_delete_item(tag_id)
-    except Exception:  # noqa: BLE001 - Aufräumen darf das Leeren nie verhindern
+    except Exception:  # noqa: BLE001 - cleaning up must never prevent emptying
         _LOGGER.debug("Tag %s konnte nicht entfernt werden", tag_id, exc_info=True)
 
 
 async def async_dispose(hass: HomeAssistant, entry_id: str, content: str = "", remember: bool = True) -> None:
-    """Geleerten Beutel oder leere Packung entfernen (Gerät, Entitäten, NFC-Verknüpfung, HA-Tag)."""
+    """Remove an emptied bag or empty pack (device, entities, NFC link, HA tag)."""
     entry = hass.config_entries.async_get_entry(entry_id)
     if entry is None or kind_of(entry) not in DISPOSABLE_KINDS:
         return
@@ -147,20 +149,20 @@ async def async_dispose(hass: HomeAssistant, entry_id: str, content: str = "", r
         )
     if tag_id:
         await async_delete_ha_tag(hass, tag_id)
-    pack = kind_of(entry) == KIND_PACK
+    pack = kind_of(entry) in PACK_KINDS
     if pack and content and remember is not False:
         stock = hass.data.get(DOMAIN, {}).get("stock")
         if stock is not None:
-            stock.log_take(content)  # letzte Packung entnommen
-    await hass.config_entries.async_remove(entry_id)  # async_remove_entry löst NFC-Verknüpfung und Kalendertermin
+            stock.log_take(content)  # last pack taken
+    await hass.config_entries.async_remove(entry_id)  # async_remove_entry removes the NFC link and the calendar event
     if pack and content:
-        from .stock import async_check_stock  # noqa: PLC0415 - vermeidet einen Import-Kreis
+        from .stock import async_check_stock  # noqa: PLC0415 - avoids an import cycle
 
         await async_check_stock(hass, content, {cc})
 
 
 def next_names(hass: HomeAssistant, kind: str, count: int) -> list[str]:
-    """Fortlaufende Namen ("Beutel 4", "Beutel 5"), die es noch nicht gibt."""
+    """Consecutive names ("Beutel 4", "Beutel 5") that do not exist yet."""
     label = _NAMES[kind][0 if (hass.config.language or "en").lower().startswith("de") else 1]
     used = set()
     for entry in hass.config_entries.async_entries(DOMAIN):
@@ -183,7 +185,7 @@ async def async_create_items(
     area_id: str | None = None,
     compartment: str | None = None,
 ) -> list[dict[str, Any]]:
-    """Beutel oder Packungen anlegen und gleich befüllen. Liefert je Eintrag device_id, cc, name."""
+    """Create bags or packs and fill them right away. Returns device_id, cc, name per entry."""
     if kind not in DISPOSABLE_KINDS:
         raise HomeAssistantError("unsupported kind")
     estimator = await async_get_estimator(hass)
@@ -232,7 +234,7 @@ async def async_create_items(
 
 
 async def async_transfer(hass: HomeAssistant, pack_cc: str, target_cc: str) -> dict[str, Any]:
-    """Packung öffnen und in eine leere Dose umfüllen (Inhalt, Produktdaten; MHD neu geschätzt)."""
+    """Open a pack and transfer it into an empty container (content, product data; date estimated anew)."""
     entries = {e.data.get(CONF_CC): e for e in hass.config_entries.async_loaded_entries(DOMAIN)}
     pack, target = entries.get(pack_cc), entries.get(target_cc)
     if pack is None or target is None or kind_of(pack) != KIND_PACK or kind_of(target) == KIND_PACK:
@@ -252,7 +254,7 @@ async def async_transfer(hass: HomeAssistant, pack_cc: str, target_cc: str) -> d
             best = dest["best_before"].native_value
         except HomeAssistantError:
             _LOGGER.debug("MHD nach dem Umfüllen nicht geschätzt", exc_info=True)
-    # geöffnet hält es höchstens so lange wie aufgedruckt
+    # once opened it keeps at most as long as printed
     if printed is not None and (best is None or printed < best):
         await dest["best_before"].async_set_value(printed)
         best = printed
@@ -261,7 +263,7 @@ async def async_transfer(hass: HomeAssistant, pack_cc: str, target_cc: str) -> d
         await source["portions"].async_set_native_value(float(left))
     else:
         if (stock := hass.data.get(DOMAIN, {}).get("stock")) is not None:
-            stock.log_take(content)  # umgefüllt: zählt als Verbrauch
+            stock.log_take(content)  # transferred: counts as consumption
         await async_dispose(hass, pack.entry_id, content, remember=False)
     return {"left": max(left, 0), "best_before": best.isoformat() if best else None}
 
@@ -299,7 +301,7 @@ def _cc_of(hass: HomeAssistant, device_id: str) -> str | None:
 async def ws_create_items(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
-    """Beutel oder Packungen anlegen (für alle Nutzer: gehört zum Alltag wie das Befüllen)."""
+    """Create bags or packs (for all users: part of everyday use like filling)."""
     try:
         created = await async_create_items(hass, msg["kind"], msg["items"], msg.get("area_id"), msg.get("compartment"))
     except HomeAssistantError as err:

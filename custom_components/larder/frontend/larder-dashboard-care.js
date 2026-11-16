@@ -1,7 +1,7 @@
 /**
- * Larder-Dashboard: Vorrat pflegen – Inventur je Fach und angebrochene Packungen.
+ * Larder dashboard: looking after the stock – stocktake per compartment and opened packs.
  *
- * `installCare` hängt die Methoden an die Dashboard-Klasse (wie larder-dashboard-items.js).
+ * `installCare` attaches the methods to the dashboard class (like larder-dashboard-items.js).
  */
 
 const TEXT = {
@@ -121,7 +121,7 @@ export function careTexts(hass) {
   return String((hass && hass.language) || "en").toLowerCase().startsWith("de") ? TEXT.de : TEXT.en;
 }
 
-/** Einträge an einem Ort: Bereich (leer = ohne Bereich) und optional Fach (Groß-/Kleinschreibung egal). */
+/** Entries at a place: area (empty = without area) and optionally compartment (case-insensitive). */
 export function rowsAtPlace(rows, areaId, compartment) {
   const comp = String(compartment || "").trim().toLowerCase();
   return rows.filter(
@@ -153,7 +153,7 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, DOMAIN, attachC
     return String((hass && hass.language) || "en").toLowerCase().startsWith("de") ? `${d}.${m}.${y}` : iso;
   };
 
-  // ---------- Packung anbrechen ----------
+  // ---------- Opening a pack ----------
 
   proto.openOpenDialog = function openOpenDialog(deviceId) {
     const hass = this._hass;
@@ -164,7 +164,7 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, DOMAIN, attachC
     const qty = Number((states[row.dev.entities.number] || {}).state) || 1;
     const area = el("select");
     area.dataset.f = "area";
-    for (const a of [{ id: "", name: t.noArea }, ...listAreas(hass, this._classic.larderLabel, row.areaId)]) {
+    for (const a of [{ id: "", name: t.noArea }, ...listAreas(hass, this._classic.larderLabel, row.areaId, row.kind === "household" ? "household" : "food")]) {
       const o = el("option", "", a.name);
       o.value = a.id;
       area.append(o);
@@ -210,7 +210,7 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, DOMAIN, attachC
     this._overlay.hidden = false;
   };
 
-  // ---------- Fach (NFC-Tag / QR-Etikett) ----------
+  // ---------- Compartment (NFC tag / QR label) ----------
 
   proto._placeName = function _placeName(areaId, compartment) {
     const hass = this._hass;
@@ -218,7 +218,7 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, DOMAIN, attachC
     return [area, compartment].filter(Boolean).join(" · ");
   };
 
-  /** Fach-Ansicht: was dort liegt (ältestes zuerst), −1 bzw. öffnen, Inventur, Etikett, NFC-Tag. */
+  /** Compartment view: what is there (oldest first), −1 or open, stocktake, label, NFC tag. */
   proto.openPlace = async function openPlace(areaId, compartment, message = "") {
     const hass = this._hass;
     const t = careTexts(hass);
@@ -249,11 +249,11 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, DOMAIN, attachC
       const date = best && best.state && best.state !== "unknown" && best.state !== "unavailable" ? fmt(hass, best.state) : "";
       const text = el("span", "text");
       text.append(
-        el("span", "name", `${CATEGORY_ICONS[row.category] || CATEGORY_ICONS.other} ${row.content}${row.kind === "pack" && count > 1 ? ` · ${count}` : ""}`),
+        el("span", "name", `${CATEGORY_ICONS[row.category] || CATEGORY_ICONS.other} ${row.content}${(row.kind === "pack" || row.kind === "household") && count > 1 ? ` · ${count}` : ""}`),
         el("span", "sub", [row.opened ? "🔓" : null, row.name, date ? t.bestBefore(date) : t.noDate, !compartment && row.compartment ? row.compartment : null].filter(Boolean).join(" · ")),
       );
       line.append(text);
-      if (row.kind === "pack") {
+      if (row.kind === "pack" || row.kind === "household") {
         const take = button("primary", t.placeTake, async () => {
           take.disabled = true;
           await this._takeOne({ device_id: row.id, count });
@@ -300,7 +300,7 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, DOMAIN, attachC
       unlink.dataset.role = "place-unlink";
       tagRow.append(unlink);
     } else {
-      // vorhandenen (schon beschriebenen) Tag scannen
+      // scan an existing (already written) tag
       const tag = button("", t.placeTag, () => {
         status.textContent = t.placeTagHint;
         classic.cancelCapture("place");
@@ -322,7 +322,7 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, DOMAIN, attachC
       });
       tag.dataset.role = "place-tag";
       tagRow.append(tag);
-      // leeren Sticker beschreiben: gleich verknüpfen, dann schreibt die App die ID auf den Sticker
+      // write an empty sticker: link right away, then the app writes the ID onto the sticker
       const ext = hass.auth && hass.auth.external;
       if (ext && typeof ext.fireMessage === "function" && ext.config && ext.config.canWriteTag) {
         const write = button("", t.placeTagWrite, async () => {
@@ -388,7 +388,7 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, DOMAIN, attachC
     return true;
   };
 
-  /** Gescannten Code (QR einer Dose, Strichcode einer Packung) in der Inventur abhaken. */
+  /** Tick off a scanned code (QR of a container, barcode of a pack) in the stocktake. */
   proto.stocktakeScan = async function stocktakeScan(code) {
     const hass = this._hass;
     const take = this._take;
@@ -413,7 +413,7 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, DOMAIN, attachC
           return;
         }
       } catch {
-        /* unten: Hinweis */
+        /* below: note */
       }
     }
     this.showNotice(careTexts(hass).unknown);
@@ -444,7 +444,7 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, DOMAIN, attachC
       comp.value = take.compartment;
       const start = button("primary", t.start, () => {
         this._take = { areaId: area.value, compartment: comp.value.trim(), started: true, status: new Map() };
-        this._take.items = this._takeRows(); // was am Anfang dort sein sollte (Ausgetragenes bleibt sichtbar)
+        this._take.items = this._takeRows(); // what should be there at the start (what was removed stays visible)
         this._sig = "";
         this._update();
       });
@@ -456,7 +456,7 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, DOMAIN, attachC
       area.addEventListener("change", refresh);
       return;
     }
-    // Liste: was am Anfang da sein sollte, mit aktuellem Stand
+    // list: what should be there at the start, with the current state
     const current = new Map(this._takeRows().map((r) => [r.id, r]));
     const rows = (take.items || []).map((r) => current.get(r.id) || r);
     for (const r of current.values()) if (!rows.some((x) => x.id === r.id)) rows.push(r);
@@ -589,12 +589,12 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, DOMAIN, attachC
     this._update();
   };
 
-  /** Dose in einen anderen Bereich/ein anderes Fach stellen (nur Administratoren dürfen Geräte ändern). */
+  /** Put a container into another area/compartment (only administrators may change devices). */
   proto._relocateContainer = function _relocateContainer(row, onDone) {
     const hass = this._hass;
     const t = careTexts(hass);
     const area = el("select");
-    for (const a of [{ id: "", name: t.noArea }, ...listAreas(hass, this._classic.larderLabel, row.areaId)]) {
+    for (const a of [{ id: "", name: t.noArea }, ...listAreas(hass, this._classic.larderLabel, row.areaId, row.kind === "household" ? "household" : "food")]) {
       const o = el("option", "", a.name);
       o.value = a.id;
       area.append(o);

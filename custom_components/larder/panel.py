@@ -1,8 +1,8 @@
-"""Seitenleisten-Panel 'Larder': Übersicht aller Dosen, live aktualisiert.
+"""Sidebar panel 'Larder': overview of all containers, updated live.
 
-Das Panel ist eine kleine Web-Komponente, die direkt die Registries und Zustände aus dem
-Home-Assistant-Frontend liest. Neue Dosen erscheinen dadurch sofort, ohne dass irgendeine
-Konfiguration neu erzeugt werden muss.
+The panel is a small web component that reads the registries and states directly from the
+Home Assistant frontend. New containers therefore appear at once, without any
+configuration having to be regenerated.
 """
 
 from __future__ import annotations
@@ -28,7 +28,7 @@ DATA_PANEL_LOCK = "panel_lock"
 
 
 async def async_setup_panel(hass: HomeAssistant) -> None:
-    """Panel einmalig registrieren (idempotent, egal wie viele Dosen es gibt)."""
+    """Register the panel once (idempotent, no matter how many containers there are)."""
     domain_data = hass.data.setdefault(DOMAIN, {})
     lock: asyncio.Lock = domain_data.setdefault(DATA_PANEL_LOCK, asyncio.Lock())
     async with lock:
@@ -42,7 +42,7 @@ async def async_setup_panel(hass: HomeAssistant) -> None:
             domain_data[DATA_STATIC] = True
 
         integration = await async_get_integration(hass, DOMAIN)
-        # Lovelace-Karte "Larder: läuft bald ab" (custom:larder-card), ohne Ressource eintragen zu müssen
+        # Lovelace card "Larder: expires soon" (custom:larder-card), without having to add a resource
         if not domain_data.get(DATA_CARD):
             card_url = f"{STATIC_URL}/larder-card.js?v={integration.version}"
             frontend.add_extra_js_url(hass, card_url)
@@ -60,7 +60,7 @@ async def async_setup_panel(hass: HomeAssistant) -> None:
 
 
 def async_teardown_panel(hass: HomeAssistant) -> None:
-    """Panels entfernen, wenn die letzte Dose entladen wurde."""
+    """Remove the panels when the last container was unloaded."""
     domain_data = hass.data.get(DOMAIN, {})
     if card_url := domain_data.pop(DATA_CARD, None):
         frontend.remove_extra_js_url(hass, card_url)

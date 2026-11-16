@@ -1,8 +1,8 @@
-"""Einkaufsliste: Inhalt einer geleerten Dose auf eine To-do-Liste von Home Assistant setzen.
+"""Shopping list: put the content of an emptied container on a Home Assistant to-do list.
 
-Die Liste wird in den Einstellungen gewählt (z. B. "Einkaufsliste", Todoist, Bring! oder jede andere
-To-do-Entität). Ob eine Dose beim Leeren etwas auf die Liste setzt, entscheidet der Schalter
-"Einkaufsliste" der jeweiligen Dose (standardmäßig aus, damit z. B. Reste nicht nachgekauft werden).
+The list is chosen in the settings (e.g. "Shopping list", Todoist, Bring! or any other
+to-do entity). Whether a container puts something on the list when emptied is decided by the switch
+"Shopping list" of that container (off by default, so e.g. leftovers are not bought again).
 """
 
 from __future__ import annotations
@@ -16,16 +16,16 @@ _LOGGER = logging.getLogger(__name__)
 
 
 def _base(item: str) -> str:
-    """Eintrag ohne Zusatz in Klammern: "Haferflocken (Kölln, 500 g)" gilt als "Haferflocken"."""
+    """Item without the addition in brackets: "Haferflocken (Kölln, 500 g)" counts as "Haferflocken"."""
     return item.split(" (", 1)[0].strip().casefold()
 
 
 async def async_add_to_shopping_list(hass: HomeAssistant, entity_id: str, item: str) -> bool:
-    """Eintrag auf die To-do-Liste setzen. True, wenn ein Eintrag angelegt wurde.
+    """Put an item on the to-do list. True if an item was created.
 
-    Steht derselbe Eintrag (Groß-/Kleinschreibung und Zusatz in Klammern egal) schon offen auf der Liste, wird nichts
-    doppelt angelegt. Fehler der Liste (nicht erreichbar, schreibgeschützt) werden nur protokolliert,
-    das Leeren der Dose soll daran nicht scheitern.
+    If the same item (case and addition in brackets do not matter) is already open on the list, nothing is
+    created twice. Errors of the list (not reachable, read-only) are only logged,
+    emptying the container must not fail because of them.
     """
     item = item.strip()
     if not item:

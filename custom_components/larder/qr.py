@@ -1,10 +1,10 @@
-"""Parser für den Inhalt des Zwilling-QR-Codes.
+"""Parser for the content of the Zwilling QR code.
 
-Beispiel-Inhalt:
+Example content:
     zwilling://zwillingapp/food-storage/in/?tc=42ML30&s=m&cc=34OL
 
-Akzeptiert werden außerdem nur der Query-Teil ("tc=...&cc=...") oder die
-nackte ID ("34OL").
+Also accepted are only the query part ("tc=...&cc=...") or the
+bare ID ("34OL").
 """
 
 from __future__ import annotations
@@ -17,8 +17,8 @@ from urllib.parse import parse_qs, urlparse
 
 _CODE_RE = re.compile(r"^[A-Z0-9_-]{2,32}$")
 
-# Selbst erzeugte IDs: Präfix "HA-" plus 8 Zeichen ohne leicht verwechselbare (0/O, 1/I).
-# Das Präfix mit Bindestrich hält sie klar von den Zwilling-IDs (z. B. "34OL") getrennt.
+# Generated IDs: prefix "HA-" plus 8 characters without easily confused ones (0/O, 1/I).
+# The prefix with a hyphen keeps them clearly apart from the Zwilling IDs (e.g. "34OL").
 GENERATED_PREFIX = "HA-"
 _GENERATED_ALPHABET = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
 _GENERATED_LENGTH = 8
@@ -26,7 +26,7 @@ _GENERATED_LENGTH = 8
 
 @dataclass(frozen=True)
 class ParsedCode:
-    """Ergebnis des Parsens."""
+    """Result of parsing."""
 
     cc: str
     tc: str | None = None
@@ -34,7 +34,7 @@ class ParsedCode:
 
 
 def parse_qr(raw: str | None) -> ParsedCode | None:
-    """Liefert die ID (und Zusatzdaten) oder None, wenn nichts Brauchbares drinsteht."""
+    """Returns the ID (and extra data) or None if there is nothing usable in it."""
     raw = (raw or "").strip()
     if not raw:
         return None
@@ -64,7 +64,7 @@ def parse_qr(raw: str | None) -> ParsedCode | None:
 
 
 def generate_code(existing: Collection[str | None] = ()) -> str:
-    """Neue, eindeutige ID erzeugen (kollidiert nicht mit bestehenden Einträgen)."""
+    """Create a new, unique ID (does not collide with existing entries)."""
     taken = {code.upper() for code in existing if code}
     while True:
         code = GENERATED_PREFIX + "".join(

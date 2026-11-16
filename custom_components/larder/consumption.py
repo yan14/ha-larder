@@ -1,11 +1,11 @@
-"""Verbrauch und Kosten: wie schnell ein Produkt verbraucht wird, was es kostet, was weggeworfen wurde.
+"""Consumption and cost: how fast a product is used up, what it costs, what was thrown away.
 
-* **Verbrauch** aus den Entnahmen von Packungen (−1, letzte Packung geleert, in eine Dose umgefüllt). Das
-  Zeitfenster passt sich an: 90 Tage, bei weniger als 3 Entnahmen 180, dann 365 Tage. Neuere Entnahmen
-  zählen stärker (Halbwertszeit 45 Tage), damit sich ein geänderter Verbrauch schnell zeigt.
-* **Vorschlag für den Mindestbestand**: so viel, wie bis zum nächsten Einkauf (Vorlaufzeit) gebraucht wird.
-* **Preise** je Packung: eigener Preis (Kassenbon, von Hand) vor gemerktem Preis vor Open Prices
-  (prices.openfoodfacts.org, Median der Preise der letzten 12 Monate, bevorzugt aus dem eigenen Land).
+* **Consumption** from the takes of packs (−1, last pack emptied, transferred into a container). The
+  window adapts: 90 days, with fewer than 3 takes 180, then 365 days. Newer takes
+  weigh more (half-life 45 days), so a changed consumption shows quickly.
+* **Suggested minimum stock**: as much as is needed until the next shopping trip (lead time).
+* **Prices** per pack: own price (receipt, by hand) before remembered price before Open Prices
+  (prices.openfoodfacts.org, median of the prices of the last 12 months, preferably from the own country).
 """
 
 from __future__ import annotations
@@ -29,8 +29,8 @@ _LOGGER = logging.getLogger(__name__)
 
 WINDOWS = (90, 180, 365)
 MIN_TAKES = 3
-HALF_LIFE = 45  # Tage
-MIN_SPAN = 14  # so kurz rechnet die Prognose höchstens (sonst wirkt ein einzelner Tag riesig)
+HALF_LIFE = 45  # days
+MIN_SPAN = 14  # the forecast never uses a shorter period (otherwise a single day looks huge)
 OPEN_PRICES_URL = "https://prices.openfoodfacts.org/api/v1/prices"
 OPEN_PRICES_TIMEOUT = 8
 OPEN_PRICES_MAX_AGE = 365
@@ -43,9 +43,9 @@ def _weight(age: int) -> float:
 
 
 def forecast(takes: list[dict[str, Any]], count: int, today: date | None = None) -> dict[str, Any] | None:
-    """Verbrauch je Woche und wie lange `count` Packungen reichen; None ohne genug Entnahmen.
+    """Consumption per week and how long `count` packs last; None without enough takes.
 
-    `takes`: Einträge {"day": "YYYY-MM-DD", "n": Anzahl} eines Produkts.
+    `takes`: entries {"day": "YYYY-MM-DD", "n": count} of one product.
     """
     today = today or dt_util.now().date()
     days = []
@@ -65,7 +65,7 @@ def forecast(takes: list[dict[str, Any]], count: int, today: date | None = None)
             break
     else:
         return None
-    # beobachteter Zeitraum: nicht länger als das Fenster und nicht vor der ersten bekannten Entnahme
+    # observed period: not longer than the window and not before the first known take
     span = max(MIN_SPAN, min(window, (today - first).days + 1))
     taken = sum(n * _weight((today - d).days) for d, n in inside)
     exposure = sum(_weight(age) for age in range(span))
@@ -81,14 +81,14 @@ def forecast(takes: list[dict[str, Any]], count: int, today: date | None = None)
 
 
 def suggested_minimum(per_week: float | None, lead_days: int) -> int | None:
-    """So viele Packungen, wie bis zum nächsten Einkauf (Vorlaufzeit) gebraucht werden, mindestens 1."""
+    """As many packs as are needed until the next shopping trip (lead time), at least 1."""
     if not per_week:
         return None
     return max(1, math.ceil(per_week / 7 * lead_days))
 
 
 def price_of(pack_product: dict[str, Any], remembered: dict[str, Any] | None) -> dict[str, Any] | None:
-    """Preis einer Packung: eigener vor gemerktem (beide mit Quelle)."""
+    """Price of a pack: own before remembered (both with source)."""
     try:
         own = float(pack_product.get("price")) if pack_product.get("price") not in (None, "") else None
     except (TypeError, ValueError):
@@ -101,7 +101,7 @@ def price_of(pack_product: dict[str, Any], remembered: dict[str, Any] | None) ->
 
 
 def open_prices_median(items: list[dict[str, Any]], country: str | None, today: date | None = None) -> dict[str, Any] | None:
-    """Median der Preise in Euro der letzten 12 Monate, bevorzugt aus `country` (Rabatte: regulärer Preis)."""
+    """Median of the prices in euros of the last 12 months, preferably from `country` (discounts: regular price)."""
     today = today or dt_util.now().date()
     found: list[tuple[float, bool]] = []
     for item in items:
@@ -130,7 +130,7 @@ def open_prices_median(items: list[dict[str, Any]], country: str | None, today: 
 
 
 async def async_open_prices(hass: HomeAssistant, ean: str) -> dict[str, Any] | None:
-    """Durchschnittspreis (Median) aus Open Prices; einen Tag zwischengespeichert, Fehler zählen als nichts."""
+    """Average price (median) from Open Prices; cached for a day, errors count as nothing."""
     code = "".join(ch for ch in str(ean or "") if ch.isdigit())
     if not 8 <= len(code) <= 14:
         return None

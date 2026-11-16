@@ -1,20 +1,20 @@
 /*
- * Larder: Übersicht aller Dosen der Integration "larder".
+ * Larder: overview of all containers of the integration "larder".
  *
- * Liest Geräte, Bereiche, Entitäten und Zustände direkt aus dem hass-Objekt des Frontends.
- * Es gibt keine feste Konfiguration: Neue Dosen erscheinen, sobald sie in Home Assistant
- * angelegt sind, geänderte Werte und Bereiche werden live übernommen.
+ * Reads devices, areas, entities and states directly from the frontend's hass object.
+ * There is no fixed configuration: new containers appear as soon as they are created in
+ * Home Assistant, changed values and areas are applied live.
  */
 
 const DOMAIN = "larder";
-// Texte und Stylesheet liegen in eigenen Modulen; mit derselben Versionsangabe laden wie dieses Modul,
-// damit nie eine ältere Kopie aus dem Cache benutzt wird.
+// Texts and stylesheet live in modules of their own; load them with the same version query as this module,
+// so an older copy from the cache is never used.
 const VERSION_QUERY = new URL(import.meta.url).search;
 
 const { STRINGS } = await import(`./larder-panel-strings.js${VERSION_QUERY}`);
 export { STRINGS };
 
-// ----- Fächer vorschlagen -----
+// ----- Suggesting compartments -----
 
 const COMPARTMENT_KEY = `${DOMAIN}.compartments`;
 const MAX_COMPARTMENT_CHIPS = 8;
@@ -28,7 +28,7 @@ function loadCompartmentMemory() {
   }
 }
 
-/** Benutztes Fach merken (je Bereich, die zuletzt benutzten zuerst), auch wenn die Dose später weg ist. */
+/** Remember a used compartment (per area, recently used first), even if the container is gone later. */
 export function rememberCompartment(areaId, value) {
   const text = String(value || "").trim();
   if (!text) return;
@@ -38,13 +38,13 @@ export function rememberCompartment(areaId, value) {
   try {
     window.localStorage.setItem(COMPARTMENT_KEY, JSON.stringify(memory));
   } catch {
-    /* Speicher voll oder gesperrt: dann eben ohne */
+    /* storage full or blocked: then without */
   }
 }
 
 /**
- * Fächer, die in einem Bereich schon benutzt werden oder wurden: aus den Dosen, Beuteln und Packungen dort
- * (am häufigsten zuerst) und aus den zuletzt eingetragenen. Ohne Bereich: alle Fächer.
+ * Compartments that are or were used in an area: from the containers, bags and packs there
+ * (most frequent first) and from those entered last. Without an area: all compartments.
  */
 export function knownCompartments(hass, devices, areaId) {
   const states = (hass && hass.states) || {};
@@ -69,8 +69,8 @@ export function knownCompartments(hass, devices, areaId) {
 }
 
 /**
- * Vorschläge als antippbare Chips unter einem Fach-Feld. `getList` liefert die Fächer (z. B. je nach Bereich);
- * `refresh()` zeichnet sie neu, etwa wenn der Bereich gewechselt wurde. Getipptes filtert die Chips.
+ * Suggestions as tappable chips below a compartment field. `getList` returns the compartments (e.g. depending on the area);
+ * `refresh()` redraws them, for instance when the area was changed. Typing filters the chips.
  */
 export function attachCompartmentChips(input, getList, onPick = null) {
   let box = input.nextElementSibling;
@@ -109,7 +109,7 @@ export function attachCompartmentChips(input, getList, onPick = null) {
   return refresh;
 }
 
-/** Beschriftung der Quelle eines Schätzwerts (Tabelle, KI oder vom Nutzer korrigiert, mit Ursprung). */
+/** Label of the source of an estimate (table, AI or corrected by the user, with origin). */
 export function sourceLabel(t, source, origin) {
   if (source === "learned") {
     if (origin === "table") return t.sourceLearnedTable;
@@ -126,12 +126,12 @@ function strings(hass) {
   return STRINGS[lang] || STRINGS.en;
 }
 
-/** Der Schalter "Einkaufsliste" ist nur sinnvoll, wenn in den Einstellungen eine To-do-Liste gewählt ist. */
+/** The switch "Shopping list" only makes sense if a to-do list is chosen in the settings. */
 function hasShoppingList(state) {
   return !!(state && state.attributes && state.attributes.list);
 }
 
-/** Alle Geräte der Integration, sortiert nach Bereich (ohne Bereich zuletzt) und Name. */
+/** All devices of the integration, sorted by area (without area last) and name. */
 export function collectDevices(hass) {
   const byDevice = new Map();
   for (const ent of Object.values(hass.entities || {})) {
@@ -141,9 +141,9 @@ export function collectDevices(hass) {
       dev = { deviceId: ent.device_id, entities: {}, entityAreaId: null };
       byDevice.set(ent.device_id, dev);
     }
-    // Pro Gerät gibt es je Domain eine Entität (text, date, datetime, button, image, number), mehrere nur bei
-    // "switch" (Vakuum = switch, Einkaufsliste = shopping, variabler Lagerort = flexible) und "select"
-    // (Einheit = select, Lagerort nach dem Leeren = homeArea).
+    // Per device there is one entity per domain (text, date, datetime, button, image, number), several only for
+    // "switch" (vacuum = switch, shopping list = shopping, variable storage place = flexible) and "select"
+    // (unit = select, place after emptying = homeArea).
     const domain = ent.entity_id.split(".")[0];
     const key = ent.translation_key;
     let slot = domain;
@@ -193,14 +193,14 @@ function isValidState(st) {
 
 const pad = (n) => String(n).padStart(2, "0");
 
-/** ISO-Zeitstempel -> Wert für <input type="datetime-local"> (lokale Zeit). */
+/** ISO timestamp -> value for <input type="datetime-local"> (local time). */
 export function toLocalInputValue(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/** Verbleibende Tage bis zum MHD (negativ = abgelaufen), Basis ist "heute" in lokaler Zeit. */
+/** Days left until the best-before date (negative = expired), based on "today" in local time. */
 export function daysUntil(isoDate, now = new Date()) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate || "");
   if (!m) return null;
@@ -209,7 +209,7 @@ export function daysUntil(isoDate, now = new Date()) {
   return Math.round((target - today) / 86400000);
 }
 
-/** ISO-Datum um n Tage verschieben (lokale Kalendertage, ohne Zeitzonen-Fallen). */
+/** Shift an ISO date by n days (local calendar days, without time zone traps). */
 export function addDays(isoDate, n) {
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate || "");
   if (!m) return null;
@@ -219,15 +219,15 @@ export function addDays(isoDate, n) {
 
 export const SOON_DAYS = 3;
 
-/** "Läuft bald ab" in Tagen: Einstellung der Integration (Attribut `soon_days` der MHD-Entität), sonst 3. */
+/** "Expires soon" in days: setting of the integration (attribute `soon_days` of the date entity), else 3. */
 export function soonDaysOf(dateState) {
   const value = dateState && dateState.attributes ? dateState.attributes.soon_days : undefined;
   return Number.isInteger(value) && value >= 0 ? value : SOON_DAYS;
 }
 
 /**
- * Dosen nach Suche filtern und sortieren. `sort`: "area" (Reihenfolge von collectDevices),
- * "date" (frühestes MHD zuerst, ohne MHD zuletzt) oder "name". `filter`: all, soon, expired, filled, empty.
+ * Filter containers by search and sort them. `sort`: "area" (order of collectDevices),
+ * "date" (earliest date first, without a date last) or "name". `filter`: all, soon, expired, filled, empty.
  */
 export function arrangeDevices(hass, devices, { query = "", filter = "all", sort = "area" } = {}, now = new Date()) {
   const states = hass.states || {};
@@ -276,23 +276,37 @@ function isAdmin(hass) {
 }
 
 /**
- * Bereiche des hass-Objekts als sortierte Liste [{id, name}].
- * Mit `labelIds` (Beschriftungen "Larder" bzw. "Larder: …", eine ID oder eine Liste) erscheinen nur
- * Bereiche mit einer dieser Beschriftungen; hat keiner der Bereiche eine, werden alle gezeigt. `keep`
- * ist ein Bereich, der immer dabei sein muss (der aktuelle Bereich einer Dose, auch ohne Beschriftung).
+ * Areas of the hass object as a sorted list [{id, name}].
+ * With `labelIds` (labels "Larder" or "Larder: …", one ID or a list) only areas with one of
+ * these labels appear; if none of the areas has one, all are shown. `keep`
+ * is an area that must always be included (the current area of a container, even without a label).
  */
-export function listAreas(hass, labelIds = null, keep = null) {
+let AREA_SCOPES = null; // area id → "food" | "household" | "both" | null (from larder/area_scopes)
+
+/** Remember what each area is used for (food, household or both), see `listAreas`. */
+export function setAreaScopes(scopes) {
+  AREA_SCOPES = scopes || null;
+}
+
+/** May this area hold entries of this scope ("food" or "household")? Unknown or unlabelled areas may. */
+export function areaAllows(areaId, scope) {
+  const s = AREA_SCOPES && AREA_SCOPES[areaId];
+  return !scope || !s || s === "both" || s === scope;
+}
+
+export function listAreas(hass, labelIds = null, keep = null, scope = null) {
   const lang = ((hass && hass.language) || "en").toLowerCase();
   let areas = Object.values((hass && hass.areas) || {});
   const ids = (Array.isArray(labelIds) ? labelIds : [labelIds]).filter(Boolean);
   const tagged = (a) => Array.isArray(a.labels) && a.labels.some((l) => ids.includes(l));
   if (ids.length && areas.some(tagged)) areas = areas.filter((a) => tagged(a) || a.area_id === keep);
+  if (scope) areas = areas.filter((a) => areaAllows(a.area_id, scope) || a.area_id === keep);
   return areas
     .map((a) => ({ id: a.area_id, name: a.name }))
     .sort((a, b) => a.name.localeCompare(b.name, lang, { numeric: true, sensitivity: "base" }));
 }
 
-/** Beschriftung, die einen Bereich als Lagerort markiert: "Larder" oder "Larder: …" (z. B. "Larder: Freezer"). */
+/** Label that marks an area as a storage place: "Larder" or "Larder: …" (e.g. "Larder: Freezer"). */
 export function isLarderLabel(label) {
   const name = String((label && label.name) || "").trim().toLowerCase();
   return name === "larder" || name.startsWith("larder:") || (label && label.label_id === "larder");
@@ -307,7 +321,7 @@ const { STYLE } = await import(`./larder-panel-style.js${VERSION_QUERY}`);
 
 const VIEW_KEY = `${DOMAIN}.panel`;
 
-/** Suche, Filter und Sortierung sind eine reine Anzeigepräferenz dieses Browsers. */
+/** Search, filter and sorting are a pure display preference of this browser. */
 function loadViewOptions() {
   const defaults = { query: "", filter: "all", sort: "area" };
   try {
@@ -326,18 +340,18 @@ function saveViewOptions(opts) {
   try {
     window.localStorage.setItem(VIEW_KEY, JSON.stringify(opts));
   } catch (err) {
-    /* Speicher nicht verfügbar: Einstellung gilt nur bis zum Neuladen */
+    /* storage not available: the setting only applies until reload */
   }
 }
 
 const DEFAULT_UNITS = ["portions", "pieces", "slices", "grams", "milliliters"];
 
-/** Menge aus einem Eingabefeld: ganze Zahl von 0 bis 9999 (leer = 0 = nicht angegeben). */
+/** Quantity from an input field: whole number from 0 to 9999 (empty = 0 = not given). */
 function parseQuantity(value) {
   return Math.min(Math.max(parseInt(value, 10) || 0, 0), 9999);
 }
 
-/** Auswahl der Einheit füllen (Optionen und aktueller Wert kommen von der Select-Entität). */
+/** Fill the unit select (options and current value come from the select entity). */
 function fillUnitSelect(select, state, t) {
   const options = (state && state.attributes && state.attributes.options) || DEFAULT_UNITS;
   const sig = options.join("|");
@@ -374,7 +388,7 @@ class DoseCard {
       <div class="row"><label data-l="content"></label><input data-f="content" type="text" maxlength="255"></div>
       <div class="row quantityrow"><label data-l="quantity"></label><span class="qty"><input data-f="quantity" type="number" min="0" max="9999" step="1" inputmode="numeric"><select data-f="unit"></select><button class="take" type="button">−1</button></span></div>
       <div class="lastrow" hidden><span class="lasttext"></span><button class="lastempty" type="button"></button><button class="lastkeep" type="button"></button></div>
-      <div class="row"><label data-l="bestBefore"></label><input data-f="bestBefore" type="date"><span class="badge"></span></div>
+      <div class="row bbrow"><label data-l="bestBefore"></label><input data-f="bestBefore" type="date"><span class="badge"></span></div>
       <div class="quickrow"><button class="plus1" type="button"></button><button class="opened" type="button"></button><button class="thawed" type="button"></button></div>
       <div class="row filledrow"><label data-l="filledAt"></label><input data-f="filledAt" type="datetime-local"><button class="now" type="button"></button></div>
       <div class="estimaterow"><button class="estimate" type="button"></button><span class="tip" role="status"></span></div>
@@ -387,6 +401,7 @@ class DoseCard {
       <div class="openedline" role="note" hidden></div>
       <div class="usageline" role="note" hidden></div>
       <div class="priceline" role="note" hidden></div>
+      <div class="packline" role="note" hidden></div>
       <div class="olderhint" role="note" hidden></div>
       <div class="row minrow" hidden><label data-l="minStock"></label><input data-f="minStock" type="number" min="0" max="999" step="1" inputmode="numeric"><span class="stockinfo"></span></div>
       <div class="allergen-warning" role="note" hidden></div>
@@ -394,18 +409,20 @@ class DoseCard {
         <div class="nutgrid">
           <label><span data-n="brand"></span><input data-p="brand" type="text" maxlength="80"></label>
           <label><span data-n="package"></span><input data-p="package" type="text" maxlength="40"></label>
-          <label><span data-n="kcal_100g"></span><input data-p="kcal_100g" type="number" min="0" max="10000" step="any" inputmode="decimal"></label>
-          <label><span data-n="kcal_portion"></span><input data-p="kcal_portion" type="number" min="0" max="10000" step="any" inputmode="decimal"></label>
-          <label><span data-n="nutri_score"></span><select data-p="nutri_score"><option value=""></option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option></select></label>
+          <label data-hh="only"><span data-n="pack_size"></span><input data-p="pack_size" type="number" min="1" max="9999" step="1" inputmode="numeric"></label>
+          <label data-hh="only"><span data-n="piece"></span><input data-p="piece" type="text" maxlength="30"></label>
+          <label data-hh="no"><span data-n="kcal_100g"></span><input data-p="kcal_100g" type="number" min="0" max="10000" step="any" inputmode="decimal"></label>
+          <label data-hh="no"><span data-n="kcal_portion"></span><input data-p="kcal_portion" type="number" min="0" max="10000" step="any" inputmode="decimal"></label>
+          <label data-hh="no"><span data-n="nutri_score"></span><select data-p="nutri_score"><option value=""></option><option>A</option><option>B</option><option>C</option><option>D</option><option>E</option></select></label>
           <label><span data-n="ean"></span><input data-p="ean" type="text" maxlength="14" inputmode="numeric"></label>
           <label><span data-n="price"></span><input data-p="price" type="number" min="0" max="10000" step="0.01" inputmode="decimal"></label>
-          <label class="wide"><span data-n="allergens"></span><input data-p="allergens" type="text" maxlength="200"></label>
-          <label class="wide"><span data-n="nutrients"></span><textarea data-p="nutrients" rows="2" maxlength="500"></textarea></label>
+          <label class="wide" data-hh="no"><span data-n="allergens"></span><input data-p="allergens" type="text" maxlength="200"></label>
+          <label class="wide" data-hh="no"><span data-n="nutrients"></span><textarea data-p="nutrients" rows="2" maxlength="500"></textarea></label>
         </div>
         <div class="source" hidden></div>
       </details>
       <div class="nfcrow"><span class="nfcstate"></span><button class="nfcbtn" type="button"></button></div>
-      <div class="actions"><button class="fill" type="button"></button><button class="transfer" type="button" hidden></button><button class="move" type="button" hidden></button><button class="openpack" type="button" hidden></button><button class="empty" type="button"></button><span class="spacer"></span><img class="qr" alt=""></div>
+      <div class="actions"><button class="fill" type="button"></button><button class="transfer" type="button" hidden></button><button class="move" type="button" hidden></button><button class="openpack" type="button" hidden></button><button class="convert" type="button" hidden></button><button class="empty" type="button"></button><span class="spacer"></span><img class="qr" alt=""></div>
       <div class="outcomerow" hidden><span class="otext"></span><button class="eaten" type="button"></button><button class="thrown" type="button"></button><button class="ocancel" type="button"></button></div>
       <details class="history"><summary></summary><ul></ul></details>`;
     this.el = el;
@@ -454,7 +471,7 @@ class DoseCard {
       const v = this.inputs.bestBefore.value;
       if (!this.ids.date) return;
       if (v) this._call("date", "set_value", { entity_id: this.ids.date, date: v });
-      else this._call(DOMAIN, "clear_best_before", { entity_id: this.ids.date }); // Leeren geht nur über unseren Service
+      else this._call(DOMAIN, "clear_best_before", { entity_id: this.ids.date }); // emptying only works through our service
     });
     this.inputs.filledAt.addEventListener("change", () => {
       const v = this.inputs.filledAt.value;
@@ -482,7 +499,7 @@ class DoseCard {
     this.inputs.unit.addEventListener("change", () => {
       if (this.ids.select) this._call("select", "select_option", { entity_id: this.ids.select, option: this.inputs.unit.value });
     });
-    // Portion entnehmen: −1; bei der letzten fragen, ob die Dose geleert werden soll
+    // take a portion: −1; with the last one ask whether the container should be emptied
     this.q("button.take").addEventListener("click", () => {
       const n = parseQuantity(this.inputs.quantity.value);
       if (!this.ids.number || !(n > 0)) return;
@@ -494,7 +511,7 @@ class DoseCard {
     });
     this.q("button.lastempty").addEventListener("click", () => {
       this.q(".lastrow").hidden = true;
-      this._empty("eaten"); // die letzte Portion wurde ja gerade entnommen
+      this._empty("eaten"); // the last portion was just taken after all
     });
     this.q("button.lastkeep").addEventListener("click", () => {
       this.q(".lastrow").hidden = true;
@@ -503,7 +520,7 @@ class DoseCard {
     this.q("button.now").addEventListener("click", () => {
       if (this.ids.datetime) this._call("datetime", "set_value", { entity_id: this.ids.datetime, datetime: new Date().toISOString() });
     });
-    // Leeren: erst fragen, ob gegessen oder weggeworfen (für den Verlauf)
+    // emptying: ask first whether eaten or thrown away (for the history)
     this.q("button.empty").addEventListener("click", () => {
       this._setTip("");
       this.q(".outcomerow").hidden = false;
@@ -521,7 +538,7 @@ class DoseCard {
     this.q('[data-f="shopping"]').addEventListener("change", (ev) => {
       if (this.ids.shopping) this._call("switch", ev.target.checked ? "turn_on" : "turn_off", { entity_id: this.ids.shopping });
     });
-    // Behältergröße: fest an der Dose, oder (variabel) die der aktuellen Befüllung
+    // container size: fixed at the container, or (variable) that of the current filling
     this.q('[data-f="size"]').addEventListener("change", (ev) => {
       const hass = this._panel.hass;
       if (!hass || !hass.callWS) return;
@@ -544,14 +561,19 @@ class DoseCard {
     });
     this.q("button.estimate").addEventListener("click", () => this._estimate());
     this.q("button.fill").addEventListener("click", () => this._panel.openFillDialog(this.deviceId));
-    // Packung öffnen und in eine leere Dose umfüllen: die Auswahl der Dose übernimmt das Dashboard
+    // open a pack and transfer it into an empty container: the dashboard handles choosing the container
+    this.q("button.convert").addEventListener("click", (ev) => {
+      const hass = this._panel.hass;
+      if (!hass || !hass.callWS) return;
+      hass.callWS({ type: `${DOMAIN}/convert_kind`, device_id: this.deviceId, kind: ev.currentTarget.dataset.kind }).catch(() => {});
+    });
     this.q("button.openpack").addEventListener("click", () => {
       this._panel.dispatchEvent(new CustomEvent("larder-open-pack", { detail: { deviceId: this.deviceId } }));
     });
     this.q("button.move").addEventListener("click", () => {
       this._panel.dispatchEvent(new CustomEvent("larder-move", { detail: { deviceId: this.deviceId } }));
     });
-    // Mindestbestand des Produkts (gilt für alle Packungen mit diesem Inhalt)
+    // minimum stock of the product (applies to all packs with this content)
     this.q('[data-f="minStock"]').addEventListener("change", (ev) => {
       const hass = this._panel.hass;
       const content = this.inputs.content.value.trim();
@@ -573,7 +595,7 @@ class DoseCard {
     el.classList.toggle("error", isError);
   }
 
-  /** MHD per Tabelle/KI schätzen (Service der Integration); zeigt Hinweis oder Fehlermeldung an. */
+  /** Estimate the best-before date by table/AI (service of the integration); shows a hint or an error. */
   async _estimate() {
     const hass = this._panel.hass;
     if (!hass || !this.ids.date || this._estimating || !hass.callWS) return;
@@ -611,7 +633,7 @@ class DoseCard {
     if (hass) hass.callService(domain, service, data);
   }
 
-  /** Dose leeren und festhalten, was mit dem Inhalt passiert ist (ohne Verlauf: einfach den Button drücken). */
+  /** Empty the container and record what happened to the content (without history: just press the button). */
   async _empty(outcome) {
     this.q(".outcomerow").hidden = true;
     const hass = this._panel.hass;
@@ -660,7 +682,7 @@ class DoseCard {
   }
 
   _setInput(input, value) {
-    if (this._isFocused(input)) return; // nie überschreiben, während jemand tippt
+    if (this._isFocused(input)) return; // never overwrite while someone is typing
     if (input.value !== value) input.value = value;
   }
 
@@ -679,7 +701,7 @@ class DoseCard {
     arealine.classList.toggle("hidden", admin);
     this.q(".arearow").classList.toggle("visible", admin);
     this.q('[data-l="area"]').textContent = t.area;
-    // Produktdaten und Nährwerte (Attribute der Entität "Inhalt"); nur bei gefüllter Dose
+    // product data and nutrition (attributes of the "Content" entity); only for a filled container
     const contentState = states[dev.entities.text];
     const attrs = (contentState && contentState.attributes) || {};
     const nut = this.q("details.nutrition");
@@ -690,7 +712,9 @@ class DoseCard {
     const warned = filledNow && Array.isArray(attrs.allergen_warning) && attrs.allergen_warning.length > 0;
     warn.hidden = !warned;
     warn.textContent = warned ? t.allergenWarning(attrs.allergen_warning.join(", ")) : "";
-    const bits = [t.nutrition];
+    const household = attrs.kind === "household";
+    for (const label of nut.querySelectorAll("[data-hh]")) label.hidden = (label.dataset.hh === "only") !== household;
+    const bits = [household ? t.productDetails : t.nutrition];
     if (attrs.kcal_100g !== undefined) bits.push(`${String(attrs.kcal_100g).replace(".", decimalComma ? "," : ".")} kcal/100 g`);
     if (attrs.nutri_score) bits.push(`Nutri-Score ${attrs.nutri_score}`);
     nut.querySelector("summary").textContent = bits.join(" · ");
@@ -703,7 +727,7 @@ class DoseCard {
     const source = nut.querySelector(".source");
     source.hidden = attrs.source !== "openfoodfacts";
     source.textContent = t.offSource;
-    // Fach im Bereich (z. B. "Schublade 2")
+    // compartment in the area (e.g. "Drawer 2")
     const comp = states[dev.entities.compartment];
     this.q(".comprow").style.display = comp ? "" : "none";
     this.q('[data-l="compartment"]').textContent = t.compartment;
@@ -715,7 +739,7 @@ class DoseCard {
     this._setInput(compInput, isValidState(comp) ? comp.state : "");
     if (admin) {
       const select = this.q('[data-f="area"]');
-      const areas = listAreas(hass, this._panel.larderLabel, dev.areaId);
+      const areas = listAreas(hass, this._panel.larderLabel, dev.areaId, attrs.kind === "household" ? "household" : "food");
       const sig = JSON.stringify([areas, t.noArea]);
       if (sig !== this._areaSig) {
         this._areaSig = sig;
@@ -772,7 +796,7 @@ class DoseCard {
     this.inputs.unit.disabled = !ok(unit);
     this.inputs.unit.style.display = unit ? "" : "none";
     this.q(".quantityrow").style.display = quantity ? "" : "none";
-    // −1 nur für zählbare Einheiten (nicht Gramm/Milliliter) und solange etwas da ist
+    // −1 only for countable units (not grams/millilitres) and as long as something is there
     const countable = !unit || ["portions", "pieces", "slices"].includes(unit.state);
     const take = this.q("button.take");
     take.hidden = !(countable && nQuantity > 0 && ok(quantity));
@@ -785,19 +809,28 @@ class DoseCard {
     this.inputs.content.disabled = !ok(text);
     this.inputs.bestBefore.disabled = !ok(date);
     this.inputs.filledAt.disabled = !ok(dt);
-    this.q(".filledrow").style.display = dt ? "" : "none"; // Packungen haben kein Befüll-Datum
+    this.q(".filledrow").style.display = dt ? "" : "none"; // packs have no fill date
     this.q("button.now").disabled = !ok(dt);
 
-    // Schnellaktionen unter dem MHD: +1 Tag (nur mit MHD) und Geöffnet (sobald etwas drin ist).
+    // quick actions below the date: +1 day (only with a date) and Opened (as soon as something is inside).
     const hasContentNow = isValidState(text) && text.state.trim() !== "";
     this.q(".quickrow").classList.toggle("visible", ok(date) && hasContentNow);
     this.q("button.fill").classList.toggle("visible", ok(text) && !hasContentNow);
     this.q("button.plus1").disabled = !isValidState(date);
 
-    // NFC: nur für Administratoren (Verknüpfen und Lösen sind Administrator-Befehle).
+    // NFC: administrators only (linking and unlinking are administrator commands).
     const nfc = this._panel.nfcState(this.deviceId);
     const kind = (text && text.attributes && text.attributes.kind) || "container";
-    this.q(".nfcrow").classList.toggle("visible", admin && nfc !== null && kind !== "pack");
+    const packLike = kind === "pack" || kind === "household";
+    this.q(".nfcrow").classList.toggle("visible", admin && nfc !== null && !packLike);
+    // household items have no best-before date
+    this.q(".bbrow").style.display = kind === "household" ? "none" : "";
+    if (kind === "household") this.q(".quickrow").classList.remove("visible");
+    this.q(".estimaterow").style.display = kind === "household" ? "none" : "";
+    const convert = this.q("button.convert");
+    convert.hidden = !(packLike && hasContentNow);
+    convert.dataset.kind = kind === "pack" ? "household" : "pack";
+    convert.textContent = kind === "pack" ? t.convertToHousehold : t.convertToPack;
     const transfer = this.q("button.transfer");
     transfer.hidden = !(kind === "pack" && hasContentNow);
     transfer.textContent = t.transfer;
@@ -805,7 +838,7 @@ class DoseCard {
     const openBtn = this.q("button.openpack");
     openBtn.hidden = !(kind === "pack" && hasContentNow && !opened);
     openBtn.textContent = t.openPack;
-    // Behältergröße (nur Dosen)
+    // container size (containers only)
     const sizeRow = this.q(".sizerow");
     sizeRow.hidden = kind !== "container" || !ok(text);
     if (!sizeRow.hidden) {
@@ -821,9 +854,9 @@ class DoseCard {
     openedLine.hidden = !opened;
     openedLine.textContent = opened ? t.openedSince(opened) : "";
     const move = this.q("button.move");
-    move.hidden = !(kind === "pack" && hasContentNow);
+    move.hidden = !(packLike && hasContentNow);
     move.textContent = t.movePack;
-    // ältestes zuerst: liegt dieselbe Ware woanders mit früherem MHD?
+    // oldest first: are the same goods somewhere else with an earlier date?
     const older = this.q(".olderhint");
     older.hidden = true;
     if (kind === "pack" && hasContentNow && isValidState(date)) {
@@ -845,7 +878,7 @@ class DoseCard {
         older.textContent = t.olderElsewhere(best.place, best.date);
       }
     }
-    // Rückrufwarnung zu diesem Inhalt (ungelesen)
+    // recall warning for this content (unread)
     const recallLine = this.q(".recallline");
     const recall = hasContentNow && text && text.attributes ? text.attributes.recall : null;
     recallLine.hidden = !recall;
@@ -855,8 +888,9 @@ class DoseCard {
       link.textContent = t.recallLink;
       link.href = recall.link;
     }
-    // Packungen desselben Produkts (alle Orte): Anzahl und Wert
-    const isPack = kind === "pack" && hasContentNow && text.attributes;
+    // packs of the same product (all places): count and value
+    const isPack = packLike && hasContentNow && text.attributes;
+    const sizeOf = (a) => Math.max(1, Number(a && a.pack_size) || 1); // household: pieces per pack
     const priceOf = (attrs) => {
       if (!attrs) return null;
       if (Number(attrs.price) > 0) return { price: Number(attrs.price), source: attrs.price_source || "own" };
@@ -869,17 +903,17 @@ class DoseCard {
       const key = text.state.trim().toLowerCase();
       for (const other of this._panel._devices || []) {
         const ot = states[other.entities.text];
-        if (!isValidState(ot) || (ot.attributes && ot.attributes.kind) !== "pack" || ot.state.trim().toLowerCase() !== key) continue;
+        if (!isValidState(ot) || (ot.attributes && ot.attributes.kind) !== kind || ot.state.trim().toLowerCase() !== key) continue;
         const q = states[other.entities.number];
         const u = states[other.entities.select];
         const n = isValidState(q) ? Number(q.state) : 0;
         const count = n > 0 && (!u || ["pieces", "portions"].includes(u.state)) ? n : 1;
         total += count;
         const p = priceOf(ot.attributes);
-        if (p) value += count * p.price;
+        if (p) value += (count / sizeOf(ot.attributes)) * p.price; // the price is per pack
       }
     }
-    // Verbrauch: reicht der Bestand dieses Produkts (alle Orte) noch wie lange?
+    // consumption: how long does the stock of this product (all places) still last?
     const usageLine = this.q(".usageline");
     const perWeek = isPack ? Number(text.attributes.consumption_per_week) : 0;
     usageLine.hidden = !(perWeek > 0);
@@ -887,15 +921,20 @@ class DoseCard {
       const basis = text.attributes.consumption_basis || {};
       usageLine.textContent = t.usageLine(Math.round((total / perWeek) * 7), basis.takes || 0, basis.days || 0);
     }
-    // Preis je Packung und Wert aller Packungen dieses Produkts
+    // price per pack and value of all packs of this product
     const priceLine = this.q(".priceline");
     const ownPrice = isPack ? priceOf(text.attributes) : null;
     priceLine.hidden = !ownPrice;
     if (ownPrice) priceLine.textContent = t.priceLine(ownPrice.price, ownPrice.source === "openprices", total > 1 ? value : null);
+    // household: pieces and packs of this product (all places)
+    const packLine = this.q(".packline");
+    const size = isPack && kind === "household" ? sizeOf(text.attributes) : 1;
+    packLine.hidden = !(size > 1);
+    if (size > 1) packLine.textContent = t.packsLine(total, text.attributes.piece, Math.round((total / size) * 10) / 10);
     const priceInput = this.q('[data-p="price"]');
     priceInput.placeholder = text && text.attributes && text.attributes.price_remembered ? String(text.attributes.price_remembered) : "";
     const minRow = this.q(".minrow");
-    minRow.hidden = !(kind === "pack" && hasContentNow);
+    minRow.hidden = !(packLike && hasContentNow);
     this.q('[data-l="minStock"]').textContent = t.minStock;
     if (!minRow.hidden) this._setInput(this.q('[data-f="minStock"]'), text.attributes.min_stock ? String(text.attributes.min_stock) : "");
     if (nfc !== null) {
@@ -909,14 +948,14 @@ class DoseCard {
     vacInput.disabled = !ok(vac);
     vacInput.checked = !!vac && vac.state === "on";
 
-    // "Beim Leeren auf die Einkaufsliste": nur sichtbar, wenn in den Einstellungen eine Liste gewählt ist.
+    // "Add to shopping list when emptied": only visible if a list is chosen in the settings.
     const shop = states[dev.entities.shopping];
     const shopInput = this.q('[data-f="shopping"]');
     this.q(".shoprow").style.display = hasShoppingList(shop) ? "" : "none";
     shopInput.disabled = !ok(shop);
     shopInput.checked = !!shop && shop.state === "on";
 
-    // Variabler Lagerort: Schalter, und nur wenn er an ist, der Lagerort nach dem Leeren
+    // variable storage place: switch, and only if it is on, the place after emptying
     const flex = states[dev.entities.flexible];
     const flexInput = this.q('[data-f="flexible"]');
     this.q(".flexrow").style.display = flex ? "" : "none";
@@ -944,7 +983,7 @@ class DoseCard {
       homeSelect.disabled = !ok(home);
     }
 
-    // "MHD schätzen": nur sichtbar, wenn die Schätzung nicht ausgeschaltet ist, Inhalt da und MHD noch leer.
+    // "Estimate date": only visible if the estimate is not switched off, content is there and the date still empty.
     const aiOn = !!(date && date.attributes && date.attributes.estimates);
     const hasContent = isValidState(text) && text.state.trim() !== "";
     const showEstimate = aiOn && ok(date) && hasContent && !isValidState(date);
@@ -987,10 +1026,10 @@ class LarderPanel extends HTMLElement {
   constructor() {
     super();
     this._hass = null;
-    this.larderLabel = null; // IDs der Beschriftungen "Larder" / "Larder: …" (nur wenn es sie gibt)
+    this.larderLabel = null; // IDs of the labels "Larder" / "Larder: …" (only if they exist)
     this._cards = new Map();
     this._devices = [];
-    this._pendingFill = null; // eben angelegte Dose, für die der Befüll-Dialog aufgehen soll
+    this._pendingFill = null; // container just created, for which the fill dialog should open
     this._registries = null;
     this.attachShadow({ mode: "open" });
     this.shadowRoot.innerHTML = `
@@ -1137,9 +1176,9 @@ class LarderPanel extends HTMLElement {
   }
 
   /**
-   * Eingebettet im Dashboard: `only` zeigt die Karte einer Dose (mit Zurück-Knopf),
-   * `show="cards"` mit `ids` (kommagetrennt, in dieser Reihenfolge) die Karten mehrerer Dosen,
-   * `show="estimates"` die Liste der gemerkten Schätzungen.
+   * Embedded in the dashboard: `only` shows the card of one container (with a back button),
+   * `show="cards"` with `ids` (comma-separated, in this order) the cards of several containers,
+   * `show="estimates"` the list of remembered estimates.
    */
   attributeChangedCallback(name) {
     if (!this._opts) return;
@@ -1166,8 +1205,8 @@ class LarderPanel extends HTMLElement {
   }
 
   /**
-   * ID der Beschriftung "Larder" suchen (Name ohne Beachtung der Groß-/Kleinschreibung). Nur Bereiche mit
-   * dieser Beschriftung erscheinen dann in der Bereichsauswahl. Nur für Administratoren (Registerabfrage).
+   * Find the ID of the label "Larder" (name case-insensitive). Only areas with
+   * this label then appear in the area select. Administrators only (registry query).
    */
   async loadAreaLabel() {
     const hass = this._hass;
@@ -1178,7 +1217,7 @@ class LarderPanel extends HTMLElement {
       const found = (Array.isArray(labels) ? labels : []).filter(isLarderLabel).map((l) => l.label_id).sort();
       ids = found.length ? found : null;
     } catch (err) {
-      ids = null; // ohne Beschriftungen: alle Bereiche zeigen
+      ids = null; // without labels: show all areas
     }
     if (JSON.stringify(ids) !== JSON.stringify(this.larderLabel)) {
       this.larderLabel = ids;
@@ -1190,7 +1229,7 @@ class LarderPanel extends HTMLElement {
     this.toggleAttribute("narrow", !!value);
   }
 
-  // Von Home Assistant gesetzt, hier nicht benötigt.
+  // Set by Home Assistant, not needed here.
   set route(_value) {}
   set panel(_value) {}
 
@@ -1216,7 +1255,7 @@ class LarderPanel extends HTMLElement {
     }
   }
 
-  /** Kann die App (Companion) NFC-Tags beschreiben? Dann gibt es im Dialog "Neuen NFC-Tag beschreiben". */
+  /** Can the app (Companion) write NFC tags? Then the dialog offers "Write a new NFC tag". */
   _refreshWriteSupport() {
     const ext = this._hass && this._hass.auth && this._hass.auth.external;
     const label = this._form.querySelector('[data-w="nfcwrite"]');
@@ -1233,13 +1272,13 @@ class LarderPanel extends HTMLElement {
       });
   }
 
-  /** Neuen Tag in Home Assistant anlegen (damit er in der Tag-Liste steht) und die App zum Beschreiben auffordern. */
+  /** Create a new tag in Home Assistant (so it is in the tag list) and ask the app to write it. */
   async _writeNewTag(tagId, name) {
     const hass = this._hass;
     try {
       await hass.callWS({ type: "tag/create", tag_id: tagId, name });
     } catch (err) {
-      /* nicht schlimm: der Tag funktioniert auch ohne Eintrag in der Tag-Liste */
+      /* not a problem: the tag also works without an entry in the tag list */
     }
     hass.auth.external.fireMessage({ type: "tag/write", payload: { name, tag: tagId } });
   }
@@ -1260,20 +1299,20 @@ class LarderPanel extends HTMLElement {
     if (Object.values(this._nfcLinks).includes(tag)) {
       this._nfcTag = null;
       this._setNfcStatus(t.nfcInUse);
-      return false; // weiter auf einen anderen Tag warten
+      return false; // keep waiting for another tag
     }
     this._nfcTag = tag;
     this._setNfcStatus();
     return true;
   }
 
-  /** Fehlermeldung oberhalb der Karten anzeigen (z. B. wenn das Ändern des Bereichs scheitert). */
+  /** Show an error message above the cards (e.g. if changing the area fails). */
   showError(message) {
     this._notice.textContent = message || "";
     this._notice.hidden = !message;
   }
 
-  /** Dialog "Dose hinzufügen" öffnen; mit `code` ist direkt "Zwilling-QR-Code einlesen" vorgewählt. */
+  /** Open the dialog "Add container"; with `code` "Read Zwilling QR code" is preselected. */
   openAddDialog(code = "") {
     const hass = this._hass;
     if (!hass || !isAdmin(hass)) return;
@@ -1288,7 +1327,7 @@ class LarderPanel extends HTMLElement {
     this._syncMode();
     this._fillAreaOptions(t);
     this._form.querySelector('[data-f="area"]').value = "";
-    // Vorgaben der neuen Dose: Vakuum (Vorbelegung aus den Einstellungen), Einkaufsliste (nur mit Liste), variabler Lagerort
+    // presets of the new container: vacuum (default from the settings), shopping list (only with a list), variable storage place
     const f = (name) => this._form.querySelector(`[data-f="${name}"]`);
     f("vacuum").checked = true;
     f("shopping").checked = false;
@@ -1309,7 +1348,7 @@ class LarderPanel extends HTMLElement {
     this._overlay.hidden = false;
   }
 
-  /** "Nach dem Leeren zurück in": nur bei variablem Lagerort, vorbelegt mit dem gewählten Bereich. */
+  /** "Back to after emptying": only with a variable storage place, preset with the chosen area. */
   _syncHomeArea() {
     const t = strings(this._hass);
     const flexible = this._form.querySelector('[data-f="flexible"]').checked;
@@ -1319,7 +1358,7 @@ class LarderPanel extends HTMLElement {
     const select = this._form.querySelector('[data-f="homeArea"]');
     const area = this._form.querySelector('[data-f="area"]').value;
     select.replaceChildren(
-      ...[{ id: "", name: t.homeNone }, ...listAreas(this._hass, this.larderLabel)].map((a) => {
+      ...[{ id: "", name: t.homeNone }, ...listAreas(this._hass, this.larderLabel, null, "food")].map((a) => {
         const opt = document.createElement("option");
         opt.value = a.id;
         opt.textContent = a.name;
@@ -1337,7 +1376,7 @@ class LarderPanel extends HTMLElement {
   _fillAreaOptions(t) {
     const select = this._form.querySelector('[data-f="area"]');
     select.replaceChildren(
-      ...[{ id: "", name: t.noArea }, ...listAreas(this._hass, this.larderLabel)].map((a) => {
+      ...[{ id: "", name: t.noArea }, ...listAreas(this._hass, this.larderLabel, null, "food")].map((a) => {
         const opt = document.createElement("option");
         opt.value = a.id;
         opt.textContent = a.name;
@@ -1346,7 +1385,7 @@ class LarderPanel extends HTMLElement {
     );
   }
 
-  /** Dose über den Config Flow der Integration anlegen (gleicher Ablauf wie in den Einstellungen). */
+  /** Create a container through the config flow of the integration (same flow as in the settings). */
   async submitAdd() {
     const hass = this._hass;
     if (!hass || this._busy) return;
@@ -1388,7 +1427,7 @@ class LarderPanel extends HTMLElement {
       });
       flowId = result.flow_id;
       result = await hass.callApi("POST", `config/config_entries/flow/${flowId}`, {
-        next_step_id: mode === "scan" ? "scan" : "create", // "nfc" und "nfcwrite" legen wie "neu" eine neue ID an
+        next_step_id: mode === "scan" ? "scan" : "create", // "nfc" and "nfcwrite" create a new ID like "new"
       });
       result = await hass.callApi("POST", `config/config_entries/flow/${flowId}`, input);
       if (result.type === "create_entry") {
@@ -1412,7 +1451,7 @@ class LarderPanel extends HTMLElement {
           }
         }
         this.closeAddDialog();
-        // Neue Dose: sobald ihr Gerät da ist, gleich "Dose befüllen" öffnen (wie nach dem Scan einer leeren Dose).
+        // New container: as soon as its device is there, open "Fill container" right away (as after scanning an empty container).
         this._pendingFill = { known: knownDevices, until: Date.now() + 20000 };
         this._checkPendingFill();
         return;
@@ -1430,7 +1469,7 @@ class LarderPanel extends HTMLElement {
         try {
           await hass.callApi("DELETE", `config/config_entries/flow/${flowId}`);
         } catch (err) {
-          /* Flow war schon beendet */
+          /* flow was already finished */
         }
       }
       this._busy = false;
@@ -1438,7 +1477,7 @@ class LarderPanel extends HTMLElement {
     }
   }
 
-  /** Wartet auf das Gerät einer eben angelegten Dose und öffnet dann den Befüll-Dialog dafür. */
+  /** Waits for the device of a container just created and then opens the fill dialog for it. */
   _checkPendingFill() {
     const pending = this._pendingFill;
     const hass = this._hass;
@@ -1456,9 +1495,9 @@ class LarderPanel extends HTMLElement {
     this.highlight(dev.deviceId, true);
   }
 
-  /** `?add=<ID>` (vom Scan-Webhook): Dialog mit Code öffnen, bzw. Hinweis für Nicht-Administratoren. */
+  /** `?add=<ID>` (from the scan webhook): open the dialog with the code, or a note for non-administrators. */
   _handleAddParam() {
-    if (this.hasAttribute("embedded")) return; // im Dashboard übernimmt das die äußere Ansicht
+    if (this.hasAttribute("embedded")) return; // in the dashboard the outer view takes care of this
     const hass = this._hass;
     const code = new URLSearchParams(window.location.search).get("add");
     if (!code || !hass || !hass.user) return;
@@ -1471,9 +1510,9 @@ class LarderPanel extends HTMLElement {
   }
 
   /**
-   * Dialog "Dose befüllen": Inhalt (mit Vorschlägen), Vakuum, Eingelagert am, MHD, optional schätzen.
-   * Mit einer Liste von Geräte-IDs werden mehrere Dosen auf einmal mit denselben Angaben befüllt
-   * (Menge gilt pro Dose); die Vorbelegung kommt dann von der ersten Dose, Inhalt und MHD bleiben leer.
+   * Dialog "Fill container": content (with suggestions), vacuum, stored on, best-before date, optional estimate.
+   * With a list of device IDs several containers are filled at once with the same values
+   * (quantity applies per container); the presets then come from the first container, content and date stay empty.
    */
   openFillDialog(deviceIds, preset = null) {
     const hass = this._hass;
@@ -1490,7 +1529,7 @@ class LarderPanel extends HTMLElement {
     const dt = states[dev.entities.datetime];
     const vac = states[dev.entities.switch];
     this._fillDevices = devs.map((d) => d.deviceId);
-    this._fillQuantities = (preset && preset.quantities) || null; // Vorkochen: Menge je Dose
+    this._fillQuantities = (preset && preset.quantities) || null; // batch cooking: quantity per container
     this._fillForm.querySelector("h2").textContent = many ? t.fillTitleMany(devs.length) : `${t.fillTitle}: ${dev.name}`;
     f("content").value = !many && isValidState(text) ? text.state : "";
     f("content").placeholder = t.fillPlaceholder;
@@ -1518,7 +1557,7 @@ class LarderPanel extends HTMLElement {
       const first = this._fillQuantities[dev.deviceId];
       f("quantity").value = first ? String(first) : "";
     }
-    // Größe für Dosen mit variabler Größe (Vorschlag: die zuletzt benutzte)
+    // size for containers with a variable size (suggestion: the one used last)
     const variableDevs = devs.filter((d) => {
       const st = states[d.entities.text];
       return !!(st && st.attributes && st.attributes.size_variable);
@@ -1532,7 +1571,7 @@ class LarderPanel extends HTMLElement {
     this._syncSizeList();
     f("vacuum").checked = !!vac && vac.state === "on";
     this._fillForm.querySelector('[data-w="vacuum"]').hidden = !vac || vac.state === "unavailable";
-    // Bereich nur bei Dosen mit variablem Lagerort (und nur für Administratoren, die Bereiche ändern dürfen)
+    // area only for containers with a variable storage place (and only for administrators, who may change areas)
     const flexible = devs.filter((d) => {
       const st = states[d.entities.flexible];
       return !!st && st.state === "on";
@@ -1541,7 +1580,7 @@ class LarderPanel extends HTMLElement {
     areaWrap.hidden = !(isAdmin(hass) && flexible.length);
     if (!areaWrap.hidden) {
       const current = flexible[0].areaId || "";
-      const areas = listAreas(hass, this.larderLabel, current);
+      const areas = listAreas(hass, this.larderLabel, current, "food");
       f("area").replaceChildren(
         ...[{ id: "", name: t.noArea }, ...areas].map((a) => {
           const opt = document.createElement("option");
@@ -1552,14 +1591,14 @@ class LarderPanel extends HTMLElement {
       );
       f("area").value = current;
     }
-    // Fach gehört zum Platz: bei variablen Dosen zusammen mit dem Bereich abfragen
+    // the compartment belongs to the place: ask for it together with the area for variable containers
     const compWrap = this._fillForm.querySelector('[data-w="compartment"]');
     compWrap.hidden = areaWrap.hidden || !states[flexible[0] && flexible[0].entities.compartment];
     if (!compWrap.hidden) {
       const comp = states[flexible[0].entities.compartment];
       f("compartment").value = isValidState(comp) ? comp.state : "";
       f("compartment").placeholder = t.compartmentHint;
-      // Fächer des gewählten Bereichs vorschlagen (wechselt mit dem Bereich)
+      // suggest compartments of the chosen area (changes with the area)
       const refresh = attachCompartmentChips(f("compartment"), () => knownCompartments(hass, this._devices, f("area").value), () => {});
       f("area").onchange = refresh;
     }
@@ -1585,7 +1624,7 @@ class LarderPanel extends HTMLElement {
     this._fillSizes = null;
   }
 
-  /** Bekannte Behältergrößen als Vorschläge (aus den Dosen). */
+  /** Known container sizes as suggestions (from the containers). */
   _syncSizeList() {
     const states = (this._hass && this._hass.states) || {};
     const seen = new Map();
@@ -1604,7 +1643,7 @@ class LarderPanel extends HTMLElement {
     );
   }
 
-  /** Vorschläge für den Inhalt vom Server holen (zuletzt benutzte zuerst). */
+  /** Fetch suggestions for the content from the server (recently used first). */
   async _loadContents() {
     const hass = this._hass;
     if (!hass || !hass.callWS) return;
@@ -1612,7 +1651,7 @@ class LarderPanel extends HTMLElement {
       const res = await hass.callWS({ type: `${DOMAIN}/contents` });
       this._contents = (res && Array.isArray(res.contents) ? res.contents : []).slice(0, 100);
     } catch (err) {
-      /* Vorschläge sind optional */
+      /* suggestions are optional */
     }
     const list = this._fillForm.querySelector("datalist");
     list.replaceChildren(
@@ -1624,20 +1663,20 @@ class LarderPanel extends HTMLElement {
     );
   }
 
-  /** Kann die App (Companion) Strichcodes scannen? */
+  /** Can the app (Companion) scan barcodes? */
   _hasBarcodeScanner() {
     const external = this._hass && this._hass.auth && this._hass.auth.external;
     return !!(external && external.config && external.config.hasBarCodeScanner && typeof external._commandHandler === "function");
   }
 
-  /** Strichcode gekaufter Ware scannen und den Produktnamen (Open Food Facts) als Inhalt eintragen. */
+  /** Scan the barcode of bought goods and enter the product name (Open Food Facts) as the content. */
   scanBarcode() {
     const t = strings(this._hass);
     const status = this._fillForm.querySelector(".barcodestatus");
     this.scanBarcodeRaw((code) => this._lookupProduct(code, t, status));
   }
 
-  /** Strichcode-Scanner der App öffnen; `onCode` bekommt den gelesenen Code (auch für das Dashboard). */
+  /** Open the app's barcode scanner; `onCode` gets the code read (also for the dashboard). */
   scanBarcodeRaw(onCode) {
     const hass = this._hass;
     const external = hass && hass.auth && hass.auth.external;
@@ -1668,7 +1707,7 @@ class LarderPanel extends HTMLElement {
     });
   }
 
-  /** Foto hochladen, die KI schlägt den Inhalt vor (nur ein Vorschlag, gespeichert wird mit "Speichern"). */
+  /** Upload a photo, the AI suggests the content (only a suggestion, saved with "Save"). */
   async contentFromPhoto(input) {
     const hass = this._hass;
     const file = input.files && input.files[0];
@@ -1777,19 +1816,19 @@ class LarderPanel extends HTMLElement {
     this.dispatchEvent(new CustomEvent("larder-filled", { detail: { deviceIds: devs.map((d) => d.deviceId) } }));
   }
 
-  /** Eine Dose mit den Angaben aus dem Dialog befüllen. */
+  /** Fill one container with the values from the dialog. */
   async _fillOne(dev, values) {
     const hass = this._hass;
     const states = hass.states || {};
     const ids = dev.entities;
     const before = states[ids.text];
     await hass.callService("text", "set_value", { entity_id: ids.text, value: values.content });
-    // Produktdaten und Nährwerte: aus dem Strichcode übernehmen; bei anderem Inhalt ohne Scan die alten verwerfen
+    // product data and nutrition: take from the barcode; for another content without a scan drop the old ones
     if (hass.callWS && (values.product || (isValidState(before) && before.state.trim() && before.state.trim() !== values.content))) {
       try {
         await hass.callWS({ type: `${DOMAIN}/product_set`, device_id: dev.deviceId, product: values.product || {}, replace: true });
       } catch {
-        /* ältere Version ohne Produktdaten */
+        /* older version without product data */
       }
     }
     const vac = states[ids.switch];
@@ -1814,7 +1853,7 @@ class LarderPanel extends HTMLElement {
     if (ids.date && values.bestBefore) {
       await hass.callService("date", "set_value", { entity_id: ids.date, date: values.bestBefore });
     }
-    // Variabler Lagerort: die Dose in den gewählten Bereich stellen
+    // variable storage place: put the container into the chosen area
     const flex = states[ids.flexible];
     if (values.area !== undefined && flex && flex.state === "on" && (dev.areaId || "") !== values.area && hass.callWS) {
       await hass.callWS({ type: "config/device_registry/update", device_id: dev.deviceId, area_id: values.area || null });
@@ -1825,7 +1864,7 @@ class LarderPanel extends HTMLElement {
     }
   }
 
-  /** "Rezeptideen" nur für Administratoren zeigen, wenn die KI-Integration und der Service da sind. */
+  /** Show "Recipe ideas" only to administrators if the AI integration and the service exist. */
   _updateIdeasButton() {
     const hass = this._hass;
     const services = (hass && hass.services) || {};
@@ -1844,7 +1883,7 @@ class LarderPanel extends HTMLElement {
     this._loadRecipeDays();
   }
 
-  /** Feld "Tage voraus" einmalig mit dem Zeitraum aus den Einstellungen vorbelegen. */
+  /** Preset the field "days ahead" once with the period from the settings. */
   async _loadRecipeDays() {
     if (this._recipeDaysLoaded || !this._hass.callWS) return;
     try {
@@ -1855,7 +1894,7 @@ class LarderPanel extends HTMLElement {
         this._recipeDaysLoaded = true;
       }
     } catch {
-      /* ältere Version der Integration: Vorgabe bleibt */
+      /* older version of the integration: the default stays */
     }
   }
 
@@ -1863,7 +1902,7 @@ class LarderPanel extends HTMLElement {
     this._recipeOverlay.hidden = true;
   }
 
-  /** Rezeptideen von der KI holen (Service `larder.suggest_recipes`) und anzeigen. */
+  /** Fetch recipe ideas from the AI (service `larder.suggest_recipes`) and show them. */
   async submitRecipes() {
     const hass = this._hass;
     if (!hass || !hass.callWS || this._recipeBusy) return;
@@ -1942,7 +1981,7 @@ class LarderPanel extends HTMLElement {
     return el;
   }
 
-  /** Zwischen Dosen-Übersicht und Liste der gemerkten Schätzungen wechseln (nur Administratoren). */
+  /** Switch between the container overview and the list of remembered estimates (administrators only). */
   setView(view) {
     if (view === "estimates" && !isAdmin(this._hass)) return;
     this._view = view;
@@ -1990,7 +2029,7 @@ class LarderPanel extends HTMLElement {
     this._renderEstimates();
   }
 
-  /** Liste der gemerkten Schätzungen zeichnen: eigene Zeile zum Hinzufügen, darunter alle Einträge. */
+  /** Draw the list of remembered estimates: an own row for adding, below it all entries. */
   _renderEstimates() {
     const hass = this._hass;
     if (!hass || !this._est) return;
@@ -2020,7 +2059,7 @@ class LarderPanel extends HTMLElement {
     frag.append(el("h2", "", t.estTitle), el("p", "intro", t.estIntro));
     if (this._est.mode === "off") frag.append(el("p", "intro", t.estOff));
 
-    // --- Vorschläge aus dem Verlauf (nie still übernommen) ---
+    // --- suggestions from the history (never applied silently) ---
     const suggestions = this._estSuggestions || [];
     if (suggestions.length) {
       const box = el("section", "est suggest");
@@ -2058,14 +2097,14 @@ class LarderPanel extends HTMLElement {
       frag.append(box);
     }
 
-    // --- eigenen Eintrag hinzufügen ---
+    // --- add an own entry ---
     const add = el("section", "est new");
     add.append(el("h3", "", t.estAddTitle));
     const content = input("text", "", { maxLength: 255 });
     content.dataset.f = "content";
     const area = el("select");
     area.dataset.f = "area";
-    for (const a of listAreas(hass, this.larderLabel)) {
+    for (const a of listAreas(hass, this.larderLabel, null, "food")) {
       const opt = el("option", "", a.name);
       opt.value = a.name;
       area.append(opt);
@@ -2097,7 +2136,7 @@ class LarderPanel extends HTMLElement {
     add.append(field(t.estContent, content), field(t.estDays, days), field(t.estArea, area), vacLabel, addBtns);
     frag.append(add);
 
-    // --- vorhandene Einträge ---
+    // --- existing entries ---
     if (!this._est.entries.length) {
       frag.append(el("p", "intro", t.estEmpty));
     }
@@ -2144,14 +2183,14 @@ class LarderPanel extends HTMLElement {
 
   // ---------- NFC ----------
 
-  /** Zustand der NFC-Zeile einer Karte: "linked", "none", "waiting" oder null (nicht anzeigen). */
+  /** State of a card's NFC row: "linked", "none", "waiting" or null (do not show). */
   nfcState(deviceId) {
     if (!isAdmin(this._hass)) return null;
     if (this._capture && this._capture.deviceId === deviceId) return "waiting";
     return this._nfcLinks[deviceId] ? "linked" : "none";
   }
 
-  /** Klick auf den NFC-Knopf einer Karte: verknüpfen, Warten abbrechen oder lösen. */
+  /** Click on a card's NFC button: link, cancel waiting or unlink. */
   async nfcAction(deviceId) {
     const t = strings(this._hass);
     const state = this.nfcState(deviceId);
@@ -2201,7 +2240,7 @@ class LarderPanel extends HTMLElement {
     this._update();
   }
 
-  /** Auf den nächsten gescannten Tag warten. `onTag` liefert false, wenn der Tag nicht taugt (weiter warten). */
+  /** Wait for the next scanned tag. `onTag` returns false if the tag is no good (keep waiting). */
   startCapture(onTag, source, deviceId = null) {
     this._capture = { source, deviceId, onTag };
   }
@@ -2223,12 +2262,12 @@ class LarderPanel extends HTMLElement {
     }
   }
 
-  /** Ereignisse abonnieren (nur Administratoren dürfen beliebige Ereignisse abonnieren). */
+  /** Subscribe to events (only administrators may subscribe to arbitrary events). */
   async _subscribe() {
     const hass = this._hass;
     if (this._subscribed || !hass || !hass.connection) return;
     if (!isAdmin(hass)) {
-      // ohne Administratorrechte: nur gescannte Tags (zum Kennzeichnen von Beuteln), über Larder
+      // without administrator rights: only scanned tags (for labelling bags), through Larder
       if (typeof hass.connection.subscribeMessage !== "function") return;
       this._subscribed = true;
       try {
@@ -2244,7 +2283,7 @@ class LarderPanel extends HTMLElement {
       this._unsubs.push(
         await hass.connection.subscribeEvents((ev) => this._tagScanned(ev.data && ev.data.tag_id), "tag_scanned"),
         await hass.connection.subscribeEvents((ev) => {
-          // eingebettet öffnet die äußere Ansicht die Dose selbst
+          // embedded, the outer view opens the container itself
           if (!this.hasAttribute("embedded")) this.highlight(ev.data && ev.data.device_id);
         }, `${DOMAIN}_dose_scanned`),
       );
@@ -2258,13 +2297,13 @@ class LarderPanel extends HTMLElement {
       try {
         unsub();
       } catch (err) {
-        /* Verbindung schon getrennt */
+        /* connection already closed */
       }
     }
     this._subscribed = false;
   }
 
-  /** Dose hervorheben (nach dem Scannen ihres Tags): Ansicht zurücksetzen, hinscrollen, kurz blinken lassen. */
+  /** Highlight a container (after scanning its tag): reset the view, scroll to it, let it blink briefly. */
   highlight(deviceId, fill = false) {
     const hass = this._hass;
     if (!hass || !deviceId || !this._devices.some((d) => d.deviceId === deviceId)) return false;
@@ -2277,10 +2316,10 @@ class LarderPanel extends HTMLElement {
     const card = this._cards.get(deviceId);
     if (!card) return false;
     card.el.classList.remove("flash");
-    void card.el.offsetWidth; // Animation neu starten
+    void card.el.offsetWidth; // restart the animation
     card.el.classList.add("flash");
     if (card.el.scrollIntoView) card.el.scrollIntoView({ block: "center", behavior: "smooth" });
-    // Leere Dose: gleich "Dose befüllen" anbieten (nach dem Scan mit dem Handy).
+    // Empty container: offer "Fill container" right away (after scanning with the phone).
     if (fill) {
       const dev = this._devices.find((d) => d.deviceId === deviceId);
       const text = dev && (hass.states || {})[dev.entities.text];
@@ -2291,7 +2330,7 @@ class LarderPanel extends HTMLElement {
     return true;
   }
 
-  /** `?recipes=1` (Knopf "Rezepte" in der täglichen Benachrichtigung): Rezept-Dialog öffnen. */
+  /** `?recipes=1` (button "Recipes" in the daily notification): open the recipe dialog. */
   _handleRecipesParam() {
     if (this.hasAttribute("embedded")) return;
     const params = new URLSearchParams(window.location.search);
@@ -2300,7 +2339,7 @@ class LarderPanel extends HTMLElement {
     this.openRecipeDialog();
   }
 
-  /** `?open=<Geräte-ID>` (aus der Benachrichtigung nach einem NFC-Scan): Dose hervorheben. */
+  /** `?open=<device ID>` (from the notification after an NFC scan): highlight the container. */
   _handleOpenParam() {
     if (this.hasAttribute("embedded")) return;
     const id = new URLSearchParams(window.location.search).get("open");
@@ -2361,7 +2400,7 @@ class LarderPanel extends HTMLElement {
       this._devices = collectDevices(hass);
       registriesChanged = true;
     }
-    // Reihenfolge und Sichtbarkeit hängen auch von den Zuständen ab (Filter, Sortierung nach MHD).
+    // Order and visibility also depend on the states (filter, sorting by date).
     const only = this.getAttribute("only");
     const ids = this.hasAttribute("embedded") && this.getAttribute("show") === "cards" && !only ? this.getAttribute("ids") : null;
     this._flat = false;
@@ -2420,7 +2459,7 @@ class LarderPanel extends HTMLElement {
     }
   }
 
-  /** Bereichsüberschriften und Kartenreihenfolge neu aufbauen; vorhandene Karten bleiben erhalten. */
+  /** Rebuild area headings and card order; existing cards are kept. */
   _rebuild(hass) {
     const t = strings(hass);
     const present = new Set(this._devices.map((d) => d.deviceId));
@@ -2482,8 +2521,8 @@ if (!customElements.get("larder-panel")) {
   customElements.define("larder-panel", LarderPanel);
 }
 
-// Eingebettete Variante für das Dashboard unter eigenem Namen: Hat der Browser noch ein älteres
-// <larder-panel> aus einer früheren Sitzung registriert, nutzt die eingebettete Variante trotzdem diesen Code.
+// Embedded variant for the dashboard under its own name: if the browser still has an older
+// <larder-panel> registered from an earlier session, the embedded variant still uses this code.
 if (!customElements.get("larder-panel-embedded")) {
   customElements.define("larder-panel-embedded", class extends LarderPanel {});
 }

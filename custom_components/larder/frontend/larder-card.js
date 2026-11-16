@@ -1,14 +1,14 @@
 /**
- * Lovelace-Karte "Larder: läuft bald ab" (type: custom:larder-card).
+ * Lovelace card "Larder: expires soon" (type: custom:larder-card).
  *
- * Wird von der Integration automatisch geladen (keine Ressource nötig) und erscheint in der
- * Kartenauswahl. Optionen (YAML):
- *   title: Überschrift (Standard: "Läuft bald ab")
- *   days: nur Dosen, die in so vielen Tagen ablaufen (Standard: Einstellung "Läuft bald ab")
- *   show_expired: abgelaufene zeigen (Standard: true)
- *   limit: höchstens so viele Dosen (Standard: 8)
- *   area: nur Dosen aus diesem Bereich (Bereichs-ID)
- * Antippen einer Dose öffnet sie im Larder-Dashboard.
+ * Loaded automatically by the integration (no resource needed) and appears in the
+ * card picker. Options (YAML):
+ *   title: heading (default: "Läuft bald ab" / "Expires soon")
+ *   days: only containers that expire within this many days (default: setting "Expires soon")
+ *   show_expired: show expired ones (default: true)
+ *   limit: at most this many containers (default: 8)
+ *   area: only containers from this area (area ID)
+ * Tapping a container opens it in the Larder dashboard.
  */
 const { collectDevices, daysUntil, soonDaysOf } = await import(`./larder-panel.js${new URL(import.meta.url).search}`);
 
@@ -46,7 +46,7 @@ function texts(hass) {
 
 const valid = (st) => !!st && !["unknown", "unavailable", ""].includes(st.state);
 
-/** Dosen mit MHD innerhalb der Grenze (abgelaufene zuerst), wie sie die Karte zeigt. */
+/** Containers with a date within the limit (expired first), as the card shows them. */
 export function expiringRows(hass, config = {}, now = new Date()) {
   const states = (hass && hass.states) || {};
   const rows = [];
@@ -172,7 +172,7 @@ function stockTexts(hass) {
 
 const REFRESH_MS = 5 * 60 * 1000;
 
-/** Lovelace-Karte "Larder: Vorrat" (type: custom:larder-stock-card). */
+/** Lovelace card "Larder: stock" (type: custom:larder-stock-card). */
 export class LarderStockCard extends HTMLElement {
   static getStubConfig() {
     return { show_bought: true, show_opened: true };
@@ -186,7 +186,7 @@ export class LarderStockCard extends HTMLElement {
   set hass(hass) {
     const first = !this._hass;
     this._hass = hass;
-    // neu laden, wenn sich Inhalte oder Mengen von Larder ändern (gebündelt) oder spätestens alle 5 Minuten
+    // reload when contents or quantities of Larder change (debounced) or every 5 minutes at the latest
     const sig = Object.values(hass.entities || {})
       .filter((e) => e.platform === "larder" && /^(text|number)\./.test(e.entity_id))
       .map((e) => (hass.states[e.entity_id] || {}).state)
@@ -272,7 +272,7 @@ export class LarderStockCard extends HTMLElement {
           await this._hass.callWS({ type: "larder/stock_shop", content: btn.dataset.shop });
           this._shopped = new Set([...(this._shopped || []), btn.dataset.shop]);
         } catch {
-          /* bleibt */
+          /* stays */
         }
         this._render();
       });

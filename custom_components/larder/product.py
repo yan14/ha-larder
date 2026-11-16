@@ -1,7 +1,7 @@
-"""Barcode gekaufter Ware (EAN/UPC) → Produktname über Open Food Facts.
+"""Barcode of bought goods (EAN/UPC) → product name from Open Food Facts.
 
-Im Befüllen-Dialog scannt die App den Strichcode; der Name kommt in das Feld "Inhalt". Gefragt wird
-nur die Produktdatenbank von Open Food Facts (frei, ohne Konto), mit Zwischenspeicher pro Lauf.
+In the fill dialog the app scans the barcode; the name goes into the "Content" field. Only the
+product database of Open Food Facts is asked (free, no account), with a cache per run.
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import DOMAIN
+from .household import household_category
 from .shelf_life import category_for
 
 _LOGGER = logging.getLogger(__name__)
@@ -31,12 +32,19 @@ FIELDS = (
     "product_name,product_name_de,product_name_en,generic_name,generic_name_de,brands,quantity,"
     "nutriments,nutriscore_grade,allergens_tags,serving_size"
 )
+# sibling databases of Open Food Facts (same API): cosmetics, other consumer products, pet food
+SIBLINGS = (
+    ("beauty", "https://world.openbeautyfacts.org/api/v2/product/{code}.json"),
+    ("product", "https://world.openproductsfacts.org/api/v2/product/{code}.json"),
+    ("petfood", "https://world.openpetfoodfacts.org/api/v2/product/{code}.json"),
+)
+SIBLING_FIELDS = "product_name,product_name_de,product_name_en,generic_name,generic_name_de,brands,quantity"
 TIMEOUT = 8
 USER_AGENT = "HomeAssistant-Larder/1 (https://github.com/yan14/ha-larder)"
 _CODE_RE = re.compile(r"^\d{8,14}$")
 
 
-# Nährwerte für den Freitext: Schlüssel bei Open Food Facts → (Deutsch, Englisch)
+# nutrients for the free text: key at Open Food Facts → (German, English)
 _NUTRIENTS = (
     ("fat", "Fett", "Fat"),
     ("saturated-fat", "davon gesättigte Fettsäuren", "of which saturates"),
@@ -81,7 +89,7 @@ def _fmt(number: float, de: bool) -> str:
 
 
 def nutrition(product: dict[str, Any], language: str) -> dict[str, Any]:
-    """kcal pro 100 g / Portion, Nährwerte als Text, Nutri-Score und Allergene aus Open Food Facts."""
+    """kcal per 100 g / portion, nutrients as text, Nutri-Score and allergens from Open Food Facts."""
     de = language.lower().startswith("de")
     n = product.get("nutriments") or {}
     out: dict[str, Any] = {}
@@ -115,6 +123,11 @@ def nutrition(product: dict[str, Any], language: str) -> dict[str, Any]:
     return out
 
 
+def _product_of(data: Any) -> dict[str, Any] | None:
+    ok = isinstance(data, dict) and data.get("status") in (1, "success_with_warnings", "success")
+    return data.get("product") if ok else None
+
+
 def _name(product: dict[str, Any], language: str) -> str:
     lang = "de" if language.lower().startswith("de") else "en"
     for key in (f"product_name_{lang}", "product_name", f"generic_name_{lang}", "generic_name"):
@@ -124,7 +137,7 @@ def _name(product: dict[str, Any], language: str) -> str:
 
 
 async def async_lookup(hass: HomeAssistant, code: str) -> dict[str, Any]:
-    """{"found": bool, "code", "name", "brand", "quantity", "category"}; Fehler gelten als nicht gefunden."""
+    """{"found": bool, "code", "name", "brand", "quantity", "category"}; errors count as not found."""
     code = re.sub(r"\D", "", code or "")
     if not _CODE_RE.match(code):
         return {"found": False, "code": code, "error": "invalid_code"}
@@ -132,6 +145,7 @@ async def async_lookup(hass: HomeAssistant, code: str) -> dict[str, Any]:
     if code in cache:
         return cache[code]
     session = async_get_clientsession(hass)
+    language = hass.config.language or "en"
     try:
         async with asyncio.timeout(TIMEOUT):
             resp = await session.get(
@@ -141,26 +155,48 @@ async def async_lookup(hass: HomeAssistant, code: str) -> dict[str, Any]:
     except (aiohttp.ClientError, TimeoutError, ValueError):
         _LOGGER.debug("Open Food Facts nicht erreichbar für %s", code, exc_info=True)
         return {"found": False, "code": code, "error": "unavailable"}
-    product = (data or {}).get("product") if (data or {}).get("status") in (1, "success_with_warnings", "success") else None
-    name = _name(product or {}, hass.config.language or "en")
+    product = _product_of(data)
+    product_type = "food"
+    if not _name(product or {}, language):
+        # not a food product: ask the sibling databases (cosmetics, other products, pet food)
+        for kind, url in SIBLINGS:
+            try:
+                async with asyncio.timeout(TIMEOUT):
+                    resp = await session.get(
+                        url.format(code=code), params={"fields": SIBLING_FIELDS}, headers={"User-Agent": USER_AGENT}
+                    )
+                    data = await resp.json(content_type=None) if resp.status in (200, 404) else None
+            except Exception:  # noqa: BLE001 - any failure of a sibling database counts as "not found there"
+                _LOGGER.debug("%s not reachable for %s", url, code, exc_info=True)
+                continue
+            product = _product_of(data)
+            if _name(product or {}, language):
+                product_type = kind
+                break
+        else:
+            product = None
+    name = _name(product or {}, language)
     if not name:
         result: dict[str, Any] = {"found": False, "code": code}
     else:
         brand = str((product or {}).get("brands") or "").split(",")[0].strip()
         package = str((product or {}).get("quantity") or "").strip()
-        details: dict[str, Any] = {"ean": code, "source": "openfoodfacts"}
+        food = product_type == "food"
+        details: dict[str, Any] = {"ean": code, "source": "openfoodfacts" if food else f"open{product_type}facts"}
         if brand:
             details["brand"] = brand
         if package:
             details["package"] = package
-        details.update(nutrition(product or {}, hass.config.language or "en"))
+        if food:
+            details.update(nutrition(product or {}, language))
         result = {
             "found": True,
             "code": code,
             "name": name,
             "brand": brand,
             "quantity": package,
-            "category": category_for(name),
+            "category": category_for(name) if food else household_category(name),
+            "product_type": product_type,  # food, beauty, product or petfood
             "product": details,
         }
     cache[code] = result
@@ -174,7 +210,7 @@ async def ws_product(hass: HomeAssistant, connection: websocket_api.ActiveConnec
 
 
 def _content_entity(hass: HomeAssistant, device_id: str):
-    """Entität "Inhalt" der Dose zu einer Geräte-ID (oder None)."""
+    """Entity "Content" of the container for a device ID (or None)."""
     device = dr.async_get(hass).async_get(device_id)
     if device is None:
         return None
@@ -195,7 +231,7 @@ def _content_entity(hass: HomeAssistant, device_id: str):
 )
 @websocket_api.async_response
 async def ws_product_set(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    """Produktdaten und Nährwerte einer Dose setzen (Befüllen nach dem Scan) oder einzelne Felder ändern (Karte)."""
+    """Set product data and nutrition of a container (filling after the scan) or change single fields (card)."""
     entity = _content_entity(hass, msg["device_id"])
     if entity is None:
         connection.send_error(msg["id"], "not_found", "container not found")
@@ -213,9 +249,9 @@ def async_setup_product_websocket(hass: HomeAssistant) -> None:
     domain_data[DATA_WS] = True
 
 
-# Allergene im Haushalt: Begriffe, an denen ein Allergen im Feld "Allergene" (Wortanfang) oder im
-# Inhalt (Teilwort, nur längere Begriffe) erkannt wird. Nur ein Hinweis, keine Garantie.
-ALLERGEN_KEYS = tuple(key.replace("-", "_") for key in _ALLERGENS)  # Übersetzungsschlüssel ohne Bindestrich
+# Allergens in the household: terms by which an allergen is recognised in the "Allergens" field (start
+# of a word) or in the content (part of a word, longer terms only). Only a hint, no guarantee.
+ALLERGEN_KEYS = tuple(key.replace("-", "_") for key in _ALLERGENS)  # translation key without a hyphen
 _ALLERGEN_TERMS: dict[str, tuple[str, ...]] = {
     "gluten": ("gluten", "weizen", "wheat", "roggen", "rye", "gerste", "barley", "dinkel", "spelt", "hafer", "oat"),
     "milk": ("milch", "milk", "laktose", "lactose", "sahne", "cream", "käse", "cheese", "joghurt", "yogurt", "quark"),
@@ -242,7 +278,7 @@ def allergen_name(key: str, language: str) -> str:
 
 
 def watched_allergens(content: str, allergens: str, watched: list[str] | tuple[str, ...], language: str) -> list[str]:
-    """Namen der beobachteten Allergene, die in einer Dose stecken (aus Allergenen und Inhalt)."""
+    """Names of the watched allergens in a container (from allergens and content)."""
     found: list[str] = []
     allergen_text = (allergens or "").casefold()
     content_text = (content or "").casefold()
@@ -250,7 +286,7 @@ def watched_allergens(content: str, allergens: str, watched: list[str] | tuple[s
         terms = _ALLERGEN_TERMS.get(key, ())
         hit = any(re.search(rf"(?<![\w]){re.escape(term)}", allergen_text) for term in terms)
         if not hit:
-            # im Inhalt auch mitten im Wort ("Haselnusscreme"), aber nur bei längeren Begriffen
+            # in the content also in the middle of a word ("Haselnusscreme"), but only for longer terms
             hit = any(len(term) >= 4 and term in content_text for term in terms)
         if hit:
             found.append(allergen_name(key, language))

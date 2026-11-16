@@ -1,8 +1,8 @@
-"""Verlauf pro Dose: was war drin, von wann bis wann, und wurde es gegessen oder weggeworfen.
+"""History per container: what was inside, from when to when, and was it eaten or thrown away.
 
-Ein Eintrag entsteht beim Leeren (Button "Behälter leeren", egal ob aus dem Dashboard, einer
-Automation oder der Geräteseite). Das Dashboard fragt vorher "Gegessen / Weggeworfen" und meldet
-die Antwort über `larder/empty`; ohne Antwort bleibt `outcome` leer.
+An entry is created when emptying (button "Empty container", no matter whether from the dashboard, an
+automation or the device page). The dashboard asks "Eaten / Thrown away" first and reports
+the answer through `larder/empty`; without an answer `outcome` stays empty.
 """
 
 from __future__ import annotations
@@ -46,7 +46,7 @@ class History:
         self._store.async_delay_save(lambda: {"records": self.records}, 1)
 
     def set_pending(self, cc: str, outcome: str | None) -> None:
-        """Antwort aus dem Dashboard für das gleich folgende Leeren merken."""
+        """Remember the answer from the dashboard for the emptying that follows right away."""
         self._pending[cc] = outcome
 
     def pop_pending(self, cc: str) -> str | None:
@@ -69,7 +69,7 @@ class History:
         return False
 
     def list(self, cc: str | None = None, limit: int | None = None) -> list[dict[str, Any]]:
-        """Neueste zuerst; optional nur eine Dose."""
+        """Newest first; optionally only one container."""
         items = [r for r in reversed(self.records) if cc is None or r.get("cc") == cc]
         return items[:limit] if limit else items
 
@@ -145,7 +145,7 @@ def _cc_of_device(hass: HomeAssistant, device_id: str) -> str | None:
 )
 @websocket_api.async_response
 async def ws_empty(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    """Dose leeren und dabei festhalten, ob der Inhalt gegessen oder weggeworfen wurde."""
+    """Empty a container and record whether the content was eaten or thrown away."""
     cc = _cc_of_device(hass, msg["device_id"])
     button = er.async_get(hass).async_get_entity_id("button", DOMAIN, f"{cc}_empty_container") if cc else None
     if not button:
@@ -161,7 +161,7 @@ async def ws_empty(hass: HomeAssistant, connection: websocket_api.ActiveConnecti
         history.pop_pending(cc)
         connection.send_error(msg["id"], "empty_failed", str(err))
         return
-    history.pop_pending(cc)  # falls nichts geleert wurde
+    history.pop_pending(cc)  # in case nothing was emptied
     connection.send_result(msg["id"], {})
 
 
@@ -194,7 +194,7 @@ async def ws_history(hass: HomeAssistant, connection: websocket_api.ActiveConnec
 async def ws_history_outcome(
     hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
 ) -> None:
-    """Nachträglich festlegen oder ändern, ob gegessen oder weggeworfen."""
+    """Set or change afterwards whether eaten or thrown away."""
     history = await async_get_history(hass)
     if not history.set_outcome(msg["record_id"], msg["outcome"]):
         connection.send_error(msg["id"], "not_found", "record not found")

@@ -8,10 +8,10 @@
 
 As soon as at least one container exists, a sidebar entry **Larder** appears. It needs no configuration, adapts to your Home Assistant theme and language (English and German) and updates itself. *The screenshots show demo data.*
 
-A bar at the bottom switches between five pages:
+A bar at the bottom switches between five pages. **Storage**, **Areas** and **Categories** have a switch **Food | Household** at the top (see [Household items](containers.md#household-items)):
 
-- **Start**: a greeting with your Home Assistant name, tiles for everything that should be used up soon (expired first), and shortcuts to the recipe suggestions and the containers. In the Home Assistant app there is also **📷 Scan container** (see [Scanning in the app](scanning.md#scanning-in-the-app)).
-- **Containers**: all containers with a symbol for the kind of food, the contents, the container name and the days left.
+- **Start**: a greeting with your Home Assistant name, tiles for everything that should be used up soon (expired first), and shortcuts to the recipe suggestions and the storage view. With [household items](containers.md#household-items) the page has two sections, *Food* and *Household*. In the Home Assistant app there is also **📷 Scan container** (see [Scanning in the app](scanning.md#scanning-in-the-app)).
+- **Storage** (called *Containers* before 4.0): everything in store with a symbol for the kind of food, the contents, the container name and the days left.
   - **Search** in name, contents and area; **filter** by *expiring soon*, *expired*, *filled*, *empty*, *bags* or *packs*; **sort** by best-before date, area, area and compartment, alphabet or category (area, area and compartment, and category are grouped; *area and compartment* shows exactly what is in each compartment). The number of containers shown is above the list.
   - The button on the right switches between **tiles**, a **list** and **cards with all details**. Your choice is remembered on the device.
   - Tap a filled container to open its card, tap an empty one to fill it right away (see [Filling containers](containers.md#filling-containers)).
@@ -41,7 +41,7 @@ The dashboard is visible to all users; only **administrators** can add container
 
 ### Selecting several containers
 
-**☑** on the containers page or on the recipe page switches to selection: tap containers to select them, **All** selects everything shown. The bar at the bottom then offers
+**☑** on the **Storage** page or on the recipe page switches to selection: tap containers to select them, **All** selects everything shown. The bar at the bottom then offers
 
 - **Fill (n)** (administrators): fills all selected *empty* containers at once with the same contents, vacuum, filled-on date and best-before date, for example after cooking a big batch or after shopping. Quantity counts per container. With the estimate switched on, each container gets its own estimate.
 - **✨ Recipe ideas**: asks the AI for recipes that use exactly the selected *filled* containers, whatever their best-before date (expired ones are still left out).

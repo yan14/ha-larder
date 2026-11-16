@@ -1,4 +1,4 @@
-/** Karten und Dialoge (larder-panel.js): Texte (Deutsch und Englisch). */
+/** Cards and dialogs (larder-panel.js): texts (German and English). */
 export const STRINGS = {
   de: {
     title: "Larder",
@@ -87,6 +87,10 @@ export const STRINGS = {
       const m = (v) => `${v.toFixed(2).replace(".", ",")} €`;
       return `💶 ${estimate ? "ca. " : ""}${m(price)} je Packung${estimate ? " (Open Prices)" : ""}${value ? ` · alle zusammen ca. ${m(value)}` : ""}`;
     },
+    productDetails: "Produkt",
+    packsLine: (n, piece, packs) => `📦 Insgesamt ${n} ${piece || "Stück"} (${String(packs).replace(".", ",")} ${packs === 1 ? "Packung" : "Packungen"})`,
+    convertToHousehold: "→ Haushaltsartikel",
+    convertToPack: "→ Lebensmittel-Packung",
     openPack: "Anbrechen",
     openedSince: (d) => `🔓 Angebrochen am ${String(d || "").split("-").reverse().join(".")}`,
     olderElsewhere: (place, d) => `Ältere Packung in ${place} (MHD ${String(d || "").split("-").reverse().join(".")}) – die zuerst nehmen.`,
@@ -94,6 +98,8 @@ export const STRINGS = {
     minStockFailed: "Mindestbestand konnte nicht gespeichert werden.",
     allergenWarning: (names) => `⚠ Enthält ${names} (Allergene im Haushalt)`,
     nutritionFields: {
+      pack_size: "Stück je Packung",
+      piece: "Einheit (z. B. Rollen)",
       brand: "Marke",
       package: "Packung",
       ean: "EAN",
@@ -104,7 +110,6 @@ export const STRINGS = {
       price: "Preis je Packung (€)",
       nutrients: "Nährwerte",
     },
-    nutritionNone: "–",
     nutrientsHint: "z. B. Fett 7 g, Kohlenhydrate 59 g, Eiweiß 14 g (pro 100 g)",
     fillSave: "Speichern",
     fillNoContent: "Bitte einen Inhalt eingeben.",
@@ -275,6 +280,10 @@ export const STRINGS = {
       const m = (v) => `€${v.toFixed(2)}`;
       return `💶 ${estimate ? "about " : ""}${m(price)} per pack${estimate ? " (Open Prices)" : ""}${value ? ` · all together about ${m(value)}` : ""}`;
     },
+    productDetails: "Product",
+    packsLine: (n, piece, packs) => `📦 ${n} ${piece || "pieces"} in total (${packs} ${packs === 1 ? "pack" : "packs"})`,
+    convertToHousehold: "→ Household item",
+    convertToPack: "→ Food pack",
     openPack: "Open",
     openedSince: (d) => `🔓 Opened on ${d}`,
     olderElsewhere: (place, d) => `Older pack in ${place} (best before ${d}) – take that one first.`,
@@ -282,6 +291,8 @@ export const STRINGS = {
     minStockFailed: "Could not save the minimum stock.",
     allergenWarning: (names) => `⚠ Contains ${names} (household allergens)`,
     nutritionFields: {
+      pack_size: "Pieces per pack",
+      piece: "Unit (e.g. rolls)",
       brand: "Brand",
       package: "Package",
       ean: "EAN",
@@ -292,7 +303,6 @@ export const STRINGS = {
       price: "Price per pack (€)",
       nutrients: "Nutrients",
     },
-    nutritionNone: "–",
     nutrientsHint: "e.g. fat 7 g, carbohydrates 59 g, protein 14 g (per 100 g)",
     fillSave: "Save",
     fillNoContent: "Please enter the contents.",

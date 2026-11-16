@@ -44,6 +44,7 @@ Larder shows hints under **Settings → System → Repairs** when containers nee
 | **Containers without an area** | A container has no area, so the estimate does not know where the food is stored. |
 | **Filled containers without a best-before date** | A container has contents but no date. It then appears neither in the daily summary nor in the calendar. |
 | **Containers expired more than 7 days ago** | Time to empty them. |
+| **Larder 4.0: assign areas to food and household** | After the update to 4.0, as long as Larder can suggest a use for at least one area (see [Food or household](containers.md#food-or-household-since-40)). **Fix** adds the suggested labels. |
 
 A hint disappears by itself as soon as no container is affected any more (checked on every change and once a day). You can switch the hints off in the [settings](#settings) ("Repair hints").
 
@@ -53,7 +54,7 @@ A hint disappears by itself as soon as no container is affected any more (checke
 - **without a best-before date**: estimates the date for all of them (what the estimate does not know stays in the hint),
 - **expired long ago**: tick containers and empty them; they go into the history as thrown away.
 
-**Learn more** opens the Larder dashboard: one container directly, several on the containers page filtered to exactly these (`/larder?problem=noarea`, `nodate` or `longexpired`).
+**Learn more** opens the Larder dashboard: one container directly, several on the **Storage** page filtered to exactly these (`/larder?problem=noarea`, `nodate` or `longexpired`).
 
 **Temperature warning.** If an area with a **temperature sensor** (Settings → Areas → area → temperature sensor) is a freezer, fridge or 0 °C drawer by its name or label, Larder warns when it stays too warm: freezer above −12 °C for 30 minutes, fridge above 8 °C or 0 °C drawer above 6 °C for 60 minutes. The repair hint lists the filled containers there; the event `larder_temperature_warning` (`area_id`, `area`, `temperature`, `limit`, `containers`) is for your own push or siren, `larder_temperature_ok` follows when it is cold again (1 °C below the limit). Switch it off with the setting **Temperature warning**.
 
@@ -79,7 +80,7 @@ Every container becomes a device (identified by its ID, the `cc` parameter of a 
 | **Days until best before** | `sensor` | Days left until the best-before date (negative = expired). The attribute `status` is `ok`, `soon` (3 days or less, see [Settings](#settings)), `expired` or `none` |
 | **QR code** | `image` | The container's QR code as an image: scanning it with the camera app opens the container in the Larder dashboard, see [Your own QR codes](scanning.md#your-own-qr-codes) |
 
-[Bags](containers.md#bags-and-packs) have the same entities except **Shopping list**, **Flexible storage place** and **Storage place after emptying**; [packs](containers.md#bags-and-packs) only have **Contents**, **Compartment**, **Best before**, **Quantity**, **Unit**, **Days until best before** and **Empty container**. The attribute `kind` of **Contents** is `container`, `bag` or `pack`. Pressing **Empty container** on a bag or pack removes its device.
+[Bags](containers.md#bags-and-packs) have the same entities except **Shopping list**, **Flexible storage place** and **Storage place after emptying**; [packs](containers.md#bags-and-packs) only have **Contents**, **Compartment**, **Best before**, **Quantity**, **Unit**, **Days until best before** and **Empty container**. [Household items](containers.md#household-items) have the entities of a pack (the **Best before** entity stays empty and is hidden in the dashboard), with the attributes `pack_size` (pieces per pack) and `piece` (name of a piece) on **Contents** and categories starting with `hh_`. The attribute `kind` of **Contents** is `container`, `bag`, `pack` or `household`. Pressing **Empty container** on a bag, pack or household item removes its device.
 
 The values survive restarts. "Empty container" is a regular button entity, so you can use it on dashboards and in automations via `button.press`.
 

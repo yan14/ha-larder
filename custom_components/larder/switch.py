@@ -1,4 +1,4 @@
-"""Schalter 'Vakuum': ist die Dose vakuumiert? Wird beim Leeren bewusst NICHT zurückgesetzt."""
+"""Switch 'Vacuum': is the container vacuumed? Deliberately NOT reset when emptying."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, KIND_BAG, KIND_PACK, SIGNAL_SETTINGS_CHANGED
+from .const import DOMAIN, KIND_BAG, PACK_KINDS, SIGNAL_SETTINGS_CHANGED
 from .entity import LarderConfigEntry, LarderEntity, kind_of
 from .estimate import async_get_estimator
 
@@ -18,21 +18,21 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     kind = kind_of(entry)
-    if kind == KIND_PACK:
-        return  # Packungen haben keine Schalter
+    if kind in PACK_KINDS:
+        return  # packs have no switches
     if kind == KIND_BAG:
-        async_add_entities([LarderVacuumSwitch(entry)])  # Einweg: keine Einkaufsliste, kein fester Platz
+        async_add_entities([LarderVacuumSwitch(entry)])  # disposable: no shopping list, no fixed place
         return
     async_add_entities([LarderVacuumSwitch(entry), LarderShoppingSwitch(entry), LarderFlexibleSwitch(entry)])
 
 
 class LarderVacuumSwitch(SwitchEntity, LarderEntity):
-    """Eigenschaft der Dose (nicht des Inhalts): vakuumiert oder normale Box.
+    """Property of the container (not of the content): vacuumed or normal box.
 
-    Eine neue Dose startet mit der Vorbelegung aus den Einstellungen (Standard: an, die
-    Zwilling-Dosen sind Vakuumdosen). Danach bleibt der Wert über Neustarts erhalten und
-    folgt späteren Änderungen der Vorbelegung nicht. 'Behälter leeren' ändert ihn nicht, er ist deshalb nicht
-    bei den zurücksetzbaren Entitäten registriert.
+    A new container starts with the default from the settings (default: on, the
+    Zwilling containers are vacuum containers). After that the value is kept across restarts and
+    does not follow later changes of the default. 'Empty container' does not change it, so it is not
+    registered with the resettable entities.
     """
 
     _key = "vacuum"
@@ -57,11 +57,11 @@ class LarderVacuumSwitch(SwitchEntity, LarderEntity):
 
 
 class LarderShoppingSwitch(SwitchEntity, LarderEntity):
-    """Beim Leeren den Inhalt auf die Einkaufsliste setzen? Standard: aus.
+    """Put the content on the shopping list when emptying? Default: off.
 
-    Gilt nur, wenn in den Einstellungen eine To-do-Liste gewählt ist (Attribut ``list``). Der Wert
-    gehört zur Dose und bleibt beim Leeren erhalten, damit "Reis" immer nachgekauft wird, die
-    "Pizza-Reste" aber nie.
+    Only applies if a to-do list is chosen in the settings (attribute ``list``). The value
+    belongs to the container and is kept when emptying, so "rice" is always bought again, the
+    "Pizza leftovers" never.
     """
 
     _key = "shopping"
@@ -92,11 +92,11 @@ class LarderShoppingSwitch(SwitchEntity, LarderEntity):
 
 
 class LarderFlexibleSwitch(SwitchEntity, LarderEntity):
-    """Variabler Lagerort: die Dose steht mal hier, mal dort (z. B. Vakuumdosen). Standard: aus.
+    """Variable storage place: the container is sometimes here, sometimes there (e.g. vacuum containers). Default: off.
 
-    Ist er an, fragt der Befüll-Dialog nach dem Bereich, und "Behälter leeren" stellt die Dose zurück
-    in den "Lagerort nach dem Leeren" (falls einer gewählt ist). Der Wert gehört zur Dose und bleibt
-    beim Leeren erhalten.
+    If on, the fill dialog asks for the area, and "Empty container" puts the container back
+    into the "place after emptying" (if one is chosen). The value belongs to the container and is kept
+    when emptying.
     """
 
     _key = "flexible"

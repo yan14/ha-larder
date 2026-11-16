@@ -1,4 +1,4 @@
-"""Entität 'Inhalt' (schreibbar, bleibt über Neustarts erhalten)."""
+"""Entity 'Content' (writable, kept across restarts)."""
 
 from __future__ import annotations
 
@@ -9,9 +9,18 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DATA_STOCK, DOMAIN, KIND_CONTAINER, KIND_PACK, SIGNAL_SETTINGS_CHANGED, SIGNAL_STOCK_CHANGED
+from .const import (
+    DATA_STOCK,
+    DOMAIN,
+    KIND_CONTAINER,
+    KIND_HOUSEHOLD,
+    PACK_KINDS,
+    SIGNAL_SETTINGS_CHANGED,
+    SIGNAL_STOCK_CHANGED,
+)
 from .entity import LarderConfigEntry, LarderEntity, LarderResettable
 from .estimate import DATA_ESTIMATOR, async_get_estimator
+from .household import household_category
 from .product import watched_allergens
 from .shelf_life import category_for
 from .stock import product_key
@@ -24,29 +33,31 @@ async def async_setup_entry(
 ) -> None:
     content = LarderContent(entry)
     entry.runtime_data.resettable[content._key] = content
-    async_add_entities([content, LarderCompartment(entry)])  # Fach auch für Beutel und Packungen
+    async_add_entities([content, LarderCompartment(entry)])  # compartment also for bags and packs
 
 
-# Produktdaten und Nährwerte des Inhalts (aus dem Strichcode oder von Hand); gehören zum Inhalt
+# product data and nutrition of the content (from the barcode or by hand); belong to the content
 PRODUCT_FIELDS: dict[str, type] = {
     "brand": str,
-    "package": str,  # Packungsgröße, z. B. "500 g"
+    "package": str,  # package size, e.g. "500 g"
     "ean": str,
     "kcal_100g": float,
     "kcal_portion": float,
-    "nutrients": str,  # Freitext: Fett, Kohlenhydrate, Zucker, Eiweiß, Salz …
+    "nutrients": str,  # free text: fat, carbohydrates, sugar, protein, salt …
     "nutri_score": str,  # A–E
     "allergens": str,
-    "source": str,  # "openfoodfacts" oder leer (von Hand)
-    "opened": str,  # Packung angebrochen am (ISO-Datum)
-    "price": float,  # Preis je Packung in Euro
-    "price_source": str,  # "receipt", "own" oder "openprices" (Schätzung)
+    "source": str,  # "openfoodfacts" or empty (by hand)
+    "opened": str,  # pack opened on (ISO date)
+    "price": float,  # price per pack in euros
+    "price_source": str,  # "receipt", "own" or "openprices" (estimate)
+    "pack_size": float,  # household items: pieces per pack (e.g. 8 rolls)
+    "piece": str,  # household items: name of one piece (e.g. "Rollen")
 }
 _MAX_TEXT = 500
 
 
 def clean_product(data: dict[str, Any]) -> dict[str, Any]:
-    """Nur bekannte Felder, Zahlen als Zahl, leere Werte weg, Nutri-Score A–E."""
+    """Only known fields, numbers as numbers, empty values removed, Nutri-Score A–E."""
     out: dict[str, Any] = {}
     for key, kind in PRODUCT_FIELDS.items():
         value = data.get(key)
@@ -71,7 +82,7 @@ def clean_product(data: dict[str, Any]) -> dict[str, Any]:
 
 
 class LarderContent(TextEntity, LarderResettable):
-    """Freitext: was ist in der Dose? Dazu (optional) Produktdaten und Nährwerte als Attribute."""
+    """Free text: what is in the container? Plus (optional) product data and nutrition as attributes."""
 
     _key = "content"
     _attr_native_max = 255
@@ -86,7 +97,7 @@ class LarderContent(TextEntity, LarderResettable):
         if (last := await self._async_last_state()) is not None:
             self._attr_native_value = last.state
             self._product = clean_product(dict(last.attributes))
-        # Allergene im Haushalt geändert: Warnung neu berechnen
+        # allergens in the household changed: recalculate the warning
         self.async_on_remove(async_dispatcher_connect(self.hass, SIGNAL_SETTINGS_CHANGED, self.async_write_ha_state))
         self.async_on_remove(async_dispatcher_connect(self.hass, SIGNAL_STOCK_CHANGED, self.async_write_ha_state))
 
@@ -96,22 +107,23 @@ class LarderContent(TextEntity, LarderResettable):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        """Kategorie (für Kategorien und Symbole im Dashboard) und, falls vorhanden, Produktdaten."""
+        """Category (for categories and icons in the dashboard) and, if present, product data."""
         value = self._attr_native_value or ""
-        attrs: dict[str, Any] = {"category": category_for(value) if value else None, "kind": self._kind, **self._product}
+        category = (household_category(value) if self._kind == KIND_HOUSEHOLD else category_for(value)) if value else None
+        attrs: dict[str, Any] = {"category": category, "kind": self._kind, **self._product}
         estimator = self.hass.data.get(DOMAIN, {}).get(DATA_ESTIMATOR)
         watched = getattr(estimator, "watch_allergens", None)
-        if self._kind == KIND_PACK and (stock := self.hass.data.get(DOMAIN, {}).get(DATA_STOCK)) is not None:
-            attrs["min_stock"] = stock.minimum(value)  # Mindestbestand des Produkts (für die Karte)
+        if self._kind in PACK_KINDS and (stock := self.hass.data.get(DOMAIN, {}).get(DATA_STOCK)) is not None:
+            attrs["min_stock"] = stock.minimum(value)  # minimum stock of the product (for the card)
             if (usage := stock.usage(value)) is not None:
-                attrs["consumption_per_week"] = usage["per_week"]  # Verbrauch des Produkts (für "reicht noch …")
+                attrs["consumption_per_week"] = usage["per_week"]  # consumption of the product (for "lasts another …")
                 attrs["consumption_basis"] = {"takes": usage["takes"], "days": usage["days"]}
             if "price" not in self._product and (price := stock.prices.get(product_key(value))):
                 attrs["price_remembered"] = price["price"]
                 attrs["price_remembered_source"] = price.get("source")
         sizes = self.hass.data.get(DOMAIN, {}).get("sizes")
         if sizes is not None and self._kind == KIND_CONTAINER and (info := sizes.info(self._cc)):
-            # Behältergröße: fest an der Dose oder (variabel) die der aktuellen Befüllung
+            # container size: fixed at the container or (variable) that of the current filling
             attrs["size_variable"] = bool(info.get("variable"))
             if info.get("size"):
                 attrs["size_fixed"] = info["size"]
@@ -123,7 +135,7 @@ class LarderContent(TextEntity, LarderResettable):
         stock_data = self.hass.data.get(DOMAIN, {}).get(DATA_STOCK)
         if recalls is not None and stock_data is not None and value.strip() and recalls.found:
             if warning := recalls.for_cc(self._cc, stock_data.recalls_read):
-                attrs["recall"] = warning  # ungelesene Rückrufwarnung (Hinweis auf der Karte)
+                attrs["recall"] = warning  # unread recall warning (hint on the card)
         if value.strip() and watched:
             warning = watched_allergens(value, self._product.get("allergens", ""), watched, self.hass.config.language or "en")
             if warning:
@@ -131,7 +143,7 @@ class LarderContent(TextEntity, LarderResettable):
         return attrs
 
     async def async_set_product(self, data: dict[str, Any], replace: bool = True) -> None:
-        """Produktdaten setzen (replace) oder einzelne Felder ändern; leere Werte löschen das Feld."""
+        """Set product data (replace) or change single fields; empty values delete the field."""
         if replace:
             self._product = clean_product(data)
         else:
@@ -140,8 +152,8 @@ class LarderContent(TextEntity, LarderResettable):
         self.async_write_ha_state()
         stock = self.hass.data.get(DOMAIN, {}).get(DATA_STOCK)
         self._remember_ean(stock)
-        if stock is not None and self._kind == KIND_PACK and self._product.get("price") and self._attr_native_value:
-            # Preis für den nächsten Einkauf dieses Produkts merken (Schätzungen aus Open Prices nur, wenn nichts da ist)
+        if stock is not None and self._kind in PACK_KINDS and self._product.get("price") and self._attr_native_value:
+            # remember the price for the next purchase of this product (estimates from Open Prices only if there is nothing)
             stock.remember_price(self._attr_native_value, self._product["price"], self._product.get("price_source") or "own")
 
     async def async_set_value(self, value: str) -> None:
@@ -152,8 +164,8 @@ class LarderContent(TextEntity, LarderResettable):
             self._remember_ean(self.hass.data.get(DOMAIN, {}).get(DATA_STOCK))
 
     def _remember_ean(self, stock) -> None:
-        """Strichcode → eigener Name merken (ein späterer Scan findet das Produkt auch nach dem Umbenennen)."""
-        if stock is not None and self._kind == KIND_PACK and self._product.get("ean") and (self._attr_native_value or "").strip():
+        """Remember barcode → own name (a later scan finds the product even after renaming)."""
+        if stock is not None and self._kind in PACK_KINDS and self._product.get("ean") and (self._attr_native_value or "").strip():
             stock.remember_ean(str(self._product["ean"]), self._attr_native_value)
 
     async def async_reset(self) -> None:
@@ -162,10 +174,10 @@ class LarderContent(TextEntity, LarderResettable):
 
 
 class LarderCompartment(TextEntity, LarderEntity):
-    """Fach innerhalb des Bereichs, z. B. "Schublade 2" im Gefrierschrank (optional).
+    """Compartment within the area, e.g. "Drawer 2" in the freezer (optional).
 
-    Gehört zum Platz der Dose, nicht zum Inhalt: bleibt beim Leeren. Kommt eine variable Dose beim
-    Leeren an ihren festen Platz zurück, wird das Fach geleert.
+    Belongs to the place of the container, not to the content: kept when emptying. If a variable container
+    returns to its fixed place when emptied, the compartment is cleared.
     """
 
     _key = "compartment"

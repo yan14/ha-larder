@@ -472,6 +472,20 @@
     "temperature_too_high": {
       "title": "Larder: {area} is too warm",
       "description": "**{area}** is at {temperature} °C, above {limit} °C for at least {minutes} minutes. Affected containers:\n\n{containers}\n\nCheck whether the door is open or the appliance has failed. The hint disappears as soon as it is cold enough again."
+    },
+    "area_scopes": {
+      "title": "Larder 4.0: assign areas to food and household",
+      "fix_flow": {
+        "step": {
+          "scopes": {
+            "title": "Assign areas",
+            "description": "Version 4.0 adds household items. An area is for food, for household items or for both – controlled by additional labels (`Larder: Food`, `Larder: Household`). Larder can assign unambiguous areas automatically:\n\n{areas}\n\nLabels are only added; existing labels (e.g. `Larder: Freezer` with temperature and storage time) stay as they are. All other Larder areas are used for both and can be changed in the dashboard under Areas."
+          }
+        },
+        "abort": {
+          "nothing_to_fix": "Nothing left to fix."
+        }
+      }
     }
   }
 }

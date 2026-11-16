@@ -1,15 +1,15 @@
-"""Temperaturwarnung: Lagerort mit Temperatursensor ist zu lange zu warm (z. B. Gefrierschrank offen).
+"""Temperature warning: a storage place with a temperature sensor is too warm for too long (e.g. freezer open).
 
-Welche Art von Lagerort ein Bereich ist, kommt aus Name, Label und Vorlage ("Storage:"), nicht aus
-dem Sensor selbst (ein warmer Gefrierschrank bleibt ein Gefrierschrank). Grenzen:
+Which kind of storage place an area is comes from name, label and template ("Storage:"), not from
+the sensor itself (a warm freezer is still a freezer). Limits:
 
-- Gefrierschrank: wärmer als −12 °C für 30 Minuten,
-- Kühlschrank: wärmer als 8 °C für 60 Minuten,
-- 0-°C-Fach: wärmer als 6 °C für 60 Minuten.
+- freezer: warmer than −12 °C for 30 minutes,
+- fridge: warmer than 8 °C for 60 minutes,
+- 0 °C compartment: warmer than 6 °C for 60 minutes.
 
-Dann gibt es einen Reparaturhinweis mit den gefüllten Dosen dort und das Ereignis
-`larder_temperature_warning` (für eigene Benachrichtigungen). Ist es 1 °C unter der Grenze wieder
-kalt genug, verschwindet der Hinweis und `larder_temperature_ok` wird ausgelöst.
+Then there is a repair hint with the filled containers there and the event
+`larder_temperature_warning` (for own notifications). Once it is cold enough again, 1 °C below
+the limit, the hint disappears and `larder_temperature_ok` is fired.
 """
 
 from __future__ import annotations
@@ -60,7 +60,7 @@ class AreaInfo:
 
 
 def watched_areas(hass: HomeAssistant) -> dict[str, AreaInfo]:
-    """Bereiche mit Dosen, Temperatursensor und bekannter Art (Gefrier-, Kühlschrank, 0-°C-Fach)."""
+    """Areas with containers, a temperature sensor and a known kind (freezer, fridge, 0 °C compartment)."""
     devices = dr.async_get(hass)
     registry = er.async_get(hass)
     areas: dict[str, AreaInfo] = {}
@@ -81,7 +81,7 @@ def watched_areas(hass: HomeAssistant) -> dict[str, AreaInfo]:
         content = hass.states.get(content_id) if content_id else None
         if content is not None and content.state not in ("", "unknown", "unavailable"):
             info.containers.append(f"{content.state} ({device.name_by_user or device.name or cc})")
-    # nur Bereiche mit Sensor
+    # only areas with a sensor
     return {k: v for k, v in areas.items() if v.temperature_c is not None}
 
 

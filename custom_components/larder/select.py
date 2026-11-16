@@ -1,4 +1,4 @@
-"""Auswahlen der Dose: 'Einheit' der Menge und 'Lagerort nach dem Leeren' (bei variablem Lagerort)."""
+"""Selects of the container: 'Unit' of the quantity and 'Place after emptying' (with a variable storage place)."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .const import DEFAULT_UNIT, KIND_CONTAINER, UNITS
 from .entity import LarderConfigEntry, LarderEntity, LarderResettable, kind_of
 
-HOME_NONE = "none"  # kein fester Lagerort: die Dose bleibt beim Leeren, wo sie ist
+HOME_NONE = "none"  # no fixed storage place: the container stays where it is when emptied
 
 
 async def async_setup_entry(
@@ -26,7 +26,7 @@ async def async_setup_entry(
 
 
 class LarderUnit(SelectEntity, LarderResettable):
-    """Einheit der Menge im Inhalt. 'Behälter leeren' setzt auf 'Portionen' zurück."""
+    """Unit of the quantity of the content. 'Empty container' resets to 'portions'."""
 
     _key = "unit"
     _attr_options = UNITS
@@ -46,10 +46,10 @@ class LarderUnit(SelectEntity, LarderResettable):
 
 
 class LarderHomeArea(SelectEntity, LarderEntity):
-    """Bereich, in den die Dose beim Leeren zurückkommt (nur bei variablem Lagerort wirksam).
+    """Area the container returns to when emptied (only effective with a variable storage place).
 
-    Die Auswahl zeigt die Namen der Bereiche; gespeichert wird die Bereichs-ID (Attribut ``area_id``),
-    damit ein Umbenennen des Bereichs nichts kaputt macht. "Behälter leeren" ändert den Wert nicht.
+    The select shows the names of the areas; the area ID is stored (attribute ``area_id``),
+    so renaming the area breaks nothing. "Empty container" does not change the value.
     """
 
     _key = "home_area"

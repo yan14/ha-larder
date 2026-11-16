@@ -472,6 +472,20 @@
     "temperature_too_high": {
       "title": "Larder: {area} ist zu warm",
       "description": "In **{area}** sind es {temperature} °C, seit mindestens {minutes} Minuten über {limit} °C. Betroffene Dosen:\n\n{containers}\n\nPrüfe, ob die Tür offen ist oder das Gerät ausgefallen ist. Der Hinweis verschwindet, sobald es wieder kalt genug ist."
+    },
+    "area_scopes": {
+      "title": "Larder 4.0: Bereiche für Lebensmittel und Haushalt zuordnen",
+      "fix_flow": {
+        "step": {
+          "scopes": {
+            "title": "Bereiche zuordnen",
+            "description": "Seit Version 4.0 gibt es Haushaltsartikel. Ein Bereich gilt für Lebensmittel, für Haushalt oder für beides – gesteuert über zusätzliche Labels (`Larder: Lebensmittel`, `Larder: Haushalt`). Larder kann eindeutige Bereiche automatisch zuordnen:\n\n{areas}\n\nEs werden nur Labels hinzugefügt; bestehende Labels (z. B. `Larder: Gefrierschrank` mit Temperatur und Lagerzeit) bleiben unverändert. Alle anderen Larder-Bereiche gelten für beides und lassen sich im Dashboard unter Bereiche ändern."
+          }
+        },
+        "abort": {
+          "nothing_to_fix": "Nichts mehr zu beheben."
+        }
+      }
     }
   }
 }

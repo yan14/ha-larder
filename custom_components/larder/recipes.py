@@ -1,4 +1,4 @@
-"""Rezeptideen aus Dosen, die bald ablaufen: Service `larder.suggest_recipes` (KI über "AI Task")."""
+"""Recipe ideas from containers that expire soon: service `larder.suggest_recipes` (AI via "AI Task")."""
 
 from __future__ import annotations
 
@@ -23,8 +23,8 @@ DATA_RECIPES_REGISTERED = "recipes_registered"
 DEFAULT_RECIPES = 3
 MAX_RECIPES = 5
 TIMEOUT = 120
-MAX_INGREDIENTS = 40  # so viele Dosen gehen höchstens an die KI (die dringendsten zuerst)
-MAX_TITLE = 120  # wie im Rezeptbuch, damit sich jeder Vorschlag speichern lässt
+MAX_INGREDIENTS = 40  # at most this many containers go to the AI (the most urgent first)
+MAX_TITLE = 120  # as in the recipe book, so every suggestion can be saved
 MAX_LINE = 300
 MAX_LINES = 100
 
@@ -49,7 +49,7 @@ STRUCTURE: dict[str, Any] = {
 
 
 def _describe(item: dict[str, Any], language: str) -> str:
-    """Eine Zutat als kurze Zeile für die Anweisung an die KI (nur Inhalt, Menge, Rest-Haltbarkeit, Ort)."""
+    """An ingredient as a short line for the instructions to the AI (only content, quantity, days left, place)."""
     text = _TEXT["de" if language.lower().startswith("de") else "en"]
     parts = [item["content"] or item["name"]]
     if item.get("quantity"):
@@ -114,14 +114,14 @@ def build_instructions(
 
 
 def _allergen_warning(hass: HomeAssistant, cc: str) -> list[str]:
-    """Beobachtete Allergene einer Dose (Attribut `allergen_warning` der Inhalts-Entität)."""
+    """Watched allergens of a container (attribute `allergen_warning` of the content entity)."""
     entity_id = er.async_get(hass).async_get_entity_id("text", DOMAIN, f"{cc}_content")
     state = hass.states.get(entity_id) if entity_id else None
     return list(state.attributes.get("allergen_warning") or []) if state else []
 
 
 def _container_ccs(hass: HomeAssistant, containers: list[str]) -> set[str]:
-    """IDs der Dosen (cc) zu den angegebenen Geräte-IDs (oder direkt angegebenen cc)."""
+    """IDs of the containers (cc) for the given device IDs (or cc given directly)."""
     registry = dr.async_get(hass)
     out: set[str] = set()
     for value in containers:
@@ -144,7 +144,7 @@ def _as_list(value: Any) -> list[str]:
 
 
 def parse_recipes(data: Any, limit: int) -> list[dict[str, Any]]:
-    """Antwort der KI prüfen und in eine einheitliche Form bringen."""
+    """Check the AI's answer and bring it into a uniform shape."""
     raw = data.get("recipes") if isinstance(data, dict) else None
     if not isinstance(raw, list):
         raise EstimateError("recipes_failed", error="unexpected answer")
@@ -173,7 +173,7 @@ def parse_recipes(data: Any, limit: int) -> list[dict[str, Any]]:
 
 
 def build_speech(recipes: list[dict[str, Any]], language: str) -> str:
-    """Ein Satz zum Vorlesen mit den (höchstens zwei) besten Ideen."""
+    """One sentence to read aloud with the (at most two) best ideas."""
     titles = [r["title"] for r in recipes[:2]]
     if not titles:
         return ""
@@ -183,7 +183,7 @@ def build_speech(recipes: list[dict[str, Any]], language: str) -> str:
 
 
 def build_summary(recipes: list[dict[str, Any]]) -> str:
-    """Kurzer Text für Benachrichtigungen: eine Zeile pro Rezept."""
+    """Short text for notifications: one line per recipe."""
     lines = []
     for recipe in recipes:
         uses = f": {', '.join(recipe['uses'])}" if recipe["uses"] else ""
@@ -200,11 +200,11 @@ async def async_suggest_recipes(
     all_containers: bool = False,
     containers: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Rezeptideen aus Dosen, die in `days` Tagen ablaufen (ohne Angabe: Einstellung).
+    """Recipe ideas from containers that expire within `days` days (not given: the setting).
 
-    Mit `all_containers` gilt kein Zeitraum: alle befüllten Dosen zählen, auch ohne MHD.
-    Mit `containers` (Geräte-IDs der Dosen) zählen genau diese Dosen, egal wann sie ablaufen.
-    Abgelaufene Dosen und Dosen ohne Inhalt gehen nie an die KI.
+    With `all_containers` there is no period: all filled containers count, also without a date.
+    With `containers` (device IDs of the containers) exactly these count, no matter when they expire.
+    Expired containers and containers without content never go to the AI.
     """
     estimator = await async_get_estimator(hass)
     chosen: set[str] | None = None
@@ -221,7 +221,7 @@ async def async_suggest_recipes(
             continue
         if warning := _allergen_warning(hass, item["cc"]):
             if chosen is None:
-                continue  # Allergene im Haushalt: von selbst nie vorschlagen, nur wenn ausdrücklich gewählt
+                continue  # allergens in the household: never suggest on its own, only if chosen explicitly
             item = {**item, "allergen_warning": warning}
         items.append(item)
     items = items[:MAX_INGREDIENTS]
@@ -255,7 +255,7 @@ async def async_suggest_recipes(
         raise EstimateError("recipes_failed", error=str(err)) from err
     except TimeoutError as err:
         raise EstimateError("recipes_failed", error="timeout") from err
-    except Exception as err:  # noqa: BLE001 - Schema- und Anbieterfehler sauber melden
+    except Exception as err:  # noqa: BLE001 - report schema and provider errors cleanly
         _LOGGER.debug("AI recipe task failed", exc_info=True)
         raise EstimateError("recipes_failed", error=str(err)) from err
 

@@ -1,4 +1,4 @@
-# Dosen, Beutel und Packungen
+# Dosen, Beutel, Packungen und Haushaltsartikel
 
 [← Übersicht](../../README.de.md) · [🇬🇧 English](../en/containers.md)
 
@@ -17,7 +17,7 @@ Es gibt vier Wege. Für die beiden NFC-Wege brauchst du die Home Assistant App a
 
 ### Im Dashboard (empfohlen)
 
-**＋** auf der Behälter-Seite des Dashboards bietet alle vier Wege:
+**＋** auf der Seite **Lager** des Dashboards bietet alle vier Wege:
 
 <p align="center"><img src="../images/add-dialog-de.png" width="560" alt="Dialog Dose hinzufügen"></p>
 
@@ -53,7 +53,7 @@ Einstellungen → Geräte & Dienste → **Larder** → Eintrag der Dose → ⋮ 
 
 ## Beutel und Packungen
 
-Nicht alles steckt in einer wiederverwendbaren Dose. **＋** auf der Behälter-Seite fragt, was du anlegen möchtest:
+Nicht alles steckt in einer wiederverwendbaren Dose. **＋** auf der Seite **Lager** fragt, was du anlegen möchtest:
 
 | Art | Code | Nach dem Leeren | Typisch für |
 |---|---|---|---|
@@ -76,7 +76,7 @@ Beutel und Packungen kann jeder im Haushalt anlegen, Dosen nur Administratoren.
 
 Ein Beutel funktioniert wie eine Dose (scannen, Portion entnehmen, **Geöffnet**, **Aufgetaut**, Rezepte, Wochenplan). Beim Leeren werden der Beutel, seine Entitäten und sein NFC-Tag aus Home Assistant entfernt (auch aus Einstellungen → Tags), damit sich nichts ansammelt. Wird ein alter Sticker oder ein altes Etikett versehentlich gescannt, sagt Larder, wann dieser Beutel geleert wurde, statt etwas anderes zu öffnen. Codes werden nie doppelt vergeben; ein Sticker, der überlebt hat, lässt sich für einen neuen Beutel wieder beschreiben oder scannen.
 
-**Packungen.** Pro Produkt eine Zeile mit der **Anzahl** und dem aufgedruckten MHD; **📷 Strichcode scannen** (Home Assistant App) trägt Name, Marke und [Nährwerte](#nährwerte) aus Open Food Facts ein. Packungen haben keinen Code und nur wenige Entitäten (Inhalt, Fach, Menge, Einheit, MHD, Resttage, Leeren), so bleiben auch viele davon schlank. Sie tauchen überall auf, wo Dosen auftauchen: läuft bald ab, [tägliche Zusammenfassung](kitchen.md#tägliche-zusammenfassung), [Rezepte](kitchen.md#rezepte), [Statistik](dashboard.md#statistik), der Filter **Packungen** auf der Behälter-Seite (📦 auf der Kachel).
+**Packungen.** Pro Produkt eine Zeile mit der **Anzahl** und dem aufgedruckten MHD; **📷 Strichcode scannen** (Home Assistant App) trägt Name, Marke und [Nährwerte](#nährwerte) aus Open Food Facts ein. Packungen haben keinen Code und nur wenige Entitäten (Inhalt, Fach, Menge, Einheit, MHD, Resttage, Leeren), so bleiben auch viele davon schlank. Sie tauchen überall auf, wo Dosen auftauchen: läuft bald ab, [tägliche Zusammenfassung](kitchen.md#tägliche-zusammenfassung), [Rezepte](kitchen.md#rezepte), [Statistik](dashboard.md#statistik), der Filter **Packungen** auf der Seite **Lager** (📦 auf der Kachel).
 
 **📷 Kassenbon** (mit eingerichteter [KI](best-before.md#ki-optional)) liest ein Foto deines Kassenbons: Die Lebensmittel mit Anzahl erscheinen als Zeilen, Nicht-Lebensmittel, Pfand und Summen bleiben weg, der Preis einer Packung kommt ins Preisfeld. Prüfen, MHD ergänzen (oder leer lassen) und **Anlegen** drücken. Das optionale **Fach** im Dialog gilt für alle Zeilen.
 
@@ -105,7 +105,7 @@ Ein Beutel funktioniert wie eine Dose (scannen, Portion entnehmen, **Geöffnet**
 
 **Preise und Wert.** Eine Packung kann einen **Preis** haben (eine Packung): im Packungs-Dialog, auf der Karte oder vom **📷 Kassenbon** gelesen. Larder merkt ihn sich je Produkt. Ohne eigenen Preis bekommen Packungen mit Strichcode eine Schätzung von [Open Prices](https://prices.openfoodfacts.org) (Open Food Facts, ODbL): den Median des letzten Jahres in Euro, markiert mit *(Open Prices)*. Die Karte einer Packung und die Vorrats-Ansicht zeigen den Preis je Packung, den Wert jedes Produkts und den **Gesamtwert**; Statistik und Monatsbericht ergänzen **ca. X € weggeworfen**.
 
-**Entnehmen per Strichcode.** Den Strichcode einer Packung mit **📷** (Startseite, Behälter-Seite) oder **📷 Strichcode** in der Vorrats-Ansicht scannen (Home Assistant App). Larder zeigt alle Orte, an denen das Produkt liegt, mit Anzahl und MHD, **das älteste zuerst**. Hast du gerade eine neuere in der Hand, nimmst du sie an ihrem Ort mit **−1**; die letzte Packung eines Eintrags leert ihn. Ist das Produkt nicht im Vorrat, lässt es sich gleich als Packung anlegen. Hast du das Produkt umbenannt, merkt sich Larder den Strichcode; Packungen ohne Strichcode verknüpfst du mit **🔗 Mit Produkt im Vorrat verknüpfen**.
+**Entnehmen per Strichcode.** Den Strichcode einer Packung mit **📷** (Startseite, Seite **Lager**) oder **📷 Strichcode** in der Vorrats-Ansicht scannen (Home Assistant App). Larder zeigt alle Orte, an denen das Produkt liegt, mit Anzahl und MHD, **das älteste zuerst**. Hast du gerade eine neuere in der Hand, nimmst du sie an ihrem Ort mit **−1**; die letzte Packung eines Eintrags leert ihn. Ist das Produkt nicht im Vorrat, lässt es sich gleich als Packung anlegen. Hast du das Produkt umbenannt, merkt sich Larder den Strichcode; Packungen ohne Strichcode verknüpfst du mit **🔗 Mit Produkt im Vorrat verknüpfen**.
 
 <p align="center"><img src="../images/dashboard-code-de.png" width="250" alt="Entnehmen per Strichcode"></p>
 
@@ -137,6 +137,25 @@ Ein Treffer ist ein Hinweis, keine Gewissheit: Charge und MHD stehen in der Orig
 
 <p align="center"><img src="../images/dashboard-stocktake-de.png" width="250" alt="Inventur"></p>
 
+## Haushaltsartikel
+
+Seit 4.0 verwaltet Larder auch Dinge ohne Haltbarkeitsdatum: Klopapier, Küchenrolle, Waschmittel, Spülmaschinentabs, Batterien, Zahnpasta. **＋ → 🧻 Haushaltsartikel** legt sie an, von Hand oder mit **📷 Strichcode scannen** (siehe unten).
+
+- **Stück und Packungen.** Pro Produkt eine Zeile mit der Anzahl **Packungen**, den **Stück je Packung** und einem Namen für das Stück (z. B. 2 × 8 *Rollen*). Larder zählt **Stück**: **−1** entnimmt eine Rolle, die Inventur zählt Rollen, und auch der **Mindestbestand gilt in Stück**. Vorrats-Ansicht und Karte zeigen beides, z. B. *12 Rollen · 1,5 Packungen*.
+- **Einkaufsliste in Packungen.** Sinkt der Bestand unter das Minimum, kommt die nötige Anzahl Packungen (aufgerundet) auf die Einkaufsliste: *Klopapier (Zewa, 2 Packungen)*. Abgehakt erscheint es auf der Startseite unter **Eingekauft** und öffnet den Haushalts-Dialog mit der Packungsgröße.
+- **Kein MHD.** Haushaltsartikel haben kein Datum und tauchen nicht bei *läuft bald ab*, in der täglichen Zusammenfassung, bei Rezepten, im Kalender oder in der Lebensmittel-Statistik auf. *Reicht noch …*, *bald leer*, Preise und Wert funktionieren wie bei Packungen.
+- **Strichcode.** Kennt Open Food Facts einen Strichcode nicht, fragt Larder auch die Schwester-Datenbanken **Open Beauty Facts**, **Open Products Facts** und **Open Pet Food Facts**. Ein dort gefundenes Produkt wird als Haushaltsartikel angeboten.
+- **Umwandeln.** Eine Packung, die eigentlich ein Haushaltsartikel ist (oder umgekehrt), wandelst du mit **→ Haushaltsartikel** / **→ Lebensmittel-Packung** unten auf ihrer Karte um. Automatisch wird nichts umgewandelt.
+- **Kategorien:** Papier & Hygiene, Waschen, Putzen & Spülen, Körperpflege, Batterien & Leuchtmittel, Sonstiges.
+
+**Lebensmittel | Haushalt.** Die Seiten **Lager**, **Bereiche**, **Kategorien** und die **Vorrats-Ansicht** haben oben einen Umschalter und zeigen jeweils eine Seite; das Gerät merkt sich die Wahl. Die **Startseite** zeigt beides in zwei Abschnitten: *Lebensmittel* (läuft bald ab, bald leer, eingekauft, mal wieder, Auftauen, Wochenplan) und *Haushalt* (bald leer, eingekauft).
+
+<p align="center">
+<img src="../images/dashboard-household-de.png" width="250" alt="Haushaltsartikel in der Lager-Ansicht">
+<img src="../images/dashboard-household-add-de.png" width="250" alt="Haushaltsartikel anlegen">
+<img src="../images/dashboard-household-stock-de.png" width="250" alt="Vorrat an Haushaltsartikeln">
+</p>
+
 ## Bereiche und Labels
 
 Jede Dose gehört zu einem **Bereich** von Home Assistant (dem Bereich ihres Geräts). Der Bereich sagt der Schätzung, wo das Essen lagert, und gruppiert das Dashboard. Ändern kannst du ihn direkt auf der Karte der Dose im Dashboard.
@@ -146,6 +165,26 @@ Jede Dose gehört zu einem **Bereich** von Home Assistant (dem Bereich ihres Ger
 **Welche Bereiche das Dashboard anbietet.** Bei vielen Bereichen wird die Auswahl lang. Gib den Bereichen, die du für Vorräte nutzt, eine **Beschriftung** (ein Label), deren Name `Larder` ist oder mit `Larder:` beginnt (Einstellungen → Bereiche, Beschriftungen & Zonen → Bereich öffnen → Beschriftungen). Das Dashboard bietet dann nur diese Bereiche an, im Auswahlfeld und im Hinzufügen-Dialog. Der aktuelle Bereich einer Dose bleibt immer in ihrer Liste. Hat kein Bereich ein solches Label, werden alle Bereiche gezeigt.
 
 **Empfohlen:** ein Label pro Art von Lagerort, benannt `Larder: Freezer`, `Larder: Fridge`, `Larder: 0 °C`, `Larder: Pantry` …, mit der Vorlage unten in der Beschreibung. Ein Label pro Bereich reicht. In ein einfaches Label `Larder` gehören keine Grenzen: Das teilen sich alle Vorrats-Bereiche.
+
+### Lebensmittel oder Haushalt (seit 4.0)
+
+Ein Bereich kann für Lebensmittel, für Haushaltsartikel oder für beides genutzt werden. Gesteuert wird das über ein **zusätzliches** Label neben dem Lagerart-Label:
+
+| Labels des Bereichs | Angeboten für |
+|---|---|
+| kein Larder-Label | nicht angeboten (wie bisher, sobald irgendein Bereich ein Larder-Label hat) |
+| `Larder` oder ein Lagerart-Label wie `Larder: Gefrierschrank` | Lebensmittel **und** Haushalt |
+| zusätzlich `Larder: Haushalt` (oder `Larder: Household`) | nur Haushalt |
+| zusätzlich `Larder: Lebensmittel` (oder `Larder: Food`) | nur Lebensmittel |
+
+Die Nutzungs-Labels haben keine Beschreibung; Temperatur und max. Lagerzeit bleiben im Lagerart-Label (Vorlage unten). Die Nutzung stellst du im Dashboard ein: **Bereiche → ✏️ →** Bereich antippen **→ Nutzung**. Larder legt das Label an, wenn es gebraucht wird.
+
+> **Umstieg auf 4.0 (Breaking Change).** Solange du die Nutzung nicht zuordnest, wird jeder Larder-Bereich für Lebensmittel und Haushalt angeboten: Es verschwindet nichts, aber Haushaltsartikeln würde auch der Gefrierschrank angeboten. Nach dem Update schlägt ein Reparaturhinweis **Larder 4.0: Bereiche für Lebensmittel und Haushalt zuordnen** (und beim Bearbeiten der Bereiche der Knopf **Nutzung automatisch zuordnen**) die eindeutigen vor: Gefrierschrank, Kühlschrank und 0-Grad-Fach → Lebensmittel; Bad, Hauswirtschaftsraum, Waschküche → Haushalt. Es werden **nur Labels hinzugefügt**; bestehende Labels und ihre Beschreibungen bleiben unverändert. Alles andere bleibt *Lebensmittel und Haushalt*, bis du es änderst.
+
+<p align="center">
+<img src="../images/dashboard-household-areas-de.png" width="250" alt="Bereiche für Haushaltsartikel">
+<img src="../images/dashboard-area-scope-de.png" width="250" alt="Bereich bearbeiten: Lagerart und Nutzung">
+</p>
 
 ### Vorlage für das Bereichs-Label
 

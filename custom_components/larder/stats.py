@@ -1,7 +1,7 @@
-"""Statistik aus dem Verlauf: gegessen oder weggeworfen, was wird oft weggeworfen, wie lange lagert es.
+"""Statistics from the history: eaten or thrown away, what is thrown away often, how long is it stored.
 
-Dazu der aktuelle Bestand (gefüllt, leer, abgelaufen, läuft bald ab). Abrufbar über den Service
-`larder.get_statistics` (z. B. für Template-Sensoren) und das Dashboard (☰ → Statistik).
+Plus the current stock (filled, empty, expired, expires soon). Available through the service
+`larder.get_statistics` (e.g. for template sensors) and the dashboard (☰ → Statistics).
 """
 
 from __future__ import annotations
@@ -29,7 +29,7 @@ MONTHS = 6
 
 
 def _was_wasted(record: dict[str, Any]) -> bool:
-    """Weggeworfen; ohne Antwort zählt eine beim Leeren abgelaufene Dose als (vermutlich) weggeworfen."""
+    """Thrown away; without an answer a container that had expired when emptied counts as (probably) thrown away."""
     return record.get("outcome") == "thrown" or (record.get("outcome") is None and bool(record.get("expired")))
 
 
@@ -39,7 +39,7 @@ def _emptied_day(record: dict[str, Any]) -> date | None:
 
 
 def record_value(records: list[dict[str, Any]]) -> tuple[float | None, int]:
-    """Summe der Preise (Preis je Packung × Anzahl bei Packungen) und wie viele Einträge einen Preis hatten."""
+    """Sum of the prices (price per pack × count for packs) and how many entries had a price."""
     total, priced = 0.0, 0
     for r in records:
         price = (r.get("product") or {}).get("price")
@@ -58,6 +58,7 @@ def record_value(records: list[dict[str, Any]]) -> tuple[float | None, int]:
 def build_statistics(hass: HomeAssistant, records: list[dict[str, Any]], days: int | None = None) -> dict[str, Any]:
     today = dt_util.now().date()
     since = today - timedelta(days=days) if days else None
+    records = [r for r in records if r.get("kind") != "household"]  # food only
     chosen = [r for r in records if (d := _emptied_day(r)) is not None and (since is None or d > since)]
 
     eaten = [r for r in chosen if r.get("outcome") == "eaten"]
@@ -79,7 +80,7 @@ def build_statistics(hass: HomeAssistant, records: list[dict[str, Any]], days: i
     thrown_value, thrown_priced = record_value(wasted)
     by_area: Counter[str] = Counter(r.get("area") or "" for r in wasted)
 
-    # Monate (neueste zuletzt): gegessen und weggeworfen
+    # months (newest last): eaten and thrown away
     months: list[dict[str, Any]] = []
     first = today.replace(day=1)
     for i in range(MONTHS - 1, -1, -1):
@@ -141,7 +142,7 @@ def _previous_month(month: str) -> str:
 
 
 def _current_fills(hass: HomeAssistant) -> list[str]:
-    """Befüll-Datum (lokales ISO-Datum) aller gerade gefüllten Einträge."""
+    """Fill date (local ISO date) of all entries filled right now."""
     registry = er.async_get(hass)
     out: list[str] = []
     for entry in hass.config_entries.async_entries(DOMAIN):
@@ -157,7 +158,8 @@ def _current_fills(hass: HomeAssistant) -> list[str]:
 def build_monthly_report(
     records: list[dict[str, Any]], fills_now: list[str], month: str, language: str
 ) -> dict[str, Any]:
-    """Bericht für einen Monat (YYYY-MM): befüllt, geleert, gegessen, weggeworfen, Vergleich zum Vormonat."""
+    """Report for a month (YYYY-MM): filled, emptied, eaten, thrown away, comparison with the previous month."""
+    records = [r for r in records if r.get("kind") != "household"]  # food only
     lang = "de" if language.lower().startswith("de") else "en"
 
     def emptied_in(key: str) -> list[dict[str, Any]]:

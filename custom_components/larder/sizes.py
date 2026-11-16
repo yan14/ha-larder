@@ -1,12 +1,12 @@
-"""Behältergrößen: fest an der Dose oder variabel je Befüllung, lose Behälter und freie Behälter je Größe.
+"""Container sizes: fixed at the container or variable per filling, loose boxes and free boxes per size.
 
-* **Feste Größe** (Standard): gehört zur Dose, z. B. "1 l".
-* **Variable Größe**: der Code sitzt auf einem Deckel, der auf Behälter verschiedener Größe passt. Die Größe wird
-  bei jeder Befüllung gewählt (vorgeschlagen: die zuletzt benutzte). Wie viele Behälter es je Größe gibt, steht
-  unter "lose Behälter" (z. B. 4 × 1 l, 2 × 2 l).
-* **Frei**: leere Dosen mit fester Größe + lose Behälter − mit einem variablen Deckel befüllte.
+* **Fixed size** (default): belongs to the container, e.g. "1 l".
+* **Variable size**: the code sits on a lid that fits boxes of different sizes. The size is chosen
+  with every filling (suggested: the one used last). How many boxes there are per size is listed
+  under "loose boxes" (e.g. 4 × 1 l, 2 × 2 l).
+* **Free**: empty containers with a fixed size + loose boxes − those filled with a variable lid.
 
-Größen sind freier Text; gleich gelten sie, wenn sie ohne Leerzeichen und Groß-/Kleinschreibung gleich sind
+Sizes are free text; they count as equal if they are equal without spaces and case
 ("1 l" = "1L", "0,5 l" = "0.5 l").
 """
 
@@ -44,7 +44,7 @@ def size_key(value: str | None) -> str:
 
 
 def _litres(value: str) -> float | None:
-    """Größe in Litern zum Sortieren und Aufteilen ("500 ml" → 0,5); None, wenn nicht erkennbar."""
+    """Size in litres for sorting and splitting ("500 ml" → 0.5); None if not recognisable."""
     found = re.fullmatch(r"(\d+(?:[.,]\d+)?)\s*(ml|cl|l|liter|litre)?", clean_size(value).casefold())
     if not found:
         return None
@@ -58,13 +58,13 @@ def sort_sizes(sizes: list[str]) -> list[str]:
 
 
 class Sizes:
-    """Größen je Dose (cc) und lose Behälter."""
+    """Sizes per container (cc) and loose boxes."""
 
     def __init__(self, hass: HomeAssistant) -> None:
         self.hass = hass
         self._store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, STORAGE_KEY)
         self.containers: dict[str, dict[str, Any]] = {}  # cc → {size, variable, current, last}
-        self.loose: dict[str, int] = {}  # Größe → Anzahl
+        self.loose: dict[str, int] = {}  # size → count
 
     async def async_load(self) -> None:
         data = await self._store.async_load() or {}
@@ -73,13 +73,13 @@ class Sizes:
 
     def _save(self) -> None:
         self._store.async_delay_save(lambda: {"containers": self.containers, "loose": self.loose}, 1)
-        async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)  # Karten zeigen die Größe
+        async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)  # cards show the size
 
     def info(self, cc: str) -> dict[str, Any]:
         return dict(self.containers.get(cc) or {})
 
     def effective(self, cc: str) -> str | None:
-        """Größe der Dose jetzt: variabel → die der aktuellen Befüllung, sonst die feste."""
+        """Size of the container now: variable → that of the current filling, else the fixed one."""
         info = self.containers.get(cc) or {}
         return (info.get("current") if info.get("variable") else info.get("size")) or None
 
@@ -93,7 +93,7 @@ class Sizes:
         self._save()
 
     def set_filling(self, cc: str, size: str | None) -> None:
-        """Größe der aktuellen Befüllung einer variablen Dose (merkt sie als Vorschlag fürs nächste Mal)."""
+        """Size of the current filling of a variable container (remembered as the suggestion for next time)."""
         info = dict(self.containers.get(cc) or {})
         size = clean_size(size)
         info["variable"] = True
@@ -114,7 +114,7 @@ class Sizes:
         self._save()
 
     def known(self) -> list[str]:
-        """Alle bekannten Größen (für Vorschläge)."""
+        """All known sizes (for suggestions)."""
         seen: dict[str, str] = {}
         for info in self.containers.values():
             for key in ("size", "current", "last"):
@@ -125,7 +125,7 @@ class Sizes:
         return sort_sizes(list(seen.values()))
 
     def overview(self) -> list[dict[str, Any]]:
-        """Je Größe: insgesamt, befüllt, frei (feste Dosen und lose Behälter zusammen)."""
+        """Per size: total, filled, free (fixed containers and loose boxes together)."""
         registry = er.async_get(self.hass)
         rows: dict[str, dict[str, Any]] = {}
 
@@ -192,7 +192,7 @@ _SIZE = vol.All(str, vol.Length(max=MAX_SIZE))
 )
 @websocket_api.async_response
 async def ws_size_set(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    """Feste Größe bzw. "variable Größe" einer Dose setzen."""
+    """Set the fixed size or "variable size" of a container."""
     cc = _cc_of(hass, msg["device_id"])
     if not cc:
         connection.send_error(msg["id"], "not_found", "unknown container")
@@ -207,7 +207,7 @@ async def ws_size_set(hass: HomeAssistant, connection: websocket_api.ActiveConne
 )
 @websocket_api.async_response
 async def ws_size_fill(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    """Größe der aktuellen Befüllung einer variablen Dose (aus dem Befüll-Dialog)."""
+    """Size of the current filling of a variable container (from the fill dialog)."""
     cc = _cc_of(hass, msg["device_id"])
     if not cc:
         connection.send_error(msg["id"], "not_found", "unknown container")
@@ -225,7 +225,7 @@ async def ws_size_fill(hass: HomeAssistant, connection: websocket_api.ActiveConn
 )
 @websocket_api.async_response
 async def ws_loose_set(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    """Lose Behälter (für Deckel mit variabler Größe): Anzahl je Größe."""
+    """Loose boxes (for lids with a variable size): count per size."""
     sizes = await async_get_sizes(hass)
     sizes.set_loose(msg["loose"])
     connection.send_result(msg["id"], _result(sizes))

@@ -1,7 +1,7 @@
-"""Packungen aus dem Foto eines Kassenbons vorschlagen (KI über "AI Task").
+"""Suggest packs from the photo of a receipt (AI via "AI Task").
 
-Der Dialog "Packungen anlegen" lädt das Foto hoch (`POST /api/larder/receipt_photo`). Die KI liest die
-Lebensmittel mit Anzahl; zurück kommen nur Vorschläge, angelegt wird erst nach dem Bestätigen im Dialog.
+The dialog "Add packs" uploads the photo (`POST /api/larder/receipt_photo`). The AI reads the
+food items with their count; only suggestions come back, entries are created after confirming in the dialog.
 """
 
 from __future__ import annotations
