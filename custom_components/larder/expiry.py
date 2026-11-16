@@ -12,7 +12,16 @@ from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.helpers import config_validation as cv, entity_registry as er
 from homeassistant.util import dt as dt_util
 
-from .const import DEFAULT_LONG_SOON_DAYS, DEFAULT_UNIT, DOMAIN, NON_FOOD_KINDS, SERVICE_GET_EXPIRING, SOON_DAYS, UNITS
+from .const import (
+    DEFAULT_LONG_SOON_DAYS,
+    DEFAULT_UNIT,
+    DOMAIN,
+    NON_FOOD_KINDS,
+    SERVICE_GET_EXPIRING,
+    SERVICE_GET_EXPIRING_MEDICINES,
+    SOON_DAYS,
+    UNITS,
+)
 from .entity import kind_of
 from .estimate import storage_context
 
@@ -60,6 +69,10 @@ _TEXT = {
         ),
         "expired": lambda d: "abgelaufen" if d == -1 else f"seit {-d} Tagen abgelaufen",
         "empty_it": "sollte geleert werden",
+        "dispose_it": "entsorgen",
+        "head_medicine": lambda soon, expired: "💊 " + ", ".join(
+            p for p in (f"{soon} {'läuft' if soon == 1 else 'laufen'} bald ab" if soon else "", f"{expired} abgelaufen" if expired else "") if p
+        ),
         "today": "heute",
         "tomorrow": "morgen",
         "in_days": lambda d: f"in {d} Tagen",
@@ -85,6 +98,10 @@ _TEXT = {
         ),
         "expired": lambda d: "expired yesterday" if d == -1 else f"expired {-d} days ago",
         "empty_it": "should be emptied",
+        "dispose_it": "dispose of it",
+        "head_medicine": lambda soon, expired: "💊 " + ", ".join(
+            p for p in (f"{soon} expiring soon" if soon else "", f"{expired} expired" if expired else "") if p
+        ),
         "today": "today",
         "tomorrow": "tomorrow",
         "in_days": lambda d: f"in {d} days",
@@ -115,19 +132,19 @@ def quantity_text(text: dict[str, Any], item: dict[str, Any]) -> str:
     return text["units"].get(item.get("unit"), text["units"][DEFAULT_UNIT])(item["quantity"])
 
 
-def build_summary(items: list[dict[str, Any]], language: str) -> str:
-    """Short text for notifications, in Home Assistant's language."""
+def build_summary(items: list[dict[str, Any]], language: str, medicines: bool = False) -> str:
+    """Short text for notifications, in Home Assistant's language (`medicines`: wording for medicines)."""
     text = _TEXT["de" if language.lower().startswith("de") else "en"]
     if not items:
         return text["none"]
     expired = sum(1 for i in items if i["status"] == STATUS_EXPIRED)
     soon = len(items) - expired
-    lines = [text["head"](soon, expired) + ":"]
+    lines = [text["head_medicine" if medicines else "head"](soon, expired) + ":"]
     for item in items:
         label = item["content"] or item["name"] or text["unnamed"]
         expired_item = item["days_left"] is not None and item["days_left"] < 0
         extras = []
-        if expired_item and item["content"] and item["name"]:
+        if expired_item and item["content"] and item["name"] and not medicines:
             extras.append(item["name"])  # which container has to be emptied
         if item.get("quantity"):
             extras.append(quantity_text(text, item))
@@ -136,7 +153,7 @@ def build_summary(items: list[dict[str, Any]], language: str) -> str:
         place = f" ({', '.join(extras)})" if extras else ""
         when = _when(text, item["days_left"])
         if expired_item:
-            when = f"{when}, {text['empty_it']}"
+            when = f"{when}, {text['dispose_it' if medicines else 'empty_it']}"
         lines.append(f"• {label}{place}: {when}")
     return "\n".join(lines)
 
@@ -156,6 +173,11 @@ _SPEECH = {
             if n == 1
             else f"{names} sind abgelaufen und sollten geleert werden."
         ),
+        "expired_dispose": lambda names, n: (
+            f"{names} ist abgelaufen und sollte entsorgt werden."
+            if n == 1
+            else f"{names} sind abgelaufen und sollten entsorgt werden."
+        ),
         "in": "in",
     },
     "en": {
@@ -166,6 +188,7 @@ _SPEECH = {
         "tomorrow": lambda names, n: f"{names} {'expires' if n == 1 else 'expire'} tomorrow.",
         "in_days": lambda d, names, n: f"{names} {'expires' if n == 1 else 'expire'} in {d} days.",
         "expired": lambda names, n: f"{names} {'has' if n == 1 else 'have'} expired and should be emptied.",
+        "expired_dispose": lambda names, n: f"{names} {'has' if n == 1 else 'have'} expired and should be disposed of.",
         "in": "in",
     },
 }
@@ -182,7 +205,7 @@ def _join(words: list[str], conj: str) -> str:
     return f"{', '.join(words[:-1])} {conj} {words[-1]}"
 
 
-def build_speech(items: list[dict[str, Any]], language: str, limit: int = MAX_SPOKEN) -> str:
+def build_speech(items: list[dict[str, Any]], language: str, limit: int = MAX_SPOKEN, medicines: bool = False) -> str:
     """Short text to read aloud (Alexa, Assist): full sentences, no symbols, at most `limit` containers.
 
     Order: today, tomorrow, later, expired last.
@@ -200,7 +223,7 @@ def build_speech(items: list[dict[str, Any]], language: str, limit: int = MAX_SP
         if item["days_left"] < 0:
             # name the container for expired food too, so it is clear which one to empty
             box = (item.get("name") or "").strip()
-            expired.append(f"{name} {text['in']} {box}" if item["content"] and box and box != name else name)
+            expired.append(f"{name} {text['in']} {box}" if item["content"] and box and box != name and not medicines else name)
         else:
             groups.setdefault(item["days_left"], []).append(name)
     ordered = [(d, groups[d]) for d in sorted(groups)] + ([(-1, expired)] if expired else [])
@@ -218,7 +241,7 @@ def build_speech(items: list[dict[str, Any]], language: str, limit: int = MAX_SP
         joined = _join(shown, text["and"])
         count = len(shown)
         if days < 0:
-            sentences.append(text["expired"](joined, count))
+            sentences.append(text["expired_dispose" if medicines else "expired"](joined, count))
         elif days == 0:
             sentences.append(text["today"](joined, count))
         elif days == 1:
@@ -236,18 +259,23 @@ def collect_expiring(
     days: int | None = SOON_DAYS,
     include_expired: bool = True,
     include_undated: bool = False,
+    medicines: bool = False,
 ) -> list[dict[str, Any]]:
     """All containers with a date within the next `days` days (and expired ones if wanted), earliest first.
 
     `days=None` means no time limit; with `include_undated` containers without a date are added too
-    (then with `best_before` and `days_left` = None, sorted last).
+    (then with `best_before` and `days_left` = None, sorted last). With `medicines` only medicines and household
+    items (with a date) are listed instead, and `days=None` means their own warning period.
     """
     registry = er.async_get(hass)
-    soon = soon_days(hass)
+    soon = soon_days(hass, "medicine" if medicines else None)
+    if medicines and days is None:
+        days = soon
     items: list[dict[str, Any]] = []
     for entry in hass.config_entries.async_entries(DOMAIN):
         cc = entry.data.get("cc")
-        if not cc or kind_of(entry) in NON_FOOD_KINDS:  # medicines and household items: start page only
+        # food: medicines and household items are only on the start page (and in their own reminder)
+        if not cc or (kind_of(entry) in NON_FOOD_KINDS) != medicines:
             continue
         date_id = registry.async_get_entity_id("date", DOMAIN, f"{cc}_best_before")
         state = hass.states.get(date_id) if date_id else None
@@ -332,6 +360,31 @@ def async_setup_services(hass: HomeAssistant) -> None:
             "labels": {**LABELS["de" if language.lower().startswith("de") else "en"], "thawed": thaw_button},
         }
 
+    async def handle_medicines(call: ServiceCall) -> dict[str, Any]:
+        """Medicines and household items with a date within their (longer) warning period (#97)."""
+        language = hass.config.language
+        items = collect_expiring(hass, call.data.get("days"), call.data["include_expired"], medicines=True)
+        return {
+            "count": len(items),
+            "expired": sum(1 for i in items if i["status"] == STATUS_EXPIRED),
+            "items": items,
+            "summary": build_summary(items, language, medicines=True),
+            "speech": build_speech(items, language, medicines=True),
+            "days": call.data.get("days") or soon_days(hass, "medicine"),
+        }
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_GET_EXPIRING_MEDICINES,
+        handle_medicines,
+        schema=vol.Schema(
+            {
+                vol.Optional("days"): vol.All(vol.Coerce(int), vol.Range(min=1, max=365)),
+                vol.Optional("include_expired", default=True): cv.boolean,
+            }
+        ),
+        supports_response=SupportsResponse.ONLY,
+    )
     hass.services.async_register(
         DOMAIN,
         SERVICE_GET_EXPIRING,

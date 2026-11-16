@@ -80,6 +80,14 @@ A second blueprint sends a **monthly report** for the previous month on the day 
 
 [![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fmonthly_report.yaml)
 
+### Medicines expiring
+
+Medicines and household items with a date (e.g. sunscreen) warn much earlier than food (60 days by default) and are therefore not part of the daily summary. A blueprint of their own reminds you on the weekdays you choose (e.g. every Monday at 9:00): push to one or more phones and, optionally, read out on Alexa (Alexa Media Player, e.g. `notify.alexa_media_kitchen` with `type: announce`). Expired ones are named with *dispose of it*. Nothing is sent when nothing is due; running it by hand sends it anyway, as a test.
+
+[![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fmedicine_reminder.yaml)
+
+For your own automations: `larder.get_expiring_medicines` (optional `days`, `include_expired`) returns `count`, `expired`, `items`, `summary` and `speech`.
+
 ### Running low and recalls
 
 A third blueprint sends a push when a product will soon [run low](containers.md#stock) and when a [recall warning](containers.md#recall-warnings) matches something in stock; both can be switched on or off. Tapping it opens the Larder start page. The events `larder_running_low` (`name`, `count`, `min`, `lasts_days`, `message`) and `larder_recall` (`title`, `reason`, `link`, `products`, `places`, `message`) work for your own automations too. Running the automation by hand sends a test notification.

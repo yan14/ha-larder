@@ -1,0 +1,133 @@
+blueprint:
+  name: Larder – medicines expiring
+  description: >
+    On the chosen weekdays (for example once a week): medicines and household items with a date
+    (for example sunscreen) that expire within their warning period, as a push notification and
+    optionally read out loud, for example on Alexa. Nothing is sent when nothing expires.
+    Medikamente und Haushaltsartikel mit Datum, die bald ablaufen, an den gewählten Wochentagen
+    als Push und optional als Sprachausgabe, z. B. auf Alexa.
+  domain: automation
+  source_url: https://github.com/yan14/ha-larder/blob/main/blueprints/automation/larder/medicine_reminder.yaml
+  input:
+    notify_action:
+      name: Push notification
+      description: >
+        Notify action(s), for example notify.mobile_app_your_iphone or a notify group.
+        Several are separated by commas. Leave empty for voice only.
+      default: ""
+      selector:
+        text:
+    title:
+      name: Title
+      default: "💊 Larder"
+      selector:
+        text:
+    weekdays:
+      name: Weekdays
+      description: On which days the reminder is sent.
+      default: [mon]
+      selector:
+        select:
+          multiple: true
+          options:
+            - label: Monday
+              value: mon
+            - label: Tuesday
+              value: tue
+            - label: Wednesday
+              value: wed
+            - label: Thursday
+              value: thu
+            - label: Friday
+              value: fri
+            - label: Saturday
+              value: sat
+            - label: Sunday
+              value: sun
+    send_time:
+      name: Time
+      default: "09:00:00"
+      selector:
+        time:
+    days:
+      name: Days ahead (optional)
+      description: >
+        Within how many days. 0 = the setting "Expires soon" for medicines and household (60 days by default).
+      default: 0
+      selector:
+        number:
+          min: 0
+          max: 365
+          mode: box
+    include_expired:
+      name: Include expired
+      default: true
+      selector:
+        boolean:
+    voice_action:
+      name: Voice output (optional)
+      description: >
+        Notify action(s) that read the reminder out loud, for example notify.alexa_media_kitchen
+        (Alexa Media Player). Several are separated by commas.
+      default: ""
+      selector:
+        text:
+    voice_data:
+      name: Voice options
+      description: >
+        Extra data for the voice action. Alexa Media Player needs the type, for example
+        type: announce (with chime) or type: tts. Leave empty for other speakers.
+      default: {}
+      selector:
+        object:
+
+mode: single
+max_exceeded: silent
+
+variables:
+  notify_action: !input notify_action
+  voice_action: !input voice_action
+  voice_data: !input voice_data
+  weekdays: !input weekdays
+  days: !input days
+  include_expired: !input include_expired
+  push_targets: "{{ (notify_action or '') | string | lower | regex_findall('[a-z0-9_]+[.][a-z0-9_]+') }}"
+  voice_targets: "{{ (voice_action or '') | string | lower | regex_findall('[a-z0-9_]+[.][a-z0-9_]+') }}"
+  # run by hand (no time trigger): send even when nothing expires, as a test
+  manual: "{{ trigger is not defined or trigger.id is not defined or trigger.id != 'time' }}"
+
+triggers:
+  - trigger: time
+    at: !input send_time
+    id: time
+
+conditions:
+  - condition: template
+    value_template: "{{ manual or (now().strftime('%a') | lower)[:3] in weekdays }}"
+
+actions:
+  - action: larder.get_expiring_medicines
+    data: >-
+      {{ {'include_expired': include_expired} | combine({'days': days | int} if days | int > 0 else {}) }}
+    response_variable: result
+  - condition: template
+    value_template: "{{ manual or result.count > 0 }}"
+  - repeat:
+      for_each: "{{ push_targets }}"
+      sequence:
+        - action: "{{ repeat.item }}"
+          data:
+            title: !input title
+            message: "{{ result.summary }}"
+            data:
+              url: /larder
+              clickAction: /larder
+          continue_on_error: true
+  - repeat:
+      for_each: "{{ voice_targets }}"
+      sequence:
+        - action: "{{ repeat.item }}"
+          data:
+            message: "{{ result.speech }}"
+            data: "{{ voice_data }}"
+          continue_on_error: true

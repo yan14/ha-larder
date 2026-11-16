@@ -97,6 +97,7 @@ Die Werte bleiben über Neustarts erhalten. „Behälter leeren“ ist eine norm
 | `larder.clear_best_before` / `larder.clear_filled_at` | Ein einzelnes Datum leeren |
 | `larder.mark_opened` / `larder.mark_thawed` | MHD nach dem Öffnen oder Auftauen kürzen (`days` optional) |
 | `larder.get_expiring` | Liste, was bald abläuft, mit fertigem Text, siehe [Tägliche Zusammenfassung](kitchen.md#tägliche-zusammenfassung) |
+| `larder.get_expiring_medicines` | Dasselbe für Medikamente und Haushaltsartikel mit Datum, siehe [Ablaufende Medikamente](kitchen.md#ablaufende-medikamente) |
 | `larder.suggest_recipes` | [Rezeptideen](kitchen.md#rezeptideen) aus dem, was bald abläuft, aus allen oder aus gewählten Dosen |
 | `larder.get_statistics` | Gegessen / weggeworfen, häufigste Inhalte, Lagerdauer und aktueller Bestand, siehe [Statistik](dashboard.md#statistik) |
 | `larder.get_monthly_report` | Bericht eines Monats (befüllt, geleert, gegessen, weggeworfen, Vergleich zum Vormonat) mit Text und Sprachtext, siehe [Monatsbericht](kitchen.md#monatsbericht) |

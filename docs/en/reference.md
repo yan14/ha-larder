@@ -97,6 +97,7 @@ The values survive restarts. "Empty container" is a regular button entity, so yo
 | `larder.clear_best_before` / `larder.clear_filled_at` | Clear a single date |
 | `larder.mark_opened` / `larder.mark_thawed` | Shorten the best-before date after opening or thawing (`days` optional) |
 | `larder.get_expiring` | List what expires soon, with a ready-made text, see [Daily summary](kitchen.md#daily-summary) |
+| `larder.get_expiring_medicines` | The same for medicines and household items with a date, see [Medicines expiring](kitchen.md#medicines-expiring) |
 | `larder.suggest_recipes` | [Recipe ideas](kitchen.md#recipe-ideas) from what expires soon, from all or from selected containers |
 | `larder.get_statistics` | Eaten / thrown away, most frequent contents, storage time and current stock, see [Statistics](dashboard.md#statistics) |
 | `larder.get_monthly_report` | Report of a month (filled, emptied, eaten, thrown away, compared with the month before) with text and speech, see [Monthly report](kitchen.md#monthly-report) |

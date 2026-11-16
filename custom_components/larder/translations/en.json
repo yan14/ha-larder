@@ -302,6 +302,20 @@
       "name": "Clear filled on",
       "description": "Removes the filling date of the container."
     },
+    "get_expiring_medicines": {
+      "name": "Get expiring medicines",
+      "description": "Returns medicines and household items with a date that expire within their warning period or have expired, with ready-made text for notifications and voice output (response: count, expired, items, summary, speech).",
+      "fields": {
+        "days": {
+          "name": "Days",
+          "description": "Within this many days. Without a value the setting “Expires soon” for medicines and household applies."
+        },
+        "include_expired": {
+          "name": "Include expired",
+          "description": "Also list the ones that have already expired."
+        }
+      }
+    },
     "get_expiring": {
       "name": "Get expiring containers",
       "description": "Returns all containers whose best-before date is near or has passed, with a ready-made text for notifications (response: count, expired, items, summary).",

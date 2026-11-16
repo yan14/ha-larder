@@ -95,6 +95,7 @@ SERVICE_CLEAR_BEST_BEFORE = "clear_best_before"
 SERVICE_REBUILD_CALENDAR = "rebuild_calendar"
 SERVICE_CLEAR_FILLED_AT = "clear_filled_at"
 SERVICE_GET_EXPIRING = "get_expiring"
+SERVICE_GET_EXPIRING_MEDICINES = "get_expiring_medicines"  # medicines and dated household items (4.5)
 SERVICE_SUGGEST_RECIPES = "suggest_recipes"
 SERVICE_MARK_OPENED = "mark_opened"
 SERVICE_MARK_THAWED = "mark_thawed"

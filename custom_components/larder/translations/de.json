@@ -302,6 +302,20 @@
       "name": "„Befüllt am“ löschen",
       "description": "Entfernt das Befüll-Datum der Dose."
     },
+    "get_expiring_medicines": {
+      "name": "Ablaufende Medikamente abrufen",
+      "description": "Liefert Medikamente und Haushaltsartikel mit Datum, die innerhalb ihrer Vorwarnung ablaufen oder abgelaufen sind, mit fertigem Text für Benachrichtigungen und Sprachausgabe (Antwort: count, expired, items, summary, speech).",
+      "fields": {
+        "days": {
+          "name": "Tage",
+          "description": "Innerhalb so vieler Tage. Ohne Wert gilt die Einstellung „Läuft bald ab“ für Medikamente und Haushalt."
+        },
+        "include_expired": {
+          "name": "Abgelaufene einbeziehen",
+          "description": "Auch bereits abgelaufene auflisten."
+        }
+      }
+    },
     "get_expiring": {
       "name": "Ablaufende Dosen abfragen",
       "description": "Liefert alle Dosen, deren MHD bald abläuft oder abgelaufen ist, samt fertigem Text für Benachrichtigungen (Antwort: count, expired, items, summary).",

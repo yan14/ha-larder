@@ -3,6 +3,10 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 4.5.0
+
+- **Medicines expiring:** new blueprint *Larder – medicines expiring* reminds you on the chosen weekdays (e.g. every Monday) of medicines and household items with a date that expire within their warning period, as push to several phones and optionally read out on Alexa. Nothing is sent when nothing is due; run by hand it sends a test. New service `larder.get_expiring_medicines` (count, expired, items, summary, speech) for own automations. The daily summary stays food only.
+
 ## 4.4.0
 
 - **Medicines (pharmacy):** a third side next to food and household (**＋ → 💊 Medicine**, tab *Pharmacy*). Expiry date with a **longer warning** (new setting, default 60 days) and a section of its own on the start page; not part of the daily summary, recipes or food statistics. Areas with the label `Larder: Pharmacy` / `Larder: Apotheke` are offered only for medicines (the automatic assignment knows medicine cabinets and first-aid kits). Own default shopping list. Categories for pain, colds, digestion, wounds, allergy and vitamins.
