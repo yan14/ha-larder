@@ -1830,7 +1830,8 @@ test("Strichcode: zeigt alle Orte, ältestes MHD zuerst, −1 am gewählten Ort;
   const answers = {
     "4000000000001": { code: "4000000000001", name: "Ketchup", product: null, entries: [
       { device_id: "d1", area: "Küche", compartment: "Tür", count: 1, best_before: "2026-12-01" },
-      { device_id: "d2", area: "Keller", compartment: "Regal", count: 3, best_before: "2027-06-01" }] },
+      { device_id: "d2", area: "Keller", compartment: "Regal", count: 3, best_before: "2027-06-01" }],
+      known: { content: "Ketchup", kind: "pack", product: { brand: "Heinz", ean: "4000000000001", price: 1.99 }, area_id: "cellar", compartment: "Regal" } },
     "6000000000003": { code: "6000000000003", name: "Senf", product: { brand: "Develey" }, entries: [] },
   };
   const base = hass.callWS;
@@ -1858,17 +1859,34 @@ test("Strichcode: zeigt alle Orte, ältestes MHD zuerst, −1 am gewählten Ort;
   assert.deepEqual(rows.map((r) => r.querySelector(".name").textContent), ["Küche · Tür: 1", "Keller · Regal: 3"]);
   assert.equal(rows[1].querySelector(".sub").textContent, "MHD 01.06.2027");
   assert.ok(rows[0].classList.contains("oldest"));
-  assert.match(form.textContent, /andere in der Hand/);
-  // die neuere in der Hand: dort −1
+  // 4.2: per place used up, thrown away, open (not when already opened) and move
+  assert.deepEqual([...rows[1].querySelectorAll(".codeactions button")].map((b) => b.textContent), ["Verbraucht", "Entsorgen", "Anbrechen", "Umbuchen"]);
+  // the newer one in hand: used up there
   rows[1].querySelector('[data-role="code-take"]').click();
   await flush();
-  assert.deepEqual(hass.calls.at(-1), { domain: "number", service: "set_value", data: { entity_id: "number.d2_portionen", value: 2 } });
-  assert.match($(el, ".notice").textContent, /aus Keller · Regal entnommen/);
-  // die letzte: wird geleert (gegessen)
+  assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/pack_take`, device_id: "d2", outcome: "eaten" });
+  assert.match($(el, ".notice").textContent, /aus Keller · Regal verbraucht/);
+  // thrown away
   await el.takeByCode("4000000000001");
-  form.querySelector('[data-role="code-take"]').click();
+  form.querySelector('[data-role="code-thrown"]').click();
   await flush();
-  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/empty`), { type: `${D}/empty`, device_id: "d1", outcome: "eaten" });
+  assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/pack_take`, device_id: "d1", outcome: "thrown" });
+  assert.match($(el, ".notice").textContent, /entsorgt/);
+  // move opens the move dialog, open the open dialog
+  await el.takeByCode("4000000000001");
+  form.querySelectorAll('[data-role="code-move"]')[1].click();
+  assert.match(form.querySelector("h2").textContent, /verschieben|Verschieben/i);
+  await el.takeByCode("4000000000001");
+  form.querySelectorAll('[data-role="code-open"]')[1].click();
+  assert.match(form.querySelector("h2").textContent, /anbrechen/i);
+  // a new pack of the same product: prefilled with product data, price and the place where most of it is
+  await el.takeByCode("4000000000001");
+  form.querySelector('[data-role="code-new"]').click();
+  assert.match(form.querySelector("h2").textContent, /Packungen anlegen/);
+  assert.equal(form.querySelector('[data-i="content"]').value, "Ketchup");
+  assert.equal(form.querySelector('[data-i="price"]').value, "1,99");
+  assert.equal(form.querySelector('[data-f="area"]').value, "cellar");
+  assert.equal(form.querySelector('[data-f="compartment"]').value, "Regal");
   // nicht im Vorrat
   await el.takeByCode("6000000000003");
   assert.match(form.textContent, /Senf ist nicht im Vorrat/);
@@ -2256,7 +2274,7 @@ test("Fach per Link (NFC-Benachrichtigung): Liste ältestes zuerst, −1, Tag ve
   // Packung: −1
   form.querySelector('.coderow[data-id="p1"] [data-role="place-take"]').click();
   await flush();
-  assert.ok(hass.calls.some((c) => c.service === "set_value" && c.data.value === 2));
+  assert.ok(hass.wsCalls.some((m) => m.type === `${D}/pack_take` && m.device_id === "p1" && m.outcome === "eaten"));
   // Dose: öffnen statt −1
   assert.ok(form.querySelector('.coderow[data-id="d3"] [data-role="place-open"]'));
   // Tag verknüpfen: vorhandenen Tag scannen

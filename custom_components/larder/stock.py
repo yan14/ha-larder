@@ -855,14 +855,83 @@ async def async_find_by_code(hass: HomeAssistant, code: str) -> dict[str, Any]:
         "code": digits,
         "name": name,
         "entries": [
-            {k: p[k] for k in ("device_id", "area", "compartment", "count", "best_before", "opened")} for p in found
+            {k: p[k] for k in ("device_id", "area", "area_id", "compartment", "count", "best_before", "opened", "kind")}
+            for p in found
         ],
         # unknown in the stock: data for "add as a pack"
         "product": product,
+        # found: what "＋ New pack" is prefilled with (product data, kind and where it already is)
+        "known": _known_product(found, digits) if found else None,
         # food, beauty, product or petfood: anything but food is offered as a household item
         "product_type": lookup.get("product_type") if lookup.get("found") else None,
         "error": lookup.get("error"),
     }
+
+
+def _known_product(found: list[dict[str, Any]], code: str) -> dict[str, Any]:
+    first = found[0]
+
+    def value(key: str) -> Any:
+        return next((p[key] for p in found if p.get(key)), None)
+
+    product = {k: v for k in ("brand", "package", "piece", "price") if (v := value(k))}
+    if (size := max(p.get("pack_size", 1) for p in found)) > 1:
+        product["pack_size"] = size
+    ean = next((p["ean"] for p in found if p.get("ean")), None) or (code if len(code) >= 8 else None)
+    if ean:
+        product["ean"] = ean
+    # the place where most of it already is
+    place = max(found, key=lambda p: p["count"])
+    return {
+        "content": first["content"],
+        "kind": first["kind"],
+        "product": product,
+        "area_id": place.get("area_id"),
+        "compartment": place.get("compartment", ""),
+    }
+
+
+async def async_take_one(hass: HomeAssistant, cc: str, outcome: str) -> dict[str, Any]:
+    """Take one pack (or one piece of a household item): used up ("eaten") or thrown away ("thrown").
+
+    Both count as consumption (the stock goes down either way). Thrown away also gets a history entry for this
+    one pack, so statistics and the value thrown away include it; the last one empties the entry as usual.
+    """
+    from .history import async_get_history, build_record  # noqa: PLC0415 - avoids an import cycle
+
+    entry = next((e for e in hass.config_entries.async_entries(DOMAIN) if e.data.get(CONF_CC) == cc), None)
+    source = next((p for p in pack_entries(hass) if p["cc"] == cc), None)
+    if entry is None or source is None:
+        raise HomeAssistantError(translation_domain=DOMAIN, translation_key="move_invalid")
+    history = await async_get_history(hass)
+    if source["count"] <= 1:
+        button = er.async_get(hass).async_get_entity_id("button", DOMAIN, f"{cc}_empty_container")
+        history.set_pending(cc, outcome)
+        try:
+            await hass.services.async_call("button", "press", {"entity_id": button}, blocking=True)
+        finally:
+            history.pop_pending(cc)
+        return {"left": 0}
+    if outcome == "thrown":
+        product = {k: source[k] for k in ("brand", "package", "ean", "price") if source.get(k)}
+        history.add(
+            build_record(
+                cc=cc,
+                name=entry.title,
+                content=source["content"],
+                quantity=1,
+                unit="pieces",
+                area=source["area"],
+                filled_at=None,
+                best_before=source["best_before"],
+                outcome="thrown",
+                compartment=source["compartment"],
+                product=product,
+                kind=source["kind"],
+            )
+        )
+    await entry.runtime_data.resettable["portions"].async_set_native_value(float(source["count"] - 1))
+    return {"left": source["count"] - 1}
 
 
 # ---------- WebSocket ----------
@@ -1017,6 +1086,27 @@ async def ws_product_list(hass: HomeAssistant, connection: websocket_api.ActiveC
     connection.send_result(msg["id"], {"list": stock.lists.get(product_key(msg["content"]))})
 
 
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/pack_take",
+        vol.Required("device_id"): str,
+        vol.Optional("outcome", default="eaten"): vol.In(("eaten", "thrown")),
+    }
+)
+@websocket_api.async_response
+async def ws_pack_take(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """One pack used up or thrown away (barcode dialog, compartment view)."""
+    cc = _cc_of(hass, msg["device_id"])
+    try:
+        if not cc:
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="move_invalid")
+        result = await async_take_one(hass, cc, msg["outcome"])
+    except HomeAssistantError as err:
+        connection.send_error(msg["id"], "take_failed", str(err))
+        return
+    connection.send_result(msg["id"], result)
+
+
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/running_low"})
 @websocket_api.async_response
 async def ws_running_low(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
@@ -1118,6 +1208,7 @@ def async_setup_stock_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_stock_shop)
     websocket_api.async_register_command(hass, ws_cook_again_action)
     websocket_api.async_register_command(hass, ws_product_list)
+    websocket_api.async_register_command(hass, ws_pack_take)
     websocket_api.async_register_command(hass, ws_running_low)
     websocket_api.async_register_command(hass, ws_running_low_action)
     domain_data[DATA_WS] = True

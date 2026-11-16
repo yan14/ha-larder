@@ -3,6 +3,10 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 4.2.0
+
+- **Barcode dialog:** when a scanned product is in stock, every place (opened and oldest first) offers, for one pack, **Used up**, **Thrown away** (recorded in the history and statistics with its value), **Open** and **Move**. **＋ Add a new pack** adds another pack of the same product, prefilled with name, brand, barcode, price and the place where most of it is. Household items: *−1 piece* instead of *Used up*, no *Open*. Products not in stock: unchanged.
+
 ## 4.1.0
 
 - **Several shopping lists:** a default list for food and, optionally, one for household items (empty = the food list). Each product can get a list of its own (e.g. butcher, pharmacy) on its card or in the add dialog; it is remembered by product name. Emptying, minimum stock, running low, meal plan, *Time for … again?* and 🛒 all follow this; *Bought – add to stock* watches every list Larder wrote to.

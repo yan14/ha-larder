@@ -105,7 +105,14 @@ A bag works like a container (scan it, take a portion, **Opened**, **Thawed**, r
 
 **Prices and value.** A pack can have a **price** (one pack): in the pack dialog, on the card, or read from the **📷 Receipt**. Larder remembers it per product. Without a price of your own, packs with a barcode get an estimate from [Open Prices](https://prices.openfoodfacts.org) (Open Food Facts, ODbL): the median of the last year in euro, marked *(Open Prices)*. The card of a pack and the stock view show the price per pack, the value of each product and the **total value**; the statistics and the monthly report add **about €X thrown away**.
 
-**Take by barcode.** Scan the barcode of a pack with **📷** (start page, **Storage** page) or **📷 Barcode** in the stock view (Home Assistant app). Larder shows every place where this product is, with count and best-before date, the **oldest first**. If you are holding a newer one, take it from its own place with **−1**; the last pack of an entry empties it. A product that is not in stock can be added as a pack right away. If you renamed the product, the barcode is remembered; packs added without a barcode can be linked with **🔗 Link to a product in stock**.
+**Scan a barcode.** Scan the barcode of a pack with **📷** (start page, **Storage** page) or **📷 Barcode** in the stock view (Home Assistant app). Larder shows every place where this product is, with count and best-before date, opened and **oldest first**. Each place offers, for one pack:
+
+- **Used up**: −1 (household items: one piece); the last pack of an entry empties it.
+- **Thrown away**: −1, recorded as thrown away in the history and [statistics](dashboard.md#statistics), with its value.
+- **Open**: opens the pack, optionally to another place (e.g. into the fridge), see [opened packs](#stock).
+- **Move**: puts it in another place without opening it.
+
+**＋ Add a new pack** adds another pack of the same product, filled in with name, brand, barcode, price and the place where most of it already is. A product that is not in stock can be added as a pack right away. If you renamed the product, the barcode is remembered; packs added without a barcode can be linked with **🔗 Link to a product in stock**.
 
 <p align="center"><img src="../images/dashboard-code-en.png" width="250" alt="Take by barcode"></p>
 

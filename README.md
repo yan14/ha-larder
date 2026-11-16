@@ -31,6 +31,8 @@ Home Assistant integration for reusable food storage containers: note what is in
 <img src="docs/images/dashboard-cards-en.png" width="250" alt="Cards with all details">
 </p>
 
+> **New in 4.2:** the [barcode dialog](docs/en/containers.md#stock) shows where a product is and offers *used up*, *thrown away*, *open*, *move* and *add a new pack* right there.
+>
 > **New in 4.1:** [several shopping lists](docs/en/kitchen.md#shopping-list) (food, household, per product), [household statistics](docs/en/dashboard.md#statistics) with spending per month, [recall warnings](docs/en/containers.md#recall-warnings) for cosmetics and consumer goods.
 >
 > **New in 4.0:** [household items](docs/en/containers.md#household-items), areas for food or household, the *Containers* page is now called **Storage**, barcodes from Open Beauty / Products / Pet Food Facts. **Breaking change:** after the update, assign your areas to food or household, see [Food or household](docs/en/containers.md#food-or-household-since-40).

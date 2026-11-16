@@ -161,6 +161,9 @@ export const STYLE = `
     background: var(--primary-color); color: var(--text-primary-color, #fff); }
   .dialog .codelist { display: flex; flex-direction: column; gap: 6px; }
   .dialog .coderow { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--divider-color); border-radius: 10px; }
+  .dialog .codelist:not(.placelist) .coderow { flex-direction: column; align-items: stretch; gap: 8px; }
+  .dialog .codeactions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .dialog .codeactions button { flex: 1 1 auto; }
   .dialog .coderow.oldest { border-color: var(--primary-color); }
   .dialog .coderow .text { flex: 1; display: flex; flex-direction: column; min-width: 0; }
   .dialog .coderow .sub { font-size: 12px; color: var(--secondary-text-color); }

@@ -99,7 +99,6 @@ const TEXT = {
     openedMark: "🔓 angebrochen",
     codeScan: "📷 Strichcode",
     codeOldest: (place) => `Ältestes zuerst: ${place}`,
-    codeOther: "Hast du gerade eine andere in der Hand? Dann dort −1.",
     codeNone: (name) => `${name || "Dieses Produkt"} ist nicht im Vorrat.`,
     codeAdd: "Als Packung anlegen",
     codeLink: "🔗 Mit Produkt im Vorrat verknüpfen",
@@ -110,8 +109,15 @@ const TEXT = {
     codeLinkFailed: "Verknüpfen fehlgeschlagen.",
     codeLinked: (name) => `Strichcode mit ${name} verknüpft.`,
     codeUnknown: (code) => `Zu ${code} wurde nichts gefunden.`,
-    codeTake: "−1",
-    codeTaken: (place) => `Eine Packung aus ${place} entnommen.`,
+    codeUsed: "Verbraucht",
+    codeUsedPiece: "−1 Stück",
+    codeThrown: "Entsorgen",
+    codeOpen: "Anbrechen",
+    codeMove: "Umbuchen",
+    codeNewPack: "Neue Packung hinzufügen",
+    codeUsedDone: (place) => `Eine Packung aus ${place} verbraucht.`,
+    codeUsedPieceDone: (place) => `Ein Stück aus ${place} entnommen.`,
+    codeThrownDone: (place) => `Eine Packung aus ${place} entsorgt.`,
     codeDate: (d) => `MHD ${d}`,
     noDate: "ohne MHD",
     stockEarliest: (d) => `frühestes MHD ${d}`,
@@ -228,7 +234,6 @@ const TEXT = {
     openedMark: "🔓 opened",
     codeScan: "📷 Barcode",
     codeOldest: (place) => `Oldest first: ${place}`,
-    codeOther: "Holding another one right now? Take it from there with −1.",
     codeNone: (name) => `${name || "This product"} is not in stock.`,
     codeAdd: "Add as a pack",
     codeLink: "🔗 Link to a product in stock",
@@ -239,8 +244,15 @@ const TEXT = {
     codeLinkFailed: "Linking failed.",
     codeLinked: (name) => `Barcode linked to ${name}.`,
     codeUnknown: (code) => `Nothing found for ${code}.`,
-    codeTake: "−1",
-    codeTaken: (place) => `Took one pack from ${place}.`,
+    codeUsed: "Used up",
+    codeUsedPiece: "−1 piece",
+    codeThrown: "Thrown away",
+    codeOpen: "Open",
+    codeMove: "Move",
+    codeNewPack: "Add a new pack",
+    codeUsedDone: (place) => `One pack from ${place} used up.`,
+    codeUsedPieceDone: (place) => `Took one piece from ${place}.`,
+    codeThrownDone: (place) => `One pack from ${place} thrown away.`,
     codeDate: (d) => `best before ${d}`,
     noDate: "no best-before date",
     stockEarliest: (d) => `earliest best before ${d}`,
@@ -369,27 +381,52 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, DOM
       this._overlay.hidden = false;
       return res;
     }
+    // found: every place (opened and oldest first), each with what can be done with one pack there
     const list = el("div", "codelist");
     res.entries.forEach((entry, i) => {
+      const hh = entry.kind === "household";
       const row = el("div", `coderow${i === 0 ? " oldest" : ""}`);
       const text = el("span", "text");
       text.append(
         el("span", "name", `${placeName(entry, t)}: ${entry.count}`),
-        el("span", "sub", [entry.opened ? t.openedMark : null, entry.best_before ? t.codeDate(fmtDate(hass, entry.best_before)) : t.noDate].filter(Boolean).join(" · ")),
+        el("span", "sub", [entry.opened ? t.openedMark : null, hh ? null : entry.best_before ? t.codeDate(fmtDate(hass, entry.best_before)) : t.noDate].filter(Boolean).join(" · ")),
       );
-      const take = button(i === 0 ? "primary" : "", t.codeTake, async () => {
-        take.disabled = true;
-        await this._takeOne(entry);
+      const take = (outcome, done) => async (ev) => {
+        ev.currentTarget.disabled = true;
+        await this._takeOne(entry, outcome);
         this._closeDialog();
-        this.showNotice(t.codeTaken(placeName(entry, t)));
+        this.showNotice(done(placeName(entry, t)));
         if (this._view === "stock") this.loadStock();
-      });
-      take.dataset.role = "code-take";
-      row.append(text, take);
+      };
+      const used = button(i === 0 ? "primary" : "", hh ? t.codeUsedPiece : t.codeUsed, take("eaten", hh ? t.codeUsedPieceDone : t.codeUsedDone));
+      used.dataset.role = "code-take";
+      const thrown = button("", t.codeThrown, take("thrown", t.codeThrownDone));
+      thrown.dataset.role = "code-thrown";
+      const actions = el("div", "codeactions");
+      actions.append(used, thrown);
+      if (!hh && !entry.opened) {
+        const open = button("", t.codeOpen, () => this.openOpenDialog(entry.device_id));
+        open.dataset.role = "code-open";
+        actions.append(open);
+      }
+      const move = button("", t.codeMove, () => this.openMoveDialog(entry.device_id));
+      move.dataset.role = "code-move";
+      actions.append(move);
+      row.append(text, actions);
       list.append(row);
     });
-    const parts = [el("h2", "", res.name), el("p", "lead", t.codeOldest(placeName(res.entries[0], t))), list];
-    if (res.entries.length > 1) parts.push(el("p", "hint", t.codeOther));
+    const known = res.known;
+    // the price goes into the price field (editable), the rest of the product data stays with the row
+    const { price: knownPrice, ...knownProduct } = (known && known.product) || {};
+    const another = button("link", `＋ ${t.codeNewPack}`, () =>
+      this.openItemsDialog(known && known.kind === "household" ? "household" : "pack", {
+        rows: [{ content: (known && known.content) || res.name, quantity: 1, product: knownProduct, price: knownPrice }],
+        area_id: known && known.area_id,
+        compartment: known && known.compartment,
+      }),
+    );
+    another.dataset.role = "code-new";
+    const parts = [el("h2", "", res.name), el("p", "lead", t.codeOldest(placeName(res.entries[0], t))), list, another];
     parts.push(buttonsRow(close));
     form.replaceChildren(...parts);
     this._submit = null;
@@ -441,15 +478,22 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, DOM
   };
 
   /** Take one pack: count −1, the last one empties the entry (as eaten). */
-  proto._takeOne = async function _takeOne(entry) {
+  proto._takeOne = async function _takeOne(entry, outcome = "eaten") {
     const hass = this._hass;
+    try {
+      // one pack used up or thrown away; thrown away gets its own history entry (statistics, value)
+      await hass.callWS({ type: `${DOMAIN}/pack_take`, device_id: entry.device_id, outcome });
+      return;
+    } catch {
+      /* fall back to setting the count directly */
+    }
     const row = this._rows().find((r) => r.id === entry.device_id);
     if (entry.count > 1 && row && row.dev.entities.number) {
       await hass.callService("number", "set_value", { entity_id: row.dev.entities.number, value: entry.count - 1 });
       return;
     }
     try {
-      await hass.callWS({ type: `${DOMAIN}/empty`, device_id: entry.device_id, outcome: "eaten" });
+      await hass.callWS({ type: `${DOMAIN}/empty`, device_id: entry.device_id, outcome });
     } catch {
       if (row && row.dev.entities.button) await hass.callService("button", "press", { entity_id: row.dev.entities.button });
     }

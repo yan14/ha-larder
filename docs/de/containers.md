@@ -105,7 +105,14 @@ Ein Beutel funktioniert wie eine Dose (scannen, Portion entnehmen, **Geöffnet**
 
 **Preise und Wert.** Eine Packung kann einen **Preis** haben (eine Packung): im Packungs-Dialog, auf der Karte oder vom **📷 Kassenbon** gelesen. Larder merkt ihn sich je Produkt. Ohne eigenen Preis bekommen Packungen mit Strichcode eine Schätzung von [Open Prices](https://prices.openfoodfacts.org) (Open Food Facts, ODbL): den Median des letzten Jahres in Euro, markiert mit *(Open Prices)*. Die Karte einer Packung und die Vorrats-Ansicht zeigen den Preis je Packung, den Wert jedes Produkts und den **Gesamtwert**; Statistik und Monatsbericht ergänzen **ca. X € weggeworfen**.
 
-**Entnehmen per Strichcode.** Den Strichcode einer Packung mit **📷** (Startseite, Seite **Lager**) oder **📷 Strichcode** in der Vorrats-Ansicht scannen (Home Assistant App). Larder zeigt alle Orte, an denen das Produkt liegt, mit Anzahl und MHD, **das älteste zuerst**. Hast du gerade eine neuere in der Hand, nimmst du sie an ihrem Ort mit **−1**; die letzte Packung eines Eintrags leert ihn. Ist das Produkt nicht im Vorrat, lässt es sich gleich als Packung anlegen. Hast du das Produkt umbenannt, merkt sich Larder den Strichcode; Packungen ohne Strichcode verknüpfst du mit **🔗 Mit Produkt im Vorrat verknüpfen**.
+**Strichcode scannen.** Den Strichcode einer Packung mit **📷** (Startseite, Seite **Lager**) oder **📷 Strichcode** in der Vorrats-Ansicht scannen (Home Assistant App). Larder zeigt alle Orte, an denen das Produkt liegt, mit Anzahl und MHD, angebrochene und **das älteste zuerst**. Jeder Ort bietet, für eine Packung:
+
+- **Verbraucht**: −1 (Haushaltsartikel: ein Stück); die letzte Packung eines Eintrags leert ihn.
+- **Entsorgen**: −1, kommt als weggeworfen in den Verlauf und die [Statistik](dashboard.md#statistik), mit Wert.
+- **Anbrechen**: bricht die Packung an, auf Wunsch an einen anderen Ort (z. B. in den Kühlschrank), siehe [angebrochene Packungen](#vorrat).
+- **Umbuchen**: stellt sie an einen anderen Ort, ohne sie anzubrechen.
+
+**＋ Neue Packung hinzufügen** legt eine weitere Packung desselben Produkts an, vorbelegt mit Name, Marke, Strichcode, Preis und dem Ort, an dem das meiste davon liegt. Ist das Produkt nicht im Vorrat, lässt es sich gleich als Packung anlegen. Hast du das Produkt umbenannt, merkt sich Larder den Strichcode; Packungen ohne Strichcode verknüpfst du mit **🔗 Mit Produkt im Vorrat verknüpfen**.
 
 <p align="center"><img src="../images/dashboard-code-de.png" width="250" alt="Entnehmen per Strichcode"></p>
 
