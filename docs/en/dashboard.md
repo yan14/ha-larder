@@ -6,7 +6,9 @@
 
 ## Dashboard "Larder"
 
-As soon as at least one container exists, a sidebar entry **Larder** appears. It needs no configuration, adapts to your Home Assistant theme and language (English and German) and updates itself. *The screenshots show demo data.*
+Right after adding the integration a sidebar entry **Larder** appears; as long as nothing is in Larder, its start page shows **🚀 Get started** with three steps (assign areas, choose a shopping list, add the first item), done ones ticked. It needs no configuration, adapts to your Home Assistant theme and language (English and German) and updates itself. *The screenshots show demo data.*
+
+<p align="center"><img src="../images/dashboard-getstarted-en.png" width="250" alt="Get started"></p>
 
 A bar at the bottom switches between five pages. **Larder**, **Areas** and **Categories** have a switch **Food | Household | Pharmacy** at the top (see [Household items](containers.md#household-items)):
 

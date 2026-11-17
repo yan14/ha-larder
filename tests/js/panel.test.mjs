@@ -2200,3 +2200,33 @@ test("Card of a household item: replacement interval, due date and 'Replaced' (4
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/replaced`), { type: `${D}/replaced`, content: "Wasserfilter", device_id: "d1" });
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/replace_interval`), { type: `${D}/replace_interval`, content: "Wasserfilter", weeks: 6 });
 });
+
+test("Card: store section with suggestion, own choice and back to automatic (4.7)", async () => {
+  const hass = adminHass([
+    { id: "d1", name: "Packung 1", content: "Senf", product: { kind: "pack" } },
+    { id: "d2", name: "Dose 2", content: "" },
+  ]);
+  hass.states["todo.einkaufen"] = { entity_id: "todo.einkaufen", state: "0", attributes: { friendly_name: "Einkaufen" } };
+  hass.states["text.d1_inhalt"].attributes.section = "dry";
+  const el = mount(hass);
+  const card = $$(el, ".card").find((c) => c.querySelector(".name").textContent === "Packung 1");
+  const row = card.querySelector(".sectionrow");
+  assert.equal(row.hidden, false);
+  assert.equal(row.querySelector("label").textContent, "Abteilung");
+  const select = row.querySelector("select");
+  assert.equal(select.options[0].textContent, "Automatisch (🍝 Nudeln, Reis & Konserven)");
+  assert.equal(select.value, "");
+  assert.equal(select.options.length, 12);
+  select.value = "fridge";
+  select.dispatchEvent(new Event("change"));
+  select.value = "";
+  select.dispatchEvent(new Event("change"));
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepEqual(hass.wsCalls.filter((m) => m.type === `${D}/product_section`), [
+    { type: `${D}/product_section`, content: "Senf", section: "fridge" },
+    { type: `${D}/product_section`, content: "Senf" },
+  ]);
+  // empty container: no row
+  const empty = $$(el, ".card").find((c) => c.querySelector(".name").textContent === "Dose 2");
+  assert.equal(empty.querySelector(".sectionrow").hidden, true);
+});

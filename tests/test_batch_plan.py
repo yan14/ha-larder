@@ -88,7 +88,7 @@ async def test_week_plan_skips_planned_days_and_containers(hass: HomeAssistant, 
     await _setup(hass, "BBBB")
     await _fill(hass, "AAAA", "Hackfleisch", 1)
     await _fill(hass, "BBBB", "Linsen", 2)
-    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    entry = [e for e in hass.config_entries.async_entries(DOMAIN) if e.data.get("cc")][0]
     await _options(hass, entry, plan_source="book", plan_days=3)
     book = await async_get_recipe_book(hass)
     await book.async_save(title="Frikadellen", ingredients=["Hackfleisch"], steps=["Braten"])

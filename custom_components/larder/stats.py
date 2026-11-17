@@ -101,7 +101,7 @@ def build_statistics(hass: HomeAssistant, records: list[dict[str, Any]], days: i
     current = collect_expiring(hass, days=None, include_expired=True, include_undated=True)
     filled = [i for i in current if i["content"]]
     soon = soon_days(hass)
-    total = len(hass.config_entries.async_entries(DOMAIN))
+    total = sum(1 for e in hass.config_entries.async_entries(DOMAIN) if e.data.get("cc"))
     return {
         "days": days,
         "emptied": len(chosen),

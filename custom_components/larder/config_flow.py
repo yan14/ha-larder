@@ -55,6 +55,9 @@ from .const import (
     CONF_SOON_DAYS,
     CONF_SOURCE,
     CONF_STOCK_LEAD_DAYS,
+    CONF_SUPPLY_CHECK,
+    CONF_SUPPLY_DAYS,
+    CONF_SUPPLY_PERSONS,
     CONF_TC,
     CONF_TEMPERATURE_WARNING,
     CONF_THAW_DAYS,
@@ -74,6 +77,7 @@ from .const import (
     ESTIMATE_MODES,
     ESTIMATE_TABLE,
     KIND_BAG,
+    MAIN_UNIQUE_ID,
     MAX_RECIPE_DAYS,
     MAX_SOON_DAYS,
     PLAN_SOURCES,
@@ -81,6 +85,7 @@ from .const import (
     SIGNAL_SETTINGS_CHANGED,
     SOON_DAYS,
     SOURCE_GENERATED,
+    SOURCE_MAIN,
     SOURCE_ZWILLING,
 )
 from .estimate import SETTINGS, async_get_estimator
@@ -125,8 +130,19 @@ class LarderConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Choice: read an existing Zwilling QR code or create a new one."""
+        """First time: create the main entry "Larder" right away (the dashboard appears in the sidebar).
+
+        Afterwards (and for the dashboard, which uses this flow to add containers): read an existing
+        Zwilling QR code or create a new one.
+        """
+        if not any(e.unique_id == MAIN_UNIQUE_ID for e in self._async_current_entries(include_ignore=False)):
+            return await self._async_create_main()
         return self.async_show_menu(step_id="user", menu_options=["scan", "create"])
+
+    async def _async_create_main(self) -> ConfigFlowResult:
+        await self.async_set_unique_id(MAIN_UNIQUE_ID)
+        self._abort_if_unique_id_configured()
+        return self.async_create_entry(title="Larder", data={CONF_SOURCE: SOURCE_MAIN})
 
     async def async_step_scan(
         self, user_input: dict[str, Any] | None = None
@@ -202,7 +218,12 @@ class LarderConfigFlow(ConfigFlow, domain=DOMAIN):
 
 
     async def async_step_import(self, data: dict[str, Any]) -> ConfigFlowResult:
-        """Create a bag or pack from the dashboard (see disposable.py), always with a new ID."""
+        """Create a bag or pack from the dashboard (see disposable.py), always with a new ID.
+
+        Also creates the main entry for installations from before 4.7 (see __init__.py).
+        """
+        if data.get(CONF_SOURCE) == SOURCE_MAIN:
+            return await self._async_create_main()
         from .disposable import async_get_retired  # noqa: PLC0415 - avoids an import cycle
 
         retired = await async_get_retired(self.hass)
@@ -337,6 +358,13 @@ class LarderOptionsFlow(OptionsFlow):
                 ),
                 vol.Optional(CONF_PLAN_DAYS, default=5): NumberSelector(
                     NumberSelectorConfig(min=1, max=14, step=1, mode=NumberSelectorMode.BOX)
+                ),
+                vol.Optional(CONF_SUPPLY_CHECK, default=True): BooleanSelector(),
+                vol.Optional(CONF_SUPPLY_PERSONS, default=2): NumberSelector(
+                    NumberSelectorConfig(min=1, max=20, step=1, mode=NumberSelectorMode.BOX)
+                ),
+                vol.Optional(CONF_SUPPLY_DAYS, default=10): NumberSelector(
+                    NumberSelectorConfig(min=3, max=30, step=1, mode=NumberSelectorMode.BOX)
                 ),
                 vol.Optional(CONF_AI_TASK_ENTITY): EntitySelector(
                     EntitySelectorConfig(domain="ai_task")

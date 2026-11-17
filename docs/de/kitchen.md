@@ -139,6 +139,25 @@ Unter Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** k
 
 *Eingekauft – in den Vorrat?* beobachtet jede Liste, auf die Larder geschrieben hat, und *Marke und Packung mit auf die Einkaufsliste* gilt für alle. Wird eine gewählte Liste aus Home Assistant entfernt, nimmt das Produkt wieder die Standardliste.
 
+### Abteilungen im Laden
+
+Seit 4.7 gehört jedes Produkt zu einer **Abteilung**: 🥦 Obst & Gemüse, 🥖 Brot & Backwaren, 🥩 Fleisch, Wurst & Fisch, 🧀 Kühlregal, 🍝 Nudeln, Reis & Konserven, ☕ Frühstück, Kaffee & Süßes, 🥤 Getränke, 🧊 Tiefkühl, 🧴 Drogerie & Haushalt, 💊 Apotheke, 🛒 Sonstiges. Larder schlägt sie nach Art und Kategorie vor (Haushaltsartikel → Drogerie, Medikamente → Apotheke, *TK-* → Tiefkühl, Wasser und Saft → Getränke); **Abteilung** auf der Karte eines Produkts überschreibt das, gemerkt nach Produktname, **Automatisch** stellt zurück.
+
+Setzt Larder etwas auf eine Liste, schiebt es den neuen Eintrag hinter den letzten offenen Eintrag derselben oder einer früheren Abteilung – die Liste folgt so deinem Weg durch den Laden. Die Reihenfolge stellst du einmal unter **⋮ → 🏪 Abteilungen** (Administratoren) mit ↑ und ↓ ein. Selbst eingetippte Einträge werden nach ihrem Namen mit einsortiert. Das braucht eine Liste, die Einträge verschieben kann, z. B. die eingebaute *Einkaufsliste* oder *Lokale To-do-Liste*; Listen, die das nicht können (manche Cloud-Listen), behalten die Reihenfolge des Hinzufügens.
+
+## Notvorrat
+
+**⋮ → 🛟 Notvorrat** vergleicht den Bestand mit dem Beispielvorrat des Bundesamts für Bevölkerungsschutz und Katastrophenhilfe (BBK) für 10 Tage: pro Person 20 l Getränke, 3,5 kg Getreide, Brot, Kartoffeln, Nudeln und Reis, 4 kg Gemüse und Hülsenfrüchte, 2,5 kg Obst und Nüsse, 2,6 kg Milch und Milchprodukte, 1,5 kg Fisch, Fleisch und Eier sowie 0,36 kg Fette und Öle. Darunter prüft er am Namen Kerzen oder Taschenlampe, Batterien, Radio, Klopapier, Seife, Verbandskasten, Schmerzmittel, Fieberthermometer und Desinfektionsmittel.
+
+- **Personen** und **Tage** sind Einstellungen (Standard 2 Personen, 10 Tage); die Mengen rechnen sich mit. Der Check lässt sich ausschalten.
+- Gezählt wird, was eine Mengenangabe hat: eine Packungsgröße wie *500 g* oder *6 x 1,5 l* (mal Anzahl Packungen), Dosen in Gramm oder Millilitern, Portionen mit 300 g. Einträge ohne Menge stehen als *+ n ohne Mengenangabe* dabei, das Ergebnis ist also eine Untergrenze.
+- Die Seite sagt, für wie viele Tage der Vorrat reicht (die schwächste Gruppe entscheidet), und bietet für jede Lücke **🛒**: *Mineralwasser*, *Gemüsekonserven*, *Kerzen* … kommen auf die Lebensmittel-, Haushalts- oder Apotheken-Liste.
+
+<p align="center">
+<img src="../images/dashboard-supply-de.png" width="250" alt="Notvorrat">
+<img src="../images/dashboard-sections-de.png" width="250" alt="Abteilungen im Laden">
+</p>
+
 ## MHD im Kalender
 
 Unter Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** kannst du einen vorhandenen **Kalender** wählen (Google, CalDAV, *Lokaler Kalender* …). Jede Dose bekommt dann einen Ganztags-Termin „MHD: Pizza“ am Tag des MHD. Der Termin wird angelegt, sobald ein Datum gesetzt ist, verschoben, wenn sich Datum oder Inhalt ändern, und gelöscht, wenn das Datum gelöscht, die Dose geleert oder entfernt oder ein anderer Kalender gewählt wird. Eigene Termine werden an einer Kennung in der Beschreibung erkannt, andere Termine werden nie angefasst.

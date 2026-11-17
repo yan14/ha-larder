@@ -46,9 +46,13 @@ from .const import (
     CONF_RECIPE_DAYS,
     CONF_REORDER_SHOPPING,
     CONF_REPAIR_HINTS,
+    CONF_SECTION_ORDER,
     CONF_SHOPPING_DETAILS,
     CONF_SOON_DAYS,
     CONF_STOCK_LEAD_DAYS,
+    CONF_SUPPLY_CHECK,
+    CONF_SUPPLY_DAYS,
+    CONF_SUPPLY_PERSONS,
     CONF_TEMPERATURE_WARNING,
     CONF_THAW_DAYS,
     CONF_THAWED_DAYS,
@@ -75,6 +79,7 @@ from .const import (
     SOON_DAYS,
 )
 from .product import ALLERGEN_KEYS
+from .sections import SECTIONS, normalize_order
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -305,6 +310,10 @@ SETTINGS: dict[str, tuple[str, Any, Any]] = {
     CONF_PLAN_DAYS: ("plan_days", 5, _number(1, 14)),
     CONF_RECALL_STATE: ("recall_state", None, lambda value, default: value if value in RECALL_STATES else None),
     CONF_AI_TASK_ENTITY: ("ai_task_entity", None, _entity),
+    CONF_SECTION_ORDER: ("section_order", list(SECTIONS), normalize_order),
+    CONF_SUPPLY_CHECK: ("supply_check", True, _flag),
+    CONF_SUPPLY_PERSONS: ("supply_persons", 2, _number(1, 20)),
+    CONF_SUPPLY_DAYS: ("supply_days", 10, _number(3, 30)),
 }
 
 # Upper limit for pure AI estimates per storage place (days); table and own values are not affected.

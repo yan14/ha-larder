@@ -198,6 +198,8 @@ export const STYLE = `
   .weekday .acts button, .bar.week button, .dialog button[data-role="loose-add"], .dialog button[data-role="batch-suggest"] { font: inherit; padding: 4px 12px; border-radius: 8px; cursor: pointer; border: 1px solid var(--divider-color); background: none; color: inherit; }
   .placetag { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
   .placetag button { font: inherit; padding: 6px 12px; border-radius: 8px; cursor: pointer; border: 1px solid var(--divider-color); background: none; color: inherit; }
+  .supplybar { display: block; height: 6px; border-radius: 3px; background: var(--divider-color); margin-top: 4px; overflow: hidden; }
+  .supplybar > span { display: block; height: 100%; background: var(--primary-color); }
   .boughtrow { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-top: 1px solid var(--divider-color); }
   .boughtrow:first-of-type { border-top: 0; }
   .boughtrow .name { flex: 1; min-width: 0; }

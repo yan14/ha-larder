@@ -23,6 +23,7 @@ from .entity import LarderConfigEntry, LarderEntity, LarderResettable
 from .estimate import DATA_ESTIMATOR, async_get_estimator
 from .household import household_category, medicine_category
 from .product import watched_allergens
+from .sections import section_of
 from .shelf_life import category_for
 from .stock import product_key
 
@@ -122,6 +123,10 @@ class LarderContent(TextEntity, LarderResettable):
         stock = self.hass.data.get(DOMAIN, {}).get(DATA_STOCK)
         if value and stock is not None and (own := stock.lists.get(product_key(value))):
             attrs["shopping_list"] = own  # own shopping list of the product (else the default list)
+        if value:
+            attrs["section"] = section_of(self.hass, value, self._kind)  # store section (4.7)
+            if stock is not None and product_key(value) in stock.sections:
+                attrs["section_own"] = True
         if self._kind in PACK_KINDS and stock is not None:
             attrs["min_stock"] = stock.minimum(value)  # minimum stock of the product (for the card)
             if (interval := stock.interval_info(value)) is not None:

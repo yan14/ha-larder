@@ -12,6 +12,7 @@ const DOMAIN = "larder";
 const VERSION_QUERY = new URL(import.meta.url).search;
 
 const { STRINGS } = await import(`./larder-panel-strings.js${VERSION_QUERY}`);
+const { SECTION_NAMES } = await import(`./larder-dashboard-supply.js${VERSION_QUERY}`);
 export { STRINGS };
 
 // ----- Suggesting compartments -----
@@ -428,6 +429,7 @@ class DoseCard {
       <div class="row minrow" hidden><label data-l="minStock"></label><input data-f="minStock" type="number" min="0" max="999" step="1" inputmode="numeric"><span class="stockinfo"></span></div>
       <div class="row replrow" hidden><label data-l="replaceEvery"></label><input data-f="replaceWeeks" type="number" min="0" max="520" step="1" inputmode="numeric"><span class="replinfo"></span><button class="replaced" type="button" hidden></button></div>
       <div class="row listrow" hidden><label data-l="shopList"></label><select data-f="shopList"></select></div>
+      <div class="row sectionrow" hidden><label data-l="section"></label><select data-f="section"></select></div>
       <div class="allergen-warning" role="note" hidden></div>
       <details class="nutrition"><summary></summary>
         <div class="nutgrid">
@@ -629,6 +631,15 @@ class DoseCard {
       if (!hass || !hass.callWS || !content) return;
       const msg = { type: `${DOMAIN}/product_list`, content };
       if (ev.target.value) msg.list = ev.target.value;
+      hass.callWS(msg).catch(() => this._panel.showError(strings(hass).shopListFailed));
+    });
+    // store section of the product (4.7, remembered by product name, "" = suggestion)
+    this.q('[data-f="section"]').addEventListener("change", (ev) => {
+      const hass = this._panel.hass;
+      const content = this.inputs.content.value.trim();
+      if (!hass || !hass.callWS || !content) return;
+      const msg = { type: `${DOMAIN}/product_section`, content };
+      if (ev.target.value) msg.section = ev.target.value;
       hass.callWS(msg).catch(() => this._panel.showError(strings(hass).shopListFailed));
     });
     this.q("button.transfer").addEventListener("click", () => {
@@ -1040,6 +1051,30 @@ class DoseCard {
         select.dataset.sig = sig;
       }
       this._setInput(select, (text.attributes && text.attributes.shopping_list) || "");
+    }
+    // store section: with content and a shopping list, like the list row
+    const sectionRow = this.q(".sectionrow");
+    const sAttrs = (text && text.attributes) || {};
+    sectionRow.hidden = listRow.hidden || !sAttrs.section;
+    this.q('[data-l="section"]').textContent = t.section;
+    if (!sectionRow.hidden) {
+      const names = String(hass.language || "en").toLowerCase().startsWith("de") ? SECTION_NAMES.de : SECTION_NAMES.en;
+      const select = this.q('[data-f="section"]');
+      const suggested = sAttrs.section_own ? "" : sAttrs.section;
+      const sig = JSON.stringify([names, suggested, t.sectionAuto]);
+      if (select.dataset.sig !== sig) {
+        const opts = [["", suggested ? t.sectionAuto(names[suggested] || suggested) : t.sectionAuto("")], ...Object.entries(names)];
+        select.replaceChildren(
+          ...opts.map(([value, name]) => {
+            const o = document.createElement("option");
+            o.value = value;
+            o.textContent = name;
+            return o;
+          }),
+        );
+        select.dataset.sig = sig;
+      }
+      this._setInput(select, sAttrs.section_own ? sAttrs.section : "");
     }
     if (nfc !== null) {
       this.q(".nfcstate").textContent = { linked: t.nfcLinked, none: t.nfcNone, waiting: t.nfcWaiting }[nfc];

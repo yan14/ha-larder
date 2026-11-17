@@ -3,6 +3,12 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 4.7.0
+
+- **One-click setup:** *Add integration* now creates a main entry **Larder** without a device or questions, so the dashboard is in the sidebar right away. While Larder is empty, the start page shows **🚀 Get started** (assign areas, choose a shopping list, add the first item). Existing installations get the main entry automatically; the settings are under its *Configure*. Adding the integration again offers the QR ways for a container.
+- **Shopping list by store section:** every product has a section (fruit & vegetables, bakery, chilled, frozen, drugstore …), suggested from kind and category and changeable on its card. Items Larder writes are moved behind the last item of the same or an earlier section on lists that can move items (Shopping list, Local To-do). The order is set under **⋮ → 🏪 Store sections**.
+- **Emergency supply check:** **⋮ → 🛟 Emergency supply** compares the stock with the BBK example supply for 10 days (drinks, grain, vegetables, fruit, dairy, protein, fats) and checks candles, batteries, radio, hygiene and first aid. Missing things go onto the right shopping list with 🛒. Persons and days are settings; it can be switched off.
+
 ## 4.6.0
 
 - **Replace regularly:** household items such as a water filter or vacuum bags get an optional interval (*Replace every (weeks)* on the card). The card shows when it is due, **🔁 Replaced** takes one piece and restarts the interval, and the household section of the start page lists what is due within a week under **🔁 Replace soon**. On the due day the event `larder_replace_due` fires; the stock alerts blueprint can send it as push (new switch).

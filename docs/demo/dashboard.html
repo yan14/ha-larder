@@ -99,6 +99,7 @@ const doses = de ? [
 // household demo data: [pieces, pieces per pack, piece name]
 const hhData = { hh_paper: [12, 8, de ? "Rollen" : "rolls"], hh_cleaning: [55, 40, "Tabs"], hh_laundry: [2, 1, ""], hh_batteries: [6, 4, ""], hh_care: [3, 1, ""] };
 const entities = {}, devices = {}, states = {};
+if (q.get("empty")) doses.length = 0;
 doses.forEach(([name, area, content, days, category, kind = "container"], i) => {
   const id = `demo${String(i).padStart(2, "0")}`;
   devices[id] = { id, name, name_by_user: null, area_id: area };
@@ -242,6 +243,21 @@ const hass = {
     if (msg.type === "larder/running_low_action") return { added: true, items: [] };
     if (msg.type === "larder/replace_due") return { items: q.get("alerts") ? [{ key: "w", name: de ? "Wasserfilter" : "Water filter", weeks: 4, last: "2026-10-23", due: "2026-11-20", days: 3 }] : [] };
     if (msg.type === "larder/replaced") return { taken: true, interval: null, due: [] };
+    if (msg.type === "larder/supply") return { enabled: true, persons: 2, days: 10, days_covered: 4, groups: [
+      { key: "drinks", unit: "l", need: 40, have: 18, unknown: 0, share: 0.45 },
+      { key: "grain", unit: "kg", need: 7, have: 7.5, unknown: 1, share: 1 },
+      { key: "vegetables", unit: "kg", need: 8, have: 3.2, unknown: 2, share: 0.4 },
+      { key: "fruit", unit: "kg", need: 5, have: 2.1, unknown: 0, share: 0.42 },
+      { key: "dairy", unit: "kg", need: 5.2, have: 4, unknown: 0, share: 0.77 },
+      { key: "protein", unit: "kg", need: 3, have: 1.9, unknown: 1, share: 0.63 },
+      { key: "fats", unit: "kg", need: 0.71, have: 1, unknown: 0, share: 1 },
+    ], items: [
+      { key: "light", present: true, names: [de ? "Teelichter" : "Tealights"] }, { key: "batteries", present: true, names: ["AA"] },
+      { key: "radio", present: false, names: [] }, { key: "toilet_paper", present: true, names: [de ? "Klopapier" : "Toilet paper"] },
+      { key: "soap", present: true, names: [de ? "Seife" : "Soap"] }, { key: "first_aid", present: true, names: [de ? "Pflaster" : "Plasters"] },
+      { key: "pain", present: true, names: ["Ibuprofen 400"] }, { key: "thermometer", present: false, names: [] }, { key: "disinfectant", present: false, names: [] },
+    ] };
+    if (msg.type === "larder/sections") return { order: ["produce", "bakery", "meat", "fridge", "dry", "breakfast", "drinks", "frozen", "drugstore", "pharmacy", "other"] };
     if (msg.type === "larder/cook_again") return { shopping_list: true, items: q.get("view") === "start" ? [{ key: "b", content: de ? "Bolognese-Sauce" : "Bolognese sauce", count: 4, last: day(-12) }] : [] };
     if (msg.type === "call_service" && msg.service === "get_monthly_report") return { response: de
       ? { label: "Oktober 2026", empty: false, summary: "📦 14 befüllt, 12 geleert\n✅ 10 gegessen, 🗑 2 weggeworfen\nWeggeworfen: 17 % (Vormonat 25 %)\nAm häufigsten weggeworfen: Käse (2×)" }
@@ -358,6 +374,7 @@ if (q.get("dialog") === "batch") {
   f.querySelector('[data-role="batch-suggest"]').click();
 }
 if (q.get("dialog") === "week") await el.openWeekSuggest();
+if (q.get("dialog") === "sections") await el.openSectionsDialog();
 if (q.get("dialog") === "place") await el.openPlace("cellar", de ? "Regal oben" : "Top shelf");
 if (q.get("take")) {
   el._take = { areaId: q.get("take"), compartment: "", started: true, status: new Map() };

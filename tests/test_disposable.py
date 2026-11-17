@@ -78,7 +78,7 @@ async def test_emptying_a_bag_removes_it_and_its_tag(hass: HomeAssistant, hass_w
     await hass.async_block_till_done()
 
     assert dr.async_get(hass).async_get(item["device_id"]) is None
-    assert not [e for e in hass.config_entries.async_entries(DOMAIN) if e.data["cc"] == cc]
+    assert not [e for e in hass.config_entries.async_entries(DOMAIN) if e.data.get("cc") == cc]
     assert "tag-1" not in hass.data[ha_tag.TAG_DATA].data
     assert (await async_get_nfc(hass)).tag_of(cc) is None
     record = (await async_get_history(hass)).list()[0]

@@ -29,7 +29,7 @@ Es gibt vier Wege. Für die beiden NFC-Wege brauchst du die Home Assistant App a
 
 ### Über die Integration
 
-Die allererste Dose legst du so an, denn das Dashboard erscheint erst danach: Einstellungen → Geräte & Dienste → **Integration hinzufügen** → „Larder“. Hier gibt es nur die beiden QR-Wege; einen NFC-Tag verknüpfst du danach im Dashboard.
+Seit 4.7 legt **Integration hinzufügen** (Einstellungen → Geräte & Dienste → „Larder“) nur den Haupteintrag **Larder** an: keine Dose, keine Fragen, das Dashboard ist sofort da. Der Haupteintrag trägt die Einstellungen (**Konfigurieren**); bestehende Installationen bekommen ihn automatisch. Wer die Integration erneut hinzufügt, bekommt die beiden QR-Wege für eine Dose; alles andere, auch NFC-Tags, geht im Dashboard einfacher.
 
 **Neuen QR Code erstellen**
 

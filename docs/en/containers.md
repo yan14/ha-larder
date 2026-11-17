@@ -29,7 +29,7 @@ There are four ways. The two NFC ways need the Home Assistant app on a phone wit
 
 ### Through the integration
 
-You add the very first container this way, because the dashboard only appears afterwards: Settings → Devices & services → **Add integration** → "Larder". Only the two QR ways are offered here; link an NFC tag afterwards in the dashboard.
+Since 4.7 adding the integration (Settings → Devices & services → **Add integration** → "Larder") only creates the main entry **Larder**: no container, no questions, the dashboard is there right away. The main entry holds the settings (**Configure**); installations from before get it automatically. Adding the integration again offers the two QR ways for a container; everything else, and NFC tags, is easier in the dashboard.
 
 **Create new QR code**
 

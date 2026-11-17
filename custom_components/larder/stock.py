@@ -29,6 +29,7 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_CC,
+    CONF_SECTION_ORDER,
     DATA_STOCK,
     DOMAIN,
     KIND_BAG,
@@ -42,6 +43,7 @@ from .const import (
 from .consumption import async_open_prices, forecast, price_of, suggested_minimum
 from .entity import kind_of
 from .estimate import async_get_estimator, storage_context
+from .sections import SECTIONS, section_of, section_order
 from .shopping import any_list, async_add_to_shopping_list, shopping_list_for
 from .singleton import async_singleton
 
@@ -91,6 +93,7 @@ class Stock:
         self.lists: dict[str, str] = {}  # product → its own shopping list (to-do entity), else the default
         # product → replacement interval (4.6): {"name", "weeks", "last": ISO date, "notified": due date reported}
         self.intervals: dict[str, dict[str, Any]] = {}
+        self.sections: dict[str, str] = {}  # product → store section chosen on the card (4.7), else suggested
         self._unsub = None
         self._unsub_daily = None
 
@@ -109,6 +112,7 @@ class Stock:
         self.ean_names = {str(k): str(v) for k, v in (data.get("ean_names") or {}).items()}
         self.lists = {str(k): str(v) for k, v in (data.get("lists") or {}).items() if str(v).startswith("todo.")}
         self.intervals = {k: v for k, v in (data.get("intervals") or {}).items() if isinstance(v, dict) and v.get("weeks")}
+        self.sections = {str(k): str(v) for k, v in (data.get("sections") or {}).items() if v in SECTIONS}
 
     def _data(self) -> dict[str, Any]:
         return {
@@ -125,6 +129,7 @@ class Stock:
             "ean_names": self.ean_names,
             "lists": self.lists,
             "intervals": self.intervals,
+            "sections": self.sections,
         }
 
     # ----- Consumption and prices -----
@@ -213,6 +218,18 @@ class Stock:
             self.lists[key] = entity_id
         else:
             self.lists.pop(key, None)
+        self._save()
+        async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
+
+    def set_section(self, content: str, section: str | None) -> None:
+        """Store section of a product (None = suggested again)."""
+        key = product_key(content)
+        if not key:
+            return
+        if section in SECTIONS:
+            self.sections[key] = section
+        else:
+            self.sections.pop(key, None)
         self._save()
         async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
 
@@ -1315,6 +1332,40 @@ async def ws_replaced(hass: HomeAssistant, connection: websocket_api.ActiveConne
     connection.send_result(msg["id"], {"taken": taken, "interval": stock.interval_info(msg["content"]), "due": stock.replace_due()})
 
 
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/product_section",
+        vol.Required("content"): vol.All(str, vol.Length(min=1, max=255)),
+        vol.Optional("section"): vol.Any(None, vol.In(SECTIONS)),
+    }
+)
+@websocket_api.async_response
+async def ws_product_section(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Store section of a product (from its card); without `section` back to the suggestion."""
+    stock = await async_get_stock(hass)
+    stock.set_section(msg["content"], msg.get("section"))
+    connection.send_result(msg["id"], {"section": section_of(hass, msg["content"])})
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/sections"})
+@websocket_api.async_response
+async def ws_sections(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Order of the store sections (settings)."""
+    connection.send_result(msg["id"], {"order": section_order(hass)})
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): f"{DOMAIN}/section_order", vol.Required("order"): [vol.In(SECTIONS)]}
+)
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_section_order(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Change the order of the store sections (administrators)."""
+    estimator = await async_get_estimator(hass)
+    await estimator.async_update_settings({CONF_SECTION_ORDER: msg["order"]})
+    connection.send_result(msg["id"], {"order": section_order(hass)})
+
+
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/replace_due"})
 @websocket_api.async_response
 async def ws_replace_due(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
@@ -1428,6 +1479,9 @@ def async_setup_stock_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_replace_interval)
     websocket_api.async_register_command(hass, ws_replaced)
     websocket_api.async_register_command(hass, ws_replace_due)
+    websocket_api.async_register_command(hass, ws_product_section)
+    websocket_api.async_register_command(hass, ws_sections)
+    websocket_api.async_register_command(hass, ws_section_order)
     websocket_api.async_register_command(hass, ws_running_low)
     websocket_api.async_register_command(hass, ws_running_low_action)
     domain_data[DATA_WS] = True

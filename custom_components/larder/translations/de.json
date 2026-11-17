@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Dose hinzufügen",
-        "description": "Wie soll die Dose angelegt werden?",
+        "description": "Larder ist eingerichtet – Dosen, Beutel, Packungen und mehr legst du am einfachsten im Dashboard **Larder** in der Seitenleiste an. Hier geht nur eine Dose mit QR-Code:",
         "menu_options": {
           "scan": "Zwilling QR Code einlesen",
           "create": "Neuen QR Code erstellen"
@@ -244,7 +244,10 @@
           "recall_check": "Rückrufwarnungen (lebensmittelwarnung.de)",
           "recall_state": "Rückrufwarnungen: nur für dieses Bundesland",
           "plan_source": "Wochenplan-Vorschlag: Quelle",
-          "plan_days": "Wochenplan-Vorschlag: Tage"
+          "plan_days": "Wochenplan-Vorschlag: Tage",
+          "supply_check": "Notvorrat-Check",
+          "supply_persons": "Personen im Haushalt (Notvorrat)",
+          "supply_days": "Tage Notvorrat"
         },
         "data_description": {
           "vacuum_default": "Neue Dosen starten mit eingeschaltetem oder ausgeschaltetem Schalter „Vakuum“. Bestehende Dosen behalten ihren Wert. Schalte es aus, wenn die meisten deiner Boxen nicht vakuumiert sind.",
@@ -271,7 +274,10 @@
           "recall_check": "Gleicht alle 6 Stunden die öffentlichen Rückrufe von lebensmittelwarnung.de mit Marke und Inhalt deiner Dosen, Beutel und Packungen ab. Treffer stehen auf der Startseite und der Karte; Ereignis larder_recall für Benachrichtigungen. Abgerufen wird nur der öffentliche Feed, es werden keine Daten gesendet.",
           "recall_state": "Leer = Warnungen für alle Bundesländer.",
           "plan_source": "Woher die Gerichte für „Woche vorschlagen“ im Wochenplan kommen. Die KI braucht eine eingerichtete KI-Aufgabe.",
-          "plan_days": "Für so viele Tage ab heute schlägt Larder Gerichte vor (Tage, für die schon etwas geplant ist, werden übersprungen)."
+          "plan_days": "Für so viele Tage ab heute schlägt Larder Gerichte vor (Tage, für die schon etwas geplant ist, werden übersprungen).",
+          "supply_check": "Zeigt unter ⋮ → 🛟 Notvorrat, was laut Empfehlung des BBK (Bundesamt für Bevölkerungsschutz) für den Haushalt fehlt.",
+          "supply_persons": "Für so viele Personen rechnet der Notvorrat-Check.",
+          "supply_days": "Das BBK empfiehlt einen Vorrat für 10 Tage."
         }
       }
     },

@@ -2980,3 +2980,92 @@ test("Start (household): 'Replace soon' box with 'Replaced' (4.6)", async () => 
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/replaced`), { type: `${D}/replaced`, content: "Wasserfilter" });
   assert.equal($(el, '[data-role="replace-due"]'), null);
 });
+
+test("Start without anything in Larder: 'Get started' with three steps (4.7)", async () => {
+  const hass = makeHass([]);
+  const base = hass.callWS;
+  hass.callWS = async (msg) => (msg.type === `${D}/settings` ? { recipe_days: 3, shopping_list: true } : base(msg));
+  const el = mount(hass);
+  await flush();
+  await flush();
+  const box = $(el, '[data-role="get-started"]');
+  assert.ok(box);
+  assert.equal(box.querySelector("h3").textContent, "🚀 Los geht's");
+  const steps = [...box.querySelectorAll("[data-step]")];
+  assert.equal(steps.length, 3);
+  // the shopping list is chosen already: ticked
+  assert.equal(steps[1].classList.contains("done"), true);
+  assert.match(steps[1].textContent, /^✅ Einkaufsliste wählen/);
+  assert.equal(steps[0].classList.contains("done"), false);
+  // no empty boxes below
+  assert.equal($$(el, "main .stat").length, 1);
+  box.querySelector('[data-role="start-3"]').click();
+  assert.ok($(el, '[data-role="add-pack"]'));
+  // step 1 opens the areas in edit mode
+  $(el, '[data-role="start-1"]').click();
+  await flush();
+  assert.equal($(el, "h1").textContent, "Bereiche");
+  // with something in Larder the box is gone
+  const full = mount(makeHass(DOSES));
+  await flush();
+  assert.equal($(full, '[data-role="get-started"]'), null);
+});
+
+test("⋮ → 🛟 Emergency supply: groups, checklist and 🛒; 🏪 store sections for administrators (4.7)", async () => {
+  const hass = makeHass(DOSES);
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/supply`) {
+      return {
+        enabled: true, persons: 2, days: 10, days_covered: 4,
+        groups: [
+          { key: "drinks", unit: "l", need: 40, have: 18, unknown: 0, share: 0.45 },
+          { key: "grain", unit: "kg", need: 7, have: 7.5, unknown: 1, share: 1 },
+        ],
+        items: [{ key: "light", present: true, names: ["Kerzen"] }, { key: "radio", present: false, names: [] }],
+      };
+    }
+    if (msg.type === `${D}/supply_shop`) {
+      hass.wsCalls.push(msg);
+      return { added: true, item: "Mineralwasser", list: "todo.einkaufen" };
+    }
+    if (msg.type === `${D}/sections`) return { order: ["produce", "bakery", "meat", "fridge", "dry", "breakfast", "drinks", "frozen", "drugstore", "pharmacy", "other"] };
+    if (msg.type === `${D}/section_order`) {
+      hass.wsCalls.push(msg);
+      return { order: msg.order };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  const item = $(el, '[data-role="menu-supply"]');
+  assert.equal(item.textContent, "🛟 Notvorrat");
+  item.click();
+  await flush();
+  await flush();
+  assert.equal($(el, "h1").textContent, "Notvorrat");
+  assert.equal($(el, '[data-role="supply-covered"]').textContent, "Der Vorrat reicht für etwa 4 von 10 Tagen.");
+  const rows = $$(el, '[data-role="supply-food"] [data-key]');
+  assert.match(rows[0].textContent, /⬜ Getränke18 von 40 l/);
+  assert.match(rows[1].textContent, /✅ Getreide.*7,5 von 7 kg \+ 1 ohne Mengenangabe/);
+  assert.equal(rows[1].querySelector('[data-role="supply-shop"]'), null);
+  rows[0].querySelector('[data-role="supply-shop"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/supply_shop`), { type: `${D}/supply_shop`, key: "drinks" });
+  const items = $$(el, '[data-role="supply-items"] [data-key]');
+  assert.match(items[0].textContent, /✅ Kerzen oder TaschenlampeKerzen/);
+  assert.ok(items[1].querySelector('[data-role="supply-shop"]'));
+  // store sections: move drinks up once, save
+  $(el, '[data-role="menu-sections"]').click();
+  await flush();
+  const drinks = () => $(el, 'form.dialog [data-key="drinks"]');
+  drinks().querySelector('[data-role="section-up"]').click();
+  $(el, '[data-role="sections-save"]').click();
+  await flush();
+  const saved = hass.wsCalls.find((m) => m.type === `${D}/section_order`);
+  assert.deepEqual(saved.order.slice(4, 7), ["dry", "drinks", "breakfast"]);
+  // not for others
+  const other = mount(makeHass(DOSES, { admin: false }));
+  await flush();
+  assert.equal($(other, '[data-role="menu-sections"]').hidden, true);
+});

@@ -120,7 +120,7 @@ async def test_webhook_renamed_device_uses_user_name(hass, hass_client_no_auth) 
 
 
 async def test_one_webhook_for_multiple_entries_and_cleanup(
-    hass, hass_client_no_auth
+    hass, hass_client_no_auth, main_entry
 ) -> None:
     first = await _setup_entry(hass, "34OL")
     second = await _setup_entry(hass, "77AB")
@@ -136,8 +136,9 @@ async def test_one_webhook_for_multiple_entries_and_cleanup(
     await hass.async_block_till_done()
     assert hass.data[DOMAIN].get("webhook_id") == webhook_id
 
-    # unload the last container: webhook is unregistered
+    # unload the last container and the main entry: webhook is unregistered
     assert await hass.config_entries.async_unload(second.entry_id)
+    assert await hass.config_entries.async_unload(main_entry.entry_id)
     await hass.async_block_till_done()
     assert "webhook_id" not in hass.data[DOMAIN]
     resp = await client.post(f"/api/webhook/{webhook_id}", json={"code": QR})

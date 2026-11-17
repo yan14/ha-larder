@@ -41,7 +41,7 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: LarderC
         "entry": {"title": entry.title, "data": dict(entry.data), "version": entry.version},
         "settings": estimator.settings(),
         "estimates": {"count": sum(sources.values()), "by_source": sources},
-        "containers": len(hass.config_entries.async_entries(DOMAIN)),
+        "containers": sum(1 for e in hass.config_entries.async_entries(DOMAIN) if e.data.get("cc")),
         "device": {"area_id": device.area_id, "model": device.model} if device else None,
         "storage": {
             "area": context.area_name,

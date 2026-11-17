@@ -214,7 +214,7 @@ def test_generate_code_never_collides() -> None:
 # ---------- Panel ----------
 
 
-async def test_panel_registered_and_static_js_served(hass: HomeAssistant, hass_client) -> None:
+async def test_panel_registered_and_static_js_served(hass: HomeAssistant, hass_client, main_entry) -> None:
     entry = await _setup(hass)
     panels = hass.data[frontend.DATA_PANELS]
     assert "larder" in panels
@@ -246,6 +246,9 @@ async def test_panel_registered_and_static_js_served(hass: HomeAssistant, hass_c
     assert "larder" in hass.data[frontend.DATA_PANELS]
 
     assert await hass.config_entries.async_unload(second.entry_id)
+    await hass.async_block_till_done()
+    assert "larder" in hass.data[frontend.DATA_PANELS]  # the main entry keeps the dashboard
+    assert await hass.config_entries.async_unload(main_entry.entry_id)
     await hass.async_block_till_done()
     assert "larder" not in hass.data[frontend.DATA_PANELS]
     assert not [u for u in hass.data[frontend.DATA_EXTRA_MODULE_URL].urls if "larder-card.js" in u]
@@ -281,7 +284,7 @@ async def test_flow_create_applies_selected_area_once(hass: HomeAssistant) -> No
     assert result["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
 
-    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    entry = [e for e in hass.config_entries.async_entries(DOMAIN) if e.data.get("cc")][0]
     assert "area_id" not in entry.data  # applied only once
     device = dr.async_get(hass).async_get_device(
         identifiers={(DOMAIN, entry.data["cc"])}
@@ -316,7 +319,7 @@ async def test_flow_without_area_leaves_device_unassigned(hass: HomeAssistant) -
     result = await _create_via_flow(hass, "create", {})
     assert result["type"] is FlowResultType.CREATE_ENTRY
     await hass.async_block_till_done()
-    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    entry = [e for e in hass.config_entries.async_entries(DOMAIN) if e.data.get("cc")][0]
     device = dr.async_get(hass).async_get_device(
         identifiers={(DOMAIN, entry.data["cc"])}
     )

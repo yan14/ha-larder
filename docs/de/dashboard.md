@@ -6,7 +6,9 @@
 
 ## Dashboard „Larder“
 
-Sobald mindestens eine Dose angelegt ist, erscheint in der Seitenleiste der Eintrag **Larder**. Er braucht keine Konfiguration, passt sich an Theme und Sprache von Home Assistant an (Deutsch und Englisch) und aktualisiert sich selbst. *Die Screenshots zeigen Demo-Daten.*
+Gleich nach dem Hinzufügen der Integration erscheint in der Seitenleiste der Eintrag **Larder**; solange noch nichts in Larder ist, zeigt die Startseite **🚀 Los geht's** mit drei Schritten (Bereiche zuordnen, Einkaufsliste wählen, das Erste hinzufügen), erledigte abgehakt. Er braucht keine Konfiguration, passt sich an Theme und Sprache von Home Assistant an (Deutsch und Englisch) und aktualisiert sich selbst. *Die Screenshots zeigen Demo-Daten.*
+
+<p align="center"><img src="../images/dashboard-getstarted-de.png" width="250" alt="Los geht's"></p>
 
 Eine Leiste unten wechselt zwischen fünf Seiten. **Vorrat**, **Bereiche** und **Kategorien** haben oben einen Umschalter **Lebensmittel | Haushalt | Apotheke** (siehe [Haushaltsartikel](containers.md#haushaltsartikel)):
 

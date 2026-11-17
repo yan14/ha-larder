@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Add container",
-        "description": "How should the container be added?",
+        "description": "Larder is set up – containers, bags, packs and more are easiest to add in the **Larder** dashboard in the sidebar. Only a container with a QR code can be added here:",
         "menu_options": {
           "scan": "Read Zwilling QR code",
           "create": "Create new QR code"
@@ -244,7 +244,10 @@
           "recall_check": "Recall warnings (lebensmittelwarnung.de)",
           "recall_state": "Recall warnings: only for this German state",
           "plan_source": "Week plan suggestion: source",
-          "plan_days": "Week plan suggestion: days"
+          "plan_days": "Week plan suggestion: days",
+          "supply_check": "Emergency supply check",
+          "supply_persons": "Persons in the household (emergency supply)",
+          "supply_days": "Days of emergency supply"
         },
         "data_description": {
           "vacuum_default": "New containers start with the “Vacuum” switch on or off. Existing containers keep their value. Switch it off if most of your boxes are not vacuum-sealed.",
@@ -271,7 +274,10 @@
           "recall_check": "Every 6 hours, compares the public recalls of the German portal lebensmittelwarnung.de with the brand and contents of your containers, bags and packs. Matches appear on the start page and the card; event larder_recall for notifications. Only the public feed is fetched, nothing is sent.",
           "recall_state": "Empty = warnings for all German states.",
           "plan_source": "Where the dishes for “Suggest week” in the meal plan come from. The AI needs an AI task set up.",
-          "plan_days": "Larder suggests dishes for this many days from today (days that already have a plan are skipped)."
+          "plan_days": "Larder suggests dishes for this many days from today (days that already have a plan are skipped).",
+          "supply_check": "Shows under ⋮ → 🛟 Emergency supply what is missing according to the recommendation of the German Federal Office of Civil Protection (BBK).",
+          "supply_persons": "The emergency supply check calculates for this many persons.",
+          "supply_days": "The BBK recommends a supply for 10 days."
         }
       }
     },

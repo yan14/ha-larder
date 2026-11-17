@@ -13,6 +13,7 @@ const { areaAllows, scopeOfKind, setAreaScopes, todoLists, attachCompartmentChip
 const { installItems } = await import(`./larder-dashboard-items.js${VERSION_QUERY}`);
 const { installCare } = await import(`./larder-dashboard-care.js${VERSION_QUERY}`);
 const { installCook } = await import(`./larder-dashboard-cook.js${VERSION_QUERY}`);
+const { installSupply, supplyTexts } = await import(`./larder-dashboard-supply.js${VERSION_QUERY}`);
 
 const DOMAIN = "larder";
 const STORAGE_KEY = `${DOMAIN}.experimental`; // historic name, kept so saved views survive
@@ -51,7 +52,7 @@ export const CATEGORY_ICONS = {
 };
 
 const VIEWS = ["start", "containers", "recipes", "areas", "categories"];
-const ALL_VIEWS = [...VIEWS, "estimates", "stats", "stock", "stocktake"]; // "estimates" and "stats" are reached through ☰/⚙
+const ALL_VIEWS = [...VIEWS, "estimates", "stats", "stock", "stocktake", "supply"]; // "estimates" and "stats" are reached through ☰/⚙
 const MODES = ["grid", "list", "cards"];
 const VIEW_ICONS = { start: "🏠", containers: "🥫", recipes: "📖", areas: "📍", categories: "🏷️" };
 
@@ -263,7 +264,7 @@ export class LarderDashboard extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>${STYLE}</style>
       <header><button id="menu" type="button" aria-label="Menu">☰</button><h1></h1><button id="settings" type="button" hidden>⋮</button></header>
-      <div class="menu" hidden><button type="button" data-role="menu-stats"></button><button type="button" data-role="menu-stock"></button><button type="button" data-role="menu-stocktake"></button><button type="button" data-role="menu-putaway"></button><button type="button" data-role="menu-batch"></button><button type="button" data-role="menu-sizes"></button><button type="button" data-role="menu-labels"></button><button type="button" data-role="menu-data"></button><button type="button" data-role="menu-estimates"></button><button type="button" data-role="menu-settings"></button></div>
+      <div class="menu" hidden><button type="button" data-role="menu-stats"></button><button type="button" data-role="menu-stock"></button><button type="button" data-role="menu-stocktake"></button><button type="button" data-role="menu-supply"></button><button type="button" data-role="menu-sections"></button><button type="button" data-role="menu-putaway"></button><button type="button" data-role="menu-batch"></button><button type="button" data-role="menu-sizes"></button><button type="button" data-role="menu-labels"></button><button type="button" data-role="menu-data"></button><button type="button" data-role="menu-estimates"></button><button type="button" data-role="menu-settings"></button></div>
       <div class="notice" role="alert" hidden></div>
       <main></main>
       <nav></nav>
@@ -325,6 +326,14 @@ export class LarderDashboard extends HTMLElement {
     this._menu.querySelector('[data-role="menu-stock"]').addEventListener("click", () => {
       this._menu.hidden = true;
       this.setView("stock");
+    });
+    this._menu.querySelector('[data-role="menu-supply"]').addEventListener("click", () => {
+      this._menu.hidden = true;
+      this.setView("supply");
+    });
+    this._menu.querySelector('[data-role="menu-sections"]').addEventListener("click", () => {
+      this._menu.hidden = true;
+      this.openSectionsDialog();
     });
     this._menu.querySelector('[data-role="menu-data"]').addEventListener("click", () => {
       this._menu.hidden = true;
@@ -583,6 +592,7 @@ export class LarderDashboard extends HTMLElement {
     this._view = view;
     if (view === "stats") this.loadStats();
     if (view === "stock") this.loadStock();
+    if (view === "supply") this.loadSupply();
     if (view === "containers") this.loadSizes();
     if (view === "start" || view === "recipes") this.loadPlans();
     if (view === "start") {
@@ -675,13 +685,19 @@ export class LarderDashboard extends HTMLElement {
               ? this.stockTitle()
               : this._view === "stocktake"
                 ? this.stocktakeTitle()
-                : t.views[this._view];
+                : this._view === "supply"
+                  ? this.supplyTitle()
+                  : t.views[this._view];
     // ⋮: statistics and labels for everyone, export, estimates and settings for administrators only
     const admin = isAdmin(hass);
     this._settingsBtn.hidden = false;
     this._settingsBtn.setAttribute("aria-label", t.moreActions);
     this._settingsBtn.title = t.moreActions;
-    for (const role of ["menu-data", "menu-estimates", "menu-settings"]) {
+    const st = supplyTexts(hass);
+    this._menu.querySelector('[data-role="menu-supply"]').textContent = st.menu;
+    this._menu.querySelector('[data-role="menu-supply"]').hidden = this._supplyCheck === false;
+    this._menu.querySelector('[data-role="menu-sections"]').textContent = st.sectionsMenu;
+    for (const role of ["menu-data", "menu-estimates", "menu-settings", "menu-sections"]) {
       this._menu.querySelector(`[data-role="${role}"]`).hidden = !admin;
     }
     this._menu.querySelector('[data-role="menu-estimates"]').textContent = `📋 ${t.menuEstimates}`;
@@ -724,6 +740,8 @@ export class LarderDashboard extends HTMLElement {
       this._scan && this._scan.mode,
       this._chosenFor,
       this._areaEdit,
+      this._listChosen,
+      this._view === "start" && !rows.length ? this._areaSig() : null,
       this._plans,
       this._bought,
       this._again,
@@ -734,6 +752,8 @@ export class LarderDashboard extends HTMLElement {
       this._view === "stats" ? this._report : null,
       this._view === "stats" ? [this._stats, this._statsDays, this._hhStats] : null,
       this._view === "stock" ? this._stock : null,
+      this._view === "supply" ? this._supply : null,
+      this._supplyCheck,
       this._view === "stocktake" ? this.stocktakeSig() : null,
       this._view === "areas" ? this._areaSig() : null,
     ]);
@@ -766,6 +786,9 @@ export class LarderDashboard extends HTMLElement {
         break;
       case "stocktake":
         this._renderStocktake();
+        break;
+      case "supply":
+        this._renderSupply();
         break;
       default:
         this._renderStart(t, rows);
@@ -1934,10 +1957,52 @@ export class LarderDashboard extends HTMLElement {
     this._main.replaceChildren(frag);
   }
 
+  /** "Get started" (empty Larder): areas, shopping list, first item; done steps are ticked. */
+  _startBox(t) {
+    const admin = isAdmin(this._hass);
+    const ids = this._larderLabelIds() || [];
+    const tagged = Object.values(this._hass.areas || {}).some((a) => (a.labels || []).some((l) => ids.includes(l)));
+    const done = [tagged, !!this._listChosen, false];
+    const actions = [
+      () => {
+        this.setView("areas");
+        this.setAreaEdit(true);
+      },
+      () => navigate(`/config/integrations/integration/${DOMAIN}`),
+      () => this.openAddMenu(),
+    ];
+    const box = el("section", "stat start");
+    box.dataset.role = "get-started";
+    box.append(el("h3", "", t.startTitle));
+    t.startSteps.forEach(([title, hint, label], i) => {
+      const row = el("div", "boughtrow");
+      row.dataset.step = String(i + 1);
+      if (done[i]) row.classList.add("done");
+      const text = el("span", "name");
+      text.append(el("span", "", `${done[i] ? "✅" : `${i + 1}.`} ${title}`), el("span", "sub", hint));
+      row.append(text);
+      if (admin || i === 2) {
+        const btn = el("button", done[i] ? "" : "primary", label);
+        btn.type = "button";
+        btn.dataset.role = `start-${i + 1}`;
+        btn.addEventListener("click", actions[i]);
+        row.append(btn);
+      }
+      box.append(row);
+    });
+    return box;
+  }
+
   _renderStart(t, rows) {
     const hass = this._hass;
     const frag = document.createDocumentFragment();
     frag.append(el("div", "hello", t.hello(hass.user && hass.user.name)));
+    if (!rows.length) {
+      // 4.7: nothing in Larder yet – three steps instead of empty boxes
+      frag.append(this._startBox(t));
+      this._main.replaceChildren(frag);
+      return;
+    }
     const scopeOf = (item) => scopeOfKind(item.kind);
     const soon = sortRows(rows.filter((r) => scopeOf(r) === "food" && isSoon(r)), "date", this._lang());
     const isHh = (item) => scopeOf(item) !== "food";
@@ -2044,6 +2109,18 @@ export class LarderDashboard extends HTMLElement {
     if (!hass || !hass.callWS) return;
     try {
       const res = await hass.callWS({ type: `${DOMAIN}/settings` });
+      const listed = !!(res && res.shopping_list);
+      const supply = res ? res.supply_check !== false : true;
+      if (supply !== this._supplyCheck) {
+        this._supplyCheck = supply;
+        this._sig = "";
+        this._update();
+      }
+      if (listed !== this._listChosen) {
+        this._listChosen = listed;
+        this._sig = "";
+        this._update();
+      }
       const days = Number(res && res.recipe_days);
       if (Number.isInteger(days) && days >= 0 && days !== this._recipeDays) {
         this._recipeDays = days;
@@ -3096,6 +3173,7 @@ export class LarderDashboard extends HTMLElement {
 
 installItems(LarderDashboard, { el, isAdmin, listAreas, todoLists, scopeOfKind, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment });
 installCook(LarderDashboard, { el, isAdmin, DOMAIN });
+installSupply(LarderDashboard, { el, DOMAIN });
 installCare(LarderDashboard, { el, isAdmin, listAreas, scopeOfKind, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment, CATEGORY_ICONS });
 
 if (!customElements.get("larder-dashboard")) {

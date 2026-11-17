@@ -53,7 +53,7 @@ async def test_recipes_leave_out_containers_with_household_allergens(hass: HomeA
 
 async def _empty_with_product(hass: HomeAssistant, cc: str, content: str, product: dict) -> None:
     await hass.services.async_call("text", "set_value", {"entity_id": _eid(hass, "text", cc), "value": content}, blocking=True)
-    entry = next(e for e in hass.config_entries.async_entries(DOMAIN) if e.data["cc"] == cc)
+    entry = next(e for e in hass.config_entries.async_entries(DOMAIN) if e.data.get("cc") == cc)
     await entry.runtime_data.resettable["content"].async_set_product(product)
     await hass.services.async_call("button", "press", {"entity_id": _eid(hass, "button", cc)}, blocking=True)
     await hass.async_block_till_done()

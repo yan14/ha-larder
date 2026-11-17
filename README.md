@@ -31,6 +31,8 @@ Home Assistant integration for reusable food storage containers: note what is in
 <img src="docs/images/dashboard-cards-en.png" width="250" alt="Cards with all details">
 </p>
 
+> **New in 4.7:** [one-click setup](docs/en/containers.md#adding-a-container) with *Get started*, the shopping list [sorted by store section](docs/en/kitchen.md#store-sections) and an [emergency supply check](docs/en/kitchen.md#emergency-supply) following the BBK recommendation.
+>
 > **New in 4.6:** household items can be [replaced regularly](docs/en/containers.md#household-items) (water filter, vacuum bags) with a reminder; the bottom bar says *Larder*, the stock view is *Stock*.
 >
 > **New in 4.5:** a [reminder for medicines](docs/en/kitchen.md#medicines-expiring) (and dated household items) on chosen weekdays, as push and on Alexa.
@@ -91,7 +93,7 @@ Since Home Assistant 2026.11 the community store HACS is built in as the **Marke
 
 ## Getting started
 
-1. **Add your first container** under Settings → Devices & services → Add integration → Larder (see [Adding a container](docs/en/containers.md#adding-a-container)). From then on the **Larder** dashboard is in the sidebar and adding more containers is quicker there (**＋** on the containers page).
+1. **Add the integration** under Settings → Devices & services → Add integration → Larder. One click, no questions: the **Larder** dashboard appears in the sidebar right away, and its start page shows **🚀 Get started** – assign areas, choose a shopping list, add the first item with **＋**.
 2. **Give each container an area** that says where it is stored, for example "Fridge", "Freezer" or "Pantry". The estimate needs it. Optionally add a `Larder: …` label with the [template](docs/en/containers.md#template-for-the-area-label) to the areas.
 3. **Fill the containers** in the dashboard: contents, quantity, best-before date (or let Larder estimate it).
 4. **Check the [settings](docs/en/reference.md#settings)** once: estimate mode, periods, calendar, shopping list.

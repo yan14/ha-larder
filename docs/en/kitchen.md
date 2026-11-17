@@ -139,6 +139,25 @@ Under Settings → Devices & services → **Larder** → **Configure** you can p
 
 *Bought – add to stock* watches every list Larder wrote to, and *Brand and package on the shopping list* applies to all of them. If a chosen list is removed from Home Assistant, the product falls back to the default list.
 
+### Store sections
+
+Since 4.7 every product belongs to a **store section**: 🥦 fruit & vegetables, 🥖 bakery, 🥩 meat, sausage & fish, 🧀 chilled, 🍝 pasta, rice & cans, ☕ breakfast, coffee & sweets, 🥤 drinks, 🧊 frozen, 🧴 drugstore & household, 💊 pharmacy, 🛒 other. Larder suggests it from the kind and category (household items → drugstore, medicines → pharmacy, *TK-* → frozen, water and juice → drinks); **Store section** on the card of a product overrides it, remembered by product name, and **Automatic** goes back to the suggestion.
+
+When Larder puts something on a list, it moves the new item behind the last open item of the same or an earlier section, so the list follows your way through the store. Set the order once under **⋮ → 🏪 Store sections** (administrators) with ↑ and ↓. Items you typed yourself are sorted in by their name as well. This needs a list that can move items, such as the built-in *Shopping list* or *Local To-do*; lists that cannot (some cloud lists) keep the order in which items were added.
+
+## Emergency supply
+
+**⋮ → 🛟 Emergency supply** compares the stock with the example supply of the German Federal Office of Civil Protection (BBK) for 10 days: per person 20 l of drinks, 3.5 kg of grain, bread, potatoes, pasta and rice, 4 kg of vegetables and pulses, 2.5 kg of fruit and nuts, 2.6 kg of milk and dairy, 1.5 kg of fish, meat and eggs, and 0.36 kg of fats and oils. Below that it checks candles or a torch, batteries, a radio, toilet paper, soap, a first aid kit, pain relief, a thermometer and disinfectant by name.
+
+- **Persons** and **days** are settings (default 2 persons, 10 days); the amounts scale with them. The check can be switched off.
+- Counted is what has an amount: a package size such as *500 g* or *6 x 1.5 l* (times the number of packs), containers in grams or millilitres, portions as 300 g. Entries without an amount are shown as *+ n without an amount*, so the result is a lower bound.
+- The page says for how many days the supply lasts (the weakest group decides) and offers **🛒** for every gap: *Mineral water*, *Canned vegetables*, *Candles* … go onto the food, household or pharmacy list.
+
+<p align="center">
+<img src="../images/dashboard-supply-en.png" width="250" alt="Emergency supply">
+<img src="../images/dashboard-sections-en.png" width="250" alt="Store sections">
+</p>
+
 ## Best-before dates in your calendar
 
 Under Settings → Devices & services → **Larder** → **Configure** you can pick an existing **calendar** (Google, CalDAV, *Local Calendar* …). Every container then gets an all-day event "Best before: Pizza" on its best-before date. The event is created when a date is set, moved when the date or the contents change, and deleted when the date is cleared, the container is emptied or removed, or you pick another calendar. Your own events are recognised by a tag in the description and never touched otherwise.

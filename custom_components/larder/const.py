@@ -43,6 +43,8 @@ CONF_SOURCE = "source"  # "zwilling" (QR code read) or "generated" (newly create
 
 SOURCE_ZWILLING = "zwilling"
 SOURCE_GENERATED = "generated"
+SOURCE_MAIN = "main"  # main entry "Larder" (4.7): no device, holds settings and keeps the dashboard
+MAIN_UNIQUE_ID = "larder_main"
 
 MANUFACTURER = "ZWILLING"
 
@@ -62,6 +64,10 @@ CONF_NFC_NOTIFY = "nfc_notify"
 CONF_TODO_ENTITY = "todo_entity"  # default shopping list (food; also household without its own list)
 CONF_TODO_HOUSEHOLD = "todo_household"  # default shopping list for household items (optional)
 CONF_TODO_PHARMACY = "todo_pharmacy"  # default shopping list for medicines (optional)
+CONF_SECTION_ORDER = "section_order"  # order of the store sections on the shopping list (4.7)
+CONF_SUPPLY_CHECK = "supply_check"  # emergency supply check (4.7)
+CONF_SUPPLY_PERSONS = "supply_persons"  # persons in the household for the emergency supply
+CONF_SUPPLY_DAYS = "supply_days"  # days the emergency supply should last (BBK: 10)
 CONF_LONG_SOON_DAYS = "long_soon_days"  # "expires soon" for medicines and household items with a date
 DEFAULT_LONG_SOON_DAYS = 60
 CONF_MEAL_CALENDAR = "meal_calendar"  # calendar for the week plan (optional)

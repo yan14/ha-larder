@@ -7,6 +7,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.larder.const import DOMAIN
 from custom_components.larder.recipes import build_summary, parse_recipes
+from custom_components.larder.sections import SECTIONS
 from homeassistant.core import HomeAssistant, SupportsResponse
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr, entity_registry as er
@@ -227,10 +228,10 @@ async def test_settings_websocket(hass: HomeAssistant, hass_ws_client) -> None:
     entry = await _setup(hass, "AAAA")
     client = await hass_ws_client(hass)
     await client.send_json({"id": 1, "type": "larder/settings"})
-    assert (await client.receive_json())["result"] == {"recipe_days": 3, "soon_days": 3, "vacuum_default": True, "shopping_list": False}
+    assert (await client.receive_json())["result"] == {**{"recipe_days": 3, "soon_days": 3, "vacuum_default": True, "shopping_list": False}, "supply_check": True, "section_order": list(SECTIONS)}
     await _options(hass, entry, recipe_days=0)
     await client.send_json({"id": 2, "type": "larder/settings"})
-    assert (await client.receive_json())["result"] == {"recipe_days": 0, "soon_days": 3, "vacuum_default": True, "shopping_list": False}
+    assert (await client.receive_json())["result"] == {**{"recipe_days": 0, "soon_days": 3, "vacuum_default": True, "shopping_list": False}, "supply_check": True, "section_order": list(SECTIONS)}
 
 
 async def test_soon_days_setting_changes_status_attribute_and_overview(hass: HomeAssistant) -> None:

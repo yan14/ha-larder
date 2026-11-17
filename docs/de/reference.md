@@ -35,6 +35,11 @@ Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** (bei ei
 | Rückrufwarnungen: nur für dieses Bundesland | alle | Nur Warnungen, die dieses Bundesland betreffen |
 | Wochenplan-Vorschlag: Quelle | Rezeptbuch, sonst KI | Woher die Gerichte des [Wochenvorschlags](kitchen.md#wochenvorschlag) kommen |
 | Wochenplan-Vorschlag: Tage | 5 | Für wie viele Tage der Vorschlag gilt |
+| Notvorrat-Check | an | **⋮ → 🛟 Notvorrat**, siehe [Notvorrat](kitchen.md#notvorrat) |
+| Personen im Haushalt (Notvorrat) | 2 | Für so viele Personen rechnet der Notvorrat |
+| Tage Notvorrat | 10 | Das BBK empfiehlt 10 Tage |
+
+Die Reihenfolge der [Abteilungen](kitchen.md#abteilungen-im-laden) stellst du im Dashboard unter **⋮ → 🏪 Abteilungen** ein.
 
 Der Dialog zeigt außerdem die **Webhook-URL** für den [iOS-Kurzbefehl](scanning.md#ios-kurzbefehl-für-die-originalen-zwilling-codes).
 

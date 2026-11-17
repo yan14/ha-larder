@@ -76,7 +76,7 @@ async def test_flow_creates_device_with_entities(hass: HomeAssistant) -> None:
     }
     await hass.async_block_till_done()
 
-    entry = hass.config_entries.async_entries(DOMAIN)[0]
+    entry = [e for e in hass.config_entries.async_entries(DOMAIN) if e.data.get("cc")][0]
     assert entry.unique_id == "34OL"
 
     device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "34OL")})

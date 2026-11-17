@@ -11,7 +11,19 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import CONF_CC, CONF_INITIAL, CONF_KIND, CONF_SIZE, CONF_TC, DOMAIN, KIND_CONTAINER, KINDS, MANUFACTURER
+from .const import (
+    CONF_CC,
+    CONF_INITIAL,
+    CONF_KIND,
+    CONF_SIZE,
+    CONF_SOURCE,
+    CONF_TC,
+    DOMAIN,
+    KIND_CONTAINER,
+    KINDS,
+    MANUFACTURER,
+    SOURCE_MAIN,
+)
 
 
 @dataclass
@@ -24,6 +36,11 @@ class LarderRuntime:
 type LarderConfigEntry = ConfigEntry[LarderRuntime]
 
 _MODELS = {"bag": "Bag", "pack": "Pack", "household": "Household item", "medicine": "Medicine"}
+
+
+def is_main(entry: ConfigEntry) -> bool:
+    """The main entry "Larder" (no container, no entities)."""
+    return entry.data.get(CONF_SOURCE) == SOURCE_MAIN
 
 
 def kind_of(entry: ConfigEntry) -> str:
