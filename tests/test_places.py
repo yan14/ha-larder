@@ -1,4 +1,4 @@
-"""Tests Block 13: NFC-Tag/QR-Etikett je Fach, Etiketten mit Schriftfarbe, invertiert und Symbol im QR-Code."""
+"""Tests block 13: NFC tag/QR label per compartment, labels with text colour, inverted and symbol in the QR code."""
 
 import re
 
@@ -41,7 +41,7 @@ async def test_link_scan_notify_event_and_unlink(hass: HomeAssistant, hass_ws_cl
     assert call["data"]["url"] == place_path(cellar.id, "Regal oben") == call["data"]["clickAction"]
     assert call["data"]["url"] == f"/larder?place={cellar.id}&compartment=Regal+oben"
 
-    # Groß-/Kleinschreibung egal; ein neuer Tag ersetzt den alten
+    # case does not matter; a new tag replaces the old one
     res = await _ws(hass, hass_ws_client, type="larder/place_link", tag_id="fach-2", area_id=cellar.id, compartment="regal oben")
     assert [link["tag_id"] for link in res["result"]["links"]] == ["fach-2"]
     res = await _ws(hass, hass_ws_client, type="larder/place_unlink", area_id=cellar.id, compartment="Regal oben")
@@ -76,7 +76,7 @@ async def test_scan_session_gets_the_place_and_qr_report(hass: HomeAssistant, ha
     await _scan(hass, "t", _phone(hass))
     msg = await client.receive_json()
     assert msg["event"]["place"] is True and msg["event"]["name"] == "Vorratskammer"
-    assert calls == []  # Dashboard offen: keine Benachrichtigung
+    assert calls == []  # dashboard open: no notification
     events = async_capture_events(hass, "larder_compartment_scanned")
     res = await _ws(hass, hass_ws_client, type="larder/report_place_scan", area_id=pantry.id, compartment="Schrank")
     await hass.async_block_till_done()
@@ -99,21 +99,21 @@ async def test_place_labels_via_http(hass: HomeAssistant, hass_client) -> None:
 def test_label_colour_inverted_and_logo() -> None:
     label = Label("Dose 1", scan_app_url("HA-00000001"), "Gulasch")
     black = build_pdf([label])
-    assert b" rg" not in black  # Standard: schwarz-weiß
+    assert b" rg" not in black  # default: black and white
     green = build_pdf([label], color="green")
     assert b"0.080 0.330 0.180 rg" in green
     inverted = build_pdf([label], inverted=True, design="frame")
-    assert b"\n1 g\n" in inverted and b"1 G" in inverted  # weiße Schrift und weißer Rahmen
+    assert b"\n1 g\n" in inverted and b"1 G" in inverted  # white text and white frame
     plain = build_pdf([label], "2x4")
     logo = build_pdf([label], "2x4", logo=True)
-    assert logo.count(b" re\n") > plain.count(b" re\n")  # höhere Fehlerkorrektur: mehr Module
-    assert logo.count(b" c ") > plain.count(b" c ")  # Symbol mit Rundungen
-    # sehr kleine Etiketten: kein Symbol
+    assert logo.count(b" re\n") > plain.count(b" re\n")  # higher error correction: more modules
+    assert logo.count(b" c ") > plain.count(b" c ")  # symbol with rounded corners
+    # very small labels: no symbol
     small = build_pdf([label], "54x25", logo=True)
     assert small.count(b" re\n") == build_pdf([label], "54x25").count(b" re\n")
 
 
 async def test_device_registry_untouched(hass: HomeAssistant) -> None:
-    # Fächer sind kein Gerät in Home Assistant
+    # compartments are not a device in Home Assistant
     await _setup(hass, "AAAA")
     assert all(d.model != "compartment" for d in dr.async_get(hass).devices.values())

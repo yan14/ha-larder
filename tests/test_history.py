@@ -1,4 +1,4 @@
-"""Tests: Verlauf pro Dose (Leeren mit gegessen/weggeworfen, Abruf, CSV)."""
+"""Tests: history per container (emptying with eaten/thrown away, query, CSV)."""
 
 from custom_components.larder.const import DOMAIN
 from custom_components.larder.export import history_csv
@@ -24,7 +24,7 @@ async def test_emptying_records_history_with_outcome(hass: HomeAssistant, hass_w
     assert (await ws.receive_json())["success"]
     assert hass.states.get(_eid(hass, "text", "AAAA")).state == ""
 
-    # direkt über den Button (z. B. Automation): ohne Antwort
+    # directly via the button (e.g. automation): without an answer
     await hass.services.async_call("button", "press", {"entity_id": _eid(hass, "button", "BBBB")}, blocking=True)
 
     history = await async_get_history(hass)
@@ -35,7 +35,7 @@ async def test_emptying_records_history_with_outcome(hass: HomeAssistant, hass_w
     assert older["name"] == "Dose AAAA" and older["emptied"]
     assert (newest["cc"], newest["content"], newest["outcome"], newest["expired"]) == ("BBBB", "Käse", None, True)
 
-    # Abruf pro Dose und nachträglich festlegen
+    # query per container and set later
     await ws.send_json({"id": 2, "type": "larder/history", "device_id": _device(hass, "BBBB")})
     msg = await ws.receive_json()
     assert [r["content"] for r in msg["result"]["records"]] == ["Käse"]
@@ -45,7 +45,7 @@ async def test_emptying_records_history_with_outcome(hass: HomeAssistant, hass_w
     await ws.send_json({"id": 4, "type": "larder/history_outcome", "record_id": "nope", "outcome": "eaten"})
     assert not (await ws.receive_json())["success"]
 
-    # leere Dose leeren: kein Eintrag
+    # emptying an empty container: no entry
     await ws.send_json({"id": 5, "type": "larder/empty", "device_id": _device(hass, "AAAA"), "outcome": "eaten"})
     await ws.receive_json()
     assert len(history.list()) == 2

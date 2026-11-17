@@ -1,4 +1,4 @@
-"""Tests: Rezept aus Foto/PDF lesen (simulierter AI-Task-Dienst, echter HTTP-Upload)."""
+"""Tests: read a recipe from a photo/PDF (simulated AI task service, real HTTP upload)."""
 
 from http import HTTPStatus
 from pathlib import Path
@@ -27,7 +27,7 @@ def _fake_ai(hass: HomeAssistant, data=None, error: Exception | None = None) -> 
 
     async def handler(call):
         record = dict(call.data)
-        # Die Anhänge müssen während des Aufrufs auf der Platte liegen
+        # the attachments must be on disk during the call
         media = Path(hass.config.media_dirs["local"])
         record["files_present"] = [
             (media / a["media_content_id"].split("/local/", 1)[1]).exists() for a in call.data["attachments"]
@@ -75,7 +75,7 @@ async def test_photo_is_read_sent_as_attachment_and_deleted(hass: HomeAssistant,
     assert [a["media_content_type"] for a in call["attachments"]] == ["image/jpeg", "image/jpeg"]
     assert all(a["media_content_id"].startswith("media-source://media_source/local/larder/recipe_photos/") for a in call["attachments"])
     assert "2 photos" in call["instructions"] and "nur Seite 2 zählt" in call["instructions"]
-    assert list((ready / "larder" / "recipe_photos").iterdir()) == []  # aufgeräumt
+    assert list((ready / "larder" / "recipe_photos").iterdir()) == []  # cleaned up
 
 
 async def test_pdf_is_accepted_other_types_are_not(hass: HomeAssistant, hass_client, ready) -> None:
@@ -117,7 +117,7 @@ async def test_no_recipe_and_ai_errors_are_reported_and_files_are_cleaned_up(has
 
 async def test_only_admins_may_upload(hass: HomeAssistant, hass_client, hass_admin_user, ready) -> None:
     calls = _fake_ai(hass)
-    hass_admin_user.groups = []  # kein Administrator mehr
+    hass_admin_user.groups = []  # no longer an administrator
     client = await hass_client()
     resp = await client.post(URL, data=_form(("a.jpg", "image/jpeg", b"x")))
     assert resp.status == HTTPStatus.UNAUTHORIZED and calls == []

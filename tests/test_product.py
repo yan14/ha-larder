@@ -1,4 +1,4 @@
-"""Tests: Barcode → Produktname über Open Food Facts."""
+"""Tests: barcode → product name via Open Food Facts."""
 
 from custom_components.larder.product import API, async_lookup
 from homeassistant.core import HomeAssistant
@@ -18,7 +18,7 @@ async def test_lookup_found_cached_and_not_found(hass: HomeAssistant, aioclient_
     result = await async_lookup(hass, "4000417025005")
     assert (result["found"], result["name"], result["brand"], result["quantity"]) == (True, "Zarte Haferflocken", "Kölln", "500 g")
     assert result["product"] == {"ean": "4000417025005", "source": "openfoodfacts", "brand": "Kölln", "package": "500 g"}
-    await async_lookup(hass, "4000-4170-25005")  # gleiche Ziffern: aus dem Zwischenspeicher
+    await async_lookup(hass, "4000-4170-25005")  # same digits: from the cache
     assert aioclient_mock.call_count == 1
 
     aioclient_mock.get(API.format(code="12345678"), status=404, json={"status": 0})
@@ -58,7 +58,7 @@ def test_nutrition_from_open_food_facts() -> None:
         "Ballaststoffe 10 g, Eiweiß 14 g, Salz 0,02 g (pro 100 g)"
     )
     assert nutrition(product, "en")["allergens"] == "Gluten, Milk, Something else"
-    # nur kJ: in kcal umgerechnet; unbekannter Nutri-Score fehlt
+    # only kJ: converted to kcal; unknown Nutri-Score is missing
     only_kj = nutrition({"nutriments": {"energy-kj_100g": 1000}, "nutriscore_grade": "unknown"}, "de")
     assert only_kj == {"kcal_100g": 239}
 
@@ -81,7 +81,7 @@ async def test_product_data_on_the_container(hass: HomeAssistant, hass_ws_client
     assert msg["result"]["product"] == {"brand": "Kölln", "kcal_100g": 372, "kcal_portion": 149.2, "nutri_score": "A", "allergens": "Gluten"}
     attrs = hass.states.get(_eid(hass, "text", "AAAA")).attributes
     assert attrs["kcal_100g"] == 372 and attrs["brand"] == "Kölln"
-    # einzelnes Feld ändern, leeres löscht
+    # change a single field, an empty one clears it
     await ws.send_json({"id": 2, "type": "larder/product_set", "device_id": device.id, "product": {"kcal_100g": "380,5", "allergens": ""}})
     msg = await ws.receive_json()
     assert msg["result"]["product"]["kcal_100g"] == 380.5 and "allergens" not in msg["result"]["product"]

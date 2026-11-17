@@ -90,7 +90,7 @@ Für eigene Automationen: `larder.get_expiring_medicines` (optional `days`, `inc
 
 ### Bald leer und Rückrufe
 
-Ein dritter Blueprint schickt einen Push, wenn ein Produkt [bald leer](containers.md#vorrat) ist und wenn eine [Rückrufwarnung](containers.md#rückrufwarnungen) zu etwas im Vorrat passt; beides lässt sich einzeln ein- und ausschalten. Antippen öffnet die Startseite von Larder. Die Ereignisse `larder_running_low` (`name`, `count`, `min`, `lasts_days`, `message`) und `larder_recall` (`title`, `reason`, `link`, `products`, `places`, `message`) gehen auch für eigene Automationen. Von Hand ausgeführt, schickt die Automation eine Test-Benachrichtigung.
+Ein dritter Blueprint schickt einen Push, wenn ein Produkt [bald leer](containers.md#bestand) ist und wenn eine [Rückrufwarnung](containers.md#rückrufwarnungen) zu etwas im Vorrat passt; beides lässt sich einzeln ein- und ausschalten. Seit 4.6 erinnert er auf Wunsch auch, wenn ein Haushaltsartikel [gewechselt werden sollte](containers.md#haushaltsartikel) (Ereignis `larder_replace_due` mit `name`, `due`, `weeks`, `title`, `message`). Antippen öffnet die Startseite von Larder. Die Ereignisse `larder_running_low` (`name`, `count`, `min`, `lasts_days`, `message`) und `larder_recall` (`title`, `reason`, `link`, `products`, `places`, `message`) gehen auch für eigene Automationen. Von Hand ausgeführt, schickt die Automation eine Test-Benachrichtigung.
 
 [![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fstock_alerts.yaml)
 

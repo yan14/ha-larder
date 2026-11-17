@@ -299,6 +299,14 @@ export function areaAllows(areaId, scope) {
   return !scope || !s || s === "both" || s === scope;
 }
 
+/** ISO date as a short local date ("26.11." in German, "Nov 26" otherwise). */
+function fmtDay(iso, hass) {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-").map(Number);
+  const lang = ((hass && hass.language) || "en").toLowerCase();
+  return new Date(y, m - 1, d).toLocaleDateString(lang, { day: "numeric", month: "short" });
+}
+
 /** All to-do lists of Home Assistant as [{id, name}], sorted by name (for choosing a shopping list). */
 export function todoLists(hass) {
   const lang = ((hass && hass.language) || "en").toLowerCase();
@@ -418,6 +426,7 @@ class DoseCard {
       <div class="packline" role="note" hidden></div>
       <div class="olderhint" role="note" hidden></div>
       <div class="row minrow" hidden><label data-l="minStock"></label><input data-f="minStock" type="number" min="0" max="999" step="1" inputmode="numeric"><span class="stockinfo"></span></div>
+      <div class="row replrow" hidden><label data-l="replaceEvery"></label><input data-f="replaceWeeks" type="number" min="0" max="520" step="1" inputmode="numeric"><span class="replinfo"></span><button class="replaced" type="button" hidden></button></div>
       <div class="row listrow" hidden><label data-l="shopList"></label><select data-f="shopList"></select></div>
       <div class="allergen-warning" role="note" hidden></div>
       <details class="nutrition"><summary></summary>
@@ -598,6 +607,20 @@ class DoseCard {
       if (!hass || !hass.callWS || !content) return;
       const value = Math.max(0, Math.min(999, parseInt(ev.target.value, 10) || 0));
       hass.callWS({ type: `${DOMAIN}/stock_min`, content, min: value }).catch(() => this._panel.showError(strings(hass).minStockFailed));
+    });
+    // replacement interval of a household item (weeks, 0 = none) and "replaced" (one piece, interval restarts)
+    this.q('[data-f="replaceWeeks"]').addEventListener("change", (ev) => {
+      const hass = this._panel.hass;
+      const content = this.inputs.content.value.trim();
+      if (!hass || !hass.callWS || !content) return;
+      const weeks = Math.max(0, Math.min(520, parseFloat(String(ev.target.value).replace(",", ".")) || 0));
+      hass.callWS({ type: `${DOMAIN}/replace_interval`, content, weeks }).catch(() => this._panel.showError(strings(hass).replaceFailed));
+    });
+    this.q("button.replaced").addEventListener("click", () => {
+      const hass = this._panel.hass;
+      const content = this.inputs.content.value.trim();
+      if (!hass || !hass.callWS || !content) return;
+      hass.callWS({ type: `${DOMAIN}/replaced`, content, device_id: this.deviceId }).catch(() => this._panel.showError(strings(hass).replaceFailed));
     });
     // own shopping list of the product (remembered by product name, "" = the default list)
     this.q('[data-f="shopList"]').addEventListener("change", (ev) => {
@@ -855,6 +878,11 @@ class DoseCard {
     const kind = (text && text.attributes && text.attributes.kind) || "container";
     const packLike = kind === "pack" || kind === "household" || kind === "medicine";
     const nonFoodKind = kind === "household" || kind === "medicine";
+    // packs, household items and medicines are used up, containers and bags are emptied
+    if (kind !== "container" && kind !== "bag") {
+      this.q("button.empty").textContent = t.usedUp;
+      this.q("button.lastempty").textContent = t.usedUp;
+    }
     this.q(".nfcrow").classList.toggle("visible", admin && nfc !== null && !packLike);
     // household items: the date is optional (e.g. sunscreen); medicines: the expiry date; no estimate for either
     this.q('[data-l="bestBefore"]').textContent = kind === "medicine" ? t.expiry : kind === "household" ? t.expiryOptional : t.bestBefore;
@@ -980,6 +1008,18 @@ class DoseCard {
     minRow.hidden = !(packLike && hasContentNow);
     this.q('[data-l="minStock"]').textContent = t.minStock;
     if (!minRow.hidden) this._setInput(this.q('[data-f="minStock"]'), text.attributes.min_stock ? String(text.attributes.min_stock) : "");
+    // replacement interval: household items with content
+    const replRow = this.q(".replrow");
+    replRow.hidden = !(kind === "household" && hasContentNow);
+    if (!replRow.hidden) {
+      const repl = text.attributes.replace;
+      this.q('[data-l="replaceEvery"]').textContent = t.replaceEvery;
+      this._setInput(this.q('[data-f="replaceWeeks"]'), repl ? String(repl.weeks).replace(".0", "") : "");
+      this.q(".replinfo").textContent = repl ? t.replaceInfo(repl.days, fmtDay(repl.due, hass)) : "";
+      const replaced = this.q("button.replaced");
+      replaced.hidden = !repl;
+      replaced.textContent = `🔁 ${t.replaced}`;
+    }
     // shopping list of the product: only with content and as soon as there are to-do lists
     const lists = todoLists(hass);
     const listRow = this.q(".listrow");

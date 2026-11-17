@@ -23,6 +23,7 @@ from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import area_registry as ar, device_registry as dr, entity_registry as er
 from homeassistant.helpers.dispatcher import async_dispatcher_send
+from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
@@ -61,6 +62,8 @@ AGAIN_SNOOZE = 30  # "✕" hides a suggestion for this many days
 AGAIN_MAX = 3
 REORDER_SNOOZE = 7  # "✕" at "Running low" hides a product for this many days
 EVENT_RUNNING_LOW = f"{DOMAIN}_running_low"
+EVENT_REPLACE_DUE = f"{DOMAIN}_replace_due"
+REPLACE_AHEAD = 7  # "replace soon": due within this many days
 
 
 def product_key(content: str | None) -> str:
@@ -86,7 +89,10 @@ class Stock:
         self.recalls_sent: list[str] = []  # recall warnings already reported (event only once)
         self.ean_names: dict[str, str] = {}  # barcode → own name of the product
         self.lists: dict[str, str] = {}  # product → its own shopping list (to-do entity), else the default
+        # product → replacement interval (4.6): {"name", "weeks", "last": ISO date, "notified": due date reported}
+        self.intervals: dict[str, dict[str, Any]] = {}
         self._unsub = None
+        self._unsub_daily = None
 
     async def async_load(self) -> None:
         data = await self._store.async_load() or {}
@@ -102,6 +108,7 @@ class Stock:
         self.recalls_sent = [str(k) for k in data.get("recalls_sent") or []]
         self.ean_names = {str(k): str(v) for k, v in (data.get("ean_names") or {}).items()}
         self.lists = {str(k): str(v) for k, v in (data.get("lists") or {}).items() if str(v).startswith("todo.")}
+        self.intervals = {k: v for k, v in (data.get("intervals") or {}).items() if isinstance(v, dict) and v.get("weeks")}
 
     def _data(self) -> dict[str, Any]:
         return {
@@ -117,6 +124,7 @@ class Stock:
             "recalls_sent": self.recalls_sent,
             "ean_names": self.ean_names,
             "lists": self.lists,
+            "intervals": self.intervals,
         }
 
     # ----- Consumption and prices -----
@@ -208,6 +216,74 @@ class Stock:
         self._save()
         async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
 
+    # ----- Replacement interval (water filter, vacuum bags …) -----
+
+    def set_interval(self, content: str, weeks: float | None) -> None:
+        """Replace this product every `weeks` weeks (None or 0 = no interval). Starts counting today."""
+        key = product_key(content)
+        if not key:
+            return
+        if weeks:
+            current = self.intervals.get(key) or {}
+            self.intervals[key] = {
+                "name": " ".join(content.split()),
+                "weeks": round(float(weeks), 1),
+                "last": current.get("last") or dt_util.now().date().isoformat(),
+            }
+        else:
+            self.intervals.pop(key, None)
+        self._save()
+        async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
+
+    def mark_replaced(self, content: str) -> None:
+        key = product_key(content)
+        if key in self.intervals:
+            self.intervals[key] = {**self.intervals[key], "last": dt_util.now().date().isoformat(), "notified": None}
+            self._save()
+            async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
+
+    def interval_info(self, content: str | None) -> dict[str, Any] | None:
+        """{"weeks", "last", "due", "days"} for a product with an interval, else None."""
+        info = self.intervals.get(product_key(content))
+        if not info:
+            return None
+        last = date.fromisoformat(info["last"])
+        due = last + timedelta(days=round(float(info["weeks"]) * 7))
+        return {"weeks": info["weeks"], "last": info["last"], "due": due.isoformat(), "days": (due - dt_util.now().date()).days}
+
+    def replace_due(self, ahead: int = REPLACE_AHEAD) -> list[dict[str, Any]]:
+        """Products to replace within `ahead` days (or overdue), earliest first."""
+        out = []
+        for key, info in self.intervals.items():
+            detail = self.interval_info(key)
+            if detail and detail["days"] <= ahead:
+                out.append({"key": key, "name": info.get("name") or key, **detail})
+        return sorted(out, key=lambda i: i["days"])
+
+    @callback
+    def _check_replace_due(self, _now: Any = None) -> None:
+        """Once a day: products due for replacement fire `larder_replace_due` (once per due date)."""
+        de = (self.hass.config.language or "en").lower().startswith("de")
+        changed = False
+        for item in self.replace_due(0):
+            info = self.intervals[item["key"]]
+            if info.get("notified") == item["due"]:
+                continue
+            info["notified"] = item["due"]
+            changed = True
+            self.hass.bus.async_fire(
+                EVENT_REPLACE_DUE,
+                {
+                    "name": item["name"],
+                    "due": item["due"],
+                    "weeks": item["weeks"],
+                    "title": "🔁 Wechseln" if de else "🔁 Replace",
+                    "message": (f"{item['name']} sollte gewechselt werden." if de else f"Time to replace {item['name']}."),
+                },
+            )
+        if changed:
+            self._save()
+
     def snooze(self, content: str) -> None:
         self.snoozed[product_key(content)] = (dt_util.now().date() + timedelta(days=AGAIN_SNOOZE)).isoformat()
         today = dt_util.now().date().isoformat()
@@ -241,12 +317,16 @@ class Stock:
                 self.hass.async_create_task(self.async_poll(), f"{DOMAIN}_bought")
 
         self._unsub = self.hass.bus.async_listen(EVENT_STATE_CHANGED, changed)
+        self._unsub_daily = async_track_time_change(self.hass, self._check_replace_due, hour=8, minute=0, second=0)
 
     @callback
     def async_stop(self) -> None:
         if self._unsub is not None:
             self._unsub()
             self._unsub = None
+        if self._unsub_daily is not None:
+            self._unsub_daily()
+            self._unsub_daily = None
 
     def _list_of(self, info: dict[str, Any]) -> str | None:
         # items tracked before 4.1 have no list: they were on the (food) default list
@@ -1193,6 +1273,55 @@ async def ws_put_away(hass: HomeAssistant, connection: websocket_api.ActiveConne
     connection.send_result(msg["id"], result)
 
 
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/replace_interval",
+        vol.Required("content"): vol.All(str, vol.Length(min=1, max=255)),
+        vol.Required("weeks"): vol.All(vol.Coerce(float), vol.Range(min=0, max=520)),
+    }
+)
+@websocket_api.async_response
+async def ws_replace_interval(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Replacement interval of a product in weeks (0 = none)."""
+    stock = await async_get_stock(hass)
+    stock.set_interval(msg["content"], msg["weeks"] or None)
+    connection.send_result(msg["id"], {"interval": stock.interval_info(msg["content"])})
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/replaced",
+        vol.Required("content"): vol.All(str, vol.Length(min=1, max=255)),
+        vol.Optional("device_id"): str,
+    }
+)
+@websocket_api.async_response
+async def ws_replaced(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Replaced: one piece is taken (from this entry, else the oldest of the product) and the interval starts again."""
+    stock = await async_get_stock(hass)
+    key = product_key(msg["content"])
+    cc = _cc_of(hass, msg["device_id"]) if msg.get("device_id") else None
+    if cc is None:
+        entries = sorted((p for p in pack_entries(hass) if product_key(p["content"]) == key), key=lambda p: (not p["opened"], p["best_before"] or "9999"))
+        cc = entries[0]["cc"] if entries else None
+    taken = False
+    if cc is not None:
+        try:
+            await async_take_one(hass, cc, "eaten")
+            taken = True
+        except HomeAssistantError:
+            taken = False
+    stock.mark_replaced(msg["content"])
+    connection.send_result(msg["id"], {"taken": taken, "interval": stock.interval_info(msg["content"]), "due": stock.replace_due()})
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/replace_due"})
+@websocket_api.async_response
+async def ws_replace_due(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    stock = await async_get_stock(hass)
+    connection.send_result(msg["id"], {"items": stock.replace_due()})
+
+
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/running_low"})
 @websocket_api.async_response
 async def ws_running_low(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
@@ -1296,6 +1425,9 @@ def async_setup_stock_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_product_list)
     websocket_api.async_register_command(hass, ws_pack_take)
     websocket_api.async_register_command(hass, ws_put_away)
+    websocket_api.async_register_command(hass, ws_replace_interval)
+    websocket_api.async_register_command(hass, ws_replaced)
+    websocket_api.async_register_command(hass, ws_replace_due)
     websocket_api.async_register_command(hass, ws_running_low)
     websocket_api.async_register_command(hass, ws_running_low_action)
     domain_data[DATA_WS] = True

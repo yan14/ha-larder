@@ -1,4 +1,4 @@
-// Tests für das Dosen-Panel (läuft in jsdom, ohne Home Assistant).
+// Tests for the container panel (runs in jsdom, without Home Assistant).
 process.env.TZ = "Europe/Berlin";
 
 import assert from "node:assert/strict";
@@ -19,7 +19,7 @@ const { STRINGS, listAreas, collectDevices, daysUntil, toLocalInputValue, source
 
 const D = "larder";
 
-/** Baut ein hass-Objekt mit den angegebenen Dosen. */
+/** Builds a hass object with the given containers. */
 function makeHass(doses, { areas = {}, language = "de", stateOverrides = {} } = {}) {
   const entities = {};
   const devices = {};
@@ -70,7 +70,7 @@ function makeHass(doses, { areas = {}, language = "de", stateOverrides = {} } = 
       attributes: { entity_picture: `/api/image_proxy/${ids.image}?token=abc` },
     };
   }
-  // Fremde Entität, darf nie auftauchen
+  // foreign entity, must never show up
   entities["light.foreign"] = { entity_id: "light.foreign", device_id: "foreign", platform: "hue" };
   devices.foreign = { id: "foreign", name: "Lampe", area_id: "kitchen" };
   Object.assign(states, stateOverrides);
@@ -115,7 +115,7 @@ test.beforeEach(() => {
   dom.window.localStorage.clear();
 });
 
-test("collectDevices: nur Zwilling-Geräte, sortiert nach Bereich, dann Name; ohne Bereich zuletzt", () => {
+test("collectDevices: only Zwilling devices, sorted by area, then name; without area last", () => {
   const hass = makeHass(
     [
       { id: "d1", name: "Dose B", area: "kitchen" },
@@ -131,7 +131,7 @@ test("collectDevices: nur Zwilling-Geräte, sortiert nach Bereich, dann Name; oh
     out.map((d) => [d.areaName, d.name]),
     [
       ["Keller", "Dose 2"],
-      ["Keller", "Dose 10"], // natürliche Sortierung
+      ["Keller", "Dose 10"], // natural sort order
       ["Küche", "Dose A"],
       ["Küche", "Dose B"],
       [null, "Ohne Bereich"],
@@ -141,7 +141,7 @@ test("collectDevices: nur Zwilling-Geräte, sortiert nach Bereich, dann Name; oh
   assert.deepEqual(Object.keys(out[0].entities).sort(), ["button", "date", "datetime", "flexible", "homeArea", "image", "number", "select", "shopping", "switch", "text"]);
 });
 
-test("collectDevices: Anzeigename des Nutzers und Bereich der Entität als Rückfall", () => {
+test("collectDevices: the user's display name and the entity's area as fallback", () => {
   const hass = makeHass(
     [
       { id: "d1", name: "Dose X", nameByUser: "Suppendose", area: null, entityArea: "cellar" },
@@ -153,7 +153,7 @@ test("collectDevices: Anzeigename des Nutzers und Bereich der Entität als Rück
   assert.equal(dev.areaName, "Keller");
 });
 
-test("daysUntil und toLocalInputValue", () => {
+test("daysUntil and toLocalInputValue", () => {
   const now = new Date(2026, 10, 10, 15, 0);
   assert.equal(daysUntil("2026-11-10", now), 0);
   assert.equal(daysUntil("2026-11-09", now), -1);
@@ -164,7 +164,7 @@ test("daysUntil und toLocalInputValue", () => {
   assert.equal(toLocalInputValue("kaputt"), "");
 });
 
-test("Panel zeigt Bereich, MHD, Inhalt, Eingelagert am und Leeren-Button je Dose", () => {
+test("panel shows area, best-before, content, stored on and empty button per container", () => {
   const hass = makeHass(
     [
       {
@@ -219,12 +219,12 @@ test("MHD-Hinweise: abgelaufen, bald, unkritisch", () => {
   ]);
 });
 
-test("Neue Dose erscheint live, entfernte verschwindet, Bereichsänderung wird übernommen", () => {
+test("a new container appears live, a removed one disappears, an area change is taken over", () => {
   const el = mount(makeHass([{ id: "d1", name: "Dose 1", area: "kitchen" }], { areas: AREAS }));
   assert.deepEqual(cardNames(el), ["Dose 1"]);
   const firstCard = $(el, ".card");
 
-  // Neue Dose im Keller: neue Registry-Objekte, wie sie das Frontend liefert
+  // new container in the cellar: new registry objects, as the frontend delivers them
   el.hass = makeHass(
     [
       { id: "d1", name: "Dose 1", area: "kitchen" },
@@ -235,10 +235,10 @@ test("Neue Dose erscheint live, entfernte verschwindet, Bereichsänderung wird �
   assert.deepEqual(areaHeadings(el), ["Keller", "Küche"]);
   assert.deepEqual(cardNames(el), ["Dose 2", "Dose 1"]);
   assert.equal($(el, ".count").textContent, "2 Dosen");
-  // vorhandene Karte wurde wiederverwendet (kein Neuaufbau, Fokus bleibt erhalten)
+  // the existing card was reused (no rebuild, focus stays)
   assert.ok($$(el, ".card").includes(firstCard));
 
-  // Dose 1 wird in den Keller verschoben
+  // container 1 is moved to the cellar
   el.hass = makeHass(
     [
       { id: "d1", name: "Dose 1", area: "cellar" },
@@ -249,24 +249,24 @@ test("Neue Dose erscheint live, entfernte verschwindet, Bereichsänderung wird �
   assert.deepEqual(areaHeadings(el), ["Keller"]);
   assert.deepEqual(cardNames(el), ["Dose 1", "Dose 2"]);
 
-  // Dose 2 wird gelöscht
+  // container 2 is deleted
   el.hass = makeHass([{ id: "d1", name: "Dose 1", area: "cellar" }], { areas: AREAS });
   assert.deepEqual(cardNames(el), ["Dose 1"]);
 });
 
-test("Zustandsänderungen werden live übernommen, Eingabefeld im Fokus bleibt unberührt", () => {
+test("state changes are taken over live, an input field with focus stays untouched", () => {
   const hass1 = makeHass([{ id: "d1", name: "Dose 1", content: "Suppe" }], { areas: AREAS });
   const el = mount(hass1);
   const input = $(el, '[data-f="content"]');
   assert.equal(input.value, "Suppe");
 
-  // gleiche Registries, nur neue Zustände (typischer hass-Update)
+  // same registries, only new states (typical hass update)
   const hass2 = { ...hass1, states: { ...hass1.states } };
   hass2.states["text.d1_inhalt"] = { entity_id: "text.d1_inhalt", state: "Gulasch", attributes: {} };
   el.hass = hass2;
   assert.equal(input.value, "Gulasch");
 
-  // Nutzer tippt: Update darf das Feld nicht überschreiben
+  // user is typing: the update must not overwrite the field
   input.focus();
   assert.equal(el.shadowRoot.activeElement, input);
   input.value = "Eintopf (wird getippt)";
@@ -275,13 +275,13 @@ test("Zustandsänderungen werden live übernommen, Eingabefeld im Fokus bleibt u
   el.hass = hass3;
   assert.equal(input.value, "Eintopf (wird getippt)");
 
-  // nach dem Verlassen des Feldes zieht der Wert wieder nach
+  // after leaving the field the value follows again
   input.blur();
   el.hass = { ...hass3, states: { ...hass3.states } };
   assert.equal(input.value, "Fremdwert");
 });
 
-test("Eingaben und Buttons rufen die richtigen Dienste auf", async () => {
+test("inputs and buttons call the right services", async () => {
   const hass = makeHass([{ id: "d1", name: "Dose 1", content: "Suppe" }], { areas: AREAS });
   const el = mount(hass);
 
@@ -299,7 +299,7 @@ test("Eingaben und Buttons rufen die richtigen Dienste auf", async () => {
 
   $(el, "button.now").click();
   $(el, "button.empty").click();
-  // erst die Frage, dann leeren; ohne WebSocket wird einfach der Button gedrückt
+  // first the question, then empty; without WebSocket the button is simply pressed
   assert.equal($(el, ".outcomerow").hidden, false);
   assert.equal(hass.calls.length, 4);
   $(el, "button.eaten").click();
@@ -332,7 +332,7 @@ test("Eingaben und Buttons rufen die richtigen Dienste auf", async () => {
   assert.equal(hass.calls.length, 5);
 });
 
-test("Leere MHD-Eingabe leert das MHD über den Service (date.set_value kann das nicht)", () => {
+test("an empty best-before input clears the date via the service (date.set_value cannot)", () => {
   const hass = makeHass([{ id: "d1", name: "Dose 1", mhd: "2026-12-24" }], { areas: AREAS });
   const el = mount(hass);
   const mhd = $(el, '[data-f="bestBefore"]');
@@ -341,7 +341,7 @@ test("Leere MHD-Eingabe leert das MHD über den Service (date.set_value kann das
   assert.deepEqual(hass.calls, [{ domain: D, service: "clear_best_before", data: { entity_id: "date.d1_mhd" } }]);
 });
 
-test("Nicht verfügbare Entitäten deaktivieren die Bedienelemente", () => {
+test("unavailable entities disable the controls", () => {
   const hass = makeHass([{ id: "d1", name: "Dose 1" }], {
     areas: AREAS,
     stateOverrides: {
@@ -355,7 +355,7 @@ test("Nicht verfügbare Entitäten deaktivieren die Bedienelemente", () => {
   assert.equal($(el, '[data-f="bestBefore"]').disabled, false);
 });
 
-test("Gerät öffnen und Seitenmenü", () => {
+test("open device and side menu", () => {
   const el = mount(makeHass([{ id: "abc123", name: "Dose 1" }], { areas: AREAS }));
   const events = [];
   window.addEventListener("location-changed", () => events.push(window.location.pathname));
@@ -372,7 +372,7 @@ test("Gerät öffnen und Seitenmenü", () => {
   assert.ok(!el.hasAttribute("narrow"));
 });
 
-test("Ohne Dosen: Hinweis mit Link zur Integration", () => {
+test("without containers: hint with a link to the integration", () => {
   const el = mount(makeHass([], { areas: AREAS }));
   assert.equal($$(el, ".card").length, 0);
   assert.match($(el, ".none h2").textContent, /Noch keine Dosen/);
@@ -383,7 +383,7 @@ test("Ohne Dosen: Hinweis mit Link zur Integration", () => {
   assert.deepEqual(events, ["/config/integrations/integration/larder"]);
 });
 
-test("Englische Oberfläche", () => {
+test("English interface", () => {
   const el = mount(
     makeHass([{ id: "d1", name: "Box 1", area: "kitchen", mhd: iso(2) }], { areas: AREAS, language: "en" }),
   );
@@ -394,13 +394,13 @@ test("Englische Oberfläche", () => {
   assert.equal($(el, ".count").textContent, "1 container");
 });
 
-test("Dose ohne Bereich bekommt 'Kein Bereich'", () => {
+test("a container without area gets 'No area'", () => {
   const el = mount(makeHass([{ id: "d1", name: "Dose 1" }], { areas: AREAS }));
   assert.deepEqual(areaHeadings(el), ["Kein Bereich"]);
   assert.match($(el, ".arealine").textContent, /Bereich: Kein Bereich/);
 });
 
-test("Deutsche und englische Panel-Texte sind vollständig und gleichartig", () => {
+test("German and English panel texts are complete and alike", () => {
   assert.deepEqual(Object.keys(STRINGS.de).sort(), Object.keys(STRINGS.en).sort());
   for (const key of Object.keys(STRINGS.de)) {
     assert.equal(typeof STRINGS.de[key], typeof STRINGS.en[key], key);
@@ -414,12 +414,12 @@ test("Deutsche und englische Panel-Texte sind vollständig und gleichartig", () 
       assert.ok(STRINGS.de[key].length > 0 && STRINGS.en[key].length > 0, key);
     }
   }
-  // Der Text darf nicht versehentlich in beiden Sprachen identisch deutsch sein
+  // the text must not accidentally be identical German in both languages
   assert.notEqual(STRINGS.de.emptyContainer, STRINGS.en.emptyContainer);
   assert.notEqual(STRINGS.de.noneText, STRINGS.en.noneText);
 });
 
-// ---------- Dose hinzufügen, Bereich ändern ----------
+// ---------- Add container, change area ----------
 
 const flush = () => new Promise((r) => setTimeout(r, 0));
 
@@ -435,8 +435,8 @@ function adminHass(doses = [{ id: "d1", name: "Dose A", area: "kitchen" }], resp
   };
   hass.nfcLinks = {};
   hass.callWS = async (msg) => {
-    if (msg.type === `${D}/nfc_tags`) return { by_device: hass.nfcLinks }; // Hintergrundabruf, nicht mitzählen
-    if (msg.type === "config/label_registry/list") return []; // Hintergrundabruf, nicht mitzählen
+    if (msg.type === `${D}/nfc_tags`) return { by_device: hass.nfcLinks }; // background fetch, do not count
+    if (msg.type === "config/label_registry/list") return []; // background fetch, do not count
     if (msg.type === `${D}/settings`) return { vacuum_default: hass.vacuumDefault ?? true, shopping_list: !!hass.shoppingList }; // dito
     hass.wsCalls.push(msg);
     return {};
@@ -449,7 +449,7 @@ const FLOW = [
   { type: "form", flow_id: "f1", step_id: "create" },
 ];
 
-test("Administrator sieht 'Dose hinzufügen' und die Bereichsauswahl, andere nicht", () => {
+test("administrator sees 'Add container' and the area choice, others do not", () => {
   const admin = mount(adminHass());
   assert.ok($(admin, "button.add").classList.contains("visible"));
   assert.ok($(admin, ".arearow").classList.contains("visible"));
@@ -469,7 +469,7 @@ test("Administrator sieht 'Dose hinzufügen' und die Bereichsauswahl, andere nic
   assert.match($(user, ".arealine").textContent, /Bereich: Küche/);
 });
 
-test("Bereich einer Dose ändern ruft die Geräte-Registry auf; 'Kein Bereich' entfernt ihn", async () => {
+test("changing the area of a container calls the device registry; 'No area' removes it", async () => {
   const hass = adminHass();
   const el = mount(hass);
   const select = $(el, ".card select[data-f=area]");
@@ -484,7 +484,7 @@ test("Bereich einer Dose ändern ruft die Geräte-Registry auf; 'Kein Bereich' e
   ]);
 });
 
-test("Bereich ändern: Fehler wird angezeigt", async () => {
+test("change area: an error is shown", async () => {
   const hass = adminHass();
   hass.callWS = async () => {
     throw new Error("nope");
@@ -498,12 +498,12 @@ test("Bereich ändern: Fehler wird angezeigt", async () => {
   assert.match($(el, "#notice").textContent, /Bereich konnte nicht geändert/);
 });
 
-test("Dose hinzufügen: neuer QR-Code über den Config Flow, mit Name und Bereich", async () => {
+test("add container: new QR code via the config flow, with name and area", async () => {
   const hass = adminHass(undefined, [...FLOW, { type: "create_entry", title: "Suppe" }]);
   const el = mount(hass);
   $(el, "button.add").click();
   assert.equal($(el, ".overlay").hidden, false);
-  assert.equal($(el, '[data-w="code"]').hidden, true); // Code nur im Zwilling-Modus
+  assert.equal($(el, '[data-w="code"]').hidden, true); // code only in Zwilling mode
   $(el, '[data-f="name"]').value = "Suppe";
   $(el, ".dialog select[data-f=area]").value = "cellar";
   $(el, "form.dialog").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
@@ -516,7 +516,7 @@ test("Dose hinzufügen: neuer QR-Code über den Config Flow, mit Name und Bereic
   assert.equal($(el, ".overlay").hidden, true);
 });
 
-test("Dose hinzufügen: Zwilling-QR-Code einlesen, ungültiger Code zeigt Fehler und beendet den Flow", async () => {
+test("add container: read a Zwilling QR code, an invalid code shows an error and ends the flow", async () => {
   const hass = adminHass(undefined, [
     { type: "menu", flow_id: "f2" },
     { type: "form", flow_id: "f2", step_id: "scan" },
@@ -536,10 +536,10 @@ test("Dose hinzufügen: Zwilling-QR-Code einlesen, ungültiger Code zeigt Fehler
   assert.equal(hass.apiCalls[3].method, "DELETE");
   assert.equal(hass.apiCalls[3].path, "config/config_entries/flow/f2");
   assert.equal($(el, ".dialog .error").textContent, "Im QR-Code wurde keine gültige ID (cc) gefunden.");
-  assert.equal($(el, ".overlay").hidden, false); // Dialog bleibt offen
+  assert.equal($(el, ".overlay").hidden, false); // dialog stays open
 });
 
-test("Dose hinzufügen: bereits vorhandene Dose und leerer Code im Zwilling-Modus", async () => {
+test("add container: already existing container and empty code in Zwilling mode", async () => {
   const hass = adminHass(undefined, [
     { type: "menu", flow_id: "f3" },
     { type: "form", flow_id: "f3", step_id: "scan" },
@@ -553,17 +553,17 @@ test("Dose hinzufügen: bereits vorhandene Dose und leerer Code im Zwilling-Modu
 
   $(el, "form.dialog").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
   await flush();
-  assert.equal(hass.apiCalls.length, 0); // ohne Code wird gar nichts gesendet
+  assert.equal(hass.apiCalls.length, 0); // without a code nothing is sent at all
   assert.match($(el, ".dialog .error").textContent, /keine gültige ID/);
 
   $(el, '[data-f="code"]').value = "34OL";
   $(el, "form.dialog").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
   await flush();
   assert.equal($(el, ".dialog .error").textContent, "Diese Dose wurde bereits hinzugefügt.");
-  assert.ok(hass.apiCalls.every((c) => c.method !== "DELETE")); // abgebrochener Flow braucht kein DELETE
+  assert.ok(hass.apiCalls.every((c) => c.method !== "DELETE")); // an aborted flow needs no DELETE
 });
 
-test("Netzwerkfehler beim Hinzufügen zeigt allgemeine Meldung", async () => {
+test("a network error while adding shows a general message", async () => {
   const hass = adminHass();
   hass.callApi = async () => {
     throw new Error("offline");
@@ -576,7 +576,7 @@ test("Netzwerkfehler beim Hinzufügen zeigt allgemeine Meldung", async () => {
   assert.equal($(el, "button.submit").disabled, false);
 });
 
-test("?add=<ID> aus dem Scan-Webhook öffnet den Dialog mit vorbelegtem Code", async () => {
+test("?add=<ID> from the scan webhook opens the dialog with the code prefilled", async () => {
   dom.window.history.pushState(null, "", "/larder?add=NEU123");
   const el = mount(adminHass());
   await flush();
@@ -585,13 +585,13 @@ test("?add=<ID> aus dem Scan-Webhook öffnet den Dialog mit vorbelegtem Code", a
   assert.equal($(el, 'input[name="mode"]:checked').value, "scan");
   assert.equal($(el, '[data-f="code"]').value, "NEU123");
   assert.equal($(el, '[data-w="code"]').hidden, false);
-  assert.equal(dom.window.location.search, ""); // Parameter wird entfernt, kein erneutes Öffnen
+  assert.equal(dom.window.location.search, ""); // parameter is removed, no reopening
   $(el, "button.cancel").click();
   el.hass = adminHass();
   assert.equal($(el, ".overlay").hidden, true);
 });
 
-test("?add=<ID> für Nutzer ohne Admin-Rechte zeigt einen Hinweis statt des Dialogs", async () => {
+test("?add=<ID> for users without admin rights shows a hint instead of the dialog", async () => {
   dom.window.history.pushState(null, "", "/larder?add=NEU123");
   const hass = adminHass();
   hass.user = { is_admin: false };
@@ -608,7 +608,7 @@ test("listAreas sortiert Bereiche nach Name", () => {
   assert.deepEqual(listAreas({}), []);
 });
 
-test("listAreas: nur Bereiche mit der Beschriftung, ohne markierten Bereich alle, der aktuelle bleibt", () => {
+test("listAreas: only areas with the label, without a marked area all, the current one stays", () => {
   const areas = {
     kitchen: { area_id: "kitchen", name: "Küche", labels: ["larder"] },
     cellar: { area_id: "cellar", name: "Keller", labels: [] },
@@ -618,9 +618,9 @@ test("listAreas: nur Bereiche mit der Beschriftung, ohne markierten Bereich alle
   const hass = { language: "de", areas };
   const ids = (list) => list.map((a) => a.id);
   assert.deepEqual(ids(listAreas(hass, "larder")), ["kitchen", "pantry"]);
-  assert.deepEqual(ids(listAreas(hass, "larder", "cellar")), ["cellar", "kitchen", "pantry"]); // aktueller Bereich bleibt wählbar
-  assert.deepEqual(ids(listAreas(hass, null)), ["garage", "cellar", "kitchen", "pantry"]); // ohne Beschriftung: alle
-  assert.deepEqual(ids(listAreas(hass, "unbekannt")), ["garage", "cellar", "kitchen", "pantry"]); // niemand hat sie: alle
+  assert.deepEqual(ids(listAreas(hass, "larder", "cellar")), ["cellar", "kitchen", "pantry"]); // the current area stays selectable
+  assert.deepEqual(ids(listAreas(hass, null)), ["garage", "cellar", "kitchen", "pantry"]); // without a label: all
+  assert.deepEqual(ids(listAreas(hass, "unbekannt")), ["garage", "cellar", "kitchen", "pantry"]); // nobody has it: all
 });
 
 function labelHass(labels, areas) {
@@ -643,17 +643,17 @@ const LABELED_AREAS = {
   garage: { area_id: "garage", name: "Garage", labels: [] },
 };
 
-test("Bereichsauswahl: mit Beschriftung 'Larder' nur markierte Bereiche (plus aktueller Bereich der Dose)", async () => {
+test("area choice: with label 'Larder' only marked areas (plus the container's current area)", async () => {
   const el = mount(labelHass([{ label_id: "lbl1", name: "Larder" }], LABELED_AREAS));
   await flush();
   const cardOptions = [...$(el, '.card [data-f="area"]').options].map((o) => o.textContent);
-  assert.deepEqual(cardOptions, ["Kein Bereich", "Keller", "Küche"]); // Keller: aktueller Bereich der Dose, Garage fehlt
+  assert.deepEqual(cardOptions, ["Kein Bereich", "Keller", "Küche"]); // cellar: current area of the container, garage missing
   el.openAddDialog();
   await flush();
   assert.deepEqual([...$(el, "form.dialog select").options].map((o) => o.textContent), ["Kein Bereich", "Küche"]);
 });
 
-test("Bereichsauswahl: Beschriftung findet man über den Namen, egal wie geschrieben", async () => {
+test("area choice: the label is found by its name, however it is written", async () => {
   const el = mount(labelHass([{ label_id: "abc", name: " LARDER " }], { ...LABELED_AREAS, kitchen: { area_id: "kitchen", name: "Küche", labels: ["abc"] } }));
   await flush();
   el.openAddDialog();
@@ -661,7 +661,7 @@ test("Bereichsauswahl: Beschriftung findet man über den Namen, egal wie geschri
   assert.deepEqual([...$(el, "form.dialog select").options].map((o) => o.textContent), ["Kein Bereich", "Küche"]);
 });
 
-test("Bereichsauswahl: ohne Beschriftung, ohne markierte Bereiche oder bei Fehler erscheinen alle Bereiche", async () => {
+test("area choice: without label, without marked areas or on error all areas appear", async () => {
   const all = ["Kein Bereich", "Garage", "Keller", "Küche"];
   for (const labels of [[], [{ label_id: "lbl1", name: "Larder" }], new Error("kein Zugriff")]) {
     document.body.innerHTML = "";
@@ -676,9 +676,9 @@ test("Bereichsauswahl: ohne Beschriftung, ohne markierte Bereiche oder bei Fehle
   }
 });
 
-// ---------- Vakuum und MHD-Schätzung ----------
+// ---------- Vacuum and best-before estimate ----------
 
-test("Vakuum-Schalter zeigt den Zustand und schaltet die Entität", () => {
+test("vacuum switch shows the state and switches the entity", () => {
   const hass = adminHass([
     { id: "d1", name: "Dose A", area: "kitchen", vacuum: "on" },
     { id: "d2", name: "Dose B", area: "kitchen", vacuum: "off" },
@@ -699,7 +699,7 @@ test("Vakuum-Schalter zeigt den Zustand und schaltet die Entität", () => {
   ]);
 });
 
-test("Einkaufsliste: Schalter nur sichtbar, wenn eine Liste gewählt ist, und getrennt vom Vakuum-Schalter", () => {
+test("shopping list: switch only visible when a list is chosen, and separate from the vacuum switch", () => {
   const hass = adminHass([
     { id: "d1", name: "Dose A", area: "kitchen", shopping: "on", shoppingList: "todo.einkaufen" },
     { id: "d2", name: "Dose B", area: "kitchen", shopping: "off", shoppingList: "todo.einkaufen" },
@@ -724,7 +724,7 @@ test("Einkaufsliste: Schalter nur sichtbar, wenn eine Liste gewählt ist, und ge
   ]);
 });
 
-test("Einkaufsliste wird auch über translation_key erkannt, der Vakuum-Schalter bleibt unberührt", () => {
+test("shopping list is also recognised via translation_key, the vacuum switch stays untouched", () => {
   const hass = adminHass([{ id: "d1", name: "Dose A", area: "kitchen", shoppingList: "todo.einkaufen" }]);
   hass.entities["switch.d1_einkaufsliste"].translation_key = "shopping";
   hass.entities["switch.d1_einkaufsliste"].entity_id = "switch.d1_liste_x";
@@ -736,19 +736,19 @@ test("Einkaufsliste wird auch über translation_key erkannt, der Vakuum-Schalter
   assert.equal(dev.entities.switch, "switch.d1_vacuum");
 });
 
-test("'MHD schätzen' erscheint nur bei aktivierter KI, vorhandenem Inhalt und leerem MHD", () => {
+test("'Estimate best-before' only appears with AI enabled, content present and empty best-before", () => {
   const visible = (hass) => {
     document.body.innerHTML = "";
     const el = mount(hass);
     return $(el, ".estimate").style.display !== "none" && $(el, ".estimaterow").classList.contains("visible");
   };
   assert.equal(visible(adminHass([{ id: "d1", name: "A", content: "Suppe", ai: true }])), true);
-  assert.equal(visible(adminHass([{ id: "d1", name: "A", content: "Suppe", ai: false }])), false); // KI aus
+  assert.equal(visible(adminHass([{ id: "d1", name: "A", content: "Suppe", ai: false }])), false); // AI off
   assert.equal(visible(adminHass([{ id: "d1", name: "A", content: "Suppe", ai: true, mhd: "2030-01-01" }])), false); // MHD da
-  assert.equal(visible(adminHass([{ id: "d1", name: "A", ai: true }])), false); // kein Inhalt
+  assert.equal(visible(adminHass([{ id: "d1", name: "A", ai: true }])), false); // no content
 });
 
-test("MHD schätzen ruft den Service auf und zeigt Schätzung samt Tipp", async () => {
+test("estimate best-before calls the service and shows the estimate with the tip", async () => {
   const hass = adminHass([{ id: "d1", name: "A", content: "Suppe", ai: true }]);
   const dateId = "date.d1_mhd";
   hass.callWS = async (msg) => {
@@ -761,7 +761,7 @@ test("MHD schätzen ruft den Service auf und zeigt Schätzung samt Tipp", async 
   };
   const el = mount(hass);
   $(el, "button.estimate").click();
-  assert.equal($(el, "button.estimate").disabled, true); // währenddessen gesperrt
+  assert.equal($(el, "button.estimate").disabled, true); // locked meanwhile
   await flush();
   assert.deepEqual(hass.wsCalls, [
     {
@@ -777,12 +777,12 @@ test("MHD schätzen ruft den Service auf und zeigt Schätzung samt Tipp", async 
   assert.equal($(el, "button.estimate").disabled, false);
   assert.equal($(el, ".estimaterow").classList.contains("visible"), true);
 
-  // Eingabe im Inhaltsfeld löscht den Hinweis wieder
+  // typing in the content field clears the hint again
   $(el, '[data-f="content"]').dispatchEvent(new dom.window.Event("input"));
   assert.equal($(el, ".tip").textContent, "");
 });
 
-test("MHD schätzen: Fehler des Dienstes wird als Meldung angezeigt", async () => {
+test("estimate best-before: a service error is shown as a message", async () => {
   const hass = adminHass([{ id: "d1", name: "A", content: "Suppe", ai: true }]);
   hass.callWS = async () => {
     throw { code: "home_assistant_error", message: "Weise der Dose zuerst einen Bereich zu." };
@@ -795,7 +795,7 @@ test("MHD schätzen: Fehler des Dienstes wird als Meldung angezeigt", async () =
   assert.equal($(el, "button.estimate").disabled, false);
 });
 
-test("MHD schätzen: englische Texte", async () => {
+test("estimate best-before: English texts", async () => {
   const hass = adminHass([{ id: "d1", name: "A", content: "Soup", ai: true }]);
   hass.language = "en";
   hass.callWS = async () => ({
@@ -808,7 +808,7 @@ test("MHD schätzen: englische Texte", async () => {
   assert.equal($(el, ".tip").textContent, "Estimated: about 1 day shelf life");
 });
 
-test("'Behälter leeren' löscht den Schätz-Hinweis, der Vakuum-Schalter bleibt unberührt", async () => {
+test("'Empty container' clears the estimate hint, the vacuum switch stays untouched", async () => {
   const hass = adminHass([{ id: "d1", name: "A", content: "Suppe", ai: true }]);
   hass.callWS = async () => ({ response: { "date.d1_mhd": { status: "estimated", days: 3, tip: "x", applied: true } } });
   const el = mount(hass);
@@ -827,7 +827,7 @@ test("'Behälter leeren' löscht den Schätz-Hinweis, der Vakuum-Schalter bleibt
   assert.deepEqual(ws, [{ type: "larder/empty", device_id: "d1", outcome: "thrown" }]);
 });
 
-test("Leeren von MHD und 'Eingelagert am' im Panel ruft die Löschen-Services auf", () => {
+test("clearing best-before and 'stored on' in the panel calls the clear services", () => {
   const hass = adminHass([{ id: "d1", name: "A", content: "Suppe", mhd: "2030-01-01", filled: "2026-11-09T10:00:00+00:00" }]);
   const el = mount(hass);
   const mhd = $(el, '[data-f="bestBefore"]');
@@ -842,9 +842,9 @@ test("Leeren von MHD und 'Eingelagert am' im Panel ruft die Löschen-Services au
   ]);
 });
 
-// ---------- Quelle des Schätzwerts, Liste der gemerkten Schätzungen ----------
+// ---------- Source of the estimate, list of remembered estimates ----------
 
-test("sourceLabel nennt Tabelle, KI und bei Korrekturen den Ursprung", () => {
+test("sourceLabel names table, AI and the origin for corrections", () => {
   const t = STRINGS.de;
   assert.equal(sourceLabel(t, "table"), "Tabelle");
   assert.equal(sourceLabel(t, "ai"), "KI");
@@ -876,7 +876,7 @@ function estimatesHass(entries = ENTRIES, suggestions = []) {
   return hass;
 }
 
-test("Reiter 'Schätzungen' nur für Administratoren", () => {
+test("tab 'Estimates' for administrators only", () => {
   const user = adminHass();
   user.user = { is_admin: false };
   assert.equal($(mount(user), ".tabs").classList.contains("visible"), false);
@@ -884,7 +884,7 @@ test("Reiter 'Schätzungen' nur für Administratoren", () => {
   assert.equal($(mount(adminHass()), ".tabs").classList.contains("visible"), true);
 });
 
-test("Reiter 'Schätzungen' lädt und zeigt Einträge samt Quelle", async () => {
+test("tab 'Estimates' loads and shows entries with source", async () => {
   const hass = estimatesHass();
   const el = mount(hass);
   $(el, '[data-view="estimates"]').click();
@@ -904,7 +904,7 @@ test("Reiter 'Schätzungen' lädt und zeigt Einträge samt Quelle", async () => 
   assert.equal($(el, "#content").hidden, false);
 });
 
-test("Schätzungen: Speichern, Löschen (mit Rückfrage) und Hinzufügen rufen die Befehle auf", async () => {
+test("estimates: save, delete (with confirmation) and add call the commands", async () => {
   const hass = estimatesHass();
   const el = mount(hass);
   $(el, '[data-view="estimates"]').click();
@@ -933,7 +933,7 @@ test("Schätzungen: Speichern, Löschen (mit Rückfrage) und Hinzufügen rufen d
   assert.deepEqual(hass.wsCalls.pop(), { type: `${D}/estimate_delete`, key: "pizza|kühlschrank|vacuum" });
 
   const add = $(el, "#estimates .est.new");
-  add.querySelector("button.save").click(); // leer: nichts senden
+  add.querySelector("button.save").click(); // empty: send nothing
   await flush();
   assert.equal(hass.wsCalls.length, 0);
   assert.equal($(el, "#notice").hidden, false);
@@ -952,7 +952,7 @@ test("Schätzungen: Speichern, Löschen (mit Rückfrage) und Hinzufügen rufen d
   });
 });
 
-test("Schätzungen: Fehler des Servers wird angezeigt", async () => {
+test("estimates: a server error is shown", async () => {
   const hass = estimatesHass();
   const el = mount(hass);
   $(el, '[data-view="estimates"]').click();
@@ -976,31 +976,31 @@ const FRIDGE_DOSES = [
 ];
 const names = (list) => list.map((d) => d.name);
 
-test("addDays verschiebt ISO-Daten über Monats- und Jahresgrenzen", () => {
+test("addDays shifts ISO dates across month and year boundaries", () => {
   assert.equal(addDays("2026-11-10", 1), "2026-11-11");
   assert.equal(addDays("2026-12-31", 1), "2027-01-01");
   assert.equal(addDays("2026-02-28", 1), "2026-03-01");
   assert.equal(addDays("", 1), null);
 });
 
-test("arrangeDevices: Filter, Suche und Sortierung", () => {
+test("arrangeDevices: filter, search and sorting", () => {
   const hass = makeHass(FRIDGE_DOSES, { areas: AREAS });
   const devices = collectDevices(hass);
   const run = (opts) => names(arrangeDevices(hass, devices, opts));
-  assert.deepEqual(run({}), ["Dose C", "Dose D", "Dose E", "Dose A", "Dose B"]); // nach Bereich: Keller, Küche
+  assert.deepEqual(run({}), ["Dose C", "Dose D", "Dose E", "Dose A", "Dose B"]); // by area: cellar, kitchen
   assert.deepEqual(run({ filter: "soon" }), ["Dose B"]);
   assert.deepEqual(run({ filter: "expired" }), ["Dose A"]);
   assert.deepEqual(run({ filter: "filled" }), ["Dose C", "Dose E", "Dose A", "Dose B"]);
   assert.deepEqual(run({ filter: "empty" }), ["Dose D"]);
   assert.deepEqual(run({ query: "pizza" }), ["Dose A"]);
-  assert.deepEqual(run({ query: "KELLER" }), ["Dose C", "Dose D", "Dose E"]); // Suche im Bereichsnamen
+  assert.deepEqual(run({ query: "KELLER" }), ["Dose C", "Dose D", "Dose E"]); // search in the area name
   assert.deepEqual(run({ query: "dose b" }), ["Dose B"]);
-  assert.deepEqual(run({ sort: "date" }), ["Dose A", "Dose B", "Dose C", "Dose D", "Dose E"]); // ohne MHD zuletzt
+  assert.deepEqual(run({ sort: "date" }), ["Dose A", "Dose B", "Dose C", "Dose D", "Dose E"]); // without best-before last
   assert.deepEqual(run({ sort: "name" }), ["Dose A", "Dose B", "Dose C", "Dose D", "Dose E"]);
   assert.deepEqual(run({ query: "xyz" }), []);
 });
 
-test("Toolbar: Suche und Filter blenden Karten aus, Sortierung nach MHD entfernt die Bereichsüberschriften", () => {
+test("toolbar: search and filter hide cards, sorting by best-before removes the area headings", () => {
   const el = mount(adminHass(FRIDGE_DOSES));
   assert.equal($(el, ".toolbar").hidden, false);
   assert.equal(cardNames(el).length, 5);
@@ -1025,10 +1025,10 @@ test("Toolbar: Suche und Filter blenden Karten aus, Sortierung nach MHD entfernt
   assert.deepEqual(cardNames(el), ["Dose A"]);
   query.value = "gibt es nicht";
   query.dispatchEvent(new dom.window.Event("input"));
-  assert.match($(el, ".none").textContent, /Keine Dose passt/);
+  assert.match($(el, ".none").textContent, /Nichts passt/);
 });
 
-test("Toolbar-Einstellungen werden im Browser gemerkt", () => {
+test("toolbar settings are remembered in the browser", () => {
   const el = mount(adminHass(FRIDGE_DOSES));
   const filter = $(el, '[data-f="filter"]');
   filter.value = "soon";
@@ -1039,7 +1039,7 @@ test("Toolbar-Einstellungen werden im Browser gemerkt", () => {
   assert.deepEqual(cardNames(again), ["Dose B"]);
 });
 
-test("Toolbar ist ohne Dosen und im Reiter 'Schätzungen' ausgeblendet", async () => {
+test("toolbar is hidden without containers and in the 'Estimates' tab", async () => {
   assert.equal($(mount(adminHass([])), ".toolbar").hidden, true);
   document.body.innerHTML = "";
   const el = mount(estimatesHass());
@@ -1048,7 +1048,7 @@ test("Toolbar ist ohne Dosen und im Reiter 'Schätzungen' ausgeblendet", async (
   assert.equal($(el, ".toolbar").hidden, true);
 });
 
-test("Schnellaktionen: +1 Tag setzt das MHD, Geöffnet ruft den Service", () => {
+test("quick actions: +1 day sets the best-before date, Opened calls the service", () => {
   const hass = adminHass([{ id: "d1", name: "A", content: "Käse", mhd: "2026-12-31" }]);
   const el = mount(hass);
   const dateId = "date.d1_mhd";
@@ -1061,7 +1061,7 @@ test("Schnellaktionen: +1 Tag setzt das MHD, Geöffnet ruft den Service", () => 
   ]);
 });
 
-test("Schnellaktionen: Aufgetaut ruft den Service mark_thawed", () => {
+test("quick actions: Thawed calls the service mark_thawed", () => {
   const hass = adminHass([{ id: "d1", name: "A", content: "Chili", mhd: "2027-03-01" }]);
   const el = mount(hass);
   assert.equal($(el, "button.thawed").textContent, "Aufgetaut");
@@ -1069,7 +1069,7 @@ test("Schnellaktionen: Aufgetaut ruft den Service mark_thawed", () => {
   assert.deepEqual(hass.calls, [{ domain: D, service: "mark_thawed", data: { entity_id: "date.d1_mhd" } }]);
 });
 
-test("Menge: Eingabe und Einheit auf der Karte setzen die Entitäten, leer wird 0", () => {
+test("amount: input and unit on the card set the entities, empty becomes 0", () => {
   const hass = adminHass([{ id: "d1", name: "A", content: "Schinken", portions: 3, unit: "slices" }]);
   const el = mount(hass);
   const input = $(el, '.card [data-f="quantity"]');
@@ -1095,7 +1095,7 @@ test("Menge: Eingabe und Einheit auf der Karte setzen die Entitäten, leer wird 
   assert.equal($(none, '.card [data-f="unit"]').value, "portions");
 });
 
-test("Portion entnehmen: −1 zieht ab, bei der letzten Frage nach Leeren", async () => {
+test("take a portion: −1 subtracts, asks about emptying at the last one", async () => {
   const hass = adminHass([{ id: "d1", name: "A", content: "Bolognese", portions: 2, unit: "portions" }]);
   const el = mount(hass);
   const take = $(el, ".card button.take");
@@ -1103,7 +1103,7 @@ test("Portion entnehmen: −1 zieht ab, bei der letzten Frage nach Leeren", asyn
   take.click();
   assert.deepEqual(hass.calls, [{ domain: "number", service: "set_value", data: { entity_id: "number.d1_portionen", value: 1 } }]);
 
-  // letzte Portion: erst fragen
+  // last portion: ask first
   hass.calls.length = 0;
   hass.states["number.d1_portionen"] = { ...hass.states["number.d1_portionen"], state: "1" };
   el.hass = { ...hass };
@@ -1121,7 +1121,7 @@ test("Portion entnehmen: −1 zieht ab, bei der letzten Frage nach Leeren", asyn
   assert.deepEqual(hass.calls, []);
   assert.deepEqual(hass.wsCalls.filter((m) => m.type === "larder/empty"), [{ type: "larder/empty", device_id: "d1", outcome: "eaten" }]);
 
-  // Gramm oder ohne Menge: kein −1
+  // grams or without amount: no −1
   document.body.innerHTML = "";
   const grams = mount(adminHass([{ id: "d1", name: "A", content: "Reis", portions: 500, unit: "grams" }]));
   assert.equal($(grams, ".card button.take").hidden, true);
@@ -1130,7 +1130,7 @@ test("Portion entnehmen: −1 zieht ab, bei der letzten Frage nach Leeren", asyn
   assert.equal($(none, ".card button.take").hidden, true);
 });
 
-test("Verlauf: aufklappen lädt die letzten Einträge der Dose", async () => {
+test("history: expanding loads the container's latest entries", async () => {
   const hass = adminHass([{ id: "d1", name: "A", content: "Suppe" }]);
   const base = hass.callWS;
   hass.callWS = async (msg) => {
@@ -1157,7 +1157,7 @@ test("Verlauf: aufklappen lädt die letzten Einträge der Dose", async () => {
   assert.match(items[1], /01\.09\.2026 · Käse · abgelaufen/);
 });
 
-test("Strichcode im Befüllen-Dialog: Produktname aus Open Food Facts", async () => {
+test("barcode in the fill dialog: product name from Open Food Facts", async () => {
   const hass = adminHass([{ id: "d1", name: "A" }]);
   const sent = [];
   const original = () => true;
@@ -1204,14 +1204,14 @@ test("Strichcode im Befüllen-Dialog: Produktname aus Open Food Facts", async ()
   await flush();
   await flush();
   assert.match(form.querySelector(".barcodestatus").textContent, /Kein Produkt zu EAN 12345678/);
-  // ohne Scanner der App: kein Knopf
+  // without the app's scanner: no button
   document.body.innerHTML = "";
   const plain = mount(adminHass([{ id: "d1", name: "A" }]));
   plain.openFillDialog("d1");
   assert.equal(plain.shadowRoot.querySelector("form.fillform button.barcode").hidden, true);
 });
 
-test("Allergene im Haushalt: Hinweis auf der Karte", async () => {
+test("household allergens: hint on the card", async () => {
   const hass = adminHass([{ id: "d1", name: "A", content: "Müsli", product: { allergen_warning: ["Gluten", "Schalenfrüchte"] } }]);
   const el = mount(hass);
   const warn = $(el, ".card .allergen-warning");
@@ -1219,7 +1219,7 @@ test("Allergene im Haushalt: Hinweis auf der Karte", async () => {
   assert.equal(warn.textContent, "⚠ Enthält Gluten, Schalenfrüchte (Allergene im Haushalt)");
 });
 
-test("Nährwerte auf der Karte: anzeigen und einzeln ändern", async () => {
+test("nutrition on the card: show and change one by one", async () => {
   const hass = adminHass([{ id: "d1", name: "A", content: "Haferflocken", product: { brand: "Kölln", kcal_100g: 372, nutri_score: "A", source: "openfoodfacts" } }]);
   const el = mount(hass);
   const nut = $(el, ".card details.nutrition");
@@ -1236,13 +1236,13 @@ test("Nährwerte auf der Karte: anzeigen und einzeln ändern", async () => {
   assert.deepEqual(hass.wsCalls.filter((m) => m.type === `${D}/product_set`), [
     { type: `${D}/product_set`, device_id: "d1", product: { kcal_portion: "150" } },
   ]);
-  // leere Dose: ausgeblendet
+  // empty container: hidden
   document.body.innerHTML = "";
   const empty = mount(adminHass([{ id: "d1", name: "A" }]));
   assert.equal($(empty, ".card details.nutrition").hidden, true);
 });
 
-test("Inhalt per Foto im Befüllen-Dialog (KI)", async () => {
+test("content from a photo in the fill dialog (AI)", async () => {
   const hass = adminHass([{ id: "d1", name: "A" }]);
   hass.services = { ai_task: { generate_data: {} } };
   const posted = [];
@@ -1262,14 +1262,14 @@ test("Inhalt per Foto im Befüllen-Dialog (KI)", async () => {
   assert.equal(posted[0].url, "/api/larder/content_photo");
   assert.equal(form.querySelector('[data-f="content"]').value, "Chili con carne");
   assert.match(form.querySelector(".barcodestatus").textContent, /Vorschlag: Chili con carne/);
-  // ohne KI: kein Knopf
+  // without AI: no button
   document.body.innerHTML = "";
   const plain = mount(adminHass([{ id: "d1", name: "A" }]));
   plain.openFillDialog("d1");
   assert.equal(plain.shadowRoot.querySelector("form.fillform button.photo").hidden, true);
 });
 
-test("Schnellaktionen: ohne Inhalt versteckt, ohne MHD ist +1 Tag gesperrt", () => {
+test("quick actions: hidden without content, +1 day locked without best-before", () => {
   const empty = mount(adminHass([{ id: "d1", name: "A" }]));
   assert.equal($(empty, ".quickrow").classList.contains("visible"), false);
   document.body.innerHTML = "";
@@ -1281,7 +1281,7 @@ test("Schnellaktionen: ohne Inhalt versteckt, ohne MHD ist +1 Tag gesperrt", () 
 
 // ---------- NFC ----------
 
-/** hass mit Ereignis-Abo: `emit(type, data)` simuliert ein Ereignis aus Home Assistant. */
+/** hass with event subscription: `emit(type, data)` simulates an event from Home Assistant. */
 function nfcHass(doses, { links = {} } = {}) {
   const hass = adminHass(doses);
   hass.nfcLinks = links;
@@ -1310,7 +1310,7 @@ function nfcHass(doses, { links = {} } = {}) {
   return hass;
 }
 
-test("Karte: NFC-Tag verknüpfen wartet auf den nächsten Scan und verknüpft ihn", async () => {
+test("card: link NFC tag waits for the next scan and links it", async () => {
   const hass = nfcHass([{ id: "d1", name: "A", content: "Pizza" }]);
   const el = mount(hass);
   await flush();
@@ -1326,18 +1326,18 @@ test("Karte: NFC-Tag verknüpfen wartet auf den nächsten Scan und verknüpft ih
   assert.equal($(el, ".nfcstate").textContent, "NFC-Tag verknüpft");
   assert.equal($(el, "button.nfcbtn").textContent, "Lösen");
 
-  // ohne Warten werden Scans ignoriert
+  // scans are ignored without waiting
   hass.emit("tag_scanned", { tag_id: "zzz" });
   await flush();
   assert.equal(hass.wsCalls.length, 0);
 
-  $(el, "button.nfcbtn").click(); // Lösen
+  $(el, "button.nfcbtn").click(); // unlink
   await flush();
   assert.deepEqual(hass.wsCalls.pop(), { type: `${D}/nfc_unlink`, device_id: "d1" });
   assert.equal($(el, ".nfcstate").textContent, "Kein NFC-Tag");
 });
 
-test("Karte: Warten lässt sich abbrechen, ein bereits verknüpfter Tag wird abgelehnt", async () => {
+test("card: waiting can be cancelled, an already linked tag is rejected", async () => {
   const hass = nfcHass(
     [{ id: "d1", name: "A" }, { id: "d2", name: "B" }],
     { links: { d2: "belegt" } },
@@ -1351,14 +1351,14 @@ test("Karte: Warten lässt sich abbrechen, ein bereits verknüpfter Tag wird abg
   await flush();
   assert.equal(hass.wsCalls.length, 0);
   assert.match($(el, "#notice").textContent, /schon mit einer anderen Dose/);
-  assert.equal(row(0).querySelector(".nfcstate").textContent, "Halte das Handy jetzt an den NFC-Tag …"); // wartet weiter
+  assert.equal(row(0).querySelector(".nfcstate").textContent, "Halte das Handy jetzt an den NFC-Tag …"); // keeps waiting
 
   row(0).querySelector("button.nfcbtn").click(); // Abbrechen
   await flush();
   assert.equal(row(0).querySelector(".nfcstate").textContent, "Kein NFC-Tag");
 });
 
-test("Nicht-Administratoren sehen keine NFC-Zeile", async () => {
+test("non-administrators see no NFC row", async () => {
   const hass = nfcHass([{ id: "d1", name: "A" }]);
   hass.user = { is_admin: false };
   const el = mount(hass);
@@ -1366,7 +1366,7 @@ test("Nicht-Administratoren sehen keine NFC-Zeile", async () => {
   assert.equal($(el, ".nfcrow").classList.contains("visible"), false);
 });
 
-test("Dialog: 'NFC-Tag scannen' wartet auf den Tag, legt die Dose an und verknüpft den Tag", async () => {
+test("dialog: 'Scan NFC tag' waits for the tag, creates the container and links the tag", async () => {
   const hass = nfcHass([], {});
   hass.callApi = async (method, path, body) => {
     hass.apiCalls.push({ method, path, body });
@@ -1383,7 +1383,7 @@ test("Dialog: 'NFC-Tag scannen' wartet auf den Tag, legt die Dose an und verknü
   assert.equal($(el, '.nfcstatus').hidden, false);
   assert.equal($(el, '.nfcstatus').textContent, "Halte das Handy jetzt an den NFC-Tag …");
 
-  // ohne Tag kein Anlegen
+  // no creating without a tag
   $(el, "form.dialog").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
   await flush();
   assert.equal(hass.apiCalls.length, 0);
@@ -1428,7 +1428,7 @@ function writeHass(canWriteTag) {
   return hass;
 }
 
-test("Dialog: 'Neuen NFC-Tag beschreiben' legt Dose, Tag und Verknüpfung an und startet das Beschreiben", async () => {
+test("dialog: 'Write new NFC tag' creates container, tag and link and starts writing", async () => {
   const hass = writeHass(true);
   const el = mount(hass);
   await flush();
@@ -1458,7 +1458,7 @@ test("Dialog: 'Neuen NFC-Tag beschreiben' legt Dose, Tag und Verknüpfung an und
   assert.equal($(el, ".overlay").hidden, true);
 });
 
-test("Dialog: 'Neuen NFC-Tag beschreiben' erscheint nur, wenn die App Tags beschreiben kann", async () => {
+test("dialog: 'Write new NFC tag' only appears when the app can write tags", async () => {
   for (const hass of [writeHass(false), adminHass([])]) {
     const el = mount(hass);
     await flush();
@@ -1484,7 +1484,7 @@ function recipeHass(response, { services = true, admin = true } = {}) {
   return hass;
 }
 
-test("Rezeptideen: Button nur für Administratoren und nur mit KI-Integration und Service", () => {
+test("recipe ideas: button only for administrators and only with AI integration and service", () => {
   assert.equal($(mount(recipeHass({})), "button.ideas").classList.contains("visible"), true);
   assert.equal($(mount(recipeHass({})), "button.ideas").textContent, "Rezeptideen");
   document.body.innerHTML = "";
@@ -1493,7 +1493,7 @@ test("Rezeptideen: Button nur für Administratoren und nur mit KI-Integration un
   assert.equal($(mount(recipeHass({}, { admin: false })), "button.ideas").classList.contains("visible"), false);
 });
 
-test("Rezeptideen: Dialog ruft den Service mit Tagen und Personen auf und zeigt die Rezepte", async () => {
+test("recipe ideas: dialog calls the service with days and persons and shows the recipes", async () => {
   const hass = recipeHass({
     recipes: [
       { title: "Schinken-Omelett", minutes: 15, uses: ["Schinken"], extra_ingredients: ["Butter"], steps: ["Braten", "Servieren"] },
@@ -1521,14 +1521,14 @@ test("Rezeptideen: Dialog ruft den Service mit Tagen und Personen auf und zeigt 
   assert.equal(el.shadowRoot.querySelectorAll(".recipe li").length, 2);
 });
 
-test("Rezeptideen: ohne ablaufende Dosen ein Hinweis, bei Fehler die Fehlermeldung", async () => {
+test("recipe ideas: a hint without expiring containers, the error message on error", async () => {
   const none = recipeHass({ recipes: [] });
   const el = mount(none);
   $(el, "button.ideas").click();
   $(el, "form.recipeform").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
   await flush();
   assert.equal($(el, ".recipelist").textContent, "In den nächsten 3 Tagen läuft nichts ab.");
-  assert.deepEqual(none.wsCalls.pop().service_data, { days: 3 }); // ohne Personen
+  assert.deepEqual(none.wsCalls.pop().service_data, { days: 3 }); // without persons
 
   document.body.innerHTML = "";
   const failing = recipeHass(new Error("AI kaputt"));
@@ -1540,7 +1540,7 @@ test("Rezeptideen: ohne ablaufende Dosen ein Hinweis, bei Fehler die Fehlermeldu
   assert.equal($(el2, "button.submit.submit, form.recipeform button.submit").disabled, false);
 });
 
-test("Neue Dose: nach dem Anlegen öffnet sich der Befüll-Dialog, sobald ihr Gerät da ist", async () => {
+test("new container: after creating, the fill dialog opens as soon as its device is there", async () => {
   const existing = { id: "d1", name: "Alte Dose", content: "Käse" };
   const hass = adminHass([existing]);
   hass.callApi = async (method, path, body) => {
@@ -1555,7 +1555,7 @@ test("Neue Dose: nach dem Anlegen öffnet sich der Befüll-Dialog, sobald ihr Ge
   $(el, "form.dialog").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
   await flush();
   assert.equal($(el, ".overlay").hidden, true);
-  assert.equal($(el, ".overlay.fill").hidden, true); // Gerät noch nicht da
+  assert.equal($(el, ".overlay.fill").hidden, true); // device not there yet
 
   const next = adminHass([existing, { id: "d2", name: "Neue Dose" }]);
   el.hass = next;
@@ -1563,14 +1563,14 @@ test("Neue Dose: nach dem Anlegen öffnet sich der Befüll-Dialog, sobald ihr Ge
   assert.equal($(el, ".overlay.fill").hidden, false);
   assert.match($(el, "form.fillform h2").textContent, /Neue Dose/);
 
-  // nur einmal: nach dem Schließen öffnet ein weiteres hass-Update den Dialog nicht erneut
+  // only once: after closing, another hass update does not open the dialog again
   $(el, "form.fillform button.cancel").click();
   el.hass = adminHass([existing, { id: "d2", name: "Neue Dose" }]);
   await flush();
   assert.equal($(el, ".overlay.fill").hidden, true);
 });
 
-test("Befüll-Dialog öffnet sich nicht von selbst, wenn keine Dose angelegt wurde", async () => {
+test("the fill dialog does not open by itself when no container was created", async () => {
   const el = mount(adminHass([{ id: "d1", name: "A" }]));
   await flush();
   el.hass = adminHass([{ id: "d1", name: "A" }, { id: "d2", name: "B" }]);
@@ -1578,7 +1578,7 @@ test("Befüll-Dialog öffnet sich nicht von selbst, wenn keine Dose angelegt wur
   assert.equal($(el, ".overlay.fill").hidden, true);
 });
 
-test("Dialog schließen beendet das Warten auf einen Tag", async () => {
+test("closing the dialog ends waiting for a tag", async () => {
   const hass = nfcHass([{ id: "d1", name: "A" }]);
   const el = mount(hass);
   await flush();
@@ -1592,7 +1592,7 @@ test("Dialog schließen beendet das Warten auf einen Tag", async () => {
   assert.equal(hass.wsCalls.length, 0);
 });
 
-test("Gescannte Dose wird hervorgehoben, auch wenn ein Filter sie ausblendet", async () => {
+test("a scanned container is highlighted, even if a filter hides it", async () => {
   const hass = nfcHass([
     { id: "d1", name: "A", content: "Pizza" },
     { id: "d2", name: "B", content: "Suppe" },
@@ -1606,13 +1606,13 @@ test("Gescannte Dose wird hervorgehoben, auch wenn ein Filter sie ausblendet", a
 
   hass.emit("larder_dose_scanned", { device_id: "d2" });
   await flush();
-  assert.deepEqual(cardNames(el), ["A", "B"]); // Filter zurückgesetzt
+  assert.deepEqual(cardNames(el), ["A", "B"]); // filter reset
   const flashed = $$(el, ".card.flash");
   assert.equal(flashed.length, 1);
   assert.equal(flashed[0].querySelector(".name").textContent, "B");
 });
 
-test("?open=<Geräte-ID> hebt die Dose hervor (auch für Nicht-Administratoren)", async () => {
+test("?open=<device ID> highlights the container (for non-administrators too)", async () => {
   dom.window.history.pushState(null, "", "/larder?open=d2");
   const hass = makeHass([{ id: "d1", name: "A" }, { id: "d2", name: "B" }], { areas: AREAS });
   hass.user = { is_admin: false };
@@ -1620,10 +1620,10 @@ test("?open=<Geräte-ID> hebt die Dose hervor (auch für Nicht-Administratoren)"
   await flush();
   assert.equal($$(el, ".card.flash").length, 1);
   assert.equal($(el, ".card.flash .name").textContent, "B");
-  assert.equal(dom.window.location.search, ""); // Parameter ist entfernt
+  assert.equal(dom.window.location.search, ""); // parameter is removed
 });
 
-// ---------- Dose befüllen ----------
+// ---------- Fill container ----------
 
 function fillHass(doses, contents = ["Pizza", "Suppe"]) {
   const hass = makeHass(doses, { areas: AREAS });
@@ -1636,7 +1636,7 @@ function fillHass(doses, contents = ["Pizza", "Suppe"]) {
   return hass;
 }
 
-test("'Befüllen' erscheint nur bei leerer Dose und öffnet den Dialog mit Vorschlägen", async () => {
+test("'Fill' only appears for an empty container and opens the dialog with suggestions", async () => {
   const hass = fillHass([
     { id: "d1", name: "Leer", content: "unknown" },
     { id: "d2", name: "Voll", content: "Suppe", mhd: iso(5) },
@@ -1660,7 +1660,7 @@ test("'Befüllen' erscheint nur bei leerer Dose und öffnet den Dialog mit Vorsc
   assert.equal(overlay.hidden, true);
 });
 
-test("Dose befüllen: Pflichtfeld Inhalt, Speichern setzt Entitäten und schätzt das MHD", async () => {
+test("fill container: content is required, saving sets entities and estimates the best-before date", async () => {
   const hass = fillHass([{ id: "d1", name: "Dose 1", content: "unknown", ai: true }]);
   const el = mount(hass);
   el.openFillDialog("d1");
@@ -1693,7 +1693,7 @@ test("Dose befüllen: Pflichtfeld Inhalt, Speichern setzt Entitäten und schätz
   assert.deepEqual(est.target, { entity_id: "date.d1_mhd" });
 });
 
-test("Dose befüllen: mit eingegebenem MHD oder abgewählter Schätzung wird nicht geschätzt", async () => {
+test("fill container: no estimate with an entered best-before date or a deselected estimate", async () => {
   const hass = fillHass([{ id: "d1", name: "Dose 1", content: "unknown", ai: true }]);
   const el = mount(hass);
   el.openFillDialog("d1");
@@ -1706,14 +1706,14 @@ test("Dose befüllen: mit eingegebenem MHD oder abgewählter Schätzung wird nic
   assert.ok(!hass.wsCalls.some((m) => m.type === "call_service"));
 });
 
-test("Dose befüllen: Schätzoption nur sichtbar, wenn Schätzung aktiv ist", async () => {
+test("fill container: estimate option only visible when estimating is active", async () => {
   const hass = fillHass([{ id: "d1", name: "Dose 1", content: "unknown", ai: false }]);
   const el = mount(hass);
   el.openFillDialog("d1");
   assert.equal($(el, 'form.fillform [data-w="estimate"]').hidden, true);
 });
 
-test("?open=<ID> öffnet bei leerer Dose den Befüll-Dialog, bei gefüllter nur Hervorhebung (auch ohne Admin)", async () => {
+test("?open=<ID> opens the fill dialog for an empty container, only highlights a filled one (also without admin)", async () => {
   const hass = fillHass([
     { id: "d1", name: "Leer", content: "unknown" },
     { id: "d2", name: "Voll", content: "Suppe" },
@@ -1736,7 +1736,7 @@ test("?open=<ID> öffnet bei leerer Dose den Befüll-Dialog, bei gefüllter nur 
   assert.equal(dom.window.location.search, "");
 });
 
-test("Dose befüllen: englische Texte", () => {
+test("fill container: English texts", () => {
   const hass = fillHass([{ id: "d1", name: "Dose 1", content: "unknown" }]);
   hass.language = "en";
   const el = mount(hass);
@@ -1745,7 +1745,7 @@ test("Dose befüllen: englische Texte", () => {
   assert.equal($(el, "form.fillform button.submit").textContent, "Save");
 });
 
-test("Dose befüllen: Einkaufsliste-Checkbox nur mit gewählter Liste, Wert wird gespeichert", async () => {
+test("fill container: shopping list checkbox only with a chosen list, the value is saved", async () => {
   const hass = fillHass([
     { id: "d1", name: "Dose 1", content: "unknown", shoppingList: "todo.einkaufen" },
     { id: "d2", name: "Dose 2", content: "unknown" },
@@ -1771,7 +1771,7 @@ test("Dose befüllen: Einkaufsliste-Checkbox nur mit gewählter Liste, Wert wird
   );
 });
 
-test("„Läuft bald ab“ folgt der Einstellung (Attribut soon_days der MHD-Entität)", async () => {
+test(`"Expiring soon" follows the setting (attribute soon_days of the best-before entity)`, async () => {
   const { soonDaysOf } = await import("../../custom_components/larder/frontend/larder-panel.js");
   assert.equal(soonDaysOf(null), 3);
   assert.equal(soonDaysOf({ attributes: { soon_days: 0 } }), 0);
@@ -1790,7 +1790,7 @@ test("„Läuft bald ab“ folgt der Einstellung (Attribut soon_days der MHD-Ent
   assert.equal(STRINGS.en.filterSoon(1), "Expiring soon (≤ 1 day)");
 });
 
-test("Bereichsauswahl: auch Beschriftungen „Larder: …“ markieren einen Bereich, ein Label reicht", async () => {
+test(`area choice: labels "Larder: …" also mark an area, one label is enough`, async () => {
   const { isLarderLabel } = await import("../../custom_components/larder/frontend/larder-panel.js");
   assert.equal(isLarderLabel({ name: "Larder: Freezer" }), true);
   assert.equal(isLarderLabel({ name: " larder:pantry" }), true);
@@ -1820,7 +1820,7 @@ test("Bereichsauswahl: auch Beschriftungen „Larder: …“ markieren einen Ber
   assert.deepEqual([...$(el, "form.dialog select").options].map((o) => o.textContent), ["Kein Bereich", "Küche", "Truhe"]);
 });
 
-test("Mehrere Dosen auf einmal befüllen: gleiche Angaben für alle, Schätzung für jede", async () => {
+test("fill several containers at once: same details for all, an estimate for each", async () => {
   const hass = fillHass([
     { id: "d1", name: "Dose 1", content: "unknown", ai: true },
     { id: "d2", name: "Dose 2", content: "unknown", ai: true },
@@ -1847,7 +1847,7 @@ test("Mehrere Dosen auf einmal befüllen: gleiche Angaben für alle, Schätzung 
 });
 
 
-test("Variabler Lagerort: Schalter und „nach dem Leeren zurück in“ auf der Karte, Bereich im Befüll-Dialog", async () => {
+test(`variable storage place: switch and "back to after emptying" on the card, area in the fill dialog`, async () => {
   const hass = fillHass([
     { id: "d1", name: "Vakuumdose", content: "unknown", area: "kitchen", flexible: "on", home: "Keller" },
     { id: "d2", name: "Vorratsdose", content: "unknown", area: "cellar" },
@@ -1873,7 +1873,7 @@ test("Variabler Lagerort: Schalter und „nach dem Leeren zurück in“ auf der 
     ["switch", "turn_on", "switch.d2_variabler_lagerort"],
   ]);
 
-  // Befüll-Dialog: Bereich nur bei variablem Lagerort, Speichern stellt die Dose um
+  // fill dialog: area only with a variable storage place, saving moves the container
   el.openFillDialog("d2");
   assert.equal($(el, 'form.fillform [data-w="area"]').hidden, true);
   el.closeFillDialog();
@@ -1887,16 +1887,16 @@ test("Variabler Lagerort: Schalter und „nach dem Leeren zurück in“ auf der 
   await flush();
   assert.ok(hass.wsCalls.some((m) => m.type === "config/device_registry/update" && m.device_id === "d1" && m.area_id === "cellar"));
 
-  // ohne Administratorrechte kein Bereichsfeld
+  // no area field without administrator rights
   hass.user = { is_admin: false };
   el.hass = { ...hass };
   el.openFillDialog("d1");
   assert.equal($(el, 'form.fillform [data-w="area"]').hidden, true);
 });
 
-test("Karte einer Packung: Umfüllen-Knopf, kein NFC, kein Befüll-Datum", async () => {
+test("card of a pack: transfer button, no NFC, no fill date", async () => {
   const hass = adminHass([{ id: "d1", name: "Packung 1", content: "Tomaten", product: { kind: "pack" } }, { id: "d2", name: "Dose", content: "Reis" }]);
-  // Packungen haben weder "Befüllt am" noch Schalter
+  // packs have neither "Filled on" nor switches
   for (const id of ["datetime.d1_befuellt", "switch.d1_vacuum", "switch.d1_einkaufsliste", "switch.d1_variabler_lagerort"]) {
     delete hass.entities[id];
     delete hass.states[id];
@@ -1915,7 +1915,7 @@ test("Karte einer Packung: Umfüllen-Knopf, kein NFC, kein Befüll-Datum", async
   assert.equal(asked, "d1");
 });
 
-test("Karte einer Packung: Mindestbestand und Verschieben", async () => {
+test("card of a pack: minimum stock and moving", async () => {
   const hass = adminHass([{ id: "d1", name: "Packung 1", content: "Ketchup", product: { kind: "pack", min_stock: 4 } }]);
   const el = mount(hass);
   const card = $(el, ".card");
@@ -1932,7 +1932,7 @@ test("Karte einer Packung: Mindestbestand und Verschieben", async () => {
   assert.equal(moved, "d1");
 });
 
-test("Packung: Hinweis auf eine ältere Packung an einem anderen Ort", async () => {
+test("pack: hint at an older pack in another place", async () => {
   const hass = adminHass([
     { id: "d1", name: "Packung 1", area: "kitchen", content: "Ketchup", mhd: "2027-06-01", product: { kind: "pack" } },
     { id: "d2", name: "Packung 2", content: "ketchup", mhd: "2026-12-01", product: { kind: "pack" } },
@@ -1946,7 +1946,7 @@ test("Packung: Hinweis auf eine ältere Packung an einem anderen Ort", async () 
   assert.equal(older.querySelector(".olderhint").hidden, true);
 });
 
-test("Karte: Fach-Vorschläge aus dem gleichen Bereich, Antippen speichert", async () => {
+test("card: compartment suggestions from the same area, tapping saves", async () => {
   const hass = adminHass([
     { id: "d1", name: "A", area: "kitchen", content: "Reis" },
     { id: "d2", name: "B", area: "kitchen", content: "Nudeln" },
@@ -1966,7 +1966,7 @@ test("Karte: Fach-Vorschläge aus dem gleichen Bereich, Antippen speichert", asy
   assert.deepEqual(hass.calls.at(-1), { domain: "text", service: "set_value", data: { entity_id: compId("d1"), value: "Schublade 2" } });
 });
 
-test("Schätzungen: Vorschläge aus dem Verlauf übernehmen oder ignorieren", async () => {
+test("estimates: accept or ignore suggestions from the history", async () => {
   const hass = estimatesHass(ENTRIES, [
     { key: ENTRIES[0].key, content: "Pizza", area: "Kühlschrank", vacuum: true, days: 3, suggested: 2, direction: "shorter", count: 2 },
   ]);
@@ -1984,7 +1984,7 @@ test("Schätzungen: Vorschläge aus dem Verlauf übernehmen oder ignorieren", as
   assert.equal($$(el, "#estimates .est:not(.new)")[0].querySelector('[data-f="days"]').value, "2");
 });
 
-test("Karte einer Packung: Anbrechen und Kennzeichen 'angebrochen'", async () => {
+test("card of a pack: open and mark 'opened'", async () => {
   const hass = adminHass([
     { id: "d1", name: "Packung 1", content: "Ketchup", product: { kind: "pack" } },
     { id: "d2", name: "Packung 2", content: "Senf", product: { kind: "pack", opened: "2026-11-10" } },
@@ -2001,7 +2001,7 @@ test("Karte einer Packung: Anbrechen und Kennzeichen 'angebrochen'", async () =>
   assert.equal(asked, "d1");
 });
 
-test("Karte einer Packung: reicht noch (alle Orte) und gemerkter Preis als Platzhalter", async () => {
+test("card of a pack: lasts (all places) and remembered price as placeholder", async () => {
   const hass = adminHass([
     { id: "d1", name: "Packung 1", content: "Ketchup", portions: 2, product: { kind: "pack", consumption_per_week: 0.5, consumption_basis: { takes: 4, days: 180 }, price_remembered: 1.99 } },
     { id: "d2", name: "Packung 2", content: "ketchup", portions: 1, product: { kind: "pack", price: 2.49 } },
@@ -2013,11 +2013,11 @@ test("Karte einer Packung: reicht noch (alle Orte) und gemerkter Preis als Platz
   assert.equal(line.hidden, false);
   assert.equal(line.textContent, "📉 Reicht noch ca. 6 Wochen (aus 4 Entnahmen in 6 Monaten)");
   assert.equal(card.querySelector('[data-p="price"]').placeholder, "1.99");
-  // Preiszeile: gemerkter Preis; Wert über beide Packungen (2 × 1,99 + 1 × 2,49)
+  // price line: remembered price; value across both packs (2 × 1.99 + 1 × 2.49)
   assert.equal(card.querySelector(".priceline").textContent, "💶 1,99 € je Packung · alle zusammen ca. 6,47 €");
 });
 
-test("Karte einer Packung: Preisschätzung von Open Prices, ohne Preis keine Zeile", async () => {
+test("card of a pack: price estimate from Open Prices, no row without a price", async () => {
   const hass = adminHass([
     { id: "d1", name: "Packung 1", content: "Tomaten", portions: 1, product: { kind: "pack", price_remembered: 1.49, price_remembered_source: "openprices" } },
     { id: "d2", name: "Packung 2", content: "Senf", portions: 1, product: { kind: "pack" } },
@@ -2029,7 +2029,7 @@ test("Karte einer Packung: Preisschätzung von Open Prices, ohne Preis keine Zei
   assert.equal(card("Packung 2").querySelector(".priceline").hidden, true);
 });
 
-test("Karte: Rückrufwarnung mit Link, ohne Warnung keine Zeile", async () => {
+test("card: recall with link, no row without a recall", async () => {
   const hass = adminHass([
     { id: "d1", name: "Packung 1", content: "Ketchup", portions: 1, product: { kind: "pack", recall: { id: "x", title: "Heinz Ketchup", reason: "Glassplitter", link: "https://www.lebensmittelwarnung.de/meldung/1" } } },
     { id: "d2", name: "Packung 2", content: "Senf", portions: 1, product: { kind: "pack" } },
@@ -2043,9 +2043,9 @@ test("Karte: Rückrufwarnung mit Link, ohne Warnung keine Zeile", async () => {
   assert.equal(card("Packung 2").querySelector(".recallline").hidden, true);
 });
 
-// ---------- Block 10: Größen und Vorkochen ----------
+// ---------- Block 10: sizes and batch cooking ----------
 
-test("Karte: Größe fest bzw. variabel, nicht bei Packungen", async () => {
+test("card: size fixed or variable, not for packs", async () => {
   const hass = fillHass([
     { id: "d1", name: "Dose 1", content: "unknown" },
     { id: "d2", name: "Deckel", content: "Suppe", mhd: iso(5) },
@@ -2064,22 +2064,22 @@ test("Karte: Größe fest bzw. variabel, nicht bei Packungen", async () => {
   const variable = card("Deckel");
   assert.equal(variable.querySelector('[data-f="sizeVariable"]').checked, true);
   assert.equal(variable.querySelector('[data-f="size"]').value, "2 l");
-  // feste Größe ändern
+  // change the fixed size
   const size = fixed.querySelector('[data-f="size"]');
   size.value = "1,5 l";
   size.dispatchEvent(new dom.window.Event("change"));
   assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/size_set`, device_id: "d1", size: "1,5 l", variable: false });
-  // variable Dose: Größe der aktuellen Befüllung
+  // variable container: size of the current filling
   const vsize = variable.querySelector('[data-f="size"]');
   vsize.value = "1 l";
   vsize.dispatchEvent(new dom.window.Event("change"));
   assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/size_fill`, device_id: "d2", size: "1 l" });
-  // auf variabel umstellen: feste Größe bleibt gemerkt
+  // switch to variable: the fixed size stays remembered
   fixed.querySelector('[data-f="sizeVariable"]').click();
   assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/size_set`, device_id: "d1", size: "1 l", variable: true });
 });
 
-test("Befüllen mit Vorgaben (Vorkochen): Menge je Dose und Größe der variablen Dosen", async () => {
+test("fill with presets (batch cooking): amount per container and size of the variable containers", async () => {
   const hass = fillHass([
     { id: "d1", name: "Dose 1", content: "unknown" },
     { id: "d2", name: "Deckel", content: "unknown" },
@@ -2173,4 +2173,30 @@ test("Card: own shopping list per product (4.1), only with content and to-do lis
   select.dispatchEvent(new Event("change"));
   await new Promise((r) => setTimeout(r, 0));
   assert.equal(hass.wsCalls.filter((m) => m.type === `${D}/product_list`)[1].list, "todo.einkaufen");
+});
+
+test("Card of a household item: replacement interval, due date and 'Replaced' (4.6)", async () => {
+  const hass = adminHass([
+    { id: "d1", name: "Artikel 1", content: "Wasserfilter", product: { kind: "household" } },
+    { id: "d2", name: "Packung 1", content: "Senf", product: { kind: "pack" } },
+  ]);
+  hass.states["text.d1_inhalt"].attributes.replace = { weeks: 4, last: "2026-11-01", due: "2026-11-29", days: 12 };
+  const el = mount(hass);
+  const cards = $$(el, ".card");
+  const card = (name) => cards.find((c) => c.querySelector(".name").textContent === name);
+  const [item, pack] = [card("Artikel 1"), card("Packung 1")];
+  assert.equal(pack.querySelector(".replrow").hidden, true);
+  const row = item.querySelector(".replrow");
+  assert.equal(row.hidden, false);
+  assert.equal(row.querySelector("label").textContent, "Wechseln alle (Wochen)");
+  assert.equal(row.querySelector("input").value, "4");
+  assert.match(row.querySelector(".replinfo").textContent, /^fällig am /);
+  assert.equal(row.querySelector("button.replaced").textContent, "🔁 Gewechselt");
+  row.querySelector("button.replaced").click();
+  const input = row.querySelector("input");
+  input.value = "6";
+  input.dispatchEvent(new Event("change"));
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/replaced`), { type: `${D}/replaced`, content: "Wasserfilter", device_id: "d1" });
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/replace_interval`), { type: `${D}/replace_interval`, content: "Wasserfilter", weeks: 6 });
 });

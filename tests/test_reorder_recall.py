@@ -1,4 +1,4 @@
-"""Tests Block 16: Bald leer (Prognose) und Rückrufwarnungen (lebensmittelwarnung.de)."""
+"""Tests block 16: running low (forecast) and recalls (lebensmittelwarnung.de)."""
 
 from datetime import timedelta
 from email.utils import format_datetime
@@ -20,7 +20,7 @@ from .test_stock import _packs
 
 
 def _rss(*items: tuple[str, str, int]) -> str:
-    """RSS wie beim Portal: Titel, Beschreibung (HTML) und Alter in Tagen."""
+    """RSS like the portal's: title, description (HTML) and age in days."""
     now = dt_util.now()
     body = "".join(
         f"<item><title>{title}</title><link>https://www.lebensmittelwarnung.de/meldung/{i}</link>"
@@ -43,7 +43,7 @@ KETCHUP = (
 )
 SALAMI = (
     "K-Classic Salami 1A",
-    "<b>Grund der Warnung:</b> Listerien<br/><b>Betroffene Länder:</b> Berlin",  # älteres Format
+    "<b>Grund der Warnung:</b> Listerien<br/><b>Betroffene Länder:</b> Berlin",  # older format
     5,
 )
 OLD = ("Alte Warnung Senf", "<b>Grund der Warnung:</b> alt", 60)
@@ -51,14 +51,14 @@ OLD = ("Alte Warnung Senf", "<b>Grund der Warnung:</b> alt", 60)
 
 def test_parse_feed_fields_age_and_state() -> None:
     warnings = parse_feed(_rss(KETCHUP, SALAMI, OLD))
-    assert [w["title"] for w in warnings] == [KETCHUP[0], SALAMI[0]]  # die alte fällt weg
+    assert [w["title"] for w in warnings] == [KETCHUP[0], SALAMI[0]]  # the old one is dropped
     ketchup = warnings[0]
     assert ketchup["reason"] == "Glassplitter nicht ausgeschlossen"
     assert ketchup["manufacturer"] == "H.J. Heinz GmbH" and ketchup["states"] == "Bayern, Hessen"
     assert ketchup["link"] == "https://www.lebensmittelwarnung.de/meldung/0" and ketchup["date"]
     assert ketchup["product"] == "Tomato Ketchup, Marke: Heinz, 500 ml"
     assert warnings[1]["reason"] == "Listerien" and warnings[1]["states"] == "Berlin"
-    # nur Bayern: die Salami-Warnung gilt nur für Berlin
+    # Bavaria only: the salami warning applies to Berlin only
     assert [w["title"] for w in parse_feed(_rss(KETCHUP, SALAMI), state="Bayern")] == [KETCHUP[0]]
 
 
@@ -66,10 +66,10 @@ def test_match_needs_brand_and_name_or_barcode() -> None:
     warning = parse_feed(_rss(KETCHUP))[0]
     assert match(warning, {"content": "Ketchup", "brand": "Heinz"}) == "brand"
     assert match(warning, {"content": "Ketchup", "brand": "Hela"}) is None  # andere Marke
-    assert match(warning, {"content": "Ketchup"}) is None  # ohne Marke reicht ein Wort nicht
-    assert match(warning, {"content": "Tomato Ketchup"}) == "name"  # mehrteilig, alle Wörter
+    assert match(warning, {"content": "Ketchup"}) is None  # without a brand one word is not enough
+    assert match(warning, {"content": "Tomato Ketchup"}) == "name"  # several parts, all words
     assert match(warning, {"content": "Senf", "ean": "4000000000017"}) == "barcode"
-    assert match(warning, {"content": "Mayo", "brand": "Heinz"}) is None  # Marke allein reicht nicht
+    assert match(warning, {"content": "Mayo", "brand": "Heinz"}) is None  # the brand alone is not enough
 
 
 async def test_recalls_on_start_page_card_event_and_read(hass: HomeAssistant, hass_ws_client, aioclient_mock) -> None:
@@ -89,7 +89,7 @@ async def test_recalls_on_start_page_card_event_and_read(hass: HomeAssistant, ha
     assert [w["title"] for w in new] == [KETCHUP[0]]
     assert len(events) == 1 and events[0].data["products"] == ["Ketchup"]
     assert events[0].data["places"] == ["Vorratskammer · Schrank"] and "Glassplitter" in events[0].data["message"]
-    # Karte der Packung
+    # card of the pack
     attrs = hass.states.get(_eid(hass, "text", made[0]["cc"])).attributes
     assert attrs["recall"]["title"] == KETCHUP[0] and attrs["recall"]["link"].startswith("https://")
     assert "recall" not in hass.states.get(_eid(hass, "text", made[1]["cc"])).attributes
@@ -99,7 +99,7 @@ async def test_recalls_on_start_page_card_event_and_read(hass: HomeAssistant, ha
     assert item["items"][0]["via"] == "brand" and item["items"][0]["compartment"] == "Schrank"
     # erneuter Abruf meldet nichts doppelt
     assert await recalls.async_refresh() == []
-    # gelesen: weg von Startseite und Karte, auch nach dem nächsten Abruf
+    # read: gone from the start page and the card, also after the next fetch
     res = await _ws(hass, hass_ws_client, type="larder/recall_read", recall_id=item["id"])
     assert res["result"]["items"] == []
     await hass.async_block_till_done()
@@ -116,7 +116,7 @@ async def test_recalls_off_and_feed_errors(hass: HomeAssistant, hass_ws_client, 
     assert await recalls.async_refresh() == [] and recalls.error
     await _options(hass, entry, recall_check=False)
     assert await recalls.async_refresh() == [] and recalls.warnings == []
-    assert len(aioclient_mock.mock_calls) == 1  # ausgeschaltet: kein Abruf
+    assert len(aioclient_mock.mock_calls) == 1  # switched off: no fetch
 
 
 async def test_running_low_start_page_event_and_shopping(hass: HomeAssistant, hass_ws_client) -> None:
@@ -127,18 +127,18 @@ async def test_running_low_start_page_event_and_shopping(hass: HomeAssistant, ha
     stock = await async_get_stock(hass)
     await stock.async_set_minimum("Milch", 1)
     today = dt_util.now().date()
-    # etwa eine Packung alle zwei Tage → 3 Packungen reichen keine Woche
+    # about one pack every two days → 3 packs do not last a week
     stock.takes = [{"key": "milch", "day": (today - timedelta(days=d)).isoformat(), "n": 1} for d in (1, 3, 5, 7, 9, 11, 13)]
     events = async_capture_events(hass, "larder_running_low")
     new = await async_check_running_low(hass)
     await hass.async_block_till_done()
     assert [p["name"] for p in new] == ["Milch"] and len(events) == 1
     assert events[0].data["lasts_days"] <= 7 and "Milch" in events[0].data["message"]
-    assert todo.summaries == []  # ohne Einstellung nicht gleich auf die Liste
-    assert await async_check_running_low(hass) == []  # nur einmal melden
+    assert todo.summaries == []  # without the setting not straight onto the list
+    assert await async_check_running_low(hass) == []  # report only once
     res = await _ws(hass, hass_ws_client, type="larder/running_low")
     assert [i["name"] for i in res["result"]["items"]] == ["Milch"] and res["result"]["shopping_list"] is True
-    # 🛒: auf die Liste und eine Woche ausgeblendet
+    # 🛒: onto the list and hidden for a week
     res = await _ws(hass, hass_ws_client, type="larder/running_low_action", content="Milch", action="shop")
     assert res["result"]["added"] is True and res["result"]["items"] == []
     assert todo.summaries == ["Milch"]
@@ -156,7 +156,7 @@ async def test_running_low_goes_to_shopping_list_when_set(hass: HomeAssistant, h
     await async_check_running_low(hass)
     await hass.async_block_till_done()
     assert todo.summaries == ["Butter"]
-    # ✕ blendet aus, ohne Liste
+    # ✕ hides, without a list
     res = await _ws(hass, hass_ws_client, type="larder/running_low")
     assert res["result"]["items"]
     res = await _ws(hass, hass_ws_client, type="larder/running_low_action", content="Butter", action="dismiss")
@@ -170,8 +170,8 @@ def test_blueprint_stock_alerts() -> None:
     Loader.add_constructor("!input", lambda loader, node: loader.construct_scalar(node))
     path = Path(__file__).parents[1] / "blueprints/automation/larder/stock_alerts.yaml"
     bp = yaml.load(path.read_text(encoding="utf-8"), Loader=Loader)  # noqa: S506
-    assert {t["event_type"] for t in bp["triggers"]} == {"larder_running_low", "larder_recall"}
-    assert set(bp["blueprint"]["input"]) == {"notify_action", "running_low", "recalls"}
+    assert {t["event_type"] for t in bp["triggers"]} == {"larder_running_low", "larder_recall", "larder_replace_due"}
+    assert set(bp["blueprint"]["input"]) == {"notify_action", "running_low", "recalls", "replace_due"}
 
 
 async def test_stock_alerts_blueprint_manual_run_and_events(hass: HomeAssistant, tmp_path) -> None:
@@ -193,7 +193,7 @@ async def test_stock_alerts_blueprint_manual_run_and_events(hass: HomeAssistant,
             {"automation": {"id": "larder_alerts", "alias": "Larder alerts", "use_blueprint": {"path": f"larder/{src.name}", "input": {"notify_action": "notify.mobile_app_yan"}}}},
         )
         await hass.async_block_till_done()
-        # von Hand ausgeführt: Testnachricht statt Fehler
+        # run by hand: test message instead of an error
         await hass.services.async_call("automation", "trigger", {"entity_id": "automation.larder_alerts"}, blocking=True)
         await hass.async_block_till_done()
         (test,) = calls["mobile_app_yan"]
@@ -205,5 +205,8 @@ async def test_stock_alerts_blueprint_manual_run_and_events(hass: HomeAssistant,
         hass.bus.async_fire("larder_recall", {"notification_title": "⚠️ Rückruf", "message": "Ketchup – Glas", "title": "Ketchup"})
         await hass.async_block_till_done()
         assert calls["mobile_app_yan"][2]["title"] == "⚠️ Rückruf" and calls["mobile_app_yan"][2]["data"]["url"] == "/larder"
+        hass.bus.async_fire("larder_replace_due", {"title": "🔁 Wechseln", "message": "Wasserfilter sollte gewechselt werden.", "name": "Wasserfilter"})
+        await hass.async_block_till_done()
+        assert calls["mobile_app_yan"][3]["title"] == "🔁 Wechseln"
     finally:
         shutil.rmtree(Path(hass.config.path("blueprints")), ignore_errors=True)

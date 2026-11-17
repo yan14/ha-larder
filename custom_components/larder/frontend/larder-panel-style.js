@@ -172,7 +172,11 @@ export const STYLE = `
   .recallline[hidden] { display: none; }
   .recallline a { color: inherit; font-weight: 500; }
   .openedline { font-size: 13px; font-weight: 500; color: var(--primary-color); }
-  .actions button.move[hidden], .row.minrow[hidden], .row.listrow[hidden] { display: none; }
+  .actions button.move[hidden], .row.minrow[hidden], .row.listrow[hidden], .row.replrow[hidden], button.replaced[hidden] { display: none; }
+  .row.replrow input { max-width: 70px; }
+  .row.replrow .replinfo { flex: 1; font-size: 13px; color: var(--secondary-text-color); }
+  .row.replrow button.replaced { font: inherit; font-size: 13px; padding: 5px 10px; border-radius: 8px; cursor: pointer;
+    background: none; color: var(--primary-color); border: 1px solid var(--primary-color); }
   .row.listrow select { flex: 1; min-width: 0; max-width: 240px; }
   .actions { flex-wrap: wrap; }
   .row.minrow input { max-width: 90px; }

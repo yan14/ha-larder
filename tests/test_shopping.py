@@ -1,4 +1,4 @@
-"""Tests: Inhalt einer geleerten Dose optional auf eine To-do-Liste (Einkaufsliste) setzen."""
+"""Tests: optionally put the content of an emptied container on a to-do list (shopping list)."""
 
 from pytest_homeassistant_custom_component.common import mock_restore_cache
 
@@ -75,7 +75,7 @@ async def test_switch_is_off_by_default_and_survives_emptying(hass: HomeAssistan
     assert hass.states.get(sw).attributes["list"] is None
     await _switch(hass, True)
     await _fill_and_empty(hass, "Reis")
-    assert hass.states.get(sw).state == "on"  # Eigenschaft der Dose, wird nicht zurückgesetzt
+    assert hass.states.get(sw).state == "on"  # property of the container, not reset
 
 
 async def test_switch_restores_last_state(hass: HomeAssistant) -> None:
@@ -92,7 +92,7 @@ async def test_emptying_adds_content_when_switch_is_on(hass: HomeAssistant) -> N
     await _switch(hass, True)
     await _fill_and_empty(hass, "Basmati")
     assert todo.summaries == ["Basmati"]
-    assert hass.states.get(_eid(hass, "text")).state == ""  # Dose wurde trotzdem geleert
+    assert hass.states.get(_eid(hass, "text")).state == ""  # the container was emptied anyway
 
 
 async def test_several_contents_become_separate_items(hass: HomeAssistant) -> None:

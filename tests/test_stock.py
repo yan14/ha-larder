@@ -1,4 +1,4 @@
-"""Tests Block 11: Vorrat (Mindestbestand, Aufteilen/Verschieben), Kassenbon, NFC für Beutel, Art im Export."""
+"""Tests block 11: stock (minimum stock, split/move), receipt, NFC for bags, kind in the export."""
 
 from datetime import timedelta
 from http import HTTPStatus
@@ -39,7 +39,7 @@ async def test_stock_overview_sums_places_and_minimum_goes_to_shopping_list(hass
     cellar = await _packs(hass, hass_ws_client, [{"content": "Ketchup", "quantity": 3, "unit": "pieces", "product": {"brand": "Heinz", "package": "500 ml"}}], pantry.id, "Keller")
     await _packs(hass, hass_ws_client, [{"content": "ketchup ", "quantity": 2, "unit": "pieces"}], pantry.id, "Schrank")
     await _packs(hass, hass_ws_client, [{"content": "Ketchup", "quantity": 1, "unit": "pieces"}], fridge.id)
-    await _packs(hass, hass_ws_client, [{"content": "Mehl", "quantity": 1000, "unit": "grams"}])  # zählt als eine Packung
+    await _packs(hass, hass_ws_client, [{"content": "Mehl", "quantity": 1000, "unit": "grams"}])  # counts as one pack
 
     res = await _ws(hass, hass_ws_client, type="larder/stock")
     products = {p["key"]: p for p in res["result"]["products"]}
@@ -54,7 +54,7 @@ async def test_stock_overview_sums_places_and_minimum_goes_to_shopping_list(hass
     assert hass.states.get(_eid(hass, "text", cellar[0]["cc"])).attributes["min_stock"] == 5
     assert todo.summaries == []
 
-    # zwei entnehmen: 4 < 5 → auf die Einkaufsliste (mit Marke und Packung, nicht doppelt)
+    # take two: 4 < 5 → onto the shopping list (with brand and pack, not twice)
     number = _eid(hass, "number", cellar[0]["cc"])
     await hass.services.async_call("number", "set_value", {"entity_id": number, "value": 2}, blocking=True)
     await hass.async_block_till_done()
@@ -62,7 +62,7 @@ async def test_stock_overview_sums_places_and_minimum_goes_to_shopping_list(hass
     await hass.async_block_till_done()
     assert todo.summaries == ["Ketchup (Heinz, 500 ml)"]
 
-    # Minimum bleibt, auch wenn keine Packung mehr da ist
+    # the minimum stays, even when no pack is left
     res = await _ws(hass, hass_ws_client, type="larder/stock_min", content="Senf", min=2)
     senf = next(p for p in res["result"]["products"] if p["key"] == "senf")
     assert senf["count"] == 0 and senf["low"] is True
@@ -88,7 +88,7 @@ async def test_move_split_and_merge_packs(hass: HomeAssistant, hass_ws_client) -
     best = (dt_util.now().date() + timedelta(days=200)).isoformat()
     src = (await _packs(hass, hass_ws_client, [{"content": "Ketchup", "quantity": 5, "unit": "pieces", "best_before": best, "product": {"brand": "Heinz"}}], pantry.id, "Keller"))[0]
 
-    # 2 davon in den Schrank: neuer Eintrag mit denselben Daten
+    # 2 of them into the cupboard: new entry with the same data
     res = await _ws(hass, hass_ws_client, type="larder/pack_move", device_id=src["device_id"], count=2, area_id=pantry.id, compartment="Schrank")
     assert res["success"], res
     new = res["result"]["device_id"]
@@ -100,26 +100,26 @@ async def test_move_split_and_merge_packs(hass: HomeAssistant, hass_ws_client) -
     assert hass.states.get(_eid(hass, "date", new_cc)).state == best
     assert hass.states.get(_eid(hass, "text", new_cc)).attributes["brand"] == "Heinz"
 
-    # 1 weiterer in den Schrank: zusammenführen
+    # 1 more into the cupboard: merge
     res = await _ws(hass, hass_ws_client, type="larder/pack_move", device_id=src["device_id"], count=1, area_id=pantry.id, compartment="Schrank")
     assert res["result"] == {"moved": 1, "merged": True, "device_id": new}
     assert hass.states.get(_eid(hass, "number", new_cc)).state == "3.0"
     assert hass.states.get(_eid(hass, "number", src["cc"])).state == "2.0"
 
-    # alle restlichen in den Kühlschrank: der Eintrag zieht um
+    # all remaining into the fridge: the entry moves
     res = await _ws(hass, hass_ws_client, type="larder/pack_move", device_id=src["device_id"], count=9, area_id=fridge.id)
     assert res["result"] == {"moved": 2, "merged": False, "device_id": src["device_id"]}
     assert dr.async_get(hass).async_get(src["device_id"]).area_id == fridge.id
     assert _comp(hass, src["cc"]) == ""
 
-    # alle aus dem Schrank dazu: zusammenführen, der Schrank-Eintrag verschwindet
+    # all from the cupboard as well: merge, the cupboard entry disappears
     res = await _ws(hass, hass_ws_client, type="larder/pack_move", device_id=new, count=3, area_id=fridge.id)
     await hass.async_block_till_done()
     assert res["result"]["merged"] is True
     assert dr.async_get(hass).async_get(new) is None
     assert hass.states.get(_eid(hass, "number", src["cc"])).state == "5.0"
 
-    # nur Packungen
+    # packs only
     dose = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "AAAA")})
     res = await _ws(hass, hass_ws_client, type="larder/pack_move", device_id=dose.id, count=1, area_id=fridge.id)
     assert not res["success"]
@@ -141,7 +141,7 @@ async def test_non_admins_may_link_stickers_to_bags_only(hass: HomeAssistant, ha
     await _setup(hass, "AAAA")
     res = await _ws(hass, hass_ws_client, type="larder/create_items", kind="bag", items=[{"content": "Reh"}])
     bag = res["result"]["items"][0]
-    hass_admin_user.groups = []  # kein Administrator mehr
+    hass_admin_user.groups = []  # no longer an administrator
     client = await hass_ws_client(hass)
     await client.send_json({"id": 1, "type": "larder/nfc_link", "tag_id": "t1", "device_id": bag["device_id"]})
     assert (await client.receive_json())["success"]
@@ -151,7 +151,7 @@ async def test_non_admins_may_link_stickers_to_bags_only(hass: HomeAssistant, ha
     assert not res["success"] and res["error"]["code"] == "unauthorized"
     await client.send_json({"id": 3, "type": "larder/nfc_tags"})
     assert (await client.receive_json())["result"]["by_device"] == {bag["device_id"]: "t1"}
-    # gescannte Tags kommen auch ohne Administratorrechte an
+    # scanned tags arrive without administrator rights too
     await client.send_json({"id": 4, "type": "larder/tag_scans"})
     assert (await client.receive_json())["success"]
     hass.bus.async_fire("tag_scanned", {"tag_id": "t9"})

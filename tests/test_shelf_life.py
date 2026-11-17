@@ -1,4 +1,4 @@
-"""Tests: eingebaute Haltbarkeits-Tabelle und die Modi Tabelle / Tabelle+KI / KI."""
+"""Tests: built-in shelf life table and the modes table / table+AI / AI."""
 
 from datetime import timedelta
 
@@ -11,7 +11,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import area_registry as ar, device_registry as dr, label_registry as lr
 from homeassistant.util import dt as dt_util
 
-from .test_ai_estimate import (  # noqa: F401 - Fixture und Helfer wiederverwenden
+from .test_ai_estimate import (  # noqa: F401 - reuse fixture and helpers
     _eid,
     _estimate,
     _fake_ai,
@@ -20,7 +20,7 @@ from .test_ai_estimate import (  # noqa: F401 - Fixture und Helfer wiederverwend
     auto_enable_custom_integrations,
 )
 
-# ---------- Zuordnung Inhalt → Eintrag ----------
+# ---------- Mapping content → entry ----------
 
 
 @pytest.mark.parametrize(
@@ -65,7 +65,7 @@ def test_every_entry_is_well_formed() -> None:
         assert set(entry.days) == {sl.FRIDGE, sl.ZERO, sl.FREEZER, sl.PANTRY}
         assert all(d is None or d > 0 for d in entry.days.values())
         assert entry.keywords and all(entry.keywords)
-        # 0-Grad-Fach hält mindestens so lange wie der Kühlschrank, Gefrierschrank länger (wo erlaubt)
+        # 0 °C compartment keeps at least as long as the fridge, freezer longer (where allowed)
         fridge, zero, freezer = (entry.days[k] for k in (sl.FRIDGE, sl.ZERO, sl.FREEZER))
         if fridge and zero:
             assert zero >= fridge, entry.id
@@ -86,7 +86,7 @@ def test_every_entry_is_well_formed() -> None:
         ("Vorratsschrank", None, (), (sl.PANTRY, 1.0)),
         ("Speisekammer", None, (), (sl.PANTRY, 1.0)),
         ("Fridge", None, (), (sl.FRIDGE, 1.0)),
-        ("Irgendwo", 4.2, (), (sl.FRIDGE, 1.0)),  # Sensor schlägt Name
+        ("Irgendwo", 4.2, (), (sl.FRIDGE, 1.0)),  # sensor beats name
         ("Kühlschrank", -18.0, (), (sl.FREEZER, 1.0)),
         ("Irgendwo", -10.0, (), (sl.FREEZER, 0.5)),
         ("Irgendwo", 0.5, (), (sl.ZERO, 1.0)),
@@ -125,11 +125,11 @@ def test_lookup_basic_values_and_texts() -> None:
 def test_vacuum_extends_non_perishables_but_not_perishables_in_fridge() -> None:
     assert _lookup("Parmesan").days == 28
     assert _lookup("Parmesan", vacuum=True).days == round(28 * 1.3)
-    # Leicht verderblich im Kühlschrank: Vakuum ändert nichts, sagt das aber im Tipp
+    # highly perishable in the fridge: vacuum changes nothing, but the tip says so
     plain, vac = _lookup("Hackfleisch"), _lookup("Hackfleisch", vacuum=True)
     assert plain.days == vac.days == 1
     assert "Vakuum" in vac.tip and "Vakuum" not in plain.tip
-    # Im Gefrierschrank hilft Vakuum immer
+    # in the freezer vacuum always helps
     assert _lookup("Hackfleisch", "Gefrierschrank", vacuum=True).days == round(90 * 1.5)
 
 
@@ -156,10 +156,10 @@ def test_no_match_unknown_storage_and_unsuitable() -> None:
         _lookup("Salat", "Gefrierschrank")
     assert exc.value.place == "Gefrierschrank"
     with pytest.raises(sl.TableUnsuitable):
-        _lookup("Fleisch", "Vorrat")  # roh bei Raumtemperatur: nie
+        _lookup("Fleisch", "Vorrat")  # raw at room temperature: never
 
 
-# ---------- Modi in der Integration ----------
+# ---------- Modes in the integration ----------
 
 
 async def _prepare(hass: HomeAssistant, content: str, area: str | None, mode: str | None):
@@ -190,7 +190,7 @@ async def test_default_mode_is_table_without_ai(hass: HomeAssistant) -> None:
 async def test_table_result_respects_vacuum_switch(hass: HomeAssistant) -> None:
     _, _ = await _prepare(hass, "Parmesan", "Kühlschrank", None)
     out = (await _estimate(hass, overwrite=True, apply=False))[_eid(hass, "date")]
-    assert out["days"] == round(28 * 1.3)  # Vakuum ist standardmäßig an
+    assert out["days"] == round(28 * 1.3)  # vacuum is on by default
     await hass.services.async_call("switch", "turn_off", {"entity_id": _eid(hass, "switch")}, blocking=True)
     out = (await _estimate(hass, overwrite=True, apply=False))[_eid(hass, "date")]
     assert out["days"] == 28
@@ -216,7 +216,7 @@ async def test_table_uses_area_temperature_sensor_and_label(hass: HomeAssistant)
         "text", "set_value", {"entity_id": _eid(hass, "text"), "value": "Wurst"}, blocking=True
     )
     out = (await _estimate(hass, overwrite=True, apply=False))[_eid(hass, "date")]
-    assert out["days"] == 4  # Label sagt: Kühlschrank (Wurst)
+    assert out["days"] == 4  # label says: fridge (sausage)
 
 
 @pytest.mark.parametrize(
@@ -305,7 +305,7 @@ async def test_legacy_ai_enabled_setting_migrates(hass: HomeAssistant) -> None:
         assert estimator.mode == expected
 
 
-# ---------- Herkunft korrigierter Werte und Verwaltung der gemerkten Einträge ----------
+# ---------- Origin of corrected values and managing remembered entries ----------
 
 
 async def _set_date(hass: HomeAssistant, days: int) -> None:
@@ -326,7 +326,7 @@ async def test_corrected_value_remembers_its_origin(hass: HomeAssistant, mode, o
     out = (await _estimate(hass))[_eid(hass, "date")]
     assert (out["source"], out["origin"], out["days"]) == ("learned", origin, 9)
 
-    # nochmal korrigieren: Ursprung bleibt erhalten
+    # correct again: the origin is kept
     await _set_date(hass, 10)
     await hass.services.async_call(
         DOMAIN, "clear_best_before", {"entity_id": _eid(hass, "date")}, blocking=True
@@ -352,19 +352,19 @@ async def test_ws_list_edit_delete_and_add(hass: HomeAssistant, hass_ws_client) 
     assert (entry["vacuum"], entry["days"], entry["source"], entry["origin"]) == (True, 3, "table", None)
     key = entry["key"]
 
-    # Ändern → "von dir", Ursprung Tabelle bleibt sichtbar
+    # change → "by you", origin table stays visible
     res = await _ws(
         hass, hass_ws_client, {"type": f"{DOMAIN}/estimate_set", "key": key, "days": 5, "tip": "Mein Tipp"}
     )
     (entry,) = res["result"]["entries"]
     assert (entry["days"], entry["tip"], entry["source"], entry["origin"]) == (5, "Mein Tipp", "learned", "table")
-    assert entry["content"] == "Tomatensuppe"  # Schreibweise bleibt erhalten
+    assert entry["content"] == "Tomatensuppe"  # spelling is kept
     await hass.services.async_call(
         DOMAIN, "clear_best_before", {"entity_id": _eid(hass, "date")}, blocking=True
     )
     assert (await _estimate(hass))[_eid(hass, "date")]["days"] == 5
 
-    # Hinzufügen
+    # add
     res = await _ws(
         hass,
         hass_ws_client,
@@ -374,7 +374,7 @@ async def test_ws_list_edit_delete_and_add(hass: HomeAssistant, hass_ws_client) 
     assert [e["content"] for e in entries] == ["Lasagne", "Tomatensuppe"]
     assert entries[0]["source"] == "learned" and entries[0]["origin"] is None
 
-    # Löschen → beim nächsten Schätzen wieder Tabelle
+    # delete → table again at the next estimate
     res = await _ws(hass, hass_ws_client, {"type": f"{DOMAIN}/estimate_delete", "key": key})
     assert [e["content"] for e in res["result"]["entries"]] == ["Lasagne"]
     await hass.services.async_call(
@@ -407,7 +407,7 @@ async def test_ws_requires_admin(hass: HomeAssistant, hass_ws_client, hass_admin
     assert not res["success"] and res["error"]["code"] == "unauthorized"
 
 
-# ---------- Ablauf-Übersicht, Sensor, Blueprint ----------
+# ---------- Expiry overview, sensor, blueprint ----------
 
 from pathlib import Path  # noqa: E402
 
@@ -478,7 +478,7 @@ async def test_get_expiring_service(hass: HomeAssistant) -> None:
 
     out = await hass.services.async_call(DOMAIN, "get_expiring", {}, blocking=True, return_response=True)
     assert out["count"] == 2 and out["expired"] == 1
-    assert [i["content"] for i in out["items"]] == ["Suppe", "Pizza"]  # früheste zuerst
+    assert [i["content"] for i in out["items"]] == ["Suppe", "Pizza"]  # earliest first
     assert out["items"][1]["area"] == "Kühlschrank" and out["items"][1]["days_left"] == 1
     assert "Pizza" in out["summary"] and "Schinken" not in out["summary"]
 
@@ -488,7 +488,7 @@ async def test_get_expiring_service(hass: HomeAssistant) -> None:
     assert [i["content"] for i in out["items"]] == ["Pizza", "Schinken"]
 
     out = await hass.services.async_call(DOMAIN, "get_expiring", {"days": 0, "include_expired": False}, blocking=True, return_response=True)
-    assert out["count"] == 0 and out["summary"] == "Nothing expires soon."  # Test-HA ist englisch
+    assert out["count"] == 0 and out["summary"] == "Nothing expires soon."  # test HA is English
 
 
 def test_blueprint_is_valid() -> None:
@@ -505,10 +505,10 @@ async def test_mark_opened_shortens_or_sets(hass: HomeAssistant) -> None:
     entry = await _setup(hass)
     date_id = _eid(hass, "date")
     today = dt_util.now().date()
-    # ohne MHD: wird gesetzt (Standard 3 Tage)
+    # without best-before: gets set (default 3 days)
     out = (await hass.services.async_call(DOMAIN, "mark_opened", {"entity_id": date_id}, blocking=True, return_response=True))[date_id]
     assert out["best_before"] == (today + timedelta(days=3)).isoformat() and out["shortened"] is True
-    # längeres MHD wird gekürzt, kürzeres bleibt
+    # a longer best-before is shortened, a shorter one stays
     await _fill(hass, "34OL", "Käse", 20)
     out = (await hass.services.async_call(DOMAIN, "mark_opened", {"entity_id": date_id}, blocking=True, return_response=True))[date_id]
     assert out["best_before"] == (today + timedelta(days=3)).isoformat()
@@ -516,7 +516,7 @@ async def test_mark_opened_shortens_or_sets(hass: HomeAssistant) -> None:
     out = (await hass.services.async_call(DOMAIN, "mark_opened", {"entity_id": date_id, "days": 5}, blocking=True, return_response=True))[date_id]
     assert out["best_before"] == (today + timedelta(days=1)).isoformat() and out["shortened"] is False
 
-    # Einstellung "Tage nach dem Öffnen"
+    # setting "days after opening"
     result = await hass.config_entries.options.async_init(entry.entry_id)
     await hass.config_entries.options.async_configure(result["flow_id"], {"estimate_mode": "table", "opened_days": 7})
     await _fill(hass, "34OL", "Käse", 30)
@@ -531,11 +531,11 @@ async def test_mark_thawed_shortens_and_uses_its_own_setting(hass: HomeAssistant
     await _fill(hass, "34OL", "Chili", 90)  # eingefroren
     out = (await hass.services.async_call(DOMAIN, "mark_thawed", {"entity_id": date_id}, blocking=True, return_response=True))[date_id]
     assert out["best_before"] == (today + timedelta(days=2)).isoformat() and out["shortened"] is True
-    # nie verlängern
+    # never extend
     await _fill(hass, "34OL", "Chili", 1)
     out = (await hass.services.async_call(DOMAIN, "mark_thawed", {"entity_id": date_id, "days": 4}, blocking=True, return_response=True))[date_id]
     assert out["best_before"] == (today + timedelta(days=1)).isoformat() and out["shortened"] is False
-    # Einstellung "Tage nach dem Auftauen" (unabhängig von "nach dem Öffnen")
+    # setting "days after thawing" (independent of "after opening")
     result = await hass.config_entries.options.async_init(entry.entry_id)
     await hass.config_entries.options.async_configure(result["flow_id"], {"estimate_mode": "table", "thawed_days": 4})
     await _fill(hass, "34OL", "Chili", 90)
@@ -590,7 +590,7 @@ async def test_content_suggestions_recent_first_and_non_admin(
         await hass.services.async_call(
             "text", "set_value", {"entity_id": text, "value": value}, blocking=True
         )
-    # Auch ein nicht-Admin darf die Vorschläge lesen
+    # a non-admin may read the suggestions too
     hass_admin_user.groups = []
     hass_admin_user.is_admin = False
     res = await _ws(hass, hass_ws_client, {"type": f"{DOMAIN}/contents"})
@@ -599,7 +599,7 @@ async def test_content_suggestions_recent_first_and_non_admin(
 
 
 
-# ---------- Vorlage für die Beschreibung eines Bereichs-Labels ----------
+# ---------- Template for the description of an area label ----------
 
 
 def test_label_template_is_parsed_in_english_and_german() -> None:
@@ -613,7 +613,7 @@ def test_label_template_is_parsed_in_english_and_german() -> None:
     assert sl.parse_label_template("Lagerort: Vorrat; Max. Lagerzeit: 3 Jahre") == {"storage": "Vorrat", "max_storage": "3 Jahre"}
     assert sl.parse_label_template("MAX   STORAGE : 6 weeks") == {"max_storage": "6 weeks"}
     assert sl.parse_label_template(None) == {} and sl.parse_label_template("ca. -18 °C, Fleisch") == {}
-    # Das Beschreibungsfeld eines Labels ist einzeilig: alles in einer Zeile
+    # the description field of a label is single-line: everything in one line
     one_line = "Storage: freezer Temperature: -18 °C Max storage: 18 months Notes: meat and fish"
     assert sl.parse_label_template(one_line) == {
         "storage": "freezer",
@@ -648,7 +648,7 @@ def test_format_duration() -> None:
 def test_storage_from_the_template_beats_the_area_name() -> None:
     assert sl.classify_storage("Keller", None, (), "freezer").key == sl.FREEZER
     assert sl.classify_storage("Keller", None, (), "-18 °C").key == sl.FREEZER
-    assert sl.classify_storage("Keller", None, (), "unbekannt").key == sl.PANTRY  # Name als Rückfall
+    assert sl.classify_storage("Keller", None, (), "unbekannt").key == sl.PANTRY  # name as fallback
     assert sl.classify_storage("Keller", 5.0, (), "freezer").key == sl.FRIDGE  # Sensor gewinnt
 
 
@@ -666,18 +666,18 @@ async def test_max_storage_from_the_label_caps_table_values(hass: HomeAssistant)
     assert uncapped > 60
 
     await _label_area(hass, "Storage: pantry\nMax storage: 2 months")
-    # gemerkter Tabellenwert wird beim Lesen begrenzt
+    # a remembered table value is capped when read
     out = (await _estimate(hass, overwrite=True, apply=False))[_eid(hass, "date")]
     assert out["days"] == 60 and "max storage time (2 months)" in out["tip"]
 
-    # eigene Korrektur bleibt unangetastet
+    # own correction stays untouched
     estimator = hass.data[DOMAIN]["estimator"]
     (key,) = estimator._cache
     estimator.learn(key, 200)
     out = (await _estimate(hass, overwrite=True, apply=False))[_eid(hass, "date")]
     assert out["days"] == 200
 
-    # neu berechneter Tabellenwert wird ebenfalls begrenzt
+    # a newly calculated table value is capped as well
     await estimator.async_delete_entry(key)
     out = (await _estimate(hass, overwrite=True, apply=False))[_eid(hass, "date")]
     assert out["days"] == 60 and estimator._cache[key]["days"] == 60
@@ -703,7 +703,7 @@ async def test_max_storage_from_the_label_caps_ai_values_and_is_in_the_prompt(ha
     assert "at most 180 days in this place" in calls[0]["instructions"]
 
 
-# ---------- Erkennung: Fälle aus dem echten Gebrauch ----------
+# ---------- Detection: cases from real use ----------
 
 
 @pytest.mark.parametrize(
@@ -733,7 +733,7 @@ async def test_old_table_values_are_recalculated_after_a_table_update(hass: Home
     out = (await _estimate(hass, overwrite=True, apply=False))[_eid(hass, "date")]
     assert out["days"] == 7 and "boiled" in out["basis"].lower()
     (key,) = estimator._cache
-    # gemerkter Wert einer älteren Tabelle (damals als rohe Eier erkannt)
+    # remembered value of an older table (back then detected as raw eggs)
     estimator._cache[key].update(days=27, basis="Eggs (raw, in shell) · fridge", table_version=1)
     out = (await _estimate(hass, overwrite=True, apply=False))[_eid(hass, "date")]
     assert out["days"] == 7 and estimator._cache[key]["table_version"] == sl.TABLE_VERSION
@@ -750,7 +750,7 @@ def test_several_items_in_one_container() -> None:
     assert split_items("1,5 kg Reis") == ["1,5 kg Reis"]
     assert split_items("Lachs") == ["Lachs"]
     assert split_items(" , ") == []
-    # gleiche Art: Kategorie bleibt, gemischt: "mixed"
+    # same kind: category stays, mixed: "mixed"
     assert category_for("Salami, Kochschinken, Leberwurst") == "deli"
     assert category_for("Gouda, Lachs") == MIXED
     assert category_for("Gouda, Xyzzy") == "dairy"
@@ -762,8 +762,8 @@ def test_several_items_in_one_container() -> None:
     mixed = lookup("Gouda, Lachs", **args)
     assert mixed.days == lachs.days
     assert mixed.tip.startswith("„Lachs“ bestimmt das MHD.")
-    # gleicher Wert: kein Zusatz
+    # same value: no note
     assert lookup("Salami, Salami", **args).tip == lookup("Salami", **args).tip
-    # ein unbekannter Inhalt: kein Treffer (er könnte zuerst verderben)
+    # an unknown content: no match (it might spoil first)
     with pytest.raises(sl.TableNoMatch):
         lookup("Gouda, Xyzzy", **args)

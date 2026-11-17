@@ -1,4 +1,4 @@
-"""Tests Block 10: Behältergrößen (fest/variabel, lose Behälter, frei) und Wochenplan-Vorschlag."""
+"""Tests block 10: container sizes (fixed/variable, loose containers, free) and weekly plan suggestion."""
 
 from datetime import timedelta
 
@@ -20,7 +20,7 @@ def _dev(hass, cc):
 async def test_fixed_and_variable_sizes_and_free_boxes(hass: HomeAssistant, hass_ws_client) -> None:
     for cc in ("AAAA", "BBBB", "CCCC", "DDDD"):
         await _setup(hass, cc)
-    # zwei feste 1-l-Dosen (eine befüllt), eine feste 0,5 l, ein variabler Deckel
+    # two fixed 1 l containers (one filled), one fixed 0.5 l, one variable lid
     for cc, size in (("AAAA", "1 l"), ("BBBB", "1L"), ("CCCC", "0,5 l")):
         res = await _ws(hass, hass_ws_client, type="larder/size_set", device_id=_dev(hass, cc), size=size)
         assert res["success"], res
@@ -31,7 +31,7 @@ async def test_fixed_and_variable_sizes_and_free_boxes(hass: HomeAssistant, hass
     await _fill(hass, "DDDD", "Suppe", 30)
     res = await _ws(hass, hass_ws_client, type="larder/size_fill", device_id=_dev(hass, "DDDD"), size="2 l")
     overview = {r["size"]: (r["total"], r["filled"], r["free"]) for r in res["result"]["overview"]}
-    # 1 l: 3 lose + 2 feste, davon 1 befüllt; 2 l: 2 lose, einer mit dem variablen Deckel befüllt
+    # 1 l: 3 loose + 2 fixed, 1 of them filled; 2 l: 2 loose, one filled with the variable lid
     assert overview == {"0,5 l": (1, 0, 1), "1 l": (5, 1, 4), "2 l": (2, 1, 1)}
     assert [r["size"] for r in res["result"]["overview"]] == ["0,5 l", "1 l", "2 l"]
     assert set(res["result"]["known"]) >= {"0,5 l", "1 l", "2 l"}
@@ -39,7 +39,7 @@ async def test_fixed_and_variable_sizes_and_free_boxes(hass: HomeAssistant, hass
     attrs = hass.states.get(_eid(hass, "text", "DDDD")).attributes
     assert attrs["size"] == "2 l" and attrs["size_variable"] is True and attrs["size_last"] == "2 l"
     assert hass.states.get(_eid(hass, "text", "AAAA")).attributes["size"] == "1 l"
-    # leere variable Dose: keine aktuelle Größe, aber der Vorschlag bleibt
+    # empty variable container: no current size, but the suggestion stays
     await hass.services.async_call("text", "set_value", {"entity_id": _eid(hass, "text", "DDDD"), "value": ""}, blocking=True)
     attrs = hass.states.get(_eid(hass, "text", "DDDD")).attributes
     assert "size" not in attrs and attrs["size_last"] == "2 l"
@@ -69,13 +69,13 @@ async def test_week_plan_from_recipe_book_then_ai(hass: HomeAssistant) -> None:
     await book.async_save(title="Nudelauflauf", ingredients=["Tomatensoße", "Käse"], steps=["Backen"])
     calls = _fake_ai(hass)  # liefert "Schinken-Omelett" (Schinken, Gekochte Eier)
 
-    # nur Rezeptbuch: Bolognese verbraucht Hack und Soße; der Auflauf hat dann nichts Neues mehr
+    # recipe book only: Bolognese uses mince and sauce; the casserole then has nothing new
     res = await async_suggest_week(hass, days=5, source="book")
     assert [d["title"] for d in res["days"]] == ["Bolognese"] and calls == []
     assert {u["content"] for u in res["days"][0]["uses"]} == {"Hackfleisch", "Tomatensoße"}
     assert res["days"][0]["date"] == dt_util.now().date().isoformat() and res["days"][0]["recipe_id"]
 
-    # Rezeptbuch, sonst KI: die übrigen Dosen gehen an die KI
+    # recipe book, otherwise AI: the remaining containers go to the AI
     res = await async_suggest_week(hass, days=5, source="book_ai")
     assert [d["title"] for d in res["days"]] == ["Bolognese", "Schinken-Omelett"]
     assert res["days"][1]["source"] == "ai" and res["days"][1]["date"] == (dt_util.now().date() + timedelta(days=1)).isoformat()
@@ -97,6 +97,6 @@ async def test_week_plan_skips_planned_days_and_containers(hass: HomeAssistant, 
     await _ws(hass, hass_ws_client, type="larder/plan_add", date=today.isoformat(), title="Pizza", device_ids=[_dev(hass, "AAAA")])
     res = await _ws(hass, hass_ws_client, type="larder/plan_suggest")
     days = res["result"]["days"]
-    # heute ist schon geplant, Hackfleisch ist dafür eingeplant: nur die Linsensuppe ab morgen
+    # today is already planned, the mince is planned for it: only the lentil soup from tomorrow
     assert [(d["title"], d["date"]) for d in days] == [("Linsensuppe", (today + timedelta(days=1)).isoformat())]
     assert res["result"]["source"] == "book"

@@ -57,7 +57,7 @@ A hint disappears by itself as soon as no container is affected any more (checke
 - **without a best-before date**: estimates the date for all of them (what the estimate does not know stays in the hint),
 - **expired long ago**: tick containers and empty them; they go into the history as thrown away.
 
-**Learn more** opens the Larder dashboard: one container directly, several on the **Storage** page filtered to exactly these (`/larder?problem=noarea`, `nodate` or `longexpired`).
+**Learn more** opens the Larder dashboard: one container directly, several on the **Larder** page filtered to exactly these (`/larder?problem=noarea`, `nodate` or `longexpired`).
 
 **Temperature warning.** If an area with a **temperature sensor** (Settings → Areas → area → temperature sensor) is a freezer, fridge or 0 °C drawer by its name or label, Larder warns when it stays too warm: freezer above −12 °C for 30 minutes, fridge above 8 °C or 0 °C drawer above 6 °C for 60 minutes. The repair hint lists the filled containers there; the event `larder_temperature_warning` (`area_id`, `area`, `temperature`, `limit`, `containers`) is for your own push or siren, `larder_temperature_ok` follows when it is cold again (1 °C below the limit). Switch it off with the setting **Temperature warning**.
 
@@ -105,7 +105,7 @@ The values survive restarts. "Empty container" is a regular button entity, so yo
 
 Items of `larder.get_expiring` carry `kind` (`container`, `bag`, `pack`). If the sticker of a bag that was already emptied is scanned, `larder_dose_scanned` fires with `retired: true` and a `message` instead of `cc` and `device_id`.
 
-The event `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) fires when a linked [NFC tag](scanning.md#nfc-tags) or one of [your own QR codes](scanning.md#your-own-qr-codes) is scanned (then with `source: qr`). `larder_temperature_warning` and `larder_temperature_ok` belong to the [temperature warning](#repairs), `larder_compartment_scanned` to [compartments](scanning.md#compartments), `larder_running_low` and `larder_recall` to [running low and recalls](kitchen.md#running-low-and-recalls).
+The event `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) fires when a linked [NFC tag](scanning.md#nfc-tags) or one of [your own QR codes](scanning.md#your-own-qr-codes) is scanned (then with `source: qr`). `larder_temperature_warning` and `larder_temperature_ok` belong to the [temperature warning](#repairs), `larder_compartment_scanned` to [compartments](scanning.md#compartments), `larder_running_low`, `larder_recall` and `larder_replace_due` to [running low and recalls](kitchen.md#running-low-and-recalls).
 
 ### Webhook interface
 

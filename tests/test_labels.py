@@ -1,4 +1,4 @@
-"""Tests: QR-Etikettenbogen als PDF (Erzeugung, Auswahl der Dosen, HTTP-Endpunkt)."""
+"""Tests: QR label sheet as PDF (generation, choice of containers, HTTP endpoint)."""
 
 import re
 
@@ -21,13 +21,13 @@ def test_pdf_pages_skip_and_text() -> None:
     assert _pages(pdf) == 2  # 24 pro Bogen
     assert _pages(build_pdf(labels[:23], "3x8", skip=1)) == 1
     assert _pages(build_pdf(labels[:23], "3x8", skip=2)) == 2
-    assert _pages(build_pdf(labels[:8], "2x4", skip=99)) == 2  # skip wird auf 7 begrenzt
-    # Text in Helvetica (WinAnsi): Umlaute als ein Byte, Klammern maskiert, lange Inhalte gekürzt
+    assert _pages(build_pdf(labels[:8], "2x4", skip=99)) == 2  # skip is capped at 7
+    # text in Helvetica (WinAnsi): umlauts as one byte, brackets escaped, long contents shortened
     pdf = build_pdf([Label("Küche (1)", "x", "Sehr lange Bolognese-Sauce mit sehr viel Hackfleisch und Gemüse aus dem Garten", "24.12.2026")], language="de", show_content=True, show_best_before=True)
     assert b"K\xfcche \\(1\\)" in pdf
     assert b"MHD: 24.12.2026" in pdf
-    assert b"\x85" in pdf  # … am Ende des gekürzten Inhalts (nach zwei Zeilen)
-    # Inhalt und MHD getrennt wählbar
+    assert b"\x85" in pdf  # … at the end of the shortened content (after two lines)
+    # content and best-before date selectable separately
     jar = Label("Dose 1", "x", "Zucker", "01.12.2026")
     only_content = build_pdf([jar], language="de", show_content=True)
     assert b"(Zucker) Tj" in only_content and b"MHD" not in only_content
@@ -39,24 +39,24 @@ def test_options_designs_and_label_printer() -> None:
     label = Label("Dose 1", scan_app_url("HA-00000001"), "Gulasch", "01.12.2026")
     with_qr = build_pdf([label], "3x8")
     without_qr = build_pdf([label], "3x8", show_qr=False, show_name=False, show_content=True)
-    assert with_qr.count(b" re\n") > 50  # QR-Module als Rechtecke
+    assert with_qr.count(b" re\n") > 50  # QR modules as rectangles
     assert b" re\n" not in without_qr and b"(Gulasch) Tj" in without_qr and b"(Dose 1)" not in without_qr
-    # nichts gewählt: wenigstens der Name
+    # nothing chosen: at least the name
     assert b"(Dose 1) Tj" in build_pdf([label], show_qr=False, show_name=False)
     for design in ("frame", "notched", "handwritten"):
         pdf = build_pdf([label], design=design)
         assert b" c " in pdf  # Rundungen
-        assert b" rg" not in pdf and b" RG" not in pdf  # immer schwarz-weiß
-    hand = build_pdf([label], design="vintage")  # alter Name
+        assert b" rg" not in pdf and b" RG" not in pdf  # always black and white
+    hand = build_pdf([label], design="vintage")  # old name
     assert b"/FontFile2" in hand and b"/BaseFont /Kalam-Bold" in hand and b"/F3 " in hand
     assert b"/FontFile2" not in build_pdf([label], design="frame")
-    # Nährwertzeile, gleicher Name/Inhalt nur einmal
+    # nutrition line, same name/content only once
     both = build_pdf([Label("Zucker", "x", "Zucker", "", "372 kcal/100 g")], show_content=True, show_nutrition=True)
     assert both.count(b"(Zucker) Tj") == 1 and b"(372 kcal/100 g) Tj" in both
-    # lange Namen werden umgebrochen statt abgeschnitten
+    # long names wrap instead of being cut off
     long = build_pdf([Label("Chocolate Chunks dark", "x")])
     assert b"(Chocolate) Tj" in long and b"(Chunks dark) Tj" in long
-    # Etikettendrucker: eine Seite pro Etikett im Etikettenformat
+    # label printer: one page per label in label format
     pdf = build_pdf([label, label], "62x29")
     assert _pages(pdf) == 2 and b"/MediaBox [0 0 175.75 82.20]" in pdf
 

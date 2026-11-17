@@ -1,4 +1,4 @@
-"""Tests: Statistik aus dem Verlauf und dem aktuellen Bestand (Service und WebSocket)."""
+"""Tests: statistics from the history and the current stock (service and WebSocket)."""
 
 from datetime import timedelta
 
@@ -32,9 +32,9 @@ async def test_statistics_from_history(hass: HomeAssistant) -> None:
         _record("Bolognese", "eaten", 1, stored=10),
         _record("Bolognese", "eaten", 5, stored=6),
         _record("Käse, Salami", "thrown", 3, area="Keller"),
-        _record("Käse", None, 4, expired=True),  # ohne Antwort, abgelaufen: zählt als weggeworfen
-        _record("Suppe", None, 2),  # ohne Antwort, nicht abgelaufen: unbekannt
-        _record("Alt", "eaten", 200, stored=3),  # außerhalb von 90 Tagen
+        _record("Käse", None, 4, expired=True),  # without an answer, expired: counts as thrown away
+        _record("Suppe", None, 2),  # without an answer, not expired: unknown
+        _record("Alt", "eaten", 200, stored=3),  # outside 90 days
     ]
     st = build_statistics(hass, records, 90)
     assert (st["emptied"], st["eaten"], st["thrown"], st["unknown"]) == (5, 2, 2, 1)
@@ -46,7 +46,7 @@ async def test_statistics_from_history(hass: HomeAssistant) -> None:
     assert st["thrown_by_area"] == [{"area": "Keller", "count": 1}, {"area": "Küche", "count": 1}]
     assert len(st["months"]) == 6 and st["months"][-1]["month"] == dt_util.now().strftime("%Y-%m")
     assert st["containers"] == {"total": 3, "filled": 2, "empty": 1, "expired": 1, "soon": 1, "undated": 0}
-    # ohne Zeitraum: alles
+    # without a period: everything
     assert build_statistics(hass, records)["emptied"] == 6
     assert build_statistics(hass, [], 30)["waste_percent"] is None
 

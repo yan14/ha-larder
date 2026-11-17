@@ -10,7 +10,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 ## Highlights
 
-- 🖥️ **[Own dashboard](docs/en/dashboard.md#dashboard-larder)** in the sidebar, made for the phone: start page, storage as tiles, list or cards with every detail, areas, categories and a recipe book; updates itself
+- 🖥️ **[Own dashboard](docs/en/dashboard.md#dashboard-larder)** in the sidebar, made for the phone: start page, larder as tiles, list or cards with every detail, areas, categories and a recipe book; updates itself
 - 🔖 **[Zwilling Fresh & Save QR codes](docs/en/scanning.md#scanning-in-the-app)**: the original codes on the lids keep working, with the 📷 scanner in the app (iOS and Android) or an [iOS Shortcut](docs/en/scanning.md#ios-shortcut-for-the-original-zwilling-codes)
 - 🏷️ **[Your own QR code](docs/en/scanning.md#your-own-qr-codes)** and **[NFC tags](docs/en/scanning.md#nfc-tags)** for any container, and for [compartments](docs/en/scanning.md#compartments) to take something or start a stocktake; QR codes print as a [label sheet](docs/en/scanning.md#label-sheet) in several designs and colours
 - 🛍 **[Bags and packs](docs/en/containers.md#bags-and-packs)**: single-use vacuum bags with an NFC sticker or QR code that disappear after emptying, and stock without a container (cans, jars) by barcode, receipt photo or by hand
@@ -27,10 +27,12 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 <p align="center">
 <img src="docs/images/dashboard-start-en.png" width="250" alt="Start page (demo data)">
-<img src="docs/images/dashboard-containers-en.png" width="250" alt="Storage as tiles">
+<img src="docs/images/dashboard-containers-en.png" width="250" alt="Larder as tiles">
 <img src="docs/images/dashboard-cards-en.png" width="250" alt="Cards with all details">
 </p>
 
+> **New in 4.6:** household items can be [replaced regularly](docs/en/containers.md#household-items) (water filter, vacuum bags) with a reminder; the bottom bar says *Larder*, the stock view is *Stock*.
+>
 > **New in 4.5:** a [reminder for medicines](docs/en/kitchen.md#medicines-expiring) (and dated household items) on chosen weekdays, as push and on Alexa.
 >
 > **New in 4.4:** [medicines](docs/en/containers.md#medicines-pharmacy) as a third side *Pharmacy* with a longer expiry warning, optional dates and *keeps after opening* for household items.
@@ -41,7 +43,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 >
 > **New in 4.1:** [several shopping lists](docs/en/kitchen.md#shopping-list) (food, household, per product), [household statistics](docs/en/dashboard.md#statistics) with spending per month, [recall warnings](docs/en/containers.md#recall-warnings) for cosmetics and consumer goods.
 >
-> **New in 4.0:** [household items](docs/en/containers.md#household-items), areas for food or household, the *Containers* page is now called **Storage**, barcodes from Open Beauty / Products / Pet Food Facts. **Breaking change:** after the update, assign your areas to food or household, see [Food or household](docs/en/containers.md#food-household-or-pharmacy).
+> **New in 4.0:** [household items](docs/en/containers.md#household-items), areas for food or household, the *Containers* page is now called **Larder**, barcodes from Open Beauty / Products / Pet Food Facts. **Breaking change:** after the update, assign your areas to food or household, see [Food or household](docs/en/containers.md#food-household-or-pharmacy).
 >
 > **New in 3.x:** single-use **bags** and **packs** (3.0), the stock view with minimum stock (3.2), stocktake and opened packs (3.4), consumption and prices (3.5), *running low* and recall warnings (3.6), compartment tags and new label options (3.7), batch cooking, container sizes and the week suggestion (3.8). See the [changelog](CHANGELOG.md).
 

@@ -1,4 +1,4 @@
-// Tests für das Larder-Dashboard (seit 2.0, früher "Larder experimental"; läuft in jsdom, ohne Home Assistant).
+// Tests for the Larder dashboard (since 2.0, formerly "Larder experimental"; runs in jsdom, without Home Assistant).
 process.env.TZ = "Europe/Berlin";
 
 import assert from "node:assert/strict";
@@ -121,7 +121,7 @@ test.beforeEach(() => {
   dom.window.localStorage.clear();
 });
 
-test("Die eingebettete Karte ist eine eigene Variante, unabhängig von einem schon registrierten <larder-panel>", () => {
+test("the embedded card is a variant of its own, independent of an already registered <larder-panel>", () => {
   const el = mount(makeHass(DOSES));
   assert.equal(el._classic.tagName.toLowerCase(), "larder-panel-embedded");
   assert.ok(el._classic.hasAttribute("embedded"));
@@ -129,7 +129,7 @@ test("Die eingebettete Karte ist eine eigene Variante, unabhängig von einem sch
   assert.ok(customElements.get("larder-panel"));
 });
 
-test("Texte: Deutsch und Englisch haben dieselben Schlüssel", () => {
+test("texts: German and English have the same keys", () => {
   const shape = (o) => JSON.stringify(Object.keys(o).sort());
   assert.equal(shape(TEXTS.de), shape(TEXTS.en));
   assert.equal(shape(TEXTS.de.views), shape(TEXTS.en.views));
@@ -137,7 +137,7 @@ test("Texte: Deutsch und Englisch haben dieselben Schlüssel", () => {
   assert.deepEqual(Object.keys(TEXTS.de.categories).sort(), Object.keys(CATEGORY_ICONS).sort());
 });
 
-test("describeDevices: Inhalt, Resttage, Kategorie; leere Dosen gelten als 'empty'", () => {
+test("describeDevices: content, days left, category; empty containers count as 'empty'", () => {
   const hass = makeHass(DOSES);
   const rows = describeDevices(hass, collectDevices(hass));
   const by = Object.fromEntries(rows.map((r) => [r.id, r]));
@@ -147,29 +147,29 @@ test("describeDevices: Inhalt, Resttage, Kategorie; leere Dosen gelten als 'empt
   assert.deepEqual(rows.filter(isSoon).map((r) => r.id).sort(), ["d1", "d3", "d4"]);
 });
 
-test("sortContainers: Ablaufdatum, Name, Bereich, Kategorie", () => {
+test("sortContainers: expiry date, name, area, category", () => {
   const hass = makeHass(DOSES);
   const rows = describeDevices(hass, collectDevices(hass));
   const ids = (sort) => sortContainers(rows, sort, "de").map((r) => r.id);
   assert.deepEqual(ids("date"), ["d3", "d1", "d4", "d2", "d5"]);
-  assert.deepEqual(ids("name"), ["d3", "d2", "d1", "d4", "d5"]); // Chili, Gouda, Lachs, Reis, leer zuletzt
-  assert.deepEqual(ids("area"), ["d3", "d4", "d1", "d2", "d5"]); // Keller, Küche, ohne Bereich
+  assert.deepEqual(ids("name"), ["d3", "d2", "d1", "d4", "d5"]); // Chili, Gouda, salmon, rice, empty last
+  assert.deepEqual(ids("area"), ["d3", "d4", "d1", "d2", "d5"]); // cellar, kitchen, without area
   assert.deepEqual(ids("category"), ["d2", "d3", "d4", "d5", "d1"]); // dairy, dish, dry, empty, fish
 });
 
-test("Start: Begrüßung, nur bald ablaufende Dosen, Hilfe-Schaltflächen", async () => {
+test("Start: greeting, only containers expiring soon, help buttons", async () => {
   const el = mount(makeHass(DOSES));
   assert.equal($(el, "h1").textContent, "Larder");
   assert.equal($(el, ".hello").textContent, "Hallo Yan");
   assert.match($(el, ".lead").textContent, /bald verbraucht/);
-  assert.deepEqual(names(el), ["Chili", "Lachs", "Reis"]); // abgelaufen zuerst, dann nach Resttagen
+  assert.deepEqual(names(el), ["Chili", "Lachs", "Reis"]); // expired first, then by days left
   assert.deepEqual($$(el, "main .tile .badge").map((b) => b.textContent), ["abgelaufen", "1 T", "3 T"]);
   assert.ok($(el, '[data-role="recipes"]'));
   assert.equal($$(el, "nav button").length, 5);
-  assert.deepEqual($$(el, "nav button").map((b) => b.textContent), ["🏠Start", "🫙Lager", "📖Rezepte", "📍Bereiche", "🏷️Kategorien"]);
+  assert.deepEqual($$(el, "nav button").map((b) => b.textContent), ["🏠Start", "🥫Vorrat", "📖Rezepte", "📍Bereiche", "🏷️Kategorien"]);
 });
 
-test("Start: nichts läuft ab, Benutzer ohne KI und ohne Namen", () => {
+test("Start: nothing expires, user without AI and without a name", () => {
   const hass = makeHass([{ id: "d2", name: "Dose 2", content: "Gouda", days: 20, category: "dairy" }], { ai: false, name: "" });
   const el = mount(hass);
   assert.equal($(el, ".hello").textContent, "Hallo");
@@ -178,11 +178,11 @@ test("Start: nichts läuft ab, Benutzer ohne KI und ohne Namen", () => {
   assert.ok($(el, '[data-role="containers"]'));
 });
 
-test("Start: 'Behälter anzeigen' zeigt die Behälter, die bald ablaufen, mit Filter-Chip", async () => {
+test("Start: 'Show containers' shows the containers expiring soon, with a filter chip", async () => {
   const el = mount(makeHass(DOSES));
   $(el, '[data-role="containers"]').click();
   await flush();
-  assert.equal($(el, "h1").textContent, "Lager");
+  assert.equal($(el, "h1").textContent, "Vorrat");
   assert.deepEqual(names(el), ["Chili", "Lachs", "Reis"]);
   const state = $(el, '[data-role="state"]');
   assert.equal(state.value, "soon");
@@ -192,17 +192,17 @@ test("Start: 'Behälter anzeigen' zeigt die Behälter, die bald ablaufen, mit Fi
   assert.equal(names(el).length, 5);
 });
 
-test("Behälter: Suche, Zustands-Filter und Anzahl wie im bisherigen Dashboard", async () => {
+test("Larder: search, state filter and count as in the old dashboard", async () => {
   document.body.innerHTML = "";
   const el = mount(makeHass(DOSES));
   await go(el, "containers");
-  assert.equal($(el, "p.count").textContent, "5 Dosen");
+  assert.equal($(el, "p.count").textContent, "5 Einträge");
   const search = $(el, '[data-role="search"]');
-  search.value = "keller"; // Bereich
+  search.value = "keller"; // area
   search.dispatchEvent(new Event("input"));
   assert.deepEqual(names(el), ["Chili", "Reis"]);
-  assert.equal($(el, "p.count").textContent, "2 von 5 Dosen");
-  assert.equal($(el, '[data-role="search"]'), search); // dasselbe Feld, Fokus bleibt
+  assert.equal($(el, "p.count").textContent, "2 von 5 Einträgen");
+  assert.equal($(el, '[data-role="search"]'), search); // same field, focus stays
   search.value = "gou";
   search.dispatchEvent(new Event("input"));
   assert.deepEqual(names(el), ["Gouda"]);
@@ -217,7 +217,7 @@ test("Behälter: Suche, Zustands-Filter und Anzahl wie im bisherigen Dashboard",
   }
 });
 
-test("Behälter: Kacheln mit Symbol, Name, Dose und Resttagen; leere Dose heißt 'Leer'", async () => {
+test("Larder: tiles with symbol, name, container and days left; an empty container is called 'Empty'", async () => {
   const el = mount(makeHass(DOSES));
   await go(el, "containers");
   assert.deepEqual(names(el), ["Chili", "Lachs", "Reis", "Gouda", "Leer"]);
@@ -231,7 +231,7 @@ test("Behälter: Kacheln mit Symbol, Name, Dose und Resttagen; leere Dose heißt
   assert.equal($$(el, "main .tile.empty").length, 1);
 });
 
-test("Behälter: Sortierung wird gemerkt, Gruppen nach Bereich und Kategorie", async () => {
+test("Larder: sort order is remembered, groups by area and category", async () => {
   const el = mount(makeHass(DOSES));
   await go(el, "containers");
   const pick = async (value) => {
@@ -249,14 +249,14 @@ test("Behälter: Sortierung wird gemerkt, Gruppen nach Bereich und Kategorie", a
   assert.deepEqual(names(el), ["Chili", "Gouda", "Lachs", "Reis", "Leer"]);
   assert.equal(JSON.parse(dom.window.localStorage.getItem("larder.experimental")).sort, "name");
 
-  // neue Sitzung: die Sortierung ist noch da
+  // new session: the sort order is still there
   document.body.innerHTML = "";
   const again = mount(makeHass(DOSES));
   await go(again, "containers");
   assert.equal($(again, ".bar select").value, "name");
 });
 
-test("Behälter: Gruppen nach Bereich und Fach", async () => {
+test("Larder: groups by area and compartment", async () => {
   const hass = makeHass(DOSES);
   for (const [id, comp] of [["d1", "Fach 2"], ["d2", "Fach 1"], ["d3", ""]]) {
     const eid = `text.${id}_fach`;
@@ -272,7 +272,7 @@ test("Behälter: Gruppen nach Bereich und Fach", async () => {
   assert.deepEqual($$(el, "main h2").map((h) => h.textContent), ["Keller", "Küche · Fach 1", "Küche · Fach 2", "Ohne Bereich"]);
 });
 
-test("Behälter: Umschalter zwischen Kacheln und Liste", async () => {
+test("Larder: switch between tiles and list", async () => {
   const el = mount(makeHass(DOSES));
   await go(el, "containers");
   assert.equal($$(el, "main .tiles").length, 1);
@@ -284,7 +284,7 @@ test("Behälter: Umschalter zwischen Kacheln und Liste", async () => {
   assert.equal(JSON.parse(dom.window.localStorage.getItem("larder.experimental")).mode, "list");
 });
 
-test("Behälter: gefüllte Dose öffnet die Detailansicht, leere den Befüllen-Dialog, Zurück schließt", async () => {
+test("Larder: a filled container opens the detail view, an empty one the fill dialog, Back closes", async () => {
   const el = mount(makeHass(DOSES));
   const filled = [];
   el._classic.openFillDialog = (id) => filled.push(id);
@@ -299,7 +299,7 @@ test("Behälter: gefüllte Dose öffnet die Detailansicht, leere den Befüllen-D
   assert.equal($(el, "header").hidden, true);
   assert.equal($(el, "nav").hidden, true);
   assert.equal($(el, "main").hidden, true);
-  // die eingebettete Karte zeigt genau diese Dose
+  // the embedded card shows exactly this container
   assert.equal($(el._classic, "h1").textContent, "Dose 1");
   assert.equal($el_cards(el._classic).length, 1);
 
@@ -315,7 +315,7 @@ function $el_cards(classic) {
   return [...classic.shadowRoot.querySelectorAll(".card")];
 }
 
-test("Nicht-Administrator: leere Dose öffnet die Detailansicht, Hinzufügen nur für Beutel und Packungen", async () => {
+test("non-administrator: an empty container opens the detail view, adding only for bags and packs", async () => {
   const el = mount(makeHass(DOSES, { admin: false }));
   await go(el, "containers");
   $(el, '[data-role="add"]').click();
@@ -327,7 +327,7 @@ test("Nicht-Administrator: leere Dose öffnet die Detailansicht, Hinzufügen nur
   assert.equal(el._classic.getAttribute("only"), "d5");
 });
 
-test("Hinzufügen öffnet den Dialog des normalen Dashboards", async () => {
+test("Add opens the dialog of the normal dashboard", async () => {
   const el = mount(makeHass(DOSES));
   let opened = 0;
   el._classic.openAddDialog = () => opened++;
@@ -339,7 +339,7 @@ test("Hinzufügen öffnet den Dialog des normalen Dashboards", async () => {
   assert.equal($(el, "#settings").hidden, false);
 });
 
-test("Bereiche verwalten: anlegen mit Lagerart, leere Lagerorte, bearbeiten", async () => {
+test("manage areas: create with storage type, empty storage places, edit", async () => {
   const hass = makeHass(DOSES);
   hass.areas = {
     kitchen: { area_id: "kitchen", name: "Küche", labels: ["larder_fridge", "other"] },
@@ -370,10 +370,10 @@ test("Bereiche verwalten: anlegen mit Lagerart, leere Lagerorte, bearbeiten", as
   await flush();
   await el._classic.loadAreaLabel();
   await go(el, "areas");
-  // leerer Lagerort mit Larder-Label erscheint, Garage (ohne Label) nicht
+  // empty storage place with Larder label appears, garage (without label) does not
   assert.deepEqual(names(el), ["Gefriertruhe", "Keller", "Küche", "Ohne Bereich"]);
 
-  // anlegen: erstes Larder-Label ist vorgeschlagen, neues Label möglich
+  // create: first Larder label is suggested, new label possible
   $(el, '[data-role="area-add"]').click();
   await flush();
   const form = $(el, "form.dialog");
@@ -394,7 +394,7 @@ test("Bereiche verwalten: anlegen mit Lagerart, leere Lagerorte, bearbeiten", as
   ]);
   assert.equal($(el, ".overlay").hidden, true);
 
-  // bearbeiten: alle Bereiche, Lagerart als Untertitel, fremde Labels bleiben
+  // edit: all areas, storage type as subtitle, foreign labels stay
   $(el, '[data-role="area-edit"]').click();
   await flush();
   await flush();
@@ -413,7 +413,7 @@ test("Bereiche verwalten: anlegen mit Lagerart, leere Lagerorte, bearbeiten", as
   const update = hass.wsCalls.find((m) => m.type === "config/area_registry/update");
   assert.deepEqual(update, { type: "config/area_registry/update", area_id: "kitchen", name: "Kühlschrank", labels: ["other", "larder_freezer"] });
 
-  // leerer Name wird abgelehnt
+  // empty name is rejected
   $$(el, "main [data-area]").find((n) => n.dataset.area === "garage").click();
   await flush();
   form.querySelector('[data-f="name"]').value = " ";
@@ -422,35 +422,35 @@ test("Bereiche verwalten: anlegen mit Lagerart, leere Lagerorte, bearbeiten", as
   assert.equal(form.querySelector(".error").textContent, "Bitte einen Namen eingeben.");
   $(el, ".overlay").click();
 
-  // Fertig beendet den Bearbeiten-Modus, Nicht-Admins sehen weder ＋ noch ✏️
+  // Done ends edit mode, non-admins see neither ＋ nor ✏️
   $(el, '[data-role="area-edit"]').click();
   await flush();
   assert.ok($(el, '[data-role="area-edit"]').textContent.includes("✏️"));
 });
 
-test("Bereiche verwalten: nur für Administratoren", async () => {
+test("manage areas: administrators only", async () => {
   const el = mount(makeHass(DOSES, { admin: false }));
   await go(el, "areas");
   assert.equal($(el, '[data-role="area-add"]'), null);
   assert.equal($(el, '[data-role="area-edit"]'), null);
 });
 
-test("Bereiche: Kacheln mit Anzahl, Antippen filtert die Behälter", async () => {
+test("areas: tiles with count, tapping filters the larder", async () => {
   const el = mount(makeHass(DOSES));
   await go(el, "areas");
   assert.equal($(el, "h1").textContent, "Bereiche");
   assert.deepEqual(names(el), ["Keller", "Küche", "Ohne Bereich"]);
-  assert.deepEqual($$(el, "main .tile .sub").map((s) => s.textContent), ["2 Behälter", "2 Behälter", "1 Behälter"]);
+  assert.deepEqual($$(el, "main .tile .sub").map((s) => s.textContent), ["2 Einträge", "2 Einträge", "1 Eintrag"]);
   assert.deepEqual($$(el, "main .tile .badge").map((s) => s.textContent), ["2 bald", "1 bald"]);
 
-  $$(el, "main .tile")[1].click(); // Küche
+  $$(el, "main .tile")[1].click(); // kitchen
   await flush();
-  assert.equal($(el, "h1").textContent, "Lager");
+  assert.equal($(el, "h1").textContent, "Vorrat");
   assert.equal($(el, ".chip span").textContent, "Bereich: Küche");
   assert.deepEqual(names(el), ["Lachs", "Gouda"]);
 });
 
-test("Bereiche: nach Anzahl sortieren, 'Ohne Bereich' filtert Dosen ohne Bereich", async () => {
+test("areas: sort by count, 'Without area' filters containers without area", async () => {
   const el = mount(makeHass([...DOSES, { id: "d6", name: "Dose 6", area: "cellar", content: "Brot", days: 5, category: "bread" }]));
   await go(el, "areas");
   const sort = $(el, ".bar select");
@@ -464,7 +464,7 @@ test("Bereiche: nach Anzahl sortieren, 'Ohne Bereich' filtert Dosen ohne Bereich
   assert.deepEqual(names(el), ["Leer"]);
 });
 
-test("Kategorien: Kacheln je Kategorie inklusive 'Leer', Antippen filtert", async () => {
+test("categories: tiles per category including 'Empty', tapping filters", async () => {
   const el = mount(makeHass(DOSES));
   await go(el, "categories");
   assert.equal($(el, "h1").textContent, "Kategorien");
@@ -475,7 +475,7 @@ test("Kategorien: Kacheln je Kategorie inklusive 'Leer', Antippen filtert", asyn
   assert.deepEqual(names(el), ["Lachs"]);
 });
 
-test("Kategorien: gemischte Dosen stehen unter 'Gemischt'", async () => {
+test("categories: mixed containers are listed under 'Mixed'", async () => {
   const el = mount(makeHass([...DOSES, { id: "d6", name: "Dose 6", area: "kitchen", content: "Gouda, Lachs", days: 2, category: "mixed" }]));
   await go(el, "categories");
   assert.deepEqual(names(el), ["Fisch", "Milchprodukte", "Gerichte & Reste", "Trockenware", "Gemischt", "Leer"]);
@@ -483,7 +483,7 @@ test("Kategorien: gemischte Dosen stehen unter 'Gemischt'", async () => {
   assert.equal(tile.querySelector(".ico").textContent, "🍱");
 });
 
-test("Navigation setzt Filter zurück", async () => {
+test("navigation resets filters", async () => {
   const el = mount(makeHass(DOSES));
   await go(el, "areas");
   $$(el, "main .tile")[0].click();
@@ -494,15 +494,15 @@ test("Navigation setzt Filter zurück", async () => {
   assert.equal(names(el).length, 5);
 });
 
-test("Englische Oberfläche", async () => {
+test("English interface", async () => {
   const el = mount(makeHass(DOSES, { language: "en" }));
   assert.equal($(el, ".hello").textContent, "Hello Yan");
-  assert.deepEqual($$(el, "nav button").map((b) => b.textContent), ["🏠Start", "🫙Storage", "📖Recipes", "📍Areas", "🏷️Categories"]);
+  assert.deepEqual($$(el, "nav button").map((b) => b.textContent), ["🏠Start", "🥫Larder", "📖Recipes", "📍Areas", "🏷️Categories"]);
   await go(el, "containers");
   assert.equal($$(el, "main .tile .name").pop().textContent, "Empty");
 });
 
-test("Hamburger-Menü nur im schmalen Modus und löst das Home-Assistant-Menü aus", () => {
+test("hamburger menu only in narrow mode and triggers the Home Assistant menu", () => {
   const el = mount(makeHass(DOSES));
   let toggled = 0;
   el.addEventListener("hass-toggle-menu", () => toggled++);
@@ -540,7 +540,7 @@ test("Rezepte: gespeicherte Rezepte laden, aufklappen, sortieren", async () => {
   assert.deepEqual($$(el, "main .recipe h3").map((h) => h.firstChild.textContent), ["Lasagne", "Mac'n Cheese"]);
 });
 
-test("Rezepte: neues Rezept von Hand anlegen", async () => {
+test("recipes: create a new recipe by hand", async () => {
   const hass = makeHass(DOSES);
   const el = mount(hass);
   await flush();
@@ -573,7 +573,7 @@ test("Rezepte: neues Rezept von Hand anlegen", async () => {
   assert.deepEqual($$(el, "main .recipe h3").map((h) => h.firstChild.textContent), ["Pizza"]);
 });
 
-test("Rezepte: bearbeiten und löschen", async () => {
+test("recipes: edit and delete", async () => {
   const hass = makeHass(DOSES, { recipes: [{ id: "r1", title: "Lasagne", minutes: 45, ingredients: ["Nudeln"], steps: ["Backen"], source: "manual" }] });
   const el = mount(hass);
   await flush();
@@ -591,13 +591,13 @@ test("Rezepte: bearbeiten und löschen", async () => {
   assert.equal(save.title, "Lasagne al forno");
   assert.deepEqual($$(el, "main .recipe h3").map((h) => h.firstChild.textContent), ["Lasagne al forno"]);
 
-  $(el, '.recipe [data-role="delete"]').click(); // bleibt aufgeklappt
+  $(el, '.recipe [data-role="delete"]').click(); // stays expanded
   await flush();
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/recipe_delete`), { type: `${D}/recipe_delete`, recipe_id: "r1" });
   assert.equal($$(el, "main .recipe").length, 0);
 });
 
-test("Rezepte: Vorschläge aus Resten erzeugen und einzeln speichern", async () => {
+test("recipes: generate suggestions from leftovers and save them one by one", async () => {
   const hass = makeHass(DOSES);
   hass.suggestions = [
     { title: "Lachs-Pasta", minutes: 20, uses: ["Lachs (1 Portion)"], extra_ingredients: ["Sahne"], steps: ["Kochen"] },
@@ -605,12 +605,12 @@ test("Rezepte: Vorschläge aus Resten erzeugen und einzeln speichern", async () 
   ];
   const el = mount(hass);
   await flush();
-  $(el, '[data-role="recipes"]').click(); // Start → Rezeptvorschläge
+  $(el, '[data-role="recipes"]').click(); // start → recipe suggestions
   await flush();
   await flush();
   assert.equal($(el, "h1").textContent, "Rezepte");
   const call = hass.wsCalls.find((m) => m.type === "call_service");
-  assert.deepEqual(call, { type: "call_service", domain: D, service: "suggest_recipes", service_data: {}, return_response: true }); // ohne Angabe gilt die Einstellung
+  assert.deepEqual(call, { type: "call_service", domain: D, service: "suggest_recipes", service_data: {}, return_response: true }); // without a value the setting applies
   assert.deepEqual($$(el, "main .recipe h3").map((h) => h.firstChild.textContent), ["Lachs-Pasta", "Chili-Wrap"]);
   assert.deepEqual($$(el, "main .recipe")[0].querySelectorAll("li").length, 3); // 2 Zutaten + 1 Schritt
   assert.deepEqual([...$$(el, "main .recipe")[0].querySelectorAll("ul li")].map((l) => l.textContent), ["Lachs (1 Portion)", "Sahne"]);
@@ -631,7 +631,7 @@ test("Rezepte: Vorschläge aus Resten erzeugen und einzeln speichern", async () 
   assert.ok($$(el, "main h2").length >= 2);
 });
 
-test("Rezepte: Fehler und keine Treffer der KI, Benutzer ohne Rechte sehen keine Schaltflächen", async () => {
+test("recipes: AI errors and no matches, users without rights see no buttons", async () => {
   const hass = makeHass(DOSES);
   hass.callWS = async (msg) => {
     if (msg.type === `${D}/recipes`) return { recipes: [] };
@@ -667,7 +667,7 @@ test("Rezepte: Fehler und keine Treffer der KI, Benutzer ohne Rechte sehen keine
   assert.equal($(el3, '.recipe [data-role="delete"]'), null);
 });
 
-test("Rezepte: Zeitraum aus den Einstellungen, änderbar und abschaltbar", async () => {
+test("recipes: period from the settings, changeable and can be switched off", async () => {
   assert.deepEqual(mod.recipeServiceData("default"), {});
   assert.deepEqual(mod.recipeServiceData("7"), { days: 7 });
   assert.deepEqual(mod.recipeServiceData("all"), { all_containers: true });
@@ -703,7 +703,7 @@ test("Rezepte: Zeitraum aus den Einstellungen, änderbar und abschaltbar", async
   assert.equal($(el, "main .note").textContent, "Keine befüllte Dose gefunden.");
   assert.deepEqual(calls(), [{}, { days: 14 }, { all_containers: true }]);
 
-  // Auswahl bleibt nach dem Neuladen erhalten
+  // the choice survives a reload
   document.body.innerHTML = "";
   const el2 = mount(makeHass(DOSES));
   await flush();
@@ -712,16 +712,16 @@ test("Rezepte: Zeitraum aus den Einstellungen, änderbar und abschaltbar", async
   window.localStorage.clear();
 });
 
-test("„Läuft bald ab“ folgt der Einstellung auch im neuen Dashboard", () => {
+test(`"Expiring soon" follows the setting in the new dashboard too`, () => {
   assert.equal(isSoon({ content: "Suppe", days: 5, soon: 3 }), false);
   assert.equal(isSoon({ content: "Suppe", days: 5, soon: 7 }), true);
-  assert.equal(isSoon({ content: "Suppe", days: 5 }), false); // ohne Angabe: 3 Tage
+  assert.equal(isSoon({ content: "Suppe", days: 5 }), false); // without a value: 3 days
   assert.equal(isSoon({ content: "", days: 1, soon: 7 }), false);
 });
 
-test("Neuladen: Eigenschaften, die HA vor dem Laden des Moduls setzt, werden übernommen", async () => {
+test("reload: properties HA sets before the module is loaded are taken over", async () => {
   document.body.innerHTML = "";
-  // Element existiert schon, bevor die Klasse registriert ist (wie beim Neuladen in HA)
+  // element exists before the class is registered (like on a reload in HA)
   const el = document.createElement("larder-exp-late");
   el.narrow = true;
   el.hass = makeHass(DOSES);
@@ -733,7 +733,7 @@ test("Neuladen: Eigenschaften, die HA vor dem Laden des Moduls setzt, werden üb
   assert.ok($(el, 'nav button[data-view="containers"]'));
 });
 
-test("Rezept aus Foto: hochladen, Entwurf prüfen und als Foto-Rezept speichern", async () => {
+test("recipe from a photo: upload, check the draft and save as a photo recipe", async () => {
   globalThis.File = dom.window.File;
   globalThis.FormData = dom.window.FormData;
   document.body.innerHTML = "";
@@ -767,18 +767,18 @@ test("Rezept aus Foto: hochladen, Entwurf prüfen und als Foto-Rezept speichern"
   assert.equal(save.recipe_id, undefined);
   assert.equal(save.minutes, 75);
 
-  // Fehler der KI erscheinen auf der Seite
+  // AI errors appear on the page
   answer = { ok: false, body: { error: "recipe_photo_none", message: "Auf dem Foto wurde kein Rezept gefunden." } };
   await el.readRecipePhotos([file]);
   await flush();
   assert.equal($(el, "main .error").textContent, "Auf dem Foto wurde kein Rezept gefunden.");
 
-  // zu viele Fotos
+  // too many photos
   await el.readRecipePhotos([file, file, file, file, file]);
   await flush();
   assert.equal($(el, "main .error").textContent, "Höchstens 4 Fotos auf einmal.");
 
-  // ohne KI keine Schaltfläche
+  // without AI no button
   document.body.innerHTML = "";
   const noAi = makeHass(DOSES, { ai: false });
   noAi.fetchWithAuth = hass.fetchWithAuth;
@@ -788,7 +788,7 @@ test("Rezept aus Foto: hochladen, Entwurf prüfen und als Foto-Rezept speichern"
   assert.equal($(el2, '[data-role="photo"]'), null);
 });
 
-test("Auswahl: Dosen antippen, leere gemeinsam befüllen, gefüllte für Rezeptideen", async () => {
+test("selection: tap containers, fill empty ones together, filled ones for recipe ideas", async () => {
   document.body.innerHTML = "";
   const hass = makeHass([...DOSES, { id: "d6", name: "Dose 6", area: "cellar" }]);
   hass.suggestions = [{ title: "Lachs-Risotto", uses: ["Lachs", "Reis"], steps: [] }];
@@ -803,16 +803,16 @@ test("Auswahl: Dosen antippen, leere gemeinsam befüllen, gefüllte für Rezepti
   await flush();
   assert.equal($(el, ".selbar .count").textContent, "4 ausgewählt");
   assert.ok(tile("d1").classList.contains("selected"));
-  assert.equal($(el, ".overlay").hidden, true); // Antippen öffnet im Auswahlmodus nichts
+  assert.equal($(el, ".overlay").hidden, true); // tapping opens nothing in selection mode
 
-  // Befüllen: nur die leeren (d5, d6) im Dialog der klassischen Ansicht
+  // fill: only the empty ones (d5, d6) in the dialog of the classic view
   let opened = null;
   el._classic.openFillDialog = (ids) => (opened = ids);
   assert.equal($(el, '[data-role="fill-selected"]').textContent, "Befüllen (2)");
   $(el, '[data-role="fill-selected"]').click();
   assert.deepEqual([...opened].sort(), ["d5", "d6"]);
 
-  // Rezeptideen aus den gefüllten (d1, d4)
+  // recipe ideas from the filled ones (d1, d4)
   $(el, '[data-role="recipes-selected"]').click();
   await flush();
   await flush();
@@ -821,7 +821,7 @@ test("Auswahl: Dosen antippen, leere gemeinsam befüllen, gefüllte für Rezepti
   assert.deepEqual([...call.service_data.containers].sort(), ["d1", "d4"]);
   assert.equal($$(el, "main h2")[0].textContent, "Vorschläge aus 2 gewählten Dosen");
 
-  // nach dem Befüllen endet der Auswahlmodus
+  // selection mode ends after filling
   await go(el, "containers");
   $(el, '[data-role="select"]').click();
   tile("d6").click();
@@ -831,7 +831,7 @@ test("Auswahl: Dosen antippen, leere gemeinsam befüllen, gefüllte für Rezepti
   assert.equal($(el, ".selbar"), null);
 });
 
-test("Einzel-Scan (📷): öffnet bekannte Dosen, fügt unbekannte Zwilling-Codes hinzu", async () => {
+test("single scan (📷): opens known containers, adds unknown Zwilling codes", async () => {
   document.body.innerHTML = "";
   const hass = makeHass(DOSES);
   const sent = [];
@@ -868,21 +868,21 @@ test("Einzel-Scan (📷): öffnet bekannte Dosen, fügt unbekannte Zwilling-Code
   el._classic.openAddDialog = (code) => added.push(code);
   el._classic.openFillDialog = (id) => filled.push(id);
 
-  // Startseite hat den Knopf, ebenso die Behälter-Seite
+  // the start page has the button, so does the containers page
   assert.ok($(el, '.help [data-role="scan-one"]'));
   $(el, '.help [data-role="scan-one"]').click();
   assert.equal(sent[0].type, "bar_code/scan");
   assert.equal(sent[0].payload.title, "Dose scannen");
   assert.notEqual(external._commandHandler, original);
 
-  // kein Larder-Code: Scanner bleibt offen
+  // no Larder code: scanner stays open
   external._commandHandler({ command: "bar_code/scan_result", payload: { rawValue: "Hallo", format: "qr_code" } });
   await flush();
   await flush();
   assert.equal(sent[sent.length - 1].type, "bar_code/notify");
   assert.notEqual(external._commandHandler, original);
 
-  // bekannte, gefüllte Dose: Detailansicht
+  // known, filled container: detail view
   external._commandHandler({ command: "bar_code/scan_result", payload: { rawValue: "cc=d2", format: "qr_code" } });
   await flush();
   await flush();
@@ -891,7 +891,7 @@ test("Einzel-Scan (📷): öffnet bekannte Dosen, fügt unbekannte Zwilling-Code
   assert.equal(el._detail, "d2");
   assert.deepEqual(reported, ["D2"]);
 
-  // leere Dose: Befüllen-Dialog
+  // empty container: fill dialog
   await go(el, "containers");
   $(el, '.bar [data-role="scan-one"]').click();
   external._commandHandler({ command: "bar_code/scan_result", payload: { rawValue: "cc=d5", format: "qr_code" } });
@@ -899,21 +899,21 @@ test("Einzel-Scan (📷): öffnet bekannte Dosen, fügt unbekannte Zwilling-Code
   await flush();
   assert.deepEqual(filled, ["d5"]);
 
-  // unbekannter Zwilling-Code: Hinzufügen mit dem ganzen Code
+  // unknown Zwilling code: add with the whole code
   $(el, '.bar [data-role="scan-one"]').click();
   external._commandHandler({ command: "bar_code/scan_result", payload: { rawValue: ZW, format: "qr_code" } });
   await flush();
   await flush();
   assert.deepEqual(added, [ZW]);
 
-  // Abbrechen gibt den Empfänger der App zurück
+  // cancel gives the app's receiver back
   $(el, '.bar [data-role="scan-one"]').click();
   external._commandHandler({ command: "bar_code/aborted", payload: { reason: "canceled" } });
   assert.equal(external._commandHandler, original);
   assert.equal(el._single, null);
 });
 
-test("Einzel-Scan: ohne Scanner der App kein Knopf", async () => {
+test("single scan: no button without the app's scanner", async () => {
   document.body.innerHTML = "";
   const el = mount(makeHass(DOSES));
   await flush();
@@ -922,7 +922,7 @@ test("Einzel-Scan: ohne Scanner der App kein Knopf", async () => {
   assert.equal($(el, '[data-role="scan-one"]'), null);
 });
 
-test("Export und Import: signierte Downloads und Einlesen der Schätzungen", async () => {
+test("export and import: signed downloads and importing the estimates", async () => {
   const hass = makeHass(DOSES);
   const base = hass.callWS;
   const imports = [];
@@ -962,7 +962,7 @@ test("Export und Import: signierte Downloads und Einlesen der Schätzungen", asy
   assert.equal(form.querySelector(".error").textContent, "Das ist keine Datei mit Larder-Schätzungen.");
 });
 
-test("Statistik: über das Menü, Zeitraum wechseln, leerer Verlauf", async () => {
+test("statistics: via the menu, change the period, empty history", async () => {
   const hass = makeHass(DOSES);
   const base = hass.callWS;
   const asked = [];
@@ -993,14 +993,14 @@ test("Statistik: über das Menü, Zeitraum wechseln, leerer Verlauf", async () =
   assert.match(text, /Ø 4,5 Tage gelagert/);
   assert.equal($(el, '[data-role="top-thrown"] li .name').textContent, "Käse");
   assert.equal($$(el, ".months .month").length, 2);
-  // Zeitraum "Alles": ohne days
+  // period "All": without days
   const period = $(el, "main .bar select");
   period.value = "all";
   period.dispatchEvent(new Event("change"));
   await flush();
   await flush();
   assert.deepEqual(asked[1], { type: `${D}/statistics` });
-  // kein Verlauf: Hinweis, Bestand trotzdem
+  // no history: hint, stock anyway
   empty = true;
   period.value = "30";
   $(el, "main .bar select").dispatchEvent(new Event("change"));
@@ -1010,7 +1010,7 @@ test("Statistik: über das Menü, Zeitraum wechseln, leerer Verlauf", async () =
   assert.match($(el, "main").textContent, /Jetzt im Vorrat/);
 });
 
-test("Wochenplan: Rezept einplanen, Startseite zeigt Plan und Auftauen", async () => {
+test("weekly plan: schedule a recipe, start page shows the plan and thawing", async () => {
   document.body.innerHTML = "";
   const hass = makeHass(DOSES, { recipes: [{ id: "r1", title: "Lachs-Pasta", ingredients: ["Lachs", "Nudeln"], steps: [], source: "manual", created: "1" }] });
   const base = hass.callWS;
@@ -1040,7 +1040,7 @@ test("Wochenplan: Rezept einplanen, Startseite zeigt Plan und Auftauen", async (
   assert.equal(form.querySelector('[data-f="title"]').value, "Lachs-Pasta");
   assert.equal(form.querySelector('[data-f="date"]').value, iso(1));
   const checked = [...form.querySelectorAll('[data-role="plan-containers"] input')].filter((b) => b.checked).map((b) => b.value);
-  assert.deepEqual(checked, ["d1"]); // Lachs aus den Zutaten
+  assert.deepEqual(checked, ["d1"]); // salmon from the ingredients
   form.querySelector("button.submit").click();
   await flush();
   await flush();
@@ -1073,7 +1073,7 @@ test("Wochenplan: Rezept einplanen, Startseite zeigt Plan und Auftauen", async (
   assert.deepEqual(sent[4], { type: `${D}/plan_delete`, plan_id: "p1" });
 });
 
-test("Fach: in Kachel und Liste, durchsuchbar, nach Bereich sortiert", async () => {
+test("compartment: in tile and list, searchable, sorted by area", async () => {
   document.body.innerHTML = "";
   const hass = makeHass(DOSES);
   for (const [id, value] of [["d1", "Schublade 2"], ["d2", "Schublade 1"]]) {
@@ -1102,7 +1102,7 @@ test("Fach: in Kachel und Liste, durchsuchbar, nach Bereich sortiert", async () 
   assert.ok(subs.indexOf("Dose 2 · Küche · Schublade 1") < subs.indexOf("Dose 1 · Küche · Schublade 2"));
 });
 
-test("kcal auf Kachel und in der Liste (pro Portion vor pro 100 g)", async () => {
+test("kcal on the tile and in the list (per portion before per 100 g)", async () => {
   document.body.innerHTML = "";
   const hass = makeHass(DOSES);
   hass.states["text.d1_inhalt"].attributes = { category: "fish", kcal_100g: 208, kcal_portion: 260 };
@@ -1115,7 +1115,7 @@ test("kcal auf Kachel und in der Liste (pro Portion vor pro 100 g)", async () =>
   assert.equal($(el, 'main .tile[data-id="d3"] .kcal'), null);
 });
 
-test("Allergene im Haushalt: Warnung auf Kachel und in der Liste", async () => {
+test("household allergens: warning on the tile and in the list", async () => {
   document.body.innerHTML = "";
   const hass = makeHass(DOSES);
   hass.states["text.d1_inhalt"].attributes = { category: "fish", allergen_warning: ["Fisch"] };
@@ -1126,7 +1126,7 @@ test("Allergene im Haushalt: Warnung auf Kachel und in der Liste", async () => {
   assert.equal($(el, 'main .tile[data-id="d2"] .allergen'), null);
 });
 
-test("QR-Etiketten: Dialog aus Menü und Auswahl, signierter Link zum PDF", async () => {
+test("QR labels: dialog from menu and selection, signed link to the PDF", async () => {
   const hass = makeHass(DOSES);
   const signed = [];
   const base = hass.callWS;
@@ -1139,7 +1139,7 @@ test("QR-Etiketten: Dialog aus Menü und Auswahl, signierter Link zum PDF", asyn
   };
   const el = mount(hass);
   await flush();
-  // Menü: alle Dosen
+  // menu: all containers
   $(el, "#settings").click();
   $(el, '[data-role="menu-labels"]').click();
   const form = $(el, "form.dialog");
@@ -1148,7 +1148,7 @@ test("QR-Etiketten: Dialog aus Menü und Auswahl, signierter Link zum PDF", asyn
   assert.equal(form.querySelector('[data-f="layout"]').value, "3x8");
   form.querySelector('[data-f="layout"]').value = "2x4";
   form.querySelector('[data-f="layout"]').dispatchEvent(new Event("change"));
-  form.querySelector('[data-f="skip"]').value = "20"; // mehr als ein 2×4-Bogen hat: wird begrenzt
+  form.querySelector('[data-f="skip"]').value = "20"; // more than a 2×4 sheet holds: capped
   form.querySelector('[data-f="border"]').checked = true;
   form.querySelector("button.submit").click();
   await flush();
@@ -1158,13 +1158,13 @@ test("QR-Etiketten: Dialog aus Menü und Auswahl, signierter Link zum PDF", asyn
   const link = form.querySelector("a.pdf");
   assert.equal(link.getAttribute("href"), "/api/larder/labels.pdf?layout=2x4&skip=7&border=1&authSig=x");
   assert.equal(link.target, "_blank");
-  // Option ändern verwirft den Link
+  // changing an option discards the link
   form.querySelector('[data-f="content"]').checked = true;
   form.querySelector('[data-f="content"]').dispatchEvent(new Event("change"));
   assert.equal(form.querySelector("a.pdf"), null);
   $(el, ".overlay").click();
 
-  // Auswahl: nur die gewählten Dosen, das Format wird gemerkt
+  // selection: only the chosen containers, the format is remembered
   await go(el, "containers");
   $(el, '[data-role="select"]').click();
   await flush();
@@ -1179,7 +1179,7 @@ test("QR-Etiketten: Dialog aus Menü und Auswahl, signierter Link zum PDF", asyn
   await flush();
   assert.equal(signed[1].path, "/api/larder/labels.pdf?device=d1%2Cd3&layout=2x4&skip=0");
 
-  // Inhalt und MHD getrennt: nur Inhalt (dauerhaft in der Dose)
+  // content and best-before separately: content only (permanently in the container)
   $(el, '[data-role="labels-selected"]').click();
   assert.equal(form.querySelector('[data-f="bestBefore"]').checked, false);
   form.querySelector('[data-f="content"]').checked = true;
@@ -1187,7 +1187,7 @@ test("QR-Etiketten: Dialog aus Menü und Auswahl, signierter Link zum PDF", asyn
   await flush();
   await flush();
   assert.equal(signed[2].path, "/api/larder/labels.pdf?device=d1%2Cd3&layout=2x4&skip=0&content=1&bestbefore=0");
-  // nur MHD
+  // best-before only
   form.querySelector('[data-f="content"]').checked = false;
   form.querySelector('[data-f="bestBefore"]').checked = true;
   form.querySelector("button.submit").click();
@@ -1196,7 +1196,7 @@ test("QR-Etiketten: Dialog aus Menü und Auswahl, signierter Link zum PDF", asyn
   assert.equal(signed[3].path, "/api/larder/labels.pdf?device=d1%2Cd3&layout=2x4&skip=0&bestbefore=1");
 });
 
-test("Inventur nach dem Serien-Scan: nicht gescannte gefüllte Dosen, auswählen und leeren", async () => {
+test("stocktaking after the series scan: filled containers not scanned, select and empty", async () => {
   document.body.innerHTML = "";
   const hass = makeHass(DOSES);
   let eventCb = null;
@@ -1215,7 +1215,7 @@ test("Inventur nach dem Serien-Scan: nicht gescannte gefüllte Dosen, auswählen
   await go(el, "containers");
   $(el, '[data-role="select"]').click();
   await flush();
-  $(el, '[data-role="scan"]').click(); // NFC (kein QR-Scanner)
+  $(el, '[data-role="scan"]').click(); // NFC (no QR scanner)
   await flush();
   await flush();
   eventCb({ device_id: "d1" });
@@ -1247,12 +1247,12 @@ test("Inventur nach dem Serien-Scan: nicht gescannte gefüllte Dosen, auswählen
   assert.equal($(el, ".inventory"), null);
 });
 
-test("Links aus den Reparaturhinweisen: ?problem filtert die Behälter", async () => {
+test("links from the repair hints: ?problem filters the larder", async () => {
   document.body.innerHTML = "";
   window.history.replaceState(null, "", "/larder?problem=noarea");
   const el = mount(makeHass([...DOSES, { id: "d6", name: "Dose 6", area: "kitchen", content: "Alt", days: -10, category: "dish" }]));
   await flush();
-  assert.equal($(el, "h1").textContent, "Lager");
+  assert.equal($(el, "h1").textContent, "Vorrat");
   assert.deepEqual(names(el), ["Leer"]);
   assert.equal($(el, ".chip span").textContent, "Ohne Bereich");
   el.setView("containers", { problem: "longexpired" });
@@ -1264,7 +1264,7 @@ test("Links aus den Reparaturhinweisen: ?problem filtert die Behälter", async (
   window.history.replaceState(null, "", "/");
 });
 
-test("QR-Etiketten: was aufs Etikett kommt, Design und Etikettendrucker", async () => {
+test("QR labels: what goes on the label, design and label printer", async () => {
   const hass = makeHass(DOSES);
   const signed = [];
   const base = hass.callWS;
@@ -1282,7 +1282,7 @@ test("QR-Etiketten: was aufs Etikett kommt, Design und Etikettendrucker", async 
   change("qr");
   box("name").checked = false;
   change("name");
-  assert.equal(form.querySelector("button.submit").disabled, true); // nichts gewählt
+  assert.equal(form.querySelector("button.submit").disabled, true); // nothing chosen
   box("content").checked = true;
   change("content");
   assert.equal(form.querySelector("button.submit").disabled, false);
@@ -1295,7 +1295,7 @@ test("QR-Etiketten: was aufs Etikett kommt, Design und Etikettendrucker", async 
   await flush();
   await flush();
   assert.equal(signed[0].path, "/api/larder/labels.pdf?layout=62x29&skip=0&content=1&bestbefore=0&qr=0&name=0&design=handwritten");
-  // wird gemerkt
+  // is remembered
   $(el, ".overlay").click();
   el.openLabelDialog();
   assert.equal(box("design").value, "handwritten");
@@ -1303,7 +1303,7 @@ test("QR-Etiketten: was aufs Etikett kommt, Design und Etikettendrucker", async 
   assert.equal(box("content").checked, true);
 });
 
-test("Serien-Scan: NFC-Ereignisse und QR-Scanner der App wählen Dosen aus", async () => {
+test("series scan: NFC events and the app's QR scanner select containers", async () => {
   document.body.innerHTML = "";
   const hass = makeHass(DOSES);
   let eventCb = null;
@@ -1344,7 +1344,7 @@ test("Serien-Scan: NFC-Ereignisse und QR-Scanner der App wählen Dosen aus", asy
   await flush();
   await flush();
   assert.match($(el, "main .note").textContent, /Serien-Scan läuft/);
-  assert.equal($(el, '[data-role="scan-qr"]'), null); // QR-Scanner ist offen
+  assert.equal($(el, '[data-role="scan-qr"]'), null); // QR scanner is open
   assert.equal(sent[0].type, "bar_code/scan");
   assert.notEqual(external._commandHandler, original);
 
@@ -1366,7 +1366,7 @@ test("Serien-Scan: NFC-Ereignisse und QR-Scanner der App wählen Dosen aus", asy
   assert.equal(external._commandHandler, original);
   assert.equal(sent[sent.length - 1].type, "bar_code/close");
 
-  // Umschalter: NFC schließt den QR-Scanner, der Serien-Scan läuft weiter
+  // switch: NFC closes the QR scanner, the series scan keeps running
   unsubscribed = false;
   $(el, '[data-role="scan"]').click();
   await flush();
@@ -1383,7 +1383,7 @@ test("Serien-Scan: NFC-Ereignisse und QR-Scanner der App wählen Dosen aus", asy
   await flush();
   assert.ok($(el, 'main .tile[data-id="d3"]').classList.contains("selected"));
 
-  // zurück zu QR öffnet den Scanner wieder; "Zu NFC wechseln" im Scanner schaltet auf NFC
+  // back to QR opens the scanner again; "Switch to NFC" in the scanner switches to NFC
   $(el, '[data-role="scan-mode-qr"]').click();
   await flush();
   assert.equal(sent[sent.length - 1].type, "bar_code/scan");
@@ -1393,7 +1393,7 @@ test("Serien-Scan: NFC-Ereignisse und QR-Scanner der App wählen Dosen aus", asy
   assert.equal($(el, '[data-role="scan-mode-nfc"]').classList.contains("on"), true);
   assert.equal(external._commandHandler, original);
 
-  // Wischen auf dem Umschalter
+  // swiping on the switch
   const seg = $(el, ".segment");
   const touch = (type, x) => {
     const ev = new Event(type);
@@ -1402,7 +1402,7 @@ test("Serien-Scan: NFC-Ereignisse und QR-Scanner der App wählen Dosen aus", asy
     seg.dispatchEvent(ev);
   };
   touch("touchstart", 200);
-  touch("touchend", 100); // nach links: QR
+  touch("touchend", 100); // to the left: QR
   await flush();
   assert.equal($(el, '[data-role="scan-mode-qr"]').classList.contains("on"), true);
   assert.notEqual(external._commandHandler, original);
@@ -1413,7 +1413,7 @@ test("Serien-Scan: NFC-Ereignisse und QR-Scanner der App wählen Dosen aus", asy
   assert.equal(external._commandHandler, original);
 });
 
-test("Link aus der Benachrichtigung: ?view=recipes öffnet die Rezeptseite", async () => {
+test("link from the notification: ?view=recipes opens the recipe page", async () => {
   document.body.innerHTML = "";
   window.history.replaceState(null, "", "/larder?view=recipes");
   const el = mount(makeHass(DOSES));
@@ -1423,7 +1423,7 @@ test("Link aus der Benachrichtigung: ?view=recipes öffnet die Rezeptseite", asy
   window.history.replaceState(null, "", "/");
 });
 
-test("Ansicht „Karten“: alle Details über die klassische Karte, mit Filter und Sortierung", async () => {
+test(`view "Cards": all details via the classic card, with filter and sorting`, async () => {
   document.body.innerHTML = "";
   window.localStorage.clear();
   const hass = makeHass(DOSES);
@@ -1432,19 +1432,19 @@ test("Ansicht „Karten“: alle Details über die klassische Karte, mit Filter 
   await go(el, "containers");
   const mode = () => $(el, '[data-role="mode"]');
   assert.equal(mode().getAttribute("aria-label"), "Liste");
-  mode().click(); // → Liste
+  mode().click(); // → list
   await flush();
   assert.equal(mode().getAttribute("aria-label"), "Karten mit allen Details");
-  mode().click(); // → Karten
+  mode().click(); // → cards
   await flush();
   assert.equal(el._classic.getAttribute("show"), "cards");
-  assert.equal(el._classic.getAttribute("ids"), "d3,d1,d4,d2,d5"); // nach MHD
+  assert.equal(el._classic.getAttribute("ids"), "d3,d1,d4,d2,d5"); // by best-before
   assert.ok(el.hasAttribute("classic-view"));
   assert.equal($$(el, "main .tile, main .row").length, 0);
-  // die Karten der klassischen Ansicht sind sichtbar
+  // the cards of the classic view are visible
   assert.equal(el._classic.shadowRoot.querySelectorAll(".card").length, 5);
 
-  // Auswahl zeigt Kacheln, danach wieder Karten
+  // selection shows tiles, then cards again
   $(el, '[data-role="select"]').click();
   await flush();
   assert.ok(!el._classic.hasAttribute("show"));
@@ -1453,13 +1453,13 @@ test("Ansicht „Karten“: alle Details über die klassische Karte, mit Filter 
   await flush();
   assert.equal(el._classic.getAttribute("show"), "cards");
 
-  // andere Seite: klassische Ansicht wieder nur für Dialoge
+  // other page: classic view only for dialogs again
   await go(el, "areas");
   assert.ok(!el._classic.hasAttribute("show") && !el.hasAttribute("classic-view"));
   window.localStorage.clear();
 });
 
-test("⋮-Menü: gemerkte Schätzungen (nur Administratoren) und Einstellungen", async () => {
+test("⋮ menu: remembered estimates (administrators only) and settings", async () => {
   document.body.innerHTML = "";
   const hass = makeHass(DOSES);
   const base = hass.callWS;
@@ -1484,7 +1484,7 @@ test("⋮-Menü: gemerkte Schätzungen (nur Administratoren) und Einstellungen",
   document.body.innerHTML = "";
   const user = mount(makeHass(DOSES, { admin: false }));
   await flush();
-  // Nicht-Admins: ⋮ mit Statistik und Etiketten, ohne Export, Schätzungen und Einstellungen
+  // non-admins: ⋮ with statistics and labels, without export, estimates and settings
   assert.equal($(user, "#settings").hidden, false);
   assert.equal($(user, "#settings").textContent, "⋮");
   assert.equal($(user, '[data-role="menu-stats"]').hidden, false);
@@ -1492,10 +1492,10 @@ test("⋮-Menü: gemerkte Schätzungen (nur Administratoren) und Einstellungen",
   for (const role of ["menu-data", "menu-estimates", "menu-settings"]) assert.equal($(user, `[data-role="${role}"]`).hidden, true);
   user.setView("estimates");
   await flush();
-  assert.equal($(user, "h1").textContent, "Larder"); // bleibt auf der Startseite
+  assert.equal($(user, "h1").textContent, "Larder"); // stays on the start page
 });
 
-test("Links aus Scans: ?open öffnet die Dose (leere zum Befüllen), ?add den Dialog mit Code", async () => {
+test("links from scans: ?open opens the container (empty ones for filling), ?add the dialog with code", async () => {
   document.body.innerHTML = "";
   window.history.replaceState(null, "", "/larder?open=d2");
   let el = mount(makeHass(DOSES));
@@ -1519,7 +1519,7 @@ test("Links aus Scans: ?open öffnet die Dose (leere zum Befüllen), ?add den Di
   window.history.replaceState(null, "", "/");
 });
 
-test("NFC-Scan bei offenem Dashboard öffnet die Dose; Personenzahl geht an die Rezeptideen; Hinweis für Nicht-Admins", async () => {
+test("NFC scan with the dashboard open opens the container; number of persons goes to the recipe ideas; hint for non-admins", async () => {
   document.body.innerHTML = "";
   const hass = makeHass(DOSES);
   const handlers = [];
@@ -1531,7 +1531,7 @@ test("NFC-Scan bei offenem Dashboard öffnet die Dose; Personenzahl geht an die 
   await flush();
   assert.equal(el._detail, "d2");
   el._closeDetail();
-  cb({ data: { device_id: "d5" } }); // leer: Befüll-Dialog
+  cb({ data: { device_id: "d5" } }); // empty: fill dialog
   await flush();
   assert.equal(el._classic.shadowRoot.querySelector(".overlay.fill").hidden, false);
 
@@ -1554,7 +1554,7 @@ test("NFC-Scan bei offenem Dashboard öffnet die Dose; Personenzahl geht an die 
   window.history.replaceState(null, "", "/");
 });
 
-test("Eigener QR-Code (?cc=): Dose öffnen wie bei NFC, Scan melden, unbekannte Codes zum Hinzufügen", async () => {
+test("own QR code (?cc=): open the container like with NFC, report the scan, unknown codes for adding", async () => {
   const run = async (cc, { admin = true } = {}) => {
     document.body.innerHTML = "";
     const hass = makeHass(DOSES, { admin });
@@ -1583,11 +1583,11 @@ test("Eigener QR-Code (?cc=): Dose öffnen wie bei NFC, Scan melden, unbekannte 
   window.history.replaceState(null, "", "/");
 });
 
-// ---------- Block 9: Beutel und Packungen ----------
+// ---------- Block 9: bags and packs ----------
 
 const { buildItems, itemTexts } = await import("../../custom_components/larder/frontend/larder-dashboard-items.js");
 
-test("buildItems: ein Beutel je Anzahl, leere Zeilen fallen weg, Packungen behalten die Menge", () => {
+test("buildItems: one bag per count, empty rows are dropped, packs keep the amount", () => {
   const bags = buildItems("bag", [{ content: " Hack ", count: "3", quantity: "500", unit: "grams" }, { content: "" }, { content: "Reh", date: "2027-01-31" }], true);
   assert.equal(bags.length, 4);
   assert.deepEqual(bags[0], { content: "Hack", quantity: 500, unit: "grams", vacuum: true });
@@ -1598,7 +1598,7 @@ test("buildItems: ein Beutel je Anzahl, leere Zeilen fallen weg, Packungen behal
   assert.equal(shape(itemTexts({ language: "de" })), shape(itemTexts({ language: "en" })));
 });
 
-test("Beutel anlegen: Dialog, create_items, danach NFC-Sticker der Reihe nach oder Etiketten", async () => {
+test("create bags: dialog, create_items, then NFC stickers one after another or labels", async () => {
   const hass = makeHass(DOSES);
   const base = hass.callWS;
   hass.callWS = async (msg) => {
@@ -1639,16 +1639,16 @@ test("Beutel anlegen: Dialog, create_items, danach NFC-Sticker der Reihe nach od
   assert.equal(form.querySelectorAll("ul.created li").length, 3);
   assert.equal(JSON.parse(dom.window.localStorage.getItem("larder.experimental")).itemArea.bag, "cellar");
 
-  // NFC-Serie: gescannter Sticker wird mit dem aktuellen Beutel verknüpft, dann der nächste
+  // NFC series: the scanned sticker is linked with the current bag, then the next
   form.querySelector('[data-role="items-nfc"]').click();
   assert.match(form.querySelector("h2").textContent, /NFC-Sticker 1 von 3/);
   assert.match(form.querySelector(".nfcitem").textContent, /Beutel 1 · Hackfleisch/);
-  assert.equal(form.querySelector('[data-role="nfc-write"]'), null); // Browser kann keine Sticker beschreiben
+  assert.equal(form.querySelector('[data-role="nfc-write"]'), null); // browser cannot write stickers
   await el._classic._tagScanned("tag-a");
   await flush();
   assert.deepEqual(hass.wsCalls.filter((m) => m.type === `${D}/nfc_link`).map((m) => [m.tag_id, m.device_id]), [["tag-a", "b1"]]);
   assert.match(form.querySelector("h2").textContent, /NFC-Sticker 2 von 3/);
-  await el._classic._tagScanned("tag-a"); // schon vergeben
+  await el._classic._tagScanned("tag-a"); // already taken
   await flush();
   assert.match(form.querySelector('[data-role="nfc-status"]').textContent, /gehört schon/);
   form.querySelector('[data-role="nfc-skip"]').click();
@@ -1657,7 +1657,7 @@ test("Beutel anlegen: Dialog, create_items, danach NFC-Sticker der Reihe nach od
   assert.match($(el, ".notice").textContent, /1 Sticker verknüpft/);
 });
 
-test("Packungen: anlegen, Filter, Kennzeichen auf der Kachel und Umfüllen in eine leere Dose", async () => {
+test("packs: create, filter, mark on the tile and transfer into an empty container", async () => {
   const hass = makeHass([...DOSES, { id: "p1", name: "Packung 1", area: "cellar", content: "Tomaten", days: 200, category: "produce" }]);
   hass.states["text.p1_inhalt"].attributes.kind = "pack";
   const base = hass.callWS;
@@ -1700,7 +1700,7 @@ test("Packungen: anlegen, Filter, Kennzeichen auf der Kachel und Umfüllen in ei
   assert.equal($(el, ".overlay").hidden, true);
   assert.match($(el, ".notice").textContent, /1 Packung angelegt/);
 
-  // Umfüllen: die Karte meldet den Wunsch, das Dashboard fragt nach der leeren Dose
+  // transfer: the card reports the wish, the dashboard asks for the empty container
   el._classic.dispatchEvent(new dom.window.CustomEvent("larder-transfer", { detail: { deviceId: "p1" } }));
   assert.deepEqual([...form.querySelectorAll('[data-f="target"] option')].map((o) => o.value), ["d5"]);
   form.querySelector("button.submit").click();
@@ -1709,7 +1709,7 @@ test("Packungen: anlegen, Filter, Kennzeichen auf der Kachel und Umfüllen in ei
   assert.match($(el, ".notice").textContent, /Umgefüllt in Dose 5\. Noch 2 im Vorrat/);
 });
 
-test("Nach dem Befüllen: Hinweis mit Etikett-Knopf; alter Beutel-Code meldet sich als geleert", async () => {
+test("after filling: hint with label button; an old bag code reports as emptied", async () => {
   const hass = makeHass(DOSES);
   const base = hass.callWS;
   hass.callWS = async (msg) => {
@@ -1733,9 +1733,9 @@ test("Nach dem Befüllen: Hinweis mit Etikett-Knopf; alter Beutel-Code meldet si
   assert.match($(el, ".notice").textContent, /wurde am 12\.11\.2026 geleert/);
 });
 
-// ---------- Block 11: Vorrat ----------
+// ---------- Block 11: stock ----------
 
-test("Vorrat: Ansicht aus dem Menü, Mindestbestand ändern, Ort öffnet die Packung", async () => {
+test("stock: view from the menu, change minimum stock, a place opens the pack", async () => {
   const hass = makeHass(DOSES);
   let products = [
     { key: "ketchup", name: "Ketchup", count: 4, min: 5, low: true, brand: "Heinz", package: "500 ml", places: [
@@ -1757,7 +1757,7 @@ test("Vorrat: Ansicht aus dem Menü, Mindestbestand ändern, Ort öffnet die Pac
   $(el, '[data-role="menu-stock"]').click();
   await flush();
   await flush();
-  assert.equal($(el, "h1").textContent, "Vorrat");
+  assert.equal($(el, "h1").textContent, "Bestand");
   const items = $$(el, ".stockitem");
   assert.deepEqual(items.map((i) => i.querySelector(".name").textContent), ["Ketchup", "Senf"]);
   assert.equal(items[0].querySelector(".count").textContent, "4");
@@ -1776,7 +1776,7 @@ test("Vorrat: Ansicht aus dem Menü, Mindestbestand ändern, Ort öffnet die Pac
   assert.equal(el._classic.getAttribute("only"), "d1");
 });
 
-test("Packung verschieben/aufteilen und Kassenbon im Packungs-Dialog", async () => {
+test("move/split a pack and receipt in the pack dialog", async () => {
   const hass = makeHass(DOSES);
   hass.states["text.d1_inhalt"].attributes.kind = "pack";
   hass.states["number.d1_portionen"].state = "5";
@@ -1807,7 +1807,7 @@ test("Packung verschieben/aufteilen und Kassenbon im Packungs-Dialog", async () 
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/pack_move`), { type: `${D}/pack_move`, device_id: "d1", count: 2, compartment: "Regal", area_id: "cellar" });
   assert.match($(el, ".notice").textContent, /2 nach Keller · Regal verschoben/);
 
-  // Kassenbon: Vorschläge landen in den Zeilen
+  // receipt: suggestions end up in the rows
   $(el, '[data-role="add"]').click();
   $(el, '[data-role="add-pack"]').click();
   const file = form.querySelector('[data-role="receipt-file"]');
@@ -1822,9 +1822,9 @@ test("Packung verschieben/aufteilen und Kassenbon im Packungs-Dialog", async () 
   assert.match(form.querySelector('[data-role="item-status"]').textContent, /2 Produkt/);
 });
 
-// ---------- Block 12: Vorrat im Alltag ----------
+// ---------- Block 12: stock in everyday use ----------
 
-test("Strichcode: zeigt alle Orte, ältestes MHD zuerst, −1 am gewählten Ort; unbekannt → als Packung anlegen", async () => {
+test("barcode: shows all places, oldest best-before first, −1 at the chosen place; unknown → create as a pack", async () => {
   const hass = makeHass(DOSES);
   hass.states["number.d2_portionen"].state = "3";
   const answers = {
@@ -1837,7 +1837,7 @@ test("Strichcode: zeigt alle Orte, ältestes MHD zuerst, −1 am gewählten Ort;
   const base = hass.callWS;
   hass.callWS = async (msg) => {
     if (msg.type === `${D}/stock_code`) return answers[msg.code];
-    // eine EAN ist für Larder formal auch eine gültige Dosen-ID (nur unbekannt)
+    // formally an EAN is also a valid container ID for Larder (just unknown)
     if (msg.type === `${D}/resolve_code`) return { valid: true, cc: msg.code, device_id: null, name: null, retired: null };
     if (msg.type === `${D}/empty`) {
       hass.wsCalls.push(msg);
@@ -1849,7 +1849,7 @@ test("Strichcode: zeigt alle Orte, ältestes MHD zuerst, −1 am gewählten Ort;
   await go(el, "containers");
   let added = 0;
   el._classic.openAddDialog = () => added++;
-  // EAN über den normalen 📷-Scan: Vorrat statt "Dose hinzufügen"
+  // EAN via the normal 📷 scan: stock instead of "Add container"
   assert.equal(await el._resolveSingle("4000000000001"), true);
   assert.equal(added, 0);
   const form = $(el, "form.dialog");
@@ -1887,7 +1887,7 @@ test("Strichcode: zeigt alle Orte, ältestes MHD zuerst, −1 am gewählten Ort;
   assert.equal(form.querySelector('[data-i="price"]').value, "1,99");
   assert.equal(form.querySelector('[data-f="area"]').value, "cellar");
   assert.equal(form.querySelector('[data-f="compartment"]').value, "Regal");
-  // nicht im Vorrat
+  // not in stock
   await el.takeByCode("6000000000003");
   assert.match(form.textContent, /Senf ist nicht im Vorrat/);
   form.querySelector('[data-role="code-add"]').click();
@@ -1895,7 +1895,7 @@ test("Strichcode: zeigt alle Orte, ältestes MHD zuerst, −1 am gewählten Ort;
   assert.equal(form.querySelector('[data-i="content"]').value, "Senf");
 });
 
-test("Eingekauft: Startseite bietet abgehakte Einträge an, Anlegen übernimmt Ort und Daten", async () => {
+test("bought: start page offers ticked-off entries, creating takes over place and data", async () => {
   const hass = makeHass(DOSES);
   let bought = [{ id: "b1", summary: "Senf (Develey)", content: "Senf", product: { brand: "Develey" }, area_id: "cellar", compartment: "Regal", count: 2 }];
   const base = hass.callWS;
@@ -1931,7 +1931,7 @@ test("Eingekauft: Startseite bietet abgehakte Einträge an, Anlegen übernimmt O
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/bought_dismiss`), { type: `${D}/bought_dismiss`, item_id: "b1" });
 });
 
-test("Fach vorschlagen: Chips je Bereich aus vorhandenen und zuletzt benutzten Fächern", async () => {
+test("suggest a compartment: chips per area from existing and recently used compartments", async () => {
   const hass = makeHass(DOSES);
   for (const [id, comp] of [["d1", "Tür"], ["d2", "Tür"], ["d3", "Regal oben"], ["d4", "Regal unten"]]) {
     const eid = `text.${id}_fach`;
@@ -1976,9 +1976,9 @@ test("Fach vorschlagen: Chips je Bereich aus vorhandenen und zuletzt benutzten F
   assert.deepEqual(JSON.parse(dom.window.localStorage.getItem("larder.compartments")).cellar, ["Regal unten", "Kiste"]);
 });
 
-// ---------- Block 8: Lernen und berichten ----------
+// ---------- Block 8: learning and reporting ----------
 
-test("Mal wieder …?: Startseite schlägt oft Gegessenes vor; Einkaufsliste und Ausblenden", async () => {
+test("Again …?: start page suggests things often eaten; shopping list and hiding", async () => {
   const hass = makeHass(DOSES);
   let items = [{ key: "bolognese", content: "Bolognese", count: 4, last: "2026-11-01" }];
   const base = hass.callWS;
@@ -2004,7 +2004,7 @@ test("Mal wieder …?: Startseite schlägt oft Gegessenes vor; Einkaufsliste und
   assert.match($(el, ".notice").textContent, /Bolognese steht auf der Einkaufsliste/);
 });
 
-test("Statistik zeigt den Monatsbericht des Vormonats", async () => {
+test("statistics show the monthly report of the previous month", async () => {
   const hass = makeHass(DOSES);
   const base = hass.callWS;
   hass.callWS = async (msg) => {
@@ -2024,9 +2024,9 @@ test("Statistik zeigt den Monatsbericht des Vormonats", async () => {
   assert.deepEqual([...box.querySelectorAll("p.line")].map((p) => p.textContent), ["📦 4 befüllt, 4 geleert", "✅ 2 gegessen, 🗑 2 weggeworfen"]);
 });
 
-// ---------- Block 14: Vorrat pflegen ----------
+// ---------- Block 14: stock care ----------
 
-test("Packung anbrechen: Dialog mit Ort, pack_open, danach die geöffnete Packung", async () => {
+test("open a pack: dialog with place, pack_open, then the opened pack", async () => {
   const hass = makeHass(DOSES);
   hass.states["text.d4_inhalt"].attributes.kind = "pack";
   hass.states["number.d4_portionen"].state = "3";
@@ -2053,7 +2053,7 @@ test("Packung anbrechen: Dialog mit Ort, pack_open, danach die geöffnete Packun
   assert.equal(el._classic.getAttribute("only"), "d2");
 });
 
-test("Inventur: Ort wählen, abhaken, Anzahl korrigieren, austragen, scannen, Zusammenfassung", async () => {
+test("stocktaking: choose a place, tick off, correct the count, remove, scan, summary", async () => {
   const hass = makeHass([
     ...DOSES,
     { id: "p1", name: "Packung 1", area: "cellar", content: "Tomaten", days: 200, category: "produce" },
@@ -2070,7 +2070,7 @@ test("Inventur: Ort wählen, abhaken, Anzahl korrigieren, austragen, scannen, Zu
     if (msg.type === `${D}/resolve_code`) return { valid: true, cc: msg.code, device_id: msg.code === "QR-D4" ? "d4" : msg.code === "QR-D1" ? "d1" : null };
     return base(msg);
   };
-  hass.user.is_admin = false; // Inventur auch ohne Administratorrechte
+  hass.user.is_admin = false; // stocktaking without administrator rights too
   const el = mount(hass);
   $(el, "#settings").click();
   $(el, '[data-role="menu-stocktake"]').click();
@@ -2082,7 +2082,7 @@ test("Inventur: Ort wählen, abhaken, Anzahl korrigieren, austragen, scannen, Zu
   const rowsText = () => $$(el, ".takerow .name").map((n) => n.textContent);
   assert.deepEqual(rowsText().sort(), ["Chili", "Reis", "Tomaten"]);
   assert.match($(el, "main p.count").textContent, /0 von 3 geprüft/);
-  // Dose ohne Administratorrechte: kein "Woanders"; Packung schon
+  // container without administrator rights: no "Elsewhere"; a pack has it
   const row = (id) => $(el, `.takerow[data-id="${id}"]`);
   assert.equal(row("d3").querySelector('[data-role="take-elsewhere"]'), null);
   assert.ok(row("p1").querySelector('[data-role="take-elsewhere"]'));
@@ -2094,7 +2094,7 @@ test("Inventur: Ort wählen, abhaken, Anzahl korrigieren, austragen, scannen, Zu
   await flush();
   assert.deepEqual(hass.calls.at(-1), { domain: "number", service: "set_value", data: { entity_id: "number.p1_portionen", value: 3 } });
   assert.ok(row("p1").classList.contains("changed"));
-  // per Scan abhaken (Dose 4 = Reis); Dose 1 gehört nicht hierher
+  // tick off by scanning (container 4 = rice); container 1 does not belong here
   await el.stocktakeScan("QR-D4");
   assert.ok(row("d4").classList.contains("ok"));
   await el.stocktakeScan("QR-D1");
@@ -2110,11 +2110,11 @@ test("Inventur: Ort wählen, abhaken, Anzahl korrigieren, austragen, scannen, Zu
   assert.match($(el, "form.dialog").textContent, /2 bestätigt \(1 korrigiert\), 1 ausgetragen, 0 verschoben, 0 nicht geprüft/);
 });
 
-// ---------- Block 15: Verbrauch und Kosten ----------
+// ---------- Block 15: consumption and costs ----------
 
 const { spanText, money } = await import("../../custom_components/larder/frontend/larder-dashboard-items.js");
 
-test("Vorrat: reicht noch, Vorschlag Mindestbestand, Preis und Wert; Preis im Packungs-Dialog", async () => {
+test("stock: lasts, suggested minimum stock, price and value; price in the pack dialog", async () => {
   assert.equal(spanText(5, true), "5 Tage");
   assert.equal(spanText(42, true), "6 Wochen");
   assert.equal(spanText(180, true, true), "6 Monaten");
@@ -2154,7 +2154,7 @@ test("Vorrat: reicht noch, Vorschlag Mindestbestand, Preis und Wert; Preis im Pa
   await flush();
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/stock_min`), { type: `${D}/stock_min`, content: "Ketchup", min: 2 });
 
-  // Kassenbon füllt den Preis, der landet in den Produktdaten
+  // the receipt fills the price, which ends up in the product data
   $(el, "#settings").click();
   el.openItemsDialog("pack");
   const form = $(el, "form.dialog");
@@ -2171,9 +2171,9 @@ test("Vorrat: reicht noch, Vorschlag Mindestbestand, Preis und Wert; Preis im Pa
   assert.deepEqual(created.items[0].product, { price: 1.99, price_source: "receipt" });
 });
 
-// ---------- Block 16: Bald leer und Rückrufwarnungen ----------
+// ---------- Block 16: running low and recalls ----------
 
-test("Startseite: Bald leer mit Einkaufsliste und Ausblenden", async () => {
+test("start page: running low with shopping list and hiding", async () => {
   const hass = makeHass(DOSES);
   let items = [{ key: "milch", name: "Milch", count: 2, min: 1, lasts_days: 4 }];
   const base = hass.callWS;
@@ -2199,7 +2199,7 @@ test("Startseite: Bald leer mit Einkaufsliste und Ausblenden", async () => {
   assert.match($(el, ".notice").textContent, /Milch steht auf der Einkaufsliste/);
 });
 
-test("Startseite: Rückrufwarnung oben, mit Ort, Übereinstimmung, Link und Gelesen", async () => {
+test("start page: recall at the top, with place, match, link and read", async () => {
   const hass = makeHass(DOSES);
   let items = [{
     id: "abc123", title: "Heinz Tomato Ketchup 500 ml", reason: "Glassplitter nicht ausgeschlossen", date: "2026-11-12",
@@ -2221,7 +2221,7 @@ test("Startseite: Rückrufwarnung oben, mit Ort, Übereinstimmung, Link und Gele
   await flush();
   const box = $(el, ".stat.recall");
   assert.ok(box);
-  // direkt unter der Begrüßung, vor allem anderen
+  // right below the greeting, before everything else
   assert.equal(box.previousElementSibling.className, "hello");
   assert.match(box.textContent, /Rückrufwarnung/);
   assert.match(box.textContent, /Glassplitter/);
@@ -2234,16 +2234,16 @@ test("Startseite: Rückrufwarnung oben, mit Ort, Übereinstimmung, Link und Gele
   assert.equal($(el, ".stat.recall"), null);
 });
 
-// ---------- Block 13: Fach-Tags und Etiketten ----------
+// ---------- Block 13: compartment tags and labels ----------
 
-test("QR-Etikett eines Fachs wird erkannt", () => {
+test("QR label of a compartment is recognised", () => {
   assert.deepEqual(mod.placeFromCode("homeassistant://navigate/larder?place=cellar&compartment=Regal+oben"), { areaId: "cellar", compartment: "Regal oben" });
   assert.deepEqual(mod.placeFromCode("homeassistant://navigate/larder?place=-&compartment="), { areaId: "", compartment: "" });
   assert.equal(mod.placeFromCode("homeassistant://navigate/larder?cc=HA-1"), null);
   assert.equal(mod.placeFromCode("4000000000017"), null);
 });
 
-test("Fach per Link (NFC-Benachrichtigung): Liste ältestes zuerst, −1, Tag verknüpfen, Inventur", async () => {
+test("compartment via link (NFC notification): list oldest first, −1, link a tag, stocktaking", async () => {
   document.body.innerHTML = "";
   window.history.replaceState(null, "", "/larder?place=cellar&compartment=");
   const hass = makeHass([...DOSES, { id: "p1", name: "Packung 1", area: "cellar", content: "Tomaten", days: 200, category: "produce" }]);
@@ -2271,13 +2271,13 @@ test("Fach per Link (NFC-Benachrichtigung): Liste ältestes zuerst, −1, Tag ve
   const form = $(el, "form.dialog");
   assert.equal(form.querySelector("h2").textContent, "Keller");
   assert.deepEqual([...form.querySelectorAll(".placelist .name")].map((n) => n.textContent.replace(/^\S+ /, "")), ["Chili", "Reis", "Tomaten · 3"]);
-  // Packung: −1
+  // pack: −1
   form.querySelector('.coderow[data-id="p1"] [data-role="place-take"]').click();
   await flush();
   assert.ok(hass.wsCalls.some((m) => m.type === `${D}/pack_take` && m.device_id === "p1" && m.outcome === "eaten"));
-  // Dose: öffnen statt −1
+  // container: open instead of −1
   assert.ok(form.querySelector('.coderow[data-id="d3"] [data-role="place-open"]'));
-  // Tag verknüpfen: vorhandenen Tag scannen
+  // link a tag: scan an existing tag
   form.querySelector('[data-role="place-tag"]').click();
   assert.match(form.querySelector('[data-role="place-status"]').textContent, /NFC-Tag/);
   await capture("tag-xyz");
@@ -2285,7 +2285,7 @@ test("Fach per Link (NFC-Benachrichtigung): Liste ältestes zuerst, −1, Tag ve
   await flush();
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/place_link`), { type: `${D}/place_link`, tag_id: "tag-xyz", area_id: "cellar", compartment: "" });
   assert.ok($(el, "form.dialog").textContent.includes("NFC-Tag verknüpft"));
-  // Inventur genau für dieses Fach
+  // stocktaking for exactly this compartment
   $(el, '[data-role="place-stocktake"]').click();
   await flush();
   assert.equal($(el, "h1").textContent, "Inventur");
@@ -2294,7 +2294,7 @@ test("Fach per Link (NFC-Benachrichtigung): Liste ältestes zuerst, −1, Tag ve
   window.history.replaceState(null, "", "/");
 });
 
-test("Fach-Etikett und Look-Optionen im PDF-Link", async () => {
+test("compartment label and look options in the PDF link", async () => {
   document.body.innerHTML = "";
   dom.window.localStorage.clear();
   const hass = makeHass(DOSES);
@@ -2322,7 +2322,7 @@ test("Fach-Etikett und Look-Optionen im PDF-Link", async () => {
   await flush();
   await flush();
   assert.equal(signed[0], "/api/larder/labels.pdf?place=kitchen%7CT%C3%BCr&layout=3x8&skip=0&color=green&logo=1");
-  // invertiert: Hinweis, Farbe gesperrt, kein color-Parameter
+  // inverted: hint, colour locked, no color parameter
   const inv = form.querySelector('[data-f="inverted"]');
   inv.checked = true;
   inv.dispatchEvent(new Event("change"));
@@ -2335,7 +2335,7 @@ test("Fach-Etikett und Look-Optionen im PDF-Link", async () => {
   dom.window.localStorage.clear();
 });
 
-test("Fach: Sticker beschreiben verknüpft den Tag sofort", async () => {
+test("compartment: writing a sticker links the tag right away", async () => {
   document.body.innerHTML = "";
   const hass = makeHass(DOSES);
   const messages = [];
@@ -2375,16 +2375,16 @@ test("Fach: Sticker beschreiben verknüpft den Tag sofort", async () => {
   assert.equal(form.querySelector('[data-role="place-write"]'), null);
 });
 
-// ---------- Block 10: Vorkochen und Planen ----------
+// ---------- Block 10: batch cooking and planning ----------
 
 const cook = await import("../../custom_components/larder/frontend/larder-dashboard-cook.js");
 
-test("Aufteilen und passende Dosen vorschlagen", () => {
+test("split and suggest matching containers", () => {
   assert.equal(cook.litres("500 ml"), 0.5);
   assert.equal(cook.litres("1,5 l"), 1.5);
   assert.equal(cook.litres("groß"), null);
   assert.deepEqual(cook.splitAmount(3000, "milliliters", ["1 l", "1 l", "1,5 l"]), [1000, 1000, 1000]);
-  assert.deepEqual(cook.splitAmount(1500, "milliliters", ["1 l"]), [1000]); // Rest passt nicht
+  assert.deepEqual(cook.splitAmount(1500, "milliliters", ["1 l"]), [1000]); // the rest does not fit
   assert.deepEqual(cook.splitAmount(7, "portions", [null, null, null]), [3, 2, 2]);
   assert.deepEqual(cook.splitAmount(0, "portions", [null]), [0]);
   const options = [{ size: "0,5 l" }, { size: "1 l" }, { size: "2 l" }, { size: "1 l" }];
@@ -2392,7 +2392,7 @@ test("Aufteilen und passende Dosen vorschlagen", () => {
   assert.deepEqual(cook.suggestContainers(2400, options).map((o) => o.size), ["2 l", "0,5 l"]);
 });
 
-test("Lager: freie Behälter je Größe; Behältergrößen-Dialog speichert lose Behälter", async () => {
+test("larder: free containers per size; the container sizes dialog saves loose containers", async () => {
   document.body.innerHTML = "";
   const hass = makeHass(DOSES);
   let sizes = { overview: [{ size: "0,5 l", total: 1, filled: 1, free: 0 }, { size: "1 l", total: 4, filled: 1, free: 3 }], loose: { "1 l": 2 }, known: ["1 l"] };
@@ -2425,7 +2425,7 @@ test("Lager: freie Behälter je Größe; Behältergrößen-Dialog speichert lose
   assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/loose_set`, loose: { "1 l": 2, "2 l": 3 } });
 });
 
-test("Vorkochen: Gericht, Menge, Dosen vorschlagen, weiter zum Befüllen mit Menge je Dose", async () => {
+test("batch cooking: dish, amount, suggest containers, on to filling with amount per container", async () => {
   document.body.innerHTML = "";
   const hass = makeHass([...DOSES, { id: "d6", name: "Dose 6", area: "kitchen" }, { id: "d7", name: "Dose 7", area: "kitchen" }]);
   hass.states["text.d5_inhalt"].attributes = { kind: "container", size_fixed: "1 l" };
@@ -2457,7 +2457,7 @@ test("Vorkochen: Gericht, Menge, Dosen vorschlagen, weiter zum Befüllen mit Men
   assert.deepEqual(opened.preset, { content: "Chili", quantities: { d6: 2000, d7: 500 }, unit: "milliliters", sizes: {} });
 });
 
-test("Wochenplan vorschlagen: Tage anzeigen, entfernen, übernehmen", async () => {
+test("suggest a weekly plan: show days, remove, apply", async () => {
   document.body.innerHTML = "";
   const hass = makeHass(DOSES);
   const base = hass.callWS;
@@ -2504,7 +2504,7 @@ test("Wochenplan vorschlagen: Tage anzeigen, entfernen, übernehmen", async () =
 
 // ---------- Block 20: Bugfixes ----------
 
-test("Strichcode: umbenannte Packung behält die EAN; nicht im Vorrat → mit Produkt verknüpfen", async () => {
+test("barcode: a renamed pack keeps the EAN; not in stock → link with a product", async () => {
   document.body.innerHTML = "";
   const hass = makeHass(DOSES);
   let linked = false;
@@ -2530,7 +2530,7 @@ test("Strichcode: umbenannte Packung behält die EAN; nicht im Vorrat → mit Pr
   };
   const el = mount(hass);
   await flush();
-  // Als Packung anlegen und umbenennen: Produktdaten (EAN) bleiben
+  // create as a pack and rename: product data (EAN) stays
   await el.takeByCode("4000000000017");
   const form = $(el, "form.dialog");
   form.querySelector('[data-role="code-add"]').click();
@@ -2542,7 +2542,7 @@ test("Strichcode: umbenannte Packung behält die EAN; nicht im Vorrat → mit Pr
   await flush();
   assert.equal(created[0].items[0].content, "Curryketchup");
   assert.equal(created[0].items[0].product.ean, "4000000000017");
-  // nicht im Vorrat → verknüpfen
+  // not in stock → link
   await el.takeByCode("4000000000017");
   form.querySelector('[data-role="code-link"]').click();
   await flush();
@@ -2621,8 +2621,8 @@ test("Switch Lebensmittel | Haushalt: filters storage, areas and categories and 
   await flush();
   await flush();
   await go(el, "containers");
-  assert.equal($(el, "h1").textContent, "Lager");
-  assert.deepEqual($$(el, ".scope button").map((b) => [b.textContent, b.classList.contains("on")]), [["🥫 Lebensmittel", true], ["🧻 Haushalt", false], ["💊 Apotheke", false]]);
+  assert.equal($(el, "h1").textContent, "Vorrat");
+  assert.deepEqual($$(el, ".scope button").map((b) => [b.textContent, b.classList.contains("on")]), [["🍎 Lebensmittel", true], ["🧻 Haushalt", false], ["💊 Apotheke", false]]);
   assert.ok(!names(el).includes("Klopapier"));
   $(el, '.scope [data-scope="household"]').click();
   await flush();
@@ -2698,7 +2698,7 @@ test("Start: sections Lebensmittel and Haushalt; bought household item opens the
   await flush();
   await flush();
   const heads = $$(el, "main h2.section").map((h) => h.textContent);
-  assert.deepEqual(heads, ["🥫 Lebensmittel", "🧻 Haushalt"]);
+  assert.deepEqual(heads, ["🍎 Lebensmittel", "🧻 Haushalt"]);
   const household = $(el, '[data-role="household-section"]');
   const before = [...$(el, "main").children];
   const idx = before.indexOf(household);
@@ -2721,7 +2721,7 @@ test("Start: sections Lebensmittel and Haushalt; bought household item opens the
   assert.equal($$(plain, "main h2.section").length, 0);
 });
 
-test("Vorrat: household products show pieces and packs, minimum in pieces", async () => {
+test("stock: household products show pieces and packs, minimum in pieces", async () => {
   const hass = householdHass();
   const base = hass.callWS;
   hass.callWS = async (msg) => {
@@ -2926,7 +2926,7 @@ test("Pharmacy (4.4): third tab, own section on the start page with the longer w
   await flush();
   await flush();
   const heads = $$(el, "main h2.section").map((h) => h.textContent);
-  assert.deepEqual(heads, ["🥫 Lebensmittel", "🧻 Haushalt", "💊 Apotheke"]);
+  assert.deepEqual(heads, ["🍎 Lebensmittel", "🧻 Haushalt", "💊 Apotheke"]);
   assert.deepEqual([...$(el, '[data-role="pharmacy-soon"]').querySelectorAll(".name")].map((n) => n.textContent), ["Ibuprofen 400"]);
   // the food list does not show medicines
   assert.ok(!$$(el, "main .tiles:not([data-role]) .name").map((n) => n.textContent).includes("Ibuprofen 400"));
@@ -2949,4 +2949,34 @@ test("Pharmacy (4.4): third tab, own section on the start page with the longer w
   const created = hass.wsCalls.find((m) => m.type === `${D}/create_items`);
   assert.equal(created.kind, "medicine");
   assert.deepEqual(created.items, [{ content: "Paracetamol", quantity: 1, unit: "pieces", best_before: "2028-03-01" }]);
+});
+
+test("Start (household): 'Replace soon' box with 'Replaced' (4.6)", async () => {
+  const hass = householdHass();
+  const base = hass.callWS;
+  let due = [{ key: "wasserfilter", name: "Wasserfilter", weeks: 4, last: "2026-10-20", due: "2026-11-17", days: 0 }];
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/replace_due`) return { items: due };
+    if (msg.type === `${D}/replaced`) {
+      hass.wsCalls.push(msg);
+      due = [];
+      return { taken: true, interval: null, due };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await flush();
+  const box = $(el, '[data-role="replace-due"]');
+  assert.ok(box);
+  assert.equal(box.querySelector("h3").textContent, "🔁 Bald wechseln");
+  assert.equal(box.querySelector(".sub").textContent, "heute fällig");
+  const household = $(el, '[data-role="household-section"]');
+  const children = [...$(el, "main").children];
+  assert.ok(children.indexOf(box) > children.indexOf(household));
+  box.querySelector('[data-role="replace-done"]').click();
+  await flush();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/replaced`), { type: `${D}/replaced`, content: "Wasserfilter" });
+  assert.equal($(el, '[data-role="replace-due"]'), null);
 });

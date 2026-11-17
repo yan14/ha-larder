@@ -3,6 +3,13 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 4.6.0
+
+- **Replace regularly:** household items such as a water filter or vacuum bags get an optional interval (*Replace every (weeks)* on the card). The card shows when it is due, **🔁 Replaced** takes one piece and restarts the interval, and the household section of the start page lists what is due within a week under **🔁 Replace soon**. On the due day the event `larder_replace_due` fires; the stock alerts blueprint can send it as push (new switch).
+- **Names:** the bottom bar says **Vorrat / Larder** (🥫) instead of *Lager / Storage*; the stock view is now **🗃️ Bestand / Stock**; the food side uses 🍎.
+- Household items and medicines: **Used up** instead of *Empty container* on the card; counts and empty texts no longer speak of containers.
+- Tests: comments and test names are in English now.
+
 ## 4.5.0
 
 - **Medicines expiring:** new blueprint *Larder – medicines expiring* reminds you on the chosen weekdays (e.g. every Monday) of medicines and household items with a date that expire within their warning period, as push to several phones and optionally read out on Alexa. Nothing is sent when nothing is due; run by hand it sends a test. New service `larder.get_expiring_medicines` (count, expired, items, summary, speech) for own automations. The daily summary stays food only.

@@ -1,4 +1,4 @@
-"""Tests Block 8: Schätzung lernt aus dem Verlauf, Monatsbericht (Service und Blueprint), "Mal wieder …?"."""
+"""Tests block 8: estimate learns from the history, monthly report (service and blueprint), "Again …?"."""
 
 from datetime import date, timedelta
 from pathlib import Path
@@ -47,25 +47,25 @@ ENTRY = {"key": cache_key("Gekochte Eier", "Kühlschrank", True), "content": "Ge
 
 def test_suggests_shorter_when_thrown_away_early() -> None:
     records = [
-        _rec("Gekochte Eier", _d(40), _d(33), _d(36), "thrown"),  # nach 4 Tagen weg, MHD erst 3 Tage später
-        _rec("gekochte eier", _d(20), _d(13), _d(15), "thrown", vacuum=True),  # nach 5 Tagen
-        _rec("Gekochte Eier", _d(10), _d(3), _d(5), "thrown", vacuum=False),  # andere Variante: zählt nicht
+        _rec("Gekochte Eier", _d(40), _d(33), _d(36), "thrown"),  # gone after 4 days, best-before only 3 days later
+        _rec("gekochte eier", _d(20), _d(13), _d(15), "thrown", vacuum=True),  # after 5 days
+        _rec("Gekochte Eier", _d(10), _d(3), _d(5), "thrown", vacuum=False),  # other variant: does not count
     ]
     (s,) = build_suggestions([ENTRY], records, {}, TODAY)
     assert (s["direction"], s["suggested"], s["count"], s["days"]) == ("shorter", 4, 2, 7)  # Median 4,5 → 4
     assert build_suggestions([ENTRY], records, {ENTRY["key"]: 4}, TODAY) == []  # ignoriert
-    assert build_suggestions([ENTRY], records[:1], {}, TODAY) == []  # einmal ist kein Muster
+    assert build_suggestions([ENTRY], records[:1], {}, TODAY) == []  # once is not a pattern
 
 
 def test_suggests_longer_when_eaten_well_after_the_date() -> None:
     records = [
-        _rec("Gekochte Eier", _d(40), _d(33), _d(28), "eaten"),  # 12 Tage, 5 nach MHD
-        _rec("Gekochte Eier", _d(20), _d(13), _d(10), "eaten"),  # 10 Tage
-        _rec("Gekochte Eier", _d(500), _d(493), _d(490), "eaten"),  # zu alt
+        _rec("Gekochte Eier", _d(40), _d(33), _d(28), "eaten"),  # 12 days, 5 after best-before
+        _rec("Gekochte Eier", _d(20), _d(13), _d(10), "eaten"),  # 10 days
+        _rec("Gekochte Eier", _d(500), _d(493), _d(490), "eaten"),  # too old
     ]
     (s,) = build_suggestions([ENTRY], records, {}, TODAY)
     assert (s["direction"], s["suggested"]) == ("longer", 10)
-    # einmal vor dem MHD weggeworfen: nicht verlängern
+    # thrown away once before best-before: do not extend
     records.append(_rec("Gekochte Eier", _d(9), _d(2), _d(4), "thrown"))
     assert build_suggestions([ENTRY], records, {}, TODAY) == []
 
@@ -82,7 +82,7 @@ async def test_suggestion_websocket_accept_and_ignore(hass: HomeAssistant, hass_
     assert [(s["key"], s["suggested"]) for s in res["result"]["suggestions"]] == [(key, 3)]
     res = await _ws(hass, hass_ws_client, type="larder/estimate_suggestion", key=key, action="ignore")
     assert res["result"]["suggestions"] == []
-    # neuer Fall ändert den Vorschlag: kommt wieder
+    # a new case changes the suggestion: comes back
     history.records += [_rec("Gekochte Eier", ago(9), ago(2), ago(7), "thrown"), _rec("Gekochte Eier", ago(8), ago(1), ago(6), "thrown")]
     res = await _ws(hass, hass_ws_client, type="larder/estimate_suggestions")
     assert res["result"]["suggestions"][0]["suggested"] == 2
@@ -95,7 +95,7 @@ def test_monthly_report_compares_with_the_previous_month() -> None:
     records = [
         _rec("Lachs", "2026-10-01", "2026-10-05", "2026-10-04", "eaten"),
         _rec("Käse", "2026-10-02", "2026-10-10", "2026-10-20", "thrown"),
-        _rec("Käse, Salami", "2026-10-11", "2026-10-15", "2026-10-25", None),  # abgelaufen ohne Antwort: weggeworfen
+        _rec("Käse, Salami", "2026-10-11", "2026-10-15", "2026-10-25", None),  # expired without an answer: thrown away
         _rec("Gulasch", "2026-09-01", "2026-09-30", "2026-10-03", "eaten"),
         _rec("Suppe", "2026-09-01", "2026-09-30", "2026-09-10", "eaten"),
         _rec("Brot", "2026-09-01", "2026-09-05", "2026-09-12", "thrown"),
@@ -149,7 +149,7 @@ async def test_monthly_report_blueprint(hass: HomeAssistant, blueprint) -> None:
 
 def test_cook_again_suggestions() -> None:
     records = [_rec("Bolognese", _d(n + 5), _d(n), _d(n), "eaten") for n in (10, 30, 60)]
-    records += [_rec("Bolognese", _d(150), _d(140), _d(140), "eaten")]  # zu alt
+    records += [_rec("Bolognese", _d(150), _d(140), _d(140), "eaten")]  # too old
     records += [_rec("Chili, Reis", _d(n + 5), _d(n), _d(n), "eaten") for n in (5, 15, 25, 35)]
     records += [_rec("Suppe", _d(n + 5), _d(n), _d(n), "thrown") for n in (5, 15, 25)]
     out = build_cook_again(records, {"reis"}, {}, TODAY)
@@ -166,7 +166,7 @@ async def test_cook_again_websocket(hass: HomeAssistant, hass_ws_client) -> None
     history.records += [_rec("Bolognese", (now - timedelta(days=n + 3)).isoformat(), (now - timedelta(days=n)).isoformat(), (now - timedelta(days=n)).isoformat(), "eaten") for n in (5, 10, 20)]
     res = await _ws(hass, hass_ws_client, type="larder/cook_again")
     assert [i["content"] for i in res["result"]["items"]] == ["Bolognese"] and res["result"]["shopping_list"]
-    # gerade in einer Dose: kein Vorschlag
+    # currently in a container: no suggestion
     await hass.services.async_call("text", "set_value", {"entity_id": _eid(hass, "text", "AAAA"), "value": "Bolognese"}, blocking=True)
     assert (await _ws(hass, hass_ws_client, type="larder/cook_again"))["result"]["items"] == []
     await hass.services.async_call("text", "set_value", {"entity_id": _eid(hass, "text", "AAAA"), "value": ""}, blocking=True)

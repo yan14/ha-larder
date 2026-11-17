@@ -1,4 +1,4 @@
-"""Tests Block 9: Einweg-Beutel und Packungen ohne Dose."""
+"""Tests block 9: disposable bags and packs without a container."""
 
 from datetime import timedelta
 
@@ -29,7 +29,7 @@ def _entities(hass: HomeAssistant, device_id: str) -> set[str]:
 
 
 async def test_create_bags_fills_and_estimates(hass: HomeAssistant, hass_ws_client) -> None:
-    await _setup(hass, "AAAA")  # lädt die Integration
+    await _setup(hass, "AAAA")  # loads the integration
     from homeassistant.helpers import area_registry as ar
 
     freezer = ar.async_get(hass).async_create("Gefrierschrank")
@@ -48,7 +48,7 @@ async def test_create_bags_fills_and_estimates(hass: HomeAssistant, hass_ws_clie
     first = items[0]
     device = dr.async_get(hass).async_get(first["device_id"])
     assert device.area_id == freezer.id and device.model == "Bag"
-    # Beutel: Code und Vakuum ja, Einkaufsliste und fester Platz nein
+    # bag: code and vacuum yes, shopping list and fixed place no
     assert _entities(hass, device.id) == {
         "content", "compartment", "best_before", "filled_at", "portions", "unit", "days_left", "empty_container", "qr_code", "vacuum",
     }
@@ -58,8 +58,8 @@ async def test_create_bags_fills_and_estimates(hass: HomeAssistant, hass_ws_clie
     assert hass.states.get(_eid(hass, "select", first["cc"])).state == "grams"
     assert hass.states.get(_eid(hass, "switch", first["cc"])).state == "on"
     best = hass.states.get(_eid(hass, "date", first["cc"])).state
-    assert best > dt_util.now().date().isoformat()  # aus der Tabelle geschätzt (Gefrierschrank)
-    # weitere Beutel zählen weiter
+    assert best > dt_util.now().date().isoformat()  # estimated from the table (freezer)
+    # further bags keep counting
     res = await _ws(hass, hass_ws_client, type="larder/create_items", kind="bag", items=[{"content": "Reh"}])
     assert res["result"]["items"][0]["name"] == "Bag 3"
 
@@ -70,7 +70,7 @@ async def test_emptying_a_bag_removes_it_and_its_tag(hass: HomeAssistant, hass_w
     res = await _ws(hass, hass_ws_client, type="larder/create_items", kind="bag", items=[{"content": "Rehgulasch"}])
     item = res["result"]["items"][0]
     cc = item["cc"]
-    await ha_tag.async_scan_tag(hass, "tag-1", None)  # Home Assistant kennt den Sticker
+    await ha_tag.async_scan_tag(hass, "tag-1", None)  # Home Assistant knows the sticker
     await (await async_get_nfc(hass)).async_link("tag-1", cc)
     assert "tag-1" in hass.data[ha_tag.TAG_DATA].data
 
@@ -84,7 +84,7 @@ async def test_emptying_a_bag_removes_it_and_its_tag(hass: HomeAssistant, hass_w
     record = (await async_get_history(hass)).list()[0]
     assert record["content"] == "Rehgulasch" and record["name"] == "Bag 1" and record["kind"] == "bag"
 
-    # alter Code und alter Sticker: Hinweis statt "unbekannt"
+    # old code and old sticker: hint instead of "unknown"
     retired = await async_get_retired(hass)
     assert retired.by_code(cc)["content"] == "Rehgulasch" and retired.by_tag("tag-1") is not None
     res = await _ws(hass, hass_ws_client, type="larder/resolve_code", code=cc)
@@ -96,12 +96,12 @@ async def test_emptying_a_bag_removes_it_and_its_tag(hass: HomeAssistant, hass_w
     assert events and events[0]["retired"] is True and "emptied" in events[0]["message"]
     async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=5))
     await hass.async_block_till_done()
-    assert "tag-1" not in hass.data[ha_tag.TAG_DATA].data  # gleich wieder aufgeräumt
-    # Sticker für einen neuen Beutel benutzt: gilt nicht mehr als alt
+    assert "tag-1" not in hass.data[ha_tag.TAG_DATA].data  # cleaned up right away
+    # sticker used for a new bag: no longer counts as old
     res = await _ws(hass, hass_ws_client, type="larder/create_items", kind="bag", items=[{"content": "Hack"}])
     await (await async_get_nfc(hass)).async_link("tag-1", res["result"]["items"][0]["cc"])
     assert retired.by_tag("tag-1") is None
-    assert res["result"]["items"][0]["cc"] != cc  # Codes werden nie wiederverwendet
+    assert res["result"]["items"][0]["cc"] != cc  # codes are never reused
 
 
 async def test_packs_have_few_entities_and_no_code(hass: HomeAssistant, hass_ws_client, hass_client) -> None:
@@ -122,13 +122,13 @@ async def test_packs_have_few_entities_and_no_code(hass: HomeAssistant, hass_ws_
     assert hass.states.get(comp).state == "Regal oben"
     attrs = hass.states.get(_eid(hass, "text", item["cc"])).attributes
     assert attrs["kind"] == "pack" and attrs["brand"] == "Mutti"
-    # zählt bei "läuft bald ab" mit, aber nicht bei "alle Etiketten"
+    # counts for "expiring soon", but not for "all labels"
     out = await hass.services.async_call(DOMAIN, "get_expiring", {}, blocking=True, return_response=True)
     assert [(i["content"], i["kind"]) for i in out["items"]] == [("Tomaten gehackt", "pack")]
     from custom_components.larder.labels import collect_labels
 
     assert [label.name for label in collect_labels(hass, None, False)] == ["Dose AAAA"]
-    # leeren: weg, ohne dass ein alter Code gemerkt wird
+    # emptying: gone, without remembering an old code
     await hass.services.async_call("button", "press", {"entity_id": _eid(hass, "button", item["cc"])}, blocking=True)
     await hass.async_block_till_done()
     assert dr.async_get(hass).async_get(item["device_id"]) is None
@@ -154,12 +154,12 @@ async def test_transfer_pack_into_container(hass: HomeAssistant, hass_ws_client)
     assert res["result"]["left"] == 1
     target = hass.states.get(_eid(hass, "text", "AAAA"))
     assert target.state == "Basmati" and target.attributes["brand"] == "Tilda"
-    assert hass.states.get(_eid(hass, "date", "AAAA")).state <= printed  # höchstens wie aufgedruckt
+    assert hass.states.get(_eid(hass, "date", "AAAA")).state <= printed  # at most as printed
     assert hass.states.get(_eid(hass, "number", pack["cc"])).state == "1.0"
-    # volle Dose als Ziel geht nicht
+    # a full container as target is not possible
     res = await _ws(hass, hass_ws_client, type="larder/transfer", device_id=pack["device_id"], target=device("AAAA"))
     assert not res["success"]
-    # letzte Packung: verschwindet
+    # last pack: disappears
     res = await _ws(hass, hass_ws_client, type="larder/transfer", device_id=pack["device_id"], target=device("BBBB"))
     assert res["result"]["left"] == 0
     await hass.async_block_till_done()

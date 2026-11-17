@@ -1,4 +1,4 @@
-"""Tests: KI-Rezeptideen aus bald ablaufenden Dosen (mit simuliertem AI-Task-Dienst)."""
+"""Tests: AI recipe ideas from containers expiring soon (with a simulated AI task service)."""
 
 from datetime import timedelta
 
@@ -83,8 +83,8 @@ async def test_recipes_use_only_soon_expiring_items_and_send_minimal_data(hass: 
     await _setup(hass, "A4")
     await _fill(hass, "A1", "Schinken", 1, 5, "slices")
     await _fill(hass, "A2", "Gekochte Eier", 2, 4, "pieces")
-    await _fill(hass, "A3", "Altes Brot", -1)  # abgelaufen: nie kochen
-    await _fill(hass, "A4", "Reis", 30)  # noch lange haltbar
+    await _fill(hass, "A3", "Altes Brot", -1)  # expired: never cook
+    await _fill(hass, "A4", "Reis", 30)  # keeps a long time
     calls = _fake_ai(hass)
 
     out = await _suggest(hass, servings=3)
@@ -94,7 +94,7 @@ async def test_recipes_use_only_soon_expiring_items_and_send_minimal_data(hass: 
     assert "Schinken | 5 slices" in prompt and "Gekochte Eier | 4 pieces" in prompt
     assert "Altes Brot" not in prompt and "Reis" not in prompt
     assert "3 people" in prompt and "'en'" in prompt
-    assert "Dose A1" not in prompt  # Dosennamen werden nicht gesendet
+    assert "Dose A1" not in prompt  # container names are not sent
     assert "recipes" in calls[0]["structure"]
     assert out["count"] == 2
     assert [i["content"] for i in out["ingredients"]] == ["Schinken", "Gekochte Eier"]
@@ -119,7 +119,7 @@ async def test_recipes_pass_the_configured_ai_entity_and_limit(hass: HomeAssista
 async def test_recipes_errors(hass: HomeAssistant) -> None:
     await _setup(hass, "A1")
     await _fill(hass, "A1", "Schinken", 1)
-    with pytest.raises(HomeAssistantError):  # AI Task nicht eingerichtet
+    with pytest.raises(HomeAssistantError):  # AI Task not set up
         await _suggest(hass)
     _fake_ai(hass, error=HomeAssistantError("kaputt"))
     with pytest.raises(HomeAssistantError, match="kaputt"):
@@ -163,7 +163,7 @@ def test_blueprint_message_appends_recipe_ideas_only_when_available(hass: HomeAs
         return Template(message, hass).async_render(variables)
 
     result = {"summary": "1 läuft bald ab:\n• Schinken"}
-    assert render(result=result) == "1 läuft bald ab:\n• Schinken"  # KI nicht gelaufen oder fehlgeschlagen
+    assert render(result=result) == "1 läuft bald ab:\n• Schinken"  # AI did not run or failed
     assert render(result=result, ideas={"summary": ""}) == "1 läuft bald ab:\n• Schinken"
     assert render(result=result, ideas={"summary": "• Omelett"}) == "1 läuft bald ab:\n• Schinken\n\n• Omelett"
 
@@ -188,7 +188,7 @@ async def test_period_comes_from_the_settings_and_can_be_overridden(hass: HomeAs
     out = await _suggest(hass)
     assert out["days"] == 14 and [i["content"] for i in out["ingredients"]] == ["Schinken", "Suppe"]
 
-    out = await _suggest(hass, days=1)  # Angabe im Aufruf geht vor
+    out = await _suggest(hass, days=1)  # value in the call takes precedence
     assert out["days"] == 1 and out["recipes"] == [] and len(calls) == 2
 
 
@@ -200,9 +200,9 @@ async def test_all_containers_ignores_the_period_but_never_sends_expired_or_empt
     await _setup(hass, "EEEE")
     await _fill(hass, "AAAA", "Schinken", 200)
     await _fill(hass, "BBBB", "Alter Fisch", -2)  # abgelaufen
-    await hass.services.async_call("text", "set_value", {"entity_id": _eid(hass, "text", "CCCC"), "value": "Reis"}, blocking=True)  # ohne MHD
+    await hass.services.async_call("text", "set_value", {"entity_id": _eid(hass, "text", "CCCC"), "value": "Reis"}, blocking=True)  # without best-before date
     value = (dt_util.now().date() + timedelta(days=1)).isoformat()
-    await hass.services.async_call("date", "set_value", {"entity_id": _eid(hass, "date", "DDDD"), "date": value}, blocking=True)  # MHD ohne Inhalt
+    await hass.services.async_call("date", "set_value", {"entity_id": _eid(hass, "date", "DDDD"), "date": value}, blocking=True)  # best-before date without content
     calls = _fake_ai(hass, {"recipes": [RECIPE]})
 
     out = await _suggest(hass, all_containers=True)
@@ -212,7 +212,7 @@ async def test_all_containers_ignores_the_period_but_never_sends_expired_or_empt
     assert "Alter Fisch" not in text and "Dose DDDD" not in text and "Dose EEEE" not in text
     assert "Reis | no best-before date known" in text
 
-    # ohne "alle": weder die Dose ohne MHD noch die namenlose mit MHD gehen an die KI
+    # without "all": neither the container without best-before nor the nameless one with best-before go to the AI
     out = await _suggest(hass, days=30)
     assert out["recipes"] == [] and len(calls) == 1
 
@@ -257,7 +257,7 @@ async def test_recipes_from_selected_containers_ignore_the_period(hass: HomeAssi
     await _setup(hass, "DDDD")
     await _fill(hass, "AAAA", "Schinken", 200)
     await _fill(hass, "BBBB", "Suppe", 1)
-    await _fill(hass, "CCCC", "Alter Fisch", -1)  # abgelaufen: bleibt draußen, auch wenn gewählt
+    await _fill(hass, "CCCC", "Alter Fisch", -1)  # expired: stays out, even if chosen
     await hass.services.async_call("text", "set_value", {"entity_id": _eid(hass, "text", "DDDD"), "value": "Reis"}, blocking=True)
     calls = _fake_ai(hass, {"recipes": [RECIPE]})
     device = lambda cc: dr.async_get(hass).async_get_device(identifiers={(DOMAIN, cc)}).id  # noqa: E731
@@ -266,7 +266,7 @@ async def test_recipes_from_selected_containers_ignore_the_period(hass: HomeAssi
     assert [i["content"] for i in out["ingredients"]] == ["Schinken", "Reis"]
     assert "picked these containers" in calls[0]["instructions"] and "Suppe" not in calls[0]["instructions"]
 
-    out = await _suggest(hass, containers=["BBBB"])  # cc direkt geht auch
+    out = await _suggest(hass, containers=["BBBB"])  # cc directly works too
     assert [i["content"] for i in out["ingredients"]] == ["Suppe"]
 
     out = await _suggest(hass, containers=[device("CCCC")])

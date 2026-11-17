@@ -1,4 +1,4 @@
-"""Tests: Blueprint „tägliche Zusammenfassung“ als echte Automation (Push, Sprache, Bewegung, Anwesenheit)."""
+"""Tests: blueprint "daily summary" as a real automation (push, speech, motion, presence)."""
 
 from datetime import timedelta
 from pathlib import Path
@@ -91,7 +91,7 @@ async def test_push_to_several_targets_with_buttons_and_voice(hass: HomeAssistan
     assert voice["data"] == {"type": "announce"}
     assert voice["message"] == "Lachs expires today. Gouda expires tomorrow. Idea: Schinken-Omelett."
 
-    # nur einmal am Tag
+    # only once a day
     await _at(hass, freezer, "08:00:00", days=0)
     hass.bus.async_fire("x")
     assert len(calls["mobile_app_yan"]) == 1
@@ -115,7 +115,7 @@ async def test_motion_window_fallback_and_presence(hass: HomeAssistant, blueprin
         buttons=False,
         recipes_page="classic",
     )
-    # 07:00 ohne Bewegung: nichts; Bewegung vor 07:00: nichts
+    # 07:00 without motion: nothing; motion before 07:00: nothing
     await _at(hass, freezer, "06:30:00")
     hass.states.async_set("binary_sensor.kueche", "on")
     await hass.async_block_till_done()
@@ -123,7 +123,7 @@ async def test_motion_window_fallback_and_presence(hass: HomeAssistant, blueprin
     await _at(hass, freezer, "07:00:00")
     assert calls["mobile_app_yan"] == []
 
-    # Bewegung um 07:30: Push, aber keine Sprache (niemand zu Hause)
+    # motion at 07:30: push, but no speech (nobody home)
     await _at(hass, freezer, "07:30:00")
     hass.states.async_set("binary_sensor.kueche", "on")
     await hass.async_block_till_done()
@@ -131,14 +131,14 @@ async def test_motion_window_fallback_and_presence(hass: HomeAssistant, blueprin
     assert push["data"] == {}
     assert calls["alexa_media_kueche"] == []
 
-    # zweite Bewegung am selben Tag und 11:00: nichts mehr
+    # second motion on the same day and 11:00: nothing more
     hass.states.async_set("binary_sensor.kueche", "off")
     await hass.async_block_till_done()
     hass.states.async_set("binary_sensor.kueche", "on")
     await _at(hass, freezer, "11:00:00")
     assert len(calls["mobile_app_yan"]) == 1
 
-    # nächster Tag ohne Bewegung: spätestens 11:00, jetzt mit jemandem zu Hause
+    # next day without motion: at 11:00 at the latest, now with somebody home
     hass.states.async_set("binary_sensor.kueche", "off")
     hass.states.async_set("person.yan", "home")
     await _fill(hass, "AAAA", "Lachs", 1)

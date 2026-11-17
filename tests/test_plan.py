@@ -1,4 +1,4 @@
-"""Tests: Wochenplan, Kalendertermin und Auftau-Erinnerung."""
+"""Tests: weekly plan, calendar event and thaw reminder."""
 
 from datetime import timedelta
 
@@ -44,7 +44,7 @@ async def test_plan_and_thaw_reminder(hass: HomeAssistant, hass_ws_client) -> No
     await ws.send_json({"id": 2, "type": "larder/plan_add", "date": later, "title": "Später", "device_ids": [_device(hass, "AAAA")]})
     await ws.receive_json()
 
-    # nur die Dose aus dem Gefrierschrank, nur für den Plan innerhalb des Vorlaufs
+    # only the container from the freezer, only for the plan within the lead time
     await ws.send_json({"id": 3, "type": "larder/plan_list"})
     msg = await ws.receive_json()
     assert [p["title"] for p in msg["result"]["plans"]] == ["Spaghetti Bolognese", "Später"]
@@ -55,13 +55,13 @@ async def test_plan_and_thaw_reminder(hass: HomeAssistant, hass_ws_client) -> No
     assert speech == "Bitte in den Kühlschrank stellen: Bolognese-Sauce aus Dose AAAA."
     assert button == "Aufgetaut"
 
-    # tägliche Zusammenfassung: Auftauen zuerst, auch wenn nichts abläuft
+    # daily summary: thawing first, even if nothing expires
     out = await hass.services.async_call(DOMAIN, "get_expiring", {"days": 3}, blocking=True, return_response=True)
     assert out["count"] == 0 and len(out["thaw"]) == 1
     assert out["summary"].startswith("Zum Auftauen")
     assert out["labels"]["thawed"] == "Aufgetaut"
 
-    # Knopf in der Push-Nachricht: aufgetaut, MHD gekürzt, Erinnerung weg
+    # button in the push message: thawed, best-before shortened, reminder gone
     before = hass.states.get(_eid(hass, "date", "AAAA")).state
     hass.bus.async_fire("mobile_app_notification_action", {"action": THAW_ACTION})
     await hass.async_block_till_done()
@@ -69,7 +69,7 @@ async def test_plan_and_thaw_reminder(hass: HomeAssistant, hass_ws_client) -> No
     plan = await async_get_plan(hass)
     assert plan.thaw_items() == []
 
-    # löschen
+    # delete
     await ws.send_json({"id": 4, "type": "larder/plan_delete", "plan_id": added["id"]})
     assert (await ws.receive_json())["success"]
     await ws.send_json({"id": 5, "type": "larder/plan_delete", "plan_id": added["id"]})
@@ -80,8 +80,8 @@ async def test_plan_and_thaw_reminder(hass: HomeAssistant, hass_ws_client) -> No
 async def test_thaw_days_setting_and_flexible_move(hass: HomeAssistant, hass_ws_client) -> None:
     await _setup(hass, "AAAA")
     _move(hass, "AAAA", "Gefrierschrank")
-    fridge = _move(hass, "AAAA", "Kühlschrank")  # Kühlschrank anlegen …
-    _move(hass, "AAAA", "Gefrierschrank")  # … und zurück
+    fridge = _move(hass, "AAAA", "Kühlschrank")  # create a fridge …
+    _move(hass, "AAAA", "Gefrierschrank")  # … and back
     await _fill(hass, "AAAA", "Gulasch", 90)
     await hass.services.async_call(
         "switch", "turn_on", {"entity_id": next(e for e in hass.states.async_entity_ids("switch") if "flexible" in e)}, blocking=True
@@ -98,7 +98,7 @@ async def test_thaw_days_setting_and_flexible_move(hass: HomeAssistant, hass_ws_
     await ws.send_json({"id": 1, "type": "larder/thawed", "device_ids": [_device(hass, "AAAA")]})
     msg = await ws.receive_json()
     assert msg["result"]["thawed"] == 1
-    assert dr.async_get(hass).async_get(_device(hass, "AAAA")).area_id == fridge  # variable Dose zieht um
+    assert dr.async_get(hass).async_get(_device(hass, "AAAA")).area_id == fridge  # variable container moves
     assert plan.thaw_items() == []
 
 
@@ -138,7 +138,7 @@ async def test_cooked_and_shopping(hass: HomeAssistant, hass_ws_client) -> None:
     plan = (await ws.receive_json())["result"]["plan"]
     assert plan["missing"] == ["500 g Spaghetti", "1 Zwiebel"]
 
-    # Einkaufsliste: ohne gewählte Liste Fehler, sonst nur das Fehlende
+    # shopping list: error without a chosen list, otherwise only what is missing
     await ws.send_json({"id": 2, "type": "larder/plan_shopping", "plan_id": plan["id"]})
     assert (await ws.receive_json())["error"]["code"] == "no_shopping_list"
     estimator = await async_get_estimator(hass)
@@ -147,7 +147,7 @@ async def test_cooked_and_shopping(hass: HomeAssistant, hass_ws_client) -> None:
     assert (await ws.receive_json())["result"] == {"added": 2, "missing": 2}
     assert todo.summaries == ["500 g Spaghetti", "1 Zwiebel"]
 
-    # gekocht: Dose mit 3 Portionen → 2, Dose ohne Menge → geleert (gegessen); Plan verschwindet
+    # cooked: container with 3 portions → 2, container without amount → emptied (eaten); plan disappears
     await ws.send_json({"id": 4, "type": "larder/plan_cooked", "plan_id": plan["id"]})
     assert (await ws.receive_json())["result"] == {"emptied": 1, "taken": 1}
     assert hass.states.get(_eid(hass, "number", "AAAA")).state == "2.0"

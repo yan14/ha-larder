@@ -1,4 +1,4 @@
-"""Tests: Reparaturhinweise für Dosen ohne Bereich, ohne MHD und lange abgelaufene Dosen."""
+"""Tests: repair hints for containers without an area, without best-before and long expired containers."""
 
 from custom_components.larder.const import DOMAIN
 from custom_components.larder.estimate import async_get_estimator
@@ -31,10 +31,10 @@ async def test_repair_hints_appear_and_disappear(hass: HomeAssistant) -> None:
     for cc in ("AAAA", "BBBB", "CCCC"):
         await _area(hass, cc, "Küche")
     await _fill(hass, "AAAA", "Lachs", -10)  # lange abgelaufen
-    await _fill(hass, "BBBB", "Gouda", -2)  # erst kurz abgelaufen: kein Hinweis
+    await _fill(hass, "BBBB", "Gouda", -2)  # only just expired: no hint
     await hass.services.async_call(
         "text", "set_value", {"entity_id": _eid(hass, "text", "CCCC"), "value": "Suppe"}, blocking=True
-    )  # gefüllt ohne MHD
+    )  # filled without best-before date
     await hass.async_block_till_done()
 
     problems = find_problems(hass)
@@ -47,11 +47,11 @@ async def test_repair_hints_appear_and_disappear(hass: HomeAssistant) -> None:
     assert issues[ISSUE_LONG_EXPIRED].translation_placeholders["containers"] == "- Dose AAAA"
     assert issues[ISSUE_LONG_EXPIRED].translation_placeholders["days"] == "7"
     assert issues[ISSUE_NO_AREA].is_fixable is True
-    # "Mehr erfahren": eine Dose direkt, sonst gefiltert (hier je eine Dose)
+    # "Learn more": one container directly, otherwise filtered (here one container each)
     device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "DDDD")})
     assert issues[ISSUE_NO_AREA].learn_more_url == f"/larder?open={device.id}"
 
-    # behoben: Bereich zugewiesen, MHD eingetragen, Dose geleert → Hinweise weg
+    # fixed: area assigned, best-before entered, container emptied → hints gone
     await _area(hass, "DDDD", "Keller")
     await _fill(hass, "CCCC", "Suppe", 3)
     await _fill(hass, "AAAA", "", -10)
@@ -61,7 +61,7 @@ async def test_repair_hints_appear_and_disappear(hass: HomeAssistant) -> None:
 
 
 async def test_repair_hints_can_be_switched_off(hass: HomeAssistant) -> None:
-    await _setup(hass, "AAAA")  # ohne Bereich
+    await _setup(hass, "AAAA")  # without area
     repairs = await async_get_repairs(hass)
     repairs.async_update()
     assert set(_issues(hass)) == {ISSUE_NO_AREA}
@@ -78,7 +78,7 @@ async def test_long_list_is_shortened(hass: HomeAssistant) -> None:
     repairs = await async_get_repairs(hass)
     repairs.async_update()
     text = _issues(hass)[ISSUE_NO_AREA].translation_placeholders["containers"]
-    assert text.count("\n- ") == 10  # 10 Namen + Zeile "und 2 weitere"
+    assert text.count("\n- ") == 10  # 10 names + line "and 2 more"
     assert text.endswith("2 more")
 
 
@@ -104,7 +104,7 @@ async def test_fix_flows(hass: HomeAssistant) -> None:
     repairs.async_update()
     flows = repairs_flow_manager(hass)
 
-    # ohne Bereich: Felder je Dose, Speichern weist zu
+    # without area: fields per container, saving assigns
     result = await flows.async_init(DOMAIN, data={"issue_id": ISSUE_NO_AREA})
     assert result["step_id"] == "area"
     assert [str(k) for k in result["data_schema"].schema] == ["Dose AAAA", "Dose BBBB"]
@@ -115,7 +115,7 @@ async def test_fix_flows(hass: HomeAssistant) -> None:
     assert device.area_id == area.id
     assert [name for name in find_problems(hass)[ISSUE_NO_AREA]] == ["Dose BBBB"]
 
-    # lange abgelaufen: angehakte Dosen leeren, im Verlauf weggeworfen
+    # long expired: empty the ticked containers, thrown away in the history
     result = await flows.async_init(DOMAIN, data={"issue_id": ISSUE_LONG_EXPIRED})
     assert result["step_id"] == "empty"
     result = await flows.async_configure(result["flow_id"], {"containers": ["CCCC"]})

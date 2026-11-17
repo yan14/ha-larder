@@ -1,4 +1,4 @@
-"""Tests für die Larder-Integration (Dosen anlegen, Entitäten, Zustand)."""
+"""Tests for the Larder integration (creating containers, entities, state)."""
 
 
 import pytest
@@ -23,7 +23,7 @@ def auto_enable_custom_integrations(enable_custom_integrations):
 
 
 async def _start_scan(hass: HomeAssistant):
-    """Config Flow starten und im Menü 'Zwilling QR Code einlesen' wählen."""
+    """Start the config flow and choose 'scan Zwilling QR code' in the menu."""
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": SOURCE_USER}
     )
@@ -183,7 +183,7 @@ async def test_restore_state(hass: HomeAssistant) -> None:
     )
     entry.add_to_hass(hass)
 
-    # Entity-IDs vorab über die Registry festlegen, damit der Restore-Cache greift
+    # fix entity IDs in the registry beforehand so the restore cache applies
     ent_reg = er.async_get(hass)
     dt_entity = ent_reg.async_get_or_create(
         "datetime", DOMAIN, "34OL_filled_at", suggested_object_id="dose_a_filled",
@@ -274,13 +274,13 @@ async def test_empty_button_resets_only_available_entities_and_raises_if_none(
         "date", "set_value", {"entity_id": date_id, "date": "2026-12-24"}, blocking=True
     )
 
-    # MHD-Entität fehlt: der Rest wird trotzdem zurückgesetzt
+    # best-before entity missing: the rest is reset anyway
     del entry.runtime_data.resettable["best_before"]
     await hass.services.async_call("button", "press", {"entity_id": button_id}, blocking=True)
     assert hass.states.get(text_id).state == ""
     assert hass.states.get(date_id).state == "2026-12-24"
 
-    # gar nichts mehr zurückzusetzen: verständlicher Fehler
+    # nothing left to reset: an understandable error
     entry.runtime_data.resettable.clear()
     with pytest.raises(HomeAssistantError):
         await hass.services.async_call(
@@ -310,18 +310,18 @@ async def test_flexible_container_returns_to_its_home_area_when_emptied(hass: Ho
     await hass.services.async_call("select", "select_option", {"entity_id": home, "option": "Vorratsraum"}, blocking=True)
     assert hass.states.get(home).attributes["area_id"] == pantry.id
 
-    # in den Kühlschrank gestellt, geleert: ohne "variabel" bleibt sie dort
+    # put in the fridge, emptied: without "variable" it stays there
     devices.async_update_device(device.id, area_id=fridge.id)
     await hass.services.async_call("button", "press", {"entity_id": button}, blocking=True)
     assert devices.async_get(device.id).area_id == fridge.id
 
-    # mit "variabel": zurück in den Vorratsraum; Schalter und Lagerort bleiben erhalten
+    # with "variable": back to the pantry; switch and storage place stay
     await hass.services.async_call("switch", "turn_on", {"entity_id": flexible}, blocking=True)
     await hass.services.async_call("button", "press", {"entity_id": button}, blocking=True)
     assert devices.async_get(device.id).area_id == pantry.id
     assert hass.states.get(flexible).state == "on" and hass.states.get(home).state == "Vorratsraum"
 
-    # Bereich umbenannt: die Auswahl folgt; gelöscht: zurück auf "bleibt, wo sie ist"
+    # area renamed: the choice follows; deleted: back to "stays where it is"
     areas.async_update(pantry.id, name="Speisekammer")
     await hass.async_block_till_done()
     assert hass.states.get(home).state == "Speisekammer"
@@ -331,7 +331,7 @@ async def test_flexible_container_returns_to_its_home_area_when_emptied(hass: Ho
 
 
 async def test_initial_options_from_add_dialog(hass: HomeAssistant) -> None:
-    """Vakuum, Einkaufsliste, variabler Lagerort und Lagerort nach dem Leeren gleich beim Anlegen."""
+    """Vacuum, shopping list, variable storage place and place after emptying right when creating."""
     from homeassistant.helpers import area_registry as ar, entity_registry as er
 
     area = ar.async_get(hass).async_get_or_create("Vorratskammer")
@@ -343,7 +343,7 @@ async def test_initial_options_from_add_dialog(hass: HomeAssistant) -> None:
     assert result["type"] == "create_entry"
     await hass.async_block_till_done()
     entry = result["result"]
-    assert "initial" not in entry.data  # nur einmal angewendet
+    assert "initial" not in entry.data  # applied only once
     cc = entry.data["cc"]
     registry = er.async_get(hass)
     state = lambda platform, key: hass.states.get(registry.async_get_entity_id(platform, DOMAIN, f"{cc}_{key}"))  # noqa: E731
@@ -368,9 +368,9 @@ async def test_compartment_stays_on_emptying_and_resets_when_returning_home(hass
     assert hass.states.get(eid("text", "compartment")).state == "Schublade 2"
     await hass.services.async_call("text", "set_value", {"entity_id": eid("text", "content"), "value": "Lachs"}, blocking=True)
     await hass.services.async_call("button", "press", {"entity_id": eid("button", "empty_container")}, blocking=True)
-    assert hass.states.get(eid("text", "compartment")).state == "Schublade 2"  # fester Platz: bleibt
+    assert hass.states.get(eid("text", "compartment")).state == "Schublade 2"  # fixed place: stays
 
-    # variable Dose: beim Zurückstellen an den festen Platz wird das Fach geleert
+    # variable container: the compartment is cleared when it goes back to its fixed place
     await hass.services.async_call("switch", "turn_on", {"entity_id": eid("switch", "flexible")}, blocking=True)
     await hass.services.async_call("select", "select_option", {"entity_id": eid("select", "home_area"), "option": "Vorratskammer"}, blocking=True)
     await hass.services.async_call("text", "set_value", {"entity_id": eid("text", "content"), "value": "Reis"}, blocking=True)

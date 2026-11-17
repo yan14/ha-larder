@@ -3,8 +3,9 @@ blueprint:
   description: >
     Push notification when a product with a minimum stock will run out soon according to the forecast
     (event larder_running_low) and when a public recall (lebensmittelwarnung.de) matches something in
-    stock (event larder_recall). Tapping the notification opens the Larder start page.
-    Bald leer und Rückrufwarnungen als Push.
+    stock (event larder_recall). Optionally also when a household item is due for replacement
+    (event larder_replace_due, e.g. water filter). Tapping the notification opens the Larder start page.
+    Bald leer, Rückrufwarnungen und Wechselerinnerungen als Push.
   domain: automation
   source_url: https://github.com/yan14/ha-larder/blob/main/blueprints/automation/larder/stock_alerts.yaml
   input:
@@ -27,6 +28,12 @@ blueprint:
       default: true
       selector:
         boolean:
+    replace_due:
+      name: Replace (household items)
+      description: Notify when a household item with a replacement interval is due (water filter, vacuum bags …).
+      default: true
+      selector:
+        boolean:
 
 mode: queued
 max_exceeded: silent
@@ -35,6 +42,7 @@ variables:
   notify_action: !input notify_action
   running_low: !input running_low
   recalls: !input recalls
+  replace_due: !input replace_due
   push_targets: "{{ (notify_action or '') | string | lower | regex_findall('[a-z0-9_]+[.][a-z0-9_]+') }}"
   # Run by hand (no event): send a test message instead of failing
   kind: "{{ trigger.id if trigger is defined and trigger.event is defined and trigger.id is defined else 'test' }}"
@@ -42,6 +50,7 @@ variables:
   push_title: >-
     {% if kind == 'recall' %}{{ event_data.notification_title | default('⚠️ Recall') }}
     {% elif kind == 'running_low' %}{{ event_data.title | default('🛒 Running low') }}
+    {% elif kind == 'replace_due' %}{{ event_data.title | default('🔁 Replace') }}
     {% else %}Larder{% endif %}
   push_message: >-
     {% if kind == 'test' %}Test: Bald leer und Rückrufe sind eingerichtet. / Running low and recalls are set up.
@@ -54,10 +63,13 @@ triggers:
   - trigger: event
     event_type: larder_recall
     id: recall
+  - trigger: event
+    event_type: larder_replace_due
+    id: replace_due
 
 conditions:
   - condition: template
-    value_template: "{{ kind == 'test' or (kind == 'running_low' and running_low) or (kind == 'recall' and recalls) }}"
+    value_template: "{{ kind == 'test' or (kind == 'running_low' and running_low) or (kind == 'recall' and recalls) or (kind == 'replace_due' and replace_due) }}"
 
 actions:
   - repeat:

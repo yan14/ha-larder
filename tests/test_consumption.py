@@ -22,20 +22,20 @@ def _takes(*ages, n=1):
 
 
 def test_forecast_adapts_the_window_and_weights_recent_takes() -> None:
-    # alle 3 Wochen eine Flasche, seit 4 Monaten: Fenster 90 Tage genügt
+    # one bottle every 3 weeks, for 4 months: a 90-day window is enough
     weekly = forecast(_takes(0, 21, 42, 63, 84, 105, 126), 3, TODAY)
     assert weekly["takes"] == 5 and weekly["days"] == 90
     assert 0.25 < weekly["per_week"] < 0.5 and 40 < weekly["lasts_days"] < 90
-    # selten: in 90 Tagen nur 1, in 180 Tagen 2, in 365 Tagen 3 → Fenster ein Jahr
+    # rare: only 1 in 90 days, 2 in 180 days, 3 in 365 days → one-year window
     rare = forecast(_takes(30, 150, 300), 1, TODAY)
     assert rare["days"] == 301 and rare["takes"] == 3
-    assert forecast(_takes(10, 20), 2, TODAY) is None  # zu wenig
+    assert forecast(_takes(10, 20), 2, TODAY) is None  # too few
     assert forecast([], 2, TODAY) is None
-    # neuere Entnahmen zählen stärker: gleich viele, aber zuletzt gehäuft → höherer Verbrauch
+    # newer takes count more: the same number, but recently more often → higher consumption
     recent = forecast(_takes(1, 2, 3, 80, 85, 89), 1, TODAY)
     early = forecast(_takes(1, 50, 55, 80, 85, 89), 1, TODAY)
     assert recent["per_week"] > early["per_week"]
-    # erst seit kurzem erfasst: rechnet ab der ersten Entnahme (mindestens 14 Tage)
+    # only recorded recently: counts from the first take (at least 14 days)
     new = forecast(_takes(0, 3, 6, 9), 2, TODAY)
     assert new["days"] == 14
 
@@ -57,7 +57,7 @@ def test_open_prices_median_prefers_own_country_and_regular_prices() -> None:
         {"price": 5.0, "currency": "EUR", "date": "2026-10-01", "price_per": "KILOGRAM", "location": {}},
     ]
     assert open_prices_median(items, "DE", TODAY) == {"price": 1.7, "source": "openprices", "count": 3, "local": True}
-    assert open_prices_median(items, "FR", TODAY)["count"] == 4  # kein Preis aus FR: alle aus der EU
+    assert open_prices_median(items, "FR", TODAY)["count"] == 4  # no price from FR: all from the EU
     assert open_prices_median([], "DE", TODAY) is None
 
 
@@ -87,11 +87,11 @@ async def test_takes_are_logged_and_feed_the_stock_view(hass: HomeAssistant, has
     stock = await async_get_stock(hass)
     assert stock.prices["ketchup"]["price"] == 1.99 and stock.prices["ketchup"]["source"] == "receipt"
     number = _eid(hass, "number", src["cc"])
-    # Umräumen und Anbrechen zählen nicht als Verbrauch
+    # moving and opening do not count as consumption
     await _ws(hass, hass_ws_client, type="larder/pack_move", device_id=src["device_id"], count=1, area_id=fridge.id)
     await _ws(hass, hass_ws_client, type="larder/pack_open", device_id=src["device_id"])
     assert stock.takes == []
-    # Entnahmen: -1 und -2
+    # takes: -1 and -2
     await hass.services.async_call("number", "set_value", {"entity_id": number, "value": 3}, blocking=True)
     await hass.services.async_call("number", "set_value", {"entity_id": number, "value": 1}, blocking=True)
     await hass.async_block_till_done()
@@ -105,7 +105,7 @@ async def test_takes_are_logged_and_feed_the_stock_view(hass: HomeAssistant, has
     assert ketchup["price"] == {"price": 1.99, "source": "receipt"}
     assert ketchup["value"] == round(ketchup["count"] * 1.99, 2) and res["result"]["value"] == ketchup["value"]
 
-    # ohne eigenen Preis, aber mit Strichcode: Open Prices im Hintergrund
+    # no own price, but a barcode: Open Prices in the background
     senf_pack = (await _packs(hass, hass_ws_client, [{"content": "Senf", "quantity": 2, "unit": "pieces", "product": {"ean": "4000000000002"}}]))[0]
     await _ws(hass, hass_ws_client, type="larder/stock")
     await hass.async_block_till_done()
@@ -115,7 +115,7 @@ async def test_takes_are_logged_and_feed_the_stock_view(hass: HomeAssistant, has
     res = await _ws(hass, hass_ws_client, type="larder/stock")
     senf = next(p for p in res["result"]["products"] if p["key"] == "senf")
     assert senf["price"]["source"] == "openprices" and senf["price"]["count"] == 1 and senf["value"] == 4.58
-    # eigener Preis schlägt die Schätzung, umgekehrt nicht
+    # own price beats the estimate, not the other way round
     stock.remember_price("Senf", 1.49, "own")
     stock.remember_price("Senf", 2.29, "openprices")
     assert stock.prices["senf"]["price"] == 1.49

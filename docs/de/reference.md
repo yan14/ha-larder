@@ -29,8 +29,8 @@ Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** (bei ei
 | Allergene im Haushalt | keine | Warnung an Dosen und keine solchen Dosen in Rezeptideen, siehe [Allergene im Haushalt](containers.md#allergene-im-haushalt) |
 | Kalender für den Wochenplan | keiner | Geplante Gerichte als ganztägige Termine, siehe [Wochenplan](kitchen.md#wochenplan) |
 | Auftauen: Tage vorher | 1 | Auftau-Erinnerung für Dosen im Gefrierschrank, siehe [Wochenplan](kitchen.md#wochenplan) |
-| Vorrat: Tage bis zum nächsten Einkauf | 7 Tage | Für wie viele Tage Verbrauch der vorgeschlagene Mindestbestand reicht und ab wann ein Produkt *bald leer* ist, siehe [Vorrat](containers.md#vorrat) |
-| Bald leer: gleich auf die Einkaufsliste | aus | Produkte, die bald leer sind, kommen sofort auf die Einkaufsliste, siehe [Vorrat](containers.md#vorrat) |
+| Vorrat: Tage bis zum nächsten Einkauf | 7 Tage | Für wie viele Tage Verbrauch der vorgeschlagene Mindestbestand reicht und ab wann ein Produkt *bald leer* ist, siehe [Vorrat](containers.md#bestand) |
+| Bald leer: gleich auf die Einkaufsliste | aus | Produkte, die bald leer sind, kommen sofort auf die Einkaufsliste, siehe [Vorrat](containers.md#bestand) |
 | Rückrufwarnungen (lebensmittelwarnung.de) | an | Öffentliche Rückrufe mit dem Vorrat abgleichen, siehe [Rückrufwarnungen](containers.md#rückrufwarnungen) |
 | Rückrufwarnungen: nur für dieses Bundesland | alle | Nur Warnungen, die dieses Bundesland betreffen |
 | Wochenplan-Vorschlag: Quelle | Rezeptbuch, sonst KI | Woher die Gerichte des [Wochenvorschlags](kitchen.md#wochenvorschlag) kommen |
@@ -57,7 +57,7 @@ Ein Hinweis verschwindet von selbst, sobald keine Dose mehr betroffen ist (gepr�
 - **ohne MHD**: schätzt das MHD für alle (was die Schätzung nicht kennt, bleibt im Hinweis),
 - **lange abgelaufen**: Dosen ankreuzen und leeren; sie kommen als weggeworfen in den Verlauf.
 
-**Mehr erfahren** öffnet das Larder-Dashboard: eine Dose direkt, mehrere auf der Seite **Lager**, gefiltert auf genau diese (`/larder?problem=noarea`, `nodate` oder `longexpired`).
+**Mehr erfahren** öffnet das Larder-Dashboard: eine Dose direkt, mehrere auf der Seite **Vorrat**, gefiltert auf genau diese (`/larder?problem=noarea`, `nodate` oder `longexpired`).
 
 **Temperaturwarnung.** Hat ein Bereich einen **Temperatursensor** (Einstellungen → Bereiche → Bereich → Temperatursensor) und ist er nach Name oder Label ein Gefrierschrank, Kühlschrank oder 0-°C-Fach, warnt Larder, wenn er zu lange zu warm ist: Gefrierschrank über −12 °C für 30 Minuten, Kühlschrank über 8 °C bzw. 0-°C-Fach über 6 °C für 60 Minuten. Der Reparaturhinweis nennt die gefüllten Dosen dort; das Ereignis `larder_temperature_warning` (`area_id`, `area`, `temperature`, `limit`, `containers`) ist für eigene Push-Nachrichten oder eine Sirene, `larder_temperature_ok` folgt, wenn es wieder kalt ist (1 °C unter der Grenze). Abschalten mit der Einstellung **Temperaturwarnung**.
 
@@ -105,7 +105,7 @@ Die Werte bleiben über Neustarts erhalten. „Behälter leeren“ ist eine norm
 
 Die Einträge von `larder.get_expiring` tragen `kind` (`container`, `bag`, `pack`). Wird der Sticker eines schon geleerten Beutels gescannt, kommt `larder_dose_scanned` mit `retired: true` und einer `message` statt `cc` und `device_id`.
 
-Das Ereignis `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) wird ausgelöst, wenn ein verknüpfter [NFC-Tag](scanning.md#nfc-tags) oder einer [deiner QR-Codes](scanning.md#eigene-qr-codes) gescannt wird (dann mit `source: qr`). `larder_temperature_warning` und `larder_temperature_ok` gehören zur [Temperaturwarnung](#reparaturhinweise), `larder_compartment_scanned` zu den [Fächern](scanning.md#fächer), `larder_running_low` und `larder_recall` zu [Bald leer und Rückrufe](kitchen.md#bald-leer-und-rückrufe).
+Das Ereignis `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) wird ausgelöst, wenn ein verknüpfter [NFC-Tag](scanning.md#nfc-tags) oder einer [deiner QR-Codes](scanning.md#eigene-qr-codes) gescannt wird (dann mit `source: qr`). `larder_temperature_warning` und `larder_temperature_ok` gehören zur [Temperaturwarnung](#reparaturhinweise), `larder_compartment_scanned` zu den [Fächern](scanning.md#fächer), `larder_running_low`, `larder_recall` und `larder_replace_due` zu [Bald leer und Rückrufe](kitchen.md#bald-leer-und-rückrufe).
 
 ### Webhook-Schnittstelle
 

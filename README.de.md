@@ -10,11 +10,11 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 
 ## Highlights
 
-- 🖥️ **[Eigenes Dashboard](docs/de/dashboard.md#dashboard-larder)** in der Seitenleiste, gemacht fürs Handy: Startseite, Lager als Kacheln, Liste oder Karten mit allen Details, Bereiche, Kategorien und Rezeptbuch; aktualisiert sich selbst
+- 🖥️ **[Eigenes Dashboard](docs/de/dashboard.md#dashboard-larder)** in der Seitenleiste, gemacht fürs Handy: Startseite, Vorrat als Kacheln, Liste oder Karten mit allen Details, Bereiche, Kategorien und Rezeptbuch; aktualisiert sich selbst
 - 🔖 **[Zwilling-Fresh-&-Save-QR-Codes](docs/de/scanning.md#scannen-in-der-app)**: die originalen Codes auf den Deckeln funktionieren weiter, mit dem 📷-Scanner in der App (iOS und Android) oder einem [iOS-Kurzbefehl](docs/de/scanning.md#ios-kurzbefehl-für-die-originalen-zwilling-codes)
 - 🏷️ **[Eigener QR-Code](docs/de/scanning.md#eigene-qr-codes)** und **[NFC-Tags](docs/de/scanning.md#nfc-tags)** für jede beliebige Dose und für [Fächer](docs/de/scanning.md#fächer), um etwas zu entnehmen oder die Inventur zu starten; QR-Codes lassen sich als [Etikettenbogen](docs/de/scanning.md#etikettenbogen) in mehreren Designs und Farben drucken
 - 🛍 **[Beutel und Packungen](docs/de/containers.md#beutel-und-packungen)**: Einweg-Vakuumbeutel mit NFC-Sticker oder QR-Code, die nach dem Leeren verschwinden, und Vorrat ohne Dose (Konserven, Gläser) per Strichcode, Kassenbon-Foto oder von Hand
-- 🥫 **[Vorrat](docs/de/containers.md#vorrat)**: Packungen über alle Orte zusammengezählt, ältestes zuerst, Mindestbestand, der die Einkaufsliste füllt, *reicht noch …* und *bald leer*, Preise (eigene, vom Kassenbon oder [Open Prices](https://prices.openfoodfacts.org)), angebrochene Packungen, [Inventur](docs/de/containers.md#inventur) je Fach und [Rückrufwarnungen](docs/de/containers.md#rückrufwarnungen) von lebensmittelwarnung.de
+- 🥫 **[Vorrat](docs/de/containers.md#bestand)**: Packungen über alle Orte zusammengezählt, ältestes zuerst, Mindestbestand, der die Einkaufsliste füllt, *reicht noch …* und *bald leer*, Preise (eigene, vom Kassenbon oder [Open Prices](https://prices.openfoodfacts.org)), angebrochene Packungen, [Inventur](docs/de/containers.md#inventur) je Fach und [Rückrufwarnungen](docs/de/containers.md#rückrufwarnungen) von lebensmittelwarnung.de
 - 🧻 **[Haushaltsartikel](docs/de/containers.md#haushaltsartikel)**: Klopapier, Waschmittel, Batterien und Ähnliches ohne Haltbarkeitsdatum, gezählt in Stück und eingekauft in Packungen, mit eigenen Bereichen und einem Umschalter *Lebensmittel | Haushalt*
 - ✏️ **[Schnelles Befüllen](docs/de/containers.md#dosen-befüllen)**: Inhalt, Menge, MHD und Vakuum in wenigen Taps, auch für mehrere Dosen auf einmal, per [Serien-Scan](docs/de/dashboard.md#mehrere-dosen-auswählen) oder als [Vorkochen](docs/de/containers.md#vorkochen) mit freien Dosen nach [Größe](docs/de/containers.md#behältergrößen)
 - 🧮 **[MHD-Schätzung](docs/de/best-before.md#mhd-schätzung)**: eingebaute Haltbarkeitstabelle, optional mit KI, mit Grenzen pro Lagerort
@@ -27,23 +27,25 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 
 <p align="center">
 <img src="docs/images/dashboard-start-de.png" width="250" alt="Startseite (Demo-Daten)">
-<img src="docs/images/dashboard-containers-de.png" width="250" alt="Lager als Kacheln">
+<img src="docs/images/dashboard-containers-de.png" width="250" alt="Vorrat als Kacheln">
 <img src="docs/images/dashboard-cards-de.png" width="250" alt="Karten mit allen Details">
 </p>
 
+> **Neu in 4.6:** Haushaltsartikel lassen sich [regelmäßig wechseln](docs/de/containers.md#haushaltsartikel) (Wasserfilter, Staubsaugerbeutel), mit Erinnerung; die untere Leiste heißt *Vorrat*, die Bestands-Ansicht *Bestand*.
+>
 > **Neu in 4.5:** eine [Erinnerung für Medikamente](docs/de/kitchen.md#ablaufende-medikamente) (und Haushaltsartikel mit Datum) an gewählten Wochentagen, als Push und auf Alexa.
 >
 > **Neu in 4.4:** [Medikamente](docs/de/containers.md#medikamente-apotheke) als dritter Bereich *Apotheke* mit längerer Vorwarnung, optionales Datum und *haltbar nach dem Öffnen* für Haushaltsartikel.
 >
-> **Neu in 4.3:** [Einräumen nach dem Einkauf](docs/de/containers.md#vorrat): ein Produkt nach dem anderen scannen, jedes kommt an seinen gewohnten Ort.
+> **Neu in 4.3:** [Einräumen nach dem Einkauf](docs/de/containers.md#bestand): ein Produkt nach dem anderen scannen, jedes kommt an seinen gewohnten Ort.
 >
-> **Neu in 4.2:** der [Strichcode-Dialog](docs/de/containers.md#vorrat) zeigt, wo ein Produkt liegt, und bietet direkt *verbraucht*, *entsorgen*, *anbrechen*, *umbuchen* und *neue Packung hinzufügen*.
+> **Neu in 4.2:** der [Strichcode-Dialog](docs/de/containers.md#bestand) zeigt, wo ein Produkt liegt, und bietet direkt *verbraucht*, *entsorgen*, *anbrechen*, *umbuchen* und *neue Packung hinzufügen*.
 >
 > **Neu in 4.1:** [mehrere Einkaufslisten](docs/de/kitchen.md#einkaufsliste) (Lebensmittel, Haushalt, je Produkt), [Haushalts-Statistik](docs/de/dashboard.md#statistik) mit Ausgaben je Monat, [Rückrufwarnungen](docs/de/containers.md#rückrufwarnungen) für Kosmetik und Bedarfsgegenstände.
 >
-> **Neu in 4.0:** [Haushaltsartikel](docs/de/containers.md#haushaltsartikel), Bereiche für Lebensmittel oder Haushalt, die Seite *Behälter* heißt jetzt **Lager**, Strichcodes aus Open Beauty / Products / Pet Food Facts. **Breaking Change:** Ordne nach dem Update deine Bereiche Lebensmitteln oder Haushalt zu, siehe [Lebensmittel oder Haushalt](docs/de/containers.md#lebensmittel-haushalt-oder-apotheke).
+> **Neu in 4.0:** [Haushaltsartikel](docs/de/containers.md#haushaltsartikel), Bereiche für Lebensmittel oder Haushalt, die Seite *Behälter* heißt jetzt **Vorrat**, Strichcodes aus Open Beauty / Products / Pet Food Facts. **Breaking Change:** Ordne nach dem Update deine Bereiche Lebensmitteln oder Haushalt zu, siehe [Lebensmittel oder Haushalt](docs/de/containers.md#lebensmittel-haushalt-oder-apotheke).
 >
-> **Neu in 3.x:** Einweg-**Beutel** und **Packungen** (3.0), die Vorrats-Ansicht mit Mindestbestand (3.2), Inventur und angebrochene Packungen (3.4), Verbrauch und Preise (3.5), *bald leer* und Rückrufwarnungen (3.6), Fach-Tags und neue Etiketten-Optionen (3.7), Vorkochen, Behältergrößen und Wochenvorschlag (3.8). Siehe [Changelog](CHANGELOG.md).
+> **Neu in 3.x:** Einweg-**Beutel** und **Packungen** (3.0), die Bestands-Ansicht mit Mindestbestand (3.2), Inventur und angebrochene Packungen (3.4), Verbrauch und Preise (3.5), *bald leer* und Rückrufwarnungen (3.6), Fach-Tags und neue Etiketten-Optionen (3.7), Vorkochen, Behältergrößen und Wochenvorschlag (3.8). Siehe [Changelog](CHANGELOG.md).
 
 ## Dokumentation
 
@@ -89,7 +91,7 @@ Seit Home Assistant 2026.11 ist der Community Store HACS als **Marketplace** fes
 
 ## Erste Schritte
 
-1. **Erste Dose anlegen** unter Einstellungen → Geräte & Dienste → Integration hinzufügen → Larder (siehe [Dose anlegen](docs/de/containers.md#dose-anlegen)). Danach steht das Dashboard **Larder** in der Seitenleiste, und weitere Dosen legst du dort schneller an (**＋** auf der Seite **Lager**).
+1. **Erste Dose anlegen** unter Einstellungen → Geräte & Dienste → Integration hinzufügen → Larder (siehe [Dose anlegen](docs/de/containers.md#dose-anlegen)). Danach steht das Dashboard **Larder** in der Seitenleiste, und weitere Dosen legst du dort schneller an (**＋** auf der Seite **Vorrat**).
 2. **Jeder Dose einen Bereich geben**, der sagt, wo sie lagert, z. B. „Kühlschrank“, „Gefrierschrank“ oder „Vorrat“. Die Schätzung braucht ihn. Optional den Bereichen ein `Larder: …`-Label mit der [Vorlage](docs/de/containers.md#vorlage-für-das-bereichs-label) geben.
 3. **Dosen befüllen** im Dashboard: Inhalt, Menge, MHD (oder von Larder schätzen lassen).
 4. **Die [Einstellungen](docs/de/reference.md#einstellungen)** einmal durchgehen: Schätzmodus, Zeiträume, Kalender, Einkaufsliste.

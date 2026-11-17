@@ -17,7 +17,7 @@ There are four ways. The two NFC ways need the Home Assistant app on a phone wit
 
 ### From the dashboard (recommended)
 
-**＋** on the **Storage** page of the dashboard offers all four ways:
+**＋** on the **Larder** page of the dashboard offers all four ways:
 
 <p align="center"><img src="../images/add-dialog-en.png" width="560" alt="Add container dialog"></p>
 
@@ -53,7 +53,7 @@ Settings → Devices & services → **Larder** → the container's entry → ⋮
 
 ## Bags and packs
 
-Not everything lives in a reusable box. **＋** on the **Storage** page asks what you want to add:
+Not everything lives in a reusable box. **＋** on the **Larder** page asks what you want to add:
 
 | Kind | Code | After emptying | Typical use |
 |---|---|---|---|
@@ -99,13 +99,13 @@ A bag works like a container (scan it, take a portion, **Opened**, **Thawed**, r
 <img src="../images/dashboard-move-en.png" width="250" alt="Move">
 </p>
 
-**⋮ → 🥫 Stock** in the dashboard lists all packs by product, summed over every place, with brand, package and where they are (tap a place to open the pack). Set the **minimum stock** of every product right there; products below it are marked *too few* or *none left*. Products with a minimum stay in the list even when none are left. **Oldest first:** the places of a product are sorted by best-before date, the earliest one is shown next to the product, and the card of a pack warns when an older pack of the same food lies somewhere else.
+**⋮ → 🗃️ Stock** in the dashboard lists all packs by product, summed over every place, with brand, package and where they are (tap a place to open the pack). Set the **minimum stock** of every product right there; products below it are marked *too few* or *none left*. Products with a minimum stay in the list even when none are left. **Oldest first:** the places of a product are sorted by best-before date, the earliest one is shown next to the product, and the card of a pack warns when an older pack of the same food lies somewhere else.
 
 **How long it lasts.** Every pack you take (−1, emptying, stocktake) is counted; moving or opening a pack is not. From that, the stock view and the card of a pack show **lasts about 6 weeks · from 4 takes in 6 months**. The forecast looks at the last 90 days and widens to 180 or 365 days when there are fewer than 3 takes; recent takes count more. Below the line, **Suggestion: at least 2** sets the minimum stock to what you use during the *Stock: days until the next shopping trip* (setting, 7 days by default) – with a tap, nothing changes by itself.
 
 **Prices and value.** A pack can have a **price** (one pack): in the pack dialog, on the card, or read from the **📷 Receipt**. Larder remembers it per product. Without a price of your own, packs with a barcode get an estimate from [Open Prices](https://prices.openfoodfacts.org) (Open Food Facts, ODbL): the median of the last year in euro, marked *(Open Prices)*. The card of a pack and the stock view show the price per pack, the value of each product and the **total value**; the statistics and the monthly report add **about €X thrown away**.
 
-**Scan a barcode.** Scan the barcode of a pack with **📷** (start page, **Storage** page) or **📷 Barcode** in the stock view (Home Assistant app). Larder shows every place where this product is, with count and best-before date, opened and **oldest first**. Each place offers, for one pack:
+**Scan a barcode.** Scan the barcode of a pack with **📷** (start page, **Larder** page) or **📷 Barcode** in the stock view (Home Assistant app). Larder shows every place where this product is, with count and best-before date, opened and **oldest first**. Each place offers, for one pack:
 
 - **Used up**: −1 (household items: one piece); the last pack of an entry empties it.
 - **Thrown away**: −1, recorded as thrown away in the history and [statistics](dashboard.md#statistics), with its value.
@@ -159,13 +159,14 @@ Since 4.0 Larder also keeps track of things without a best-before date: toilet p
 - **Date optional (since 4.4).** Household items need no date, but can have one (e.g. sunscreen, batteries): **Expiry date (optional)** on the card or in the add dialog. With a date they appear under *expires soon* in the household section of the start page, with the longer warning of [medicines](#medicines-pharmacy). **Keeps after opening (months)** on the card is the jar symbol (*12M*): **Open** then sets the date to at most that period. Household items stay out of the daily summary, recipes and the food statistics; *lasts about …*, *running low*, prices and the value work as for packs.
 - **Barcode.** If Open Food Facts does not know a barcode, Larder also asks its sister databases **Open Beauty Facts**, **Open Products Facts** and **Open Pet Food Facts**. A product found there is offered as a household item.
 - **Converting.** A pack that should have been a household item (or the other way round) is converted with **→ Household item** / **→ Food pack** at the bottom of its card. Nothing is converted automatically.
+- **Replace regularly (since 4.6).** For consumables such as a water filter, vacuum cleaner bags or toothbrush heads, **Replace every (weeks)** on the card sets an interval. The card shows when it is due; **🔁 Replaced** takes one piece and starts the interval again. From a week before it is due, the household section of the start page shows it under **🔁 Replace soon**, with the same button. On the due day the event `larder_replace_due` fires once (also in the [stock alerts blueprint](kitchen.md#running-low-and-recalls)).
 - **Categories:** paper & hygiene, laundry, cleaning & dishes, personal care, batteries & bulbs, other.
 - **Statistics** (since 4.1): use and spending per month, per product and in total, on the household side of [Statistics](dashboard.md#statistics). **Recall warnings** for cosmetics and consumer goods, see [Recall warnings](#recall-warnings). **A shopping list of their own**, see [Shopping list](kitchen.md#shopping-list).
 
-**Food | Household.** The pages **Storage**, **Areas**, **Categories** and the **stock view** have a switch at the top and show one side at a time; the device remembers your choice. The **start page** shows both, in two sections: *Food* (expiring soon, running low, bought, cook again, thawing, meal plan) and *Household* (running low, bought).
+**Food | Household.** The pages **Larder**, **Areas**, **Categories** and the **stock view** have a switch at the top and show one side at a time; the device remembers your choice. The **start page** shows both, in two sections: *Food* (expiring soon, running low, bought, cook again, thawing, meal plan) and *Household* (expires soon, replace soon, running low, bought).
 
 <p align="center">
-<img src="../images/dashboard-household-en.png" width="250" alt="Household items in the storage view">
+<img src="../images/dashboard-household-en.png" width="250" alt="Household items in the larder">
 <img src="../images/dashboard-household-add-en.png" width="250" alt="Adding household items">
 <img src="../images/dashboard-household-stock-en.png" width="250" alt="Stock of household items">
 </p>
@@ -252,7 +253,7 @@ A container can have a **size** (field **Size** on its card, free text like `1 l
 - **Fixed size** (default): the size belongs to the container.
 - **variable**: for lids that fit boxes of different sizes (e.g. Zwilling, where the code sits on the lid). The size is chosen in the fill dialog at every filling; the last size of this lid is suggested.
 - **Loose boxes:** **⋮ → 📏 Container sizes** takes how many boxes of each size you own for the variable lids, e.g. 4 × 1 l, 2 × 2 l.
-- **Free containers:** the storage view shows *Free: 3 × 1 l, 1 × 0.5 l*: empty containers with a fixed size plus the loose boxes not filled with a variable lid. Tap it to open the sizes.
+- **Free containers:** the **Larder** page shows *Free: 3 × 1 l, 1 × 0.5 l*: empty containers with a fixed size plus the loose boxes not filled with a variable lid. Tap it to open the sizes.
 
 ### Batch cooking
 

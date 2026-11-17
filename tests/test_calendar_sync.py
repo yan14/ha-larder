@@ -1,4 +1,4 @@
-"""Tests: MHD als Ganztags-Termin in einen vorhandenen Kalender schreiben."""
+"""Tests: best-before date as an all-day event in an existing calendar."""
 
 from datetime import date, datetime, timedelta
 
@@ -15,7 +15,7 @@ from .test_ai_estimate import _eid, _setup, auto_enable_custom_integrations  # n
 
 
 class FakeCalendar(CalendarEntity):
-    """Einfacher beschreibbarer Kalender im Speicher."""
+    """Simple writable calendar in memory."""
 
     _attr_has_entity_name = False
 
@@ -71,7 +71,7 @@ async def _choose_calendar(hass: HomeAssistant, entry, entity_id: str | None) ->
 
 
 async def _settle(hass: HomeAssistant) -> None:
-    """Entprellzeit verstreichen lassen und alles abarbeiten."""
+    """Let the debounce time pass and process everything."""
     await hass.async_block_till_done()
     async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=30))
     await hass.async_block_till_done()
@@ -92,27 +92,27 @@ async def test_event_is_created_moved_renamed_and_deleted(hass: HomeAssistant) -
     entry = await _setup(hass)
     cal = await _calendar(hass)
     await _choose_calendar(hass, entry, "calendar.mhd")
-    assert cal.events == []  # ohne MHD kein Termin
+    assert cal.events == []  # no best-before date, no event
 
     day = TODAY() + timedelta(days=5)
     await _set(hass, "Pizza", day)
     (event,) = cal.events
-    assert event.summary == "Best before: Pizza"  # Test-HA ist englisch
+    assert event.summary == "Best before: Pizza"  # test HA is English
     assert (event.start, event.end) == (day, day + timedelta(days=1))
     assert "[zwilling:34OL]" in event.description and "Dose 34OL" in event.description
 
-    # Datum geändert: ein Termin, am neuen Tag
+    # date changed: one event, on the new day
     new_day = day + timedelta(days=2)
     await _set(hass, day=new_day)
     (event,) = cal.events
     assert event.start == new_day
 
-    # Inhalt geändert: Titel folgt
+    # content changed: title follows
     await _set(hass, content="Suppe")
     (event,) = cal.events
     assert event.summary == "Best before: Suppe"
 
-    # MHD gelöscht: Termin weg
+    # best-before date cleared: event gone
     await hass.services.async_call(DOMAIN, "clear_best_before", {"entity_id": _eid(hass, "date")}, blocking=True)
     await _settle(hass)
     assert cal.events == []
@@ -179,7 +179,7 @@ async def test_read_only_calendar_is_ignored_gracefully(hass: HomeAssistant) -> 
     await _choose_calendar(hass, entry, "calendar.mhd")
     await _set(hass, "Pizza", TODAY() + timedelta(days=4))
     assert cal.events == []
-    assert hass.states.get(_eid(hass, "date")).state != "unknown"  # Dose funktioniert weiter
+    assert hass.states.get(_eid(hass, "date")).state != "unknown"  # container keeps working
 
 
 async def test_without_calendar_nothing_happens(hass: HomeAssistant) -> None:
@@ -190,7 +190,7 @@ async def test_without_calendar_nothing_happens(hass: HomeAssistant) -> None:
 
 
 class ForgetfulCalendar(FakeCalendar):
-    """Kalender, der Beschreibungen verwirft (manche Anbieter tun das)."""
+    """Calendar that discards descriptions (some providers do)."""
 
     async def async_create_event(self, **kwargs):
         kwargs.pop("description", None)
@@ -205,7 +205,7 @@ async def test_existing_duplicates_are_cleaned_up_and_only_one_stays(hass: HomeA
     entry = await _setup(hass)
     cal = await _calendar(hass)
     day = TODAY() + timedelta(days=5)
-    # Altlasten: dieselbe Dose mehrfach, an verschiedenen Tagen (auch weit weg vom gemerkten Tag)
+    # leftovers: the same container several times, on different days (also far from the remembered day)
     for i, offset in enumerate((5, 5, 9, 40, 300)):
         _stray(cal, TODAY() + timedelta(days=offset), "Best before: Pizza", "Dose\n[zwilling:34OL]", f"alt-{i}")
     _stray(cal, day, "Zahnarzt", None, "fremd")
@@ -222,7 +222,7 @@ async def test_event_far_from_the_remembered_day_is_still_moved(hass: HomeAssist
     await _choose_calendar(hass, entry, "calendar.mhd")
     day = TODAY() + timedelta(days=5)
     await _set(hass, "Pizza", day)
-    # Protokoll geht verloren (z. B. Speicher zurückgesetzt) und das MHD ändert sich
+    # log is lost (e.g. storage reset) and the best-before date changes
     hass.data[DOMAIN]["calendar_sync"]._records.clear()
     new_day = day + timedelta(days=90)
     await _set(hass, day=new_day)
@@ -266,7 +266,7 @@ async def test_unchanged_state_does_not_touch_the_calendar(hass: HomeAssistant) 
     await _choose_calendar(hass, entry, "calendar.mhd")
     await _set(hass, "Pizza", TODAY() + timedelta(days=5))
     uid = cal.events[0].uid
-    # Attributwechsel (z. B. Kategorie) und erneutes Setzen desselben Werts: Termin bleibt derselbe
+    # attribute change (e.g. category) and setting the same value again: event stays the same
     entity_id = _eid(hass, "text")
     hass.states.async_set(entity_id, hass.states.get(entity_id).state, {"category": "andere"})
     await _settle(hass)
@@ -303,7 +303,7 @@ async def test_rebuild_service_removes_orphans(hass: HomeAssistant) -> None:
     await _choose_calendar(hass, entry, "calendar.mhd")
     day = TODAY() + timedelta(days=5)
     await _set(hass, "Pizza", day)
-    _stray(cal, day, "Best before: Nudeln", "x\n[zwilling:GONE]", "waise")  # Dose existiert nicht mehr
+    _stray(cal, day, "Best before: Nudeln", "x\n[zwilling:GONE]", "waise")  # container no longer exists
     _stray(cal, day, "MHD: Reste", None, "ohne-kennung")
     _stray(cal, day, "Zahnarzt", None, "fremd")
     await hass.services.async_call(DOMAIN, "rebuild_calendar", {}, blocking=True)
@@ -313,7 +313,7 @@ async def test_rebuild_service_removes_orphans(hass: HomeAssistant) -> None:
 
 
 async def test_parallel_setup_creates_only_one_sync_instance(hass: HomeAssistant) -> None:
-    """Home Assistant richtet alle Dosen gleichzeitig ein; es darf trotzdem nur einen Abgleich geben."""
+    """Home Assistant sets up all containers at once; there must still be only one sync."""
     import asyncio
     from unittest.mock import patch
 
@@ -324,7 +324,7 @@ async def test_parallel_setup_creates_only_one_sync_instance(hass: HomeAssistant
     from custom_components.larder.recipe_book import async_get_recipe_book
     from homeassistant.helpers.storage import Store
 
-    async def slow_load(self):  # wie echtes Laden von der Platte: gibt die Kontrolle ab
+    async def slow_load(self):  # like real loading from disk: yields control
         await asyncio.sleep(0)
         return None
 
@@ -347,7 +347,7 @@ async def test_parallel_setup_creates_only_one_sync_instance(hass: HomeAssistant
 
 
 async def test_same_content_on_the_same_day_keeps_one_event_each_without_descriptions(hass: HomeAssistant) -> None:
-    """Zwei Dosen mit gleichem Inhalt am gleichen Tag: jede behält ihren Termin (über die gemerkte Termin-ID)."""
+    """Two containers with the same content on the same day: each keeps its event (via the remembered event ID)."""
     entry = await _setup(hass, "34OL")
     await _setup(hass, "56BR")
     cal = ForgetfulCalendar("calendar.mhd")
@@ -361,9 +361,9 @@ async def test_same_content_on_the_same_day_keeps_one_event_each_without_descrip
     records = hass.data[DOMAIN]["calendar_sync"]._records
     assert records["34OL"]["uid"] != records["56BR"]["uid"] and records["34OL"]["uid"]
 
-    await _set(hass, day=day + timedelta(days=2), cc="34OL")  # nur die eine Dose wandert
+    await _set(hass, day=day + timedelta(days=2), cc="34OL")  # only the one container moves
     assert sorted(e.start for e in cal.events) == [day, day + timedelta(days=2)]
-    await hass.data[DOMAIN]["calendar_sync"].async_sync_all()  # gründlicher Abgleich ändert nichts
+    await hass.data[DOMAIN]["calendar_sync"].async_sync_all()  # thorough sync changes nothing
     assert sorted(e.start for e in cal.events) == [day, day + timedelta(days=2)]
 
     await hass.services.async_call(DOMAIN, "clear_best_before", {"entity_id": _eid(hass, "date", "56BR")}, blocking=True)
@@ -372,7 +372,7 @@ async def test_same_content_on_the_same_day_keeps_one_event_each_without_descrip
 
 
 async def test_create_only_calendar_gets_no_events_at_all(hass: HomeAssistant) -> None:
-    """Kann ein Kalender nicht löschen, entstünde bei jeder Änderung ein weiterer Termin: nichts schreiben."""
+    """If a calendar cannot delete, every change would create another event: write nothing."""
     entry = await _setup(hass)
     cal = await _calendar(hass, features=CalendarEntityFeature.CREATE_EVENT)
     await _choose_calendar(hass, entry, "calendar.mhd")
@@ -389,7 +389,7 @@ class _Val:
 
 
 class FakeDavObject:
-    """Termin, wie ihn die caldav-Bibliothek liefert (obj.instance.vevent, obj.delete())."""
+    """Event as the caldav library returns it (obj.instance.vevent, obj.delete())."""
 
     def __init__(self, store: list, uid: str, day: date, summary: str, description: str | None) -> None:
         from types import SimpleNamespace
@@ -406,7 +406,7 @@ class FakeDavObject:
 
 
 class FakeCalDav(CalendarEntity):
-    """Wie Home Assistants CalDAV-Kalender: kann nur anlegen, Termine ohne ID; Server hinter `coordinator.calendar`."""
+    """Like Home Assistant's CalDAV calendar: can only create, events without ID; server behind `coordinator.calendar`."""
 
     _attr_has_entity_name = False
     _attr_supported_features = CalendarEntityFeature.CREATE_EVENT
@@ -449,7 +449,7 @@ async def test_caldav_calendar_moves_and_deletes_via_the_server(hass: HomeAssist
 
     from custom_components.larder.calendar_sync import CalDavBackend
 
-    # Erkennung: Plattform "caldav" mit offener Verbindung
+    # detection: platform "caldav" with an open connection
     assert CalDavBackend.matches(SimpleNamespace(platform=SimpleNamespace(platform_name="caldav"), coordinator=SimpleNamespace(calendar=SimpleNamespace(search=print))))
     assert not CalDavBackend.matches(SimpleNamespace(platform=SimpleNamespace(platform_name="google"), coordinator=None))
     monkeypatch.setattr(CalDavBackend, "matches", staticmethod(lambda entity: isinstance(entity, FakeCalDav)))
@@ -459,7 +459,7 @@ async def test_caldav_calendar_moves_and_deletes_via_the_server(hass: HomeAssist
     cal = FakeCalDav("calendar.muell")
     await hass.data[ha_calendar.DATA_COMPONENT].async_add_entities([cal])
     day = TODAY() + timedelta(days=5)
-    # Altlasten wie im echten Kalender: viele gleiche Termine, über mehrere Tage verteilt, plus ein fremder
+    # leftovers like in a real calendar: many identical events over several days, plus a foreign one
     for i, offset in enumerate((5, 5, 5, 7, 9, 12)):
         cal.server.append(FakeDavObject(cal.server, f"alt-{i}", TODAY() + timedelta(days=offset), "Best before: Gekochte Eier", "Dose\n[zwilling:34OL]"))
     cal.server.append(FakeDavObject(cal.server, "fremd", day, "Restmüll", None))

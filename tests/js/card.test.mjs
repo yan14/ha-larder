@@ -1,4 +1,4 @@
-// Tests für die Lovelace-Karte "Larder: läuft bald ab".
+// Tests for the Lovelace card "Larder: expiring soon".
 process.env.TZ = "Europe/Berlin";
 
 import assert from "node:assert/strict";
@@ -10,7 +10,7 @@ for (const key of ["window", "document", "HTMLElement", "customElements", "Event
   try {
     globalThis[key] = dom.window[key];
   } catch {
-    /* navigator ist in Node schreibgeschützt */
+    /* navigator is read-only in Node */
   }
 }
 
@@ -45,21 +45,21 @@ const DOSES = [
   { id: "d", name: "Dose 4", content: "", mhd: iso(1) },
 ];
 
-test("expiringRows: nur befüllte Dosen innerhalb der Grenze, abgelaufene zuerst", () => {
+test("expiringRows: only filled containers within the limit, expired first", () => {
   const rows = expiringRows(makeHass(DOSES), {});
   assert.deepEqual(rows.map((r) => r.id), ["b", "a"]);
   assert.equal(rows[1].area, "Keller");
   assert.equal(rows[0].icon, "🐟");
 });
 
-test("expiringRows: days, show_expired und area", () => {
+test("expiringRows: days, show_expired and area", () => {
   const hass = makeHass(DOSES);
   assert.deepEqual(expiringRows(hass, { days: 40 }).map((r) => r.id), ["b", "a", "c"]);
   assert.deepEqual(expiringRows(hass, { show_expired: false }).map((r) => r.id), ["a"]);
   assert.deepEqual(expiringRows(hass, { area: "keller" }).map((r) => r.id), ["a"]);
 });
 
-test("Karte rendert Zeilen, Limit und navigiert beim Antippen", () => {
+test("card renders rows, limit and navigates on tap", () => {
   const card = new LarderCard();
   card.setConfig({ limit: 1, title: "Bald weg" });
   card.hass = makeHass(DOSES);
@@ -78,7 +78,7 @@ test("Karte rendert Zeilen, Limit und navigiert beim Antippen", () => {
   assert.equal(window.location.pathname + window.location.search, "/larder?open=b");
 });
 
-test("Karte: leerer Zustand auf Englisch und Registrierung in customCards", () => {
+test("card: empty state in English and registration in customCards", () => {
   const card = new LarderCard();
   card.setConfig({});
   card.hass = makeHass([], "en");
@@ -89,7 +89,7 @@ test("Karte: leerer Zustand auf Englisch und Registrierung in customCards", () =
 
 const { LarderStockCard } = await import("../../custom_components/larder/frontend/larder-card.js");
 
-test("Vorrats-Karte: unter Mindestbestand mit 🛒, Eingekauftes und Angebrochenes", async () => {
+test("stock card: below minimum stock with 🛒, bought and opened", async () => {
   const calls = [];
   const hass = {
     language: "de",

@@ -1,4 +1,4 @@
-"""Übersetzungen: Deutsch und Englisch müssen vollständig und strukturgleich sein."""
+"""Translations: German and English must be complete and structurally identical."""
 
 import json
 from pathlib import Path
@@ -41,7 +41,7 @@ def test_placeholders_match_between_languages() -> None:
 
 def test_english_is_really_english() -> None:
     en = dict(_paths(_load("en")))
-    # typische deutsche Wörter dürfen in der englischen Datei nicht auftauchen
+    # typical German words must not appear in the English file
     german = re.compile(r"\b(Dose|Inhalt|Befüllt|leeren|Behälter|einlesen|erstellen|Namen|oder|und|ist|nicht)\b")
     for path, text in en.items():
         assert not german.search(text), (path, text)
@@ -63,7 +63,7 @@ def test_every_entity_key_has_name_and_icon(lang: str) -> None:
 
 
 def test_brand_images_are_present_and_square() -> None:
-    """Das Symbol liegt lokal im brand/-Ordner (HA ab 2026.3)."""
+    """The icon is local in the brand/ folder (HA from 2026.3)."""
     import struct
 
     for name, size in (("icon.png", 256), ("icon@2x.png", 512)):

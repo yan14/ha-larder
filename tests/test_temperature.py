@@ -1,4 +1,4 @@
-"""Tests: Temperaturwarnung für Lagerorte mit Sensor."""
+"""Tests: temperature warning for storage places with a sensor."""
 
 from datetime import timedelta
 
@@ -53,9 +53,9 @@ async def test_warning_after_time_and_clear_with_hysteresis(hass: HomeAssistant)
     assert events == [("warn", {"area_id": area_id, "area": "Gefrierschrank", "temperature": -5.0, "limit": -12.0, "containers": ["Bolognese (Dose AAAA)"]})]
     watch.async_check(start + timedelta(minutes=40))
     await hass.async_block_till_done()
-    assert len(events) == 1  # nur einmal
+    assert len(events) == 1  # only once
 
-    # knapp unter der Grenze: bleibt (Hysterese), deutlich darunter: weg
+    # just below the limit: stays (hysteresis), clearly below: gone
     hass.states.async_set("sensor.truhe", "-12.5", {"unit_of_measurement": "°C"})
     watch.async_check(start + timedelta(minutes=45))
     assert _issue(hass, area_id) is not None
@@ -77,7 +77,7 @@ async def test_pantry_and_switched_off(hass: HomeAssistant) -> None:
     start = dt_util.utcnow()
     watch.async_check(start)
     watch.async_check(start + timedelta(hours=3))
-    assert _issue(hass, area.id) is None  # Vorratskammer: keine Grenze
+    assert _issue(hass, area.id) is None  # pantry: no limit
 
     await _setup(hass, "BBBB")
     freezer = await _freezer(hass, "BBBB", "0")

@@ -1,4 +1,4 @@
-"""Tests Block 14: angebrochene Packungen, Beutel verschieben (Inventur), Vorrats-Karte."""
+"""Tests block 14: opened packs, moving bags (stocktaking), stock card."""
 
 from datetime import timedelta
 
@@ -33,16 +33,16 @@ async def test_open_a_pack_splits_moves_and_shortens(hass: HomeAssistant, hass_w
     assert dr.async_get(hass).async_get(opened["device_id"]).area_id == fridge.id and _comp(hass, occ) == "Tür"
     assert hass.states.get(_eid(hass, "number", src["cc"])).state == "2.0"
     best = hass.states.get(_eid(hass, "date", occ)).state
-    assert dt_util.now().date().isoformat() < best < printed  # kürzer als aufgedruckt
-    # schon geöffnet: nicht noch einmal
+    assert dt_util.now().date().isoformat() < best < printed  # shorter than printed
+    # already opened: not again
     res = await _ws(hass, hass_ws_client, type="larder/pack_open", device_id=opened["device_id"])
     assert not res["success"]
-    # Strichcode / Vorrat: angebrochene zuerst
+    # barcode / stock: opened ones first
     res = await _ws(hass, hass_ws_client, type="larder/stock")
     ketchup = res["result"]["products"][0]
     assert ketchup["opened"] == 1 and ketchup["places"][0]["opened"]
 
-    # eine einzelne Packung wird selbst geöffnet, ohne Ort: bleibt, wo sie ist
+    # a single pack is opened itself, without a place: stays where it is
     single = (await _packs(hass, hass_ws_client, [{"content": "Senf", "quantity": 1, "unit": "pieces"}], pantry.id))[0]
     res = await _ws(hass, hass_ws_client, type="larder/pack_open", device_id=single["device_id"])
     assert res["result"]["split"] is False and res["result"]["device_id"] == single["device_id"]
@@ -71,4 +71,4 @@ async def test_stock_shop_puts_a_product_on_the_list(hass: HomeAssistant, hass_w
     assert res["result"] == {"added": True, "item": "Senf (Develey)"}
     assert todo.summaries == ["Senf (Develey)"]
     res = await _ws(hass, hass_ws_client, type="larder/stock_shop", content="Senf")
-    assert res["result"]["added"] is False  # nicht doppelt
+    assert res["result"]["added"] is False  # not twice

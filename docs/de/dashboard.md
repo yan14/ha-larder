@@ -8,10 +8,10 @@
 
 Sobald mindestens eine Dose angelegt ist, erscheint in der Seitenleiste der Eintrag **Larder**. Er braucht keine Konfiguration, passt sich an Theme und Sprache von Home Assistant an (Deutsch und Englisch) und aktualisiert sich selbst. *Die Screenshots zeigen Demo-Daten.*
 
-Eine Leiste unten wechselt zwischen fünf Seiten. **Lager**, **Bereiche** und **Kategorien** haben oben einen Umschalter **Lebensmittel | Haushalt | Apotheke** (siehe [Haushaltsartikel](containers.md#haushaltsartikel)):
+Eine Leiste unten wechselt zwischen fünf Seiten. **Vorrat**, **Bereiche** und **Kategorien** haben oben einen Umschalter **Lebensmittel | Haushalt | Apotheke** (siehe [Haushaltsartikel](containers.md#haushaltsartikel)):
 
-- **Start**: eine Begrüßung mit deinem Home-Assistant-Namen, Kacheln für alles, was bald verbraucht werden sollte (Abgelaufenes zuerst), und Abkürzungen zu den Rezeptvorschlägen und zum Lager. Mit [Haushaltsartikeln](containers.md#haushaltsartikel) hat die Seite zwei Abschnitte, *Lebensmittel* und *Haushalt*. In der Home Assistant App gibt es dort auch **📷 Dose scannen** (siehe [Scannen in der App](scanning.md#scannen-in-der-app)).
-- **Lager** (bis 3.x *Behälter*): alles Eingelagerte mit einem Symbol für die Art des Essens, dem Inhalt, dem Namen der Dose und den Resttagen.
+- **Start**: eine Begrüßung mit deinem Home-Assistant-Namen, Kacheln für alles, was bald verbraucht werden sollte (Abgelaufenes zuerst), und Abkürzungen zu den Rezeptvorschlägen und zum Vorrat. Mit [Haushaltsartikeln](containers.md#haushaltsartikel) hat die Seite zwei Abschnitte, *Lebensmittel* und *Haushalt*. In der Home Assistant App gibt es dort auch **📷 Dose scannen** (siehe [Scannen in der App](scanning.md#scannen-in-der-app)).
+- **Vorrat** (4.0–4.5 *Lager*, bis 3.x *Behälter*): alles Eingelagerte mit einem Symbol für die Art des Essens, dem Inhalt, dem Namen der Dose und den Resttagen.
   - **Suche** in Name, Inhalt und Bereich; **Filter** nach *läuft bald ab*, *abgelaufen*, *befüllt*, *leer*, *Beutel* oder *Packungen*; **Sortierung** nach MHD, Bereich, Bereich und Fach, Alphabet oder Kategorie (Bereich, Bereich und Fach sowie Kategorie gruppiert; *Bereich und Fach* zeigt genau, was in jedem Fach liegt). Über der Liste steht, wie viele Dosen angezeigt werden.
   - Der Knopf rechts wechselt zwischen **Kacheln**, **Liste** und **Karten mit allen Details**. Die Wahl merkt sich das Gerät.
   - Eine gefüllte Dose öffnet beim Antippen ihre Karte, eine leere lässt sich gleich befüllen (siehe [Dosen befüllen](containers.md#dosen-befüllen)).
@@ -41,7 +41,7 @@ Das Dashboard ist für alle Nutzer sichtbar; nur **Administratoren** können Dos
 
 ### Mehrere Dosen auswählen
 
-**☑** auf der Seite **Lager** oder der Rezeptseite schaltet in die Auswahl: Dosen antippen wählt sie aus, **Alle** wählt alles Angezeigte. Die Leiste unten bietet dann
+**☑** auf der Seite **Vorrat** oder der Rezeptseite schaltet in die Auswahl: Dosen antippen wählt sie aus, **Alle** wählt alles Angezeigte. Die Leiste unten bietet dann
 
 - **Befüllen (n)** (Administratoren): befüllt alle gewählten *leeren* Dosen auf einmal mit demselben Inhalt, Vakuum, Befüllt am und MHD, z. B. nach dem Vorkochen oder dem Einkauf. Die Menge gilt pro Dose. Ist die Schätzung aktiv, bekommt jede Dose ihre eigene.
 - **✨ Rezeptideen**: fragt die KI nach Rezepten mit genau den gewählten *befüllten* Dosen, egal wann sie ablaufen (abgelaufene bleiben trotzdem draußen).
@@ -73,7 +73,7 @@ limit: 8               # optional
 area: kueche           # optional, Bereichs-ID
 ```
 
-Die zweite Karte, **Larder: Vorrat**, zeigt, was unter dem [Mindestbestand](containers.md#vorrat) ist (mit 🛒 für die Einkaufsliste), Eingekauftes, das noch nicht im Vorrat angelegt ist, und angebrochene Packungen. Antippen einer Zeile öffnet die Vorrats-Ansicht bzw. die Packung.
+Die zweite Karte, **Larder: Vorrat**, zeigt, was unter dem [Mindestbestand](containers.md#bestand) ist (mit 🛒 für die Einkaufsliste), Eingekauftes, das noch nicht im Vorrat angelegt ist, und angebrochene Packungen. Antippen einer Zeile öffnet die Bestands-Ansicht bzw. die Packung.
 
 ```yaml
 type: custom:larder-stock-card

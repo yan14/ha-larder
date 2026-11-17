@@ -78,7 +78,7 @@ const TEXT = {
     transfer: "Umfüllen",
     transferDone: (name, left) => `Umgefüllt in ${name}.${left ? ` Noch ${left} im Vorrat.` : ""}`,
     transferFailed: "Umfüllen fehlgeschlagen.",
-    stockTitle: "Vorrat",
+    stockTitle: "Bestand",
     usageLasts: (weeks, takes, months) => `reicht noch ca. ${weeks} · aus ${takes} Entnahmen in ${months}`,
     suggestMin: (n) => `Vorschlag: mindestens ${n}`,
     priceEach: (p, est) => `${est ? "ca. " : ""}${p} € je Packung${est ? " (Open Prices)" : ""}`,
@@ -115,6 +115,10 @@ const TEXT = {
     codeLinkFailed: "Verknüpfen fehlgeschlagen.",
     codeLinked: (name) => `Strichcode mit ${name} verknüpft.`,
     codeUnknown: (code) => `Zu ${code} wurde nichts gefunden.`,
+    replaceTitle: "🔁 Bald wechseln",
+    replaceWhen: (days, date) => (days < 0 ? `überfällig seit ${date}` : days === 0 ? "heute fällig" : `fällig am ${date}`),
+    replaced: "Gewechselt",
+    replacedDone: (name) => `${name}: gewechselt, ein Stück entnommen.`,
     putAway: "Einräumen",
     putAwayHint: "Gekaufte Produkte nacheinander scannen: bekannte kommen als Packung an ihren gewohnten Ort, unbekannte legst du am Ende gesammelt an.",
     putAwayScan: "Scannen",
@@ -270,6 +274,10 @@ const TEXT = {
     codeLinkFailed: "Linking failed.",
     codeLinked: (name) => `Barcode linked to ${name}.`,
     codeUnknown: (code) => `Nothing found for ${code}.`,
+    replaceTitle: "🔁 Replace soon",
+    replaceWhen: (days, date) => (days < 0 ? `overdue since ${date}` : days === 0 ? "due today" : `due ${date}`),
+    replaced: "Replaced",
+    replacedDone: (name) => `${name}: replaced, one piece taken.`,
     putAway: "Put away",
     putAwayHint: "Scan the bought products one after another: known ones go to their usual place as a pack, unknown ones you add together at the end.",
     putAwayScan: "Scan",
@@ -792,6 +800,50 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
   };
 
   /** Start page: products with a minimum stock that will run out soon according to the forecast. */
+  proto.loadReplaceDue = async function loadReplaceDue() {
+    const hass = this._hass;
+    if (!hass || !hass.callWS) return;
+    try {
+      this._replaceDue = ((await hass.callWS({ type: `${DOMAIN}/replace_due` })) || {}).items || [];
+    } catch {
+      this._replaceDue = [];
+    }
+    this._sig = "";
+    this._update();
+  };
+
+  /** Start page (household): consumables to replace within a week (water filter, vacuum bags …). */
+  proto._replaceBox = function _replaceBox() {
+    const items = this._replaceDue || [];
+    if (!items.length) return null;
+    const hass = this._hass;
+    const t = itemTexts(hass);
+    const box = el("section", "stat replace");
+    box.dataset.role = "replace-due";
+    box.append(el("h3", "", t.replaceTitle));
+    for (const item of items) {
+      const row = el("div", "boughtrow");
+      const text = el("span", "name");
+      text.append(el("span", "", item.name), el("span", "sub", t.replaceWhen(item.days, fmtDate(hass, item.due))));
+      const done = button("primary", t.replaced, async () => {
+        done.disabled = true;
+        try {
+          const res = await hass.callWS({ type: `${DOMAIN}/replaced`, content: item.name });
+          this._replaceDue = res.due || [];
+          this.showNotice(t.replacedDone(item.name));
+        } catch {
+          done.disabled = false;
+        }
+        this._sig = "";
+        this._update();
+      });
+      done.dataset.role = "replace-done";
+      row.append(text, done);
+      box.append(row);
+    }
+    return box;
+  };
+
   proto._lowBox = function _lowBox(only = null) {
     const data = this._low && { ...this._low, items: (this._low.items || []).filter((item) => !only || only(item)) };
     if (!data || !data.items || !data.items.length) return null;

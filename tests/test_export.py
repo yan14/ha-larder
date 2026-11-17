@@ -1,4 +1,4 @@
-"""Tests: Bestand als CSV, Schätzungen exportieren und einlesen, Diagnose, Umbenennen (Reconfigure)."""
+"""Tests: stock as CSV, export and import estimates, diagnostics, rename (reconfigure)."""
 
 import json
 
@@ -52,7 +52,7 @@ async def test_estimates_round_trip(hass: HomeAssistant, hass_client) -> None:
     assert data["domain"] == DOMAIN and data["kind"] == "estimates"
     assert {(e["content"], e["days"]) for e in data["entries"]} == {("Lachs", 3), ("Gouda", 20)}
 
-    # eigene Korrektur bleibt gegen einen Tabellenwert aus der Datei; neue Einträge kommen dazu
+    # own correction stays against a table value from the file; new entries are added
     await estimator.async_delete_entry(next(e["key"] for e in estimator.list_entries() if e["content"] == "Gouda"))
     data["entries"].append({"content": "Lachs", "area": "Kühlschrank", "vacuum": True, "days": 9, "source": "table"})
     data["entries"].append({"content": "", "area": "x", "days": 3})
@@ -62,7 +62,7 @@ async def test_estimates_round_trip(hass: HomeAssistant, hass_client) -> None:
     lachs = next(e for e in estimator.list_entries() if e["content"] == "Lachs")
     assert lachs["days"] == 3
 
-    # ersetzen: nur noch der Inhalt der Datei
+    # replace: only the content of the file
     result = await async_import_estimates(hass, {"domain": DOMAIN, "entries": [{"content": "Reis", "area": "Keller", "days": 300}]}, replace=True)
     assert result["added"] == 1
     assert [e["content"] for e in estimator.list_entries()] == ["Reis"]

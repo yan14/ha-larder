@@ -53,7 +53,7 @@ export const CATEGORY_ICONS = {
 const VIEWS = ["start", "containers", "recipes", "areas", "categories"];
 const ALL_VIEWS = [...VIEWS, "estimates", "stats", "stock", "stocktake"]; // "estimates" and "stats" are reached through ☰/⚙
 const MODES = ["grid", "list", "cards"];
-const VIEW_ICONS = { start: "🏠", containers: "🫙", recipes: "📖", areas: "📍", categories: "🏷️" };
+const VIEW_ICONS = { start: "🏠", containers: "🥫", recipes: "📖", areas: "📍", categories: "🏷️" };
 
 /** Recognise the QR label of a compartment (…/larder?place=<area>&compartment=<compartment>). */
 export function placeFromCode(code) {
@@ -443,6 +443,7 @@ export class LarderDashboard extends HTMLElement {
       this.loadRunningLow();
       this.loadRecalls();
       this.loadScopes();
+      this.loadReplaceDue();
       this.loadSettings();
       this._handleViewParam();
       this._subscribeScans();
@@ -589,6 +590,7 @@ export class LarderDashboard extends HTMLElement {
       this.loadCookAgain();
       this.loadRunningLow();
       this.loadRecalls();
+      this.loadReplaceDue();
     }
     if (view === "stats") this.loadReport();
     const { soon, ...rest } = filter || {};
@@ -687,7 +689,7 @@ export class LarderDashboard extends HTMLElement {
     this._menu.querySelector('[data-role="menu-labels"]').textContent = `🖨 ${t.menuLabels}`;
     this._menu.querySelector('[data-role="menu-data"]').textContent = `📦 ${t.menuData}`;
     this._menu.querySelector('[data-role="menu-stats"]').textContent = `📊 ${t.menuStats}`;
-    this._menu.querySelector('[data-role="menu-stock"]').textContent = `🥫 ${this.stockTitle()}`;
+    this._menu.querySelector('[data-role="menu-stock"]').textContent = `🗃️ ${this.stockTitle()}`;
     this._menu.querySelector('[data-role="menu-stocktake"]').textContent = `📋 ${this.stocktakeTitle()}`;
     this._menu.querySelector('[data-role="menu-putaway"]').textContent = `📥 ${this.putAwayTitle()}`;
     const cookMenu = this.cookMenuTexts();
@@ -727,6 +729,7 @@ export class LarderDashboard extends HTMLElement {
       this._again,
       this._view === "containers" ? this._sizes : null,
       this._low,
+      this._replaceDue,
       this._recalls,
       this._view === "stats" ? this._report : null,
       this._view === "stats" ? [this._stats, this._statsDays, this._hhStats] : null,
@@ -1432,7 +1435,7 @@ export class LarderDashboard extends HTMLElement {
   _scopeSwitch(t = texts(this._hass)) {
     const box = el("div", "scope");
     box.setAttribute("role", "tablist");
-    for (const [scope, icon] of [["food", "🥫"], ["household", "🧻"], ["pharmacy", "💊"]]) {
+    for (const [scope, icon] of [["food", "🍎"], ["household", "🧻"], ["pharmacy", "💊"]]) {
       const btn = el("button", scope === this._opts.scope ? "on" : "", `${icon} ${t.scopes[scope]}`);
       btn.type = "button";
       btn.dataset.scope = scope;
@@ -1943,11 +1946,12 @@ export class LarderDashboard extends HTMLElement {
       scope,
       soon: sortRows(rows.filter((r) => scopeOf(r) === scope && isSoon(r)), "date", this._lang()),
       low: this._lowBox((item) => scopeOf(item) === scope),
+      replace: scope === "household" ? this._replaceBox() : null,
       bought: this._boughtBox((item) => scopeOf(item) === scope),
       used: rows.some((r) => scopeOf(r) === scope),
-    })).filter((s) => s.used || s.low || s.bought);
+    })).filter((s) => s.used || s.low || s.bought || s.replace);
     // sections once household items or medicines are in use: food first, the others below
-    if (others.length) frag.append(el("h2", "section", `🥫 ${t.scopes.food}`));
+    if (others.length) frag.append(el("h2", "section", `🍎 ${t.scopes.food}`));
     if (soon.length) {
       frag.append(el("p", "lead", t.soonTitle));
       const box = el("div", "tiles");
@@ -1979,9 +1983,10 @@ export class LarderDashboard extends HTMLElement {
         for (const row of other.soon) box.append(this._tile(row, t, { showArea: true }));
         frag.append(box);
       }
+      if (other.replace) frag.append(other.replace);
       if (other.low) frag.append(other.low);
       if (other.bought) frag.append(other.bought);
-      if (!other.soon.length && !other.low && !other.bought) frag.append(el("p", "lead", other.scope === "pharmacy" ? t.pharmacyFine : t.householdFine));
+      if (!other.soon.length && !other.low && !other.bought && !other.replace) frag.append(el("p", "lead", other.scope === "pharmacy" ? t.pharmacyFine : t.householdFine));
     }
     frag.append(el("p", "lead", t.help));
     const help = el("div", "help");

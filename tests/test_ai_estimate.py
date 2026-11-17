@@ -1,4 +1,4 @@
-"""Tests: Vakuum-Schalter und KI-Schätzung des MHD (mit simuliertem AI-Task-Dienst)."""
+"""Tests: vacuum switch and AI estimate of the best-before date (with a simulated AI task service)."""
 
 from datetime import date, timedelta
 
@@ -48,7 +48,7 @@ def _eid(hass: HomeAssistant, domain: str, cc: str = "34OL") -> str:
 
 
 def _fake_ai(hass: HomeAssistant, data=None, error: Exception | None = None) -> list[dict]:
-    """Simuliert ai_task.generate_data und merkt sich die Aufrufe."""
+    """Simulates ai_task.generate_data and records the calls."""
     calls: list[dict] = []
 
     async def handler(call):
@@ -93,7 +93,7 @@ async def _estimate(hass: HomeAssistant, **data):
 
 
 async def _prepare(hass: HomeAssistant, content="Tomatensuppe", area="Kühlschrank"):
-    """Dose mit Inhalt und Bereich, KI aktiviert und simuliert."""
+    """Container with content and area, AI enabled and simulated."""
     entry = await _setup(hass)
     calls = _fake_ai(hass)
     await _enable_ai(hass, entry)
@@ -123,7 +123,7 @@ async def test_vacuum_switch_defaults_on_and_survives_emptying(hass: HomeAssista
     )
     await hass.services.async_call("button", "press", {"entity_id": _eid(hass, "button")}, blocking=True)
     assert hass.states.get(_eid(hass, "text")).state == ""
-    assert hass.states.get(vac).state == "off"  # Eigenschaft der Dose, wird nicht zurückgesetzt
+    assert hass.states.get(vac).state == "off"  # property of the container, not reset
 
 
 async def test_vacuum_switch_restores_last_state(hass: HomeAssistant) -> None:
@@ -145,7 +145,7 @@ async def test_vacuum_default_setting_applies_to_new_containers_only(hass: HomeA
 
     await _setup(hass, "HA-NEW00001")
     assert hass.states.get(_eid(hass, "switch", "HA-NEW00001")).state == "off"
-    assert hass.states.get(first).state == "on"  # bestehende Dose bleibt unverändert
+    assert hass.states.get(first).state == "on"  # existing container stays unchanged
 
 
 async def test_vacuum_default_is_on_without_setting(hass: HomeAssistant) -> None:
@@ -155,7 +155,7 @@ async def test_vacuum_default_is_on_without_setting(hass: HomeAssistant) -> None
     assert (await async_get_estimator(hass)).vacuum_default is True
 
 
-# ---------- Schätzung ----------
+# ---------- Estimate ----------
 
 
 async def test_estimate_applies_best_before_from_filled_date(hass: HomeAssistant) -> None:
@@ -183,7 +183,7 @@ async def test_estimate_applies_best_before_from_filled_date(hass: HomeAssistant
     prompt = calls[0]["instructions"]
     assert "Tomatensuppe" in prompt and "Kühlschrank" in prompt and "vacuum-sealed" in prompt
     assert filled.date().isoformat() in prompt
-    assert "entity_id" not in calls[0]  # Standard-KI von Home Assistant
+    assert "entity_id" not in calls[0]  # default AI of Home Assistant
     assert set(calls[0]["structure"]) == {"shelf_life_days", "storage_tip"}
 
 
@@ -193,7 +193,7 @@ async def test_estimate_uses_today_without_filled_date_and_vacuum_off(hass: Home
     response = (await _estimate(hass, apply=False))[_eid(hass, "date")]
     assert response["best_before"] == (dt_util.now().date() + timedelta(days=4)).isoformat()
     assert response["applied"] is False
-    assert hass.states.get(_eid(hass, "date")).state == "unknown"  # nur Vorschlag
+    assert hass.states.get(_eid(hass, "date")).state == "unknown"  # suggestion only
     assert "not vacuum-sealed" in calls[0]["instructions"]
 
 
@@ -205,7 +205,7 @@ async def test_estimate_never_overwrites_existing_best_before(hass: HomeAssistan
     response = (await _estimate(hass))[_eid(hass, "date")]
     assert response["status"] == "already_set"
     assert hass.states.get(_eid(hass, "date")).state == "2030-01-01"
-    assert calls == []  # keine unnötige KI-Anfrage
+    assert calls == []  # no needless AI request
 
     response = (await _estimate(hass, overwrite=True))[_eid(hass, "date")]
     assert response["status"] == "estimated"
@@ -221,9 +221,9 @@ async def test_estimate_is_cached_per_content_area_and_vacuum(hass: HomeAssistan
     )
     response = (await _estimate(hass))[_eid(hass, "date")]
     assert response["cached"] is True
-    assert len(calls) == 1  # zweites Mal ohne KI
+    assert len(calls) == 1  # second time without AI
 
-    # anderer Vakuum-Zustand = andere Schätzung
+    # other vacuum state = other estimate
     await hass.services.async_call("button", "press", {"entity_id": _eid(hass, "button")}, blocking=True)
     await hass.services.async_call(
         "text", "set_value", {"entity_id": _eid(hass, "text"), "value": "Tomatensuppe"}, blocking=True
@@ -235,12 +235,12 @@ async def test_estimate_is_cached_per_content_area_and_vacuum(hass: HomeAssistan
 
 async def test_manual_correction_is_learned(hass: HomeAssistant) -> None:
     _, calls = await _prepare(hass)
-    await _estimate(hass)  # 4 Tage geschätzt
+    await _estimate(hass)  # 4 days estimated
     today = dt_util.now().date()
     await hass.services.async_call(
         "date", "set_value", {"entity_id": _eid(hass, "date"), "date": (today + timedelta(days=7)).isoformat()}, blocking=True
     )
-    # Dose leeren und neu füllen: die Korrektur (7 Tage) gilt jetzt
+    # empty and refill the container: the correction (7 days) applies now
     await hass.services.async_call("button", "press", {"entity_id": _eid(hass, "button")}, blocking=True)
     await hass.services.async_call(
         "text", "set_value", {"entity_id": _eid(hass, "text"), "value": "Tomatensuppe"}, blocking=True
@@ -290,7 +290,7 @@ async def test_estimate_off_refuses(hass: HomeAssistant) -> None:
 
 async def test_estimate_without_ai_task_integration(hass: HomeAssistant) -> None:
     entry = await _setup(hass)
-    await _enable_ai(hass, entry)  # kein ai_task-Dienst registriert
+    await _enable_ai(hass, entry)  # no ai_task service registered
     area = ar.async_get(hass).async_get_or_create("Keller")
     device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "34OL")})
     dr.async_get(hass).async_update_device(device.id, area_id=area.id)
@@ -336,11 +336,11 @@ async def test_ai_service_error_is_wrapped(hass: HomeAssistant) -> None:
 async def test_days_are_clamped(hass: HomeAssistant) -> None:
     _, calls = await _prepare(hass)
     calls.clear()
-    # Antwort mit unsinnig großem Wert
+    # answer with an absurdly large value
     hass.services.async_remove("ai_task", "generate_data")
     _fake_ai(hass, data={"shelf_life_days": 99999.4, "storage_tip": ""})
     response = (await _estimate(hass))[_eid(hass, "date")]
-    # Kühlschrank: reine KI-Schätzungen sind auf 60 Tage begrenzt, der Tipp sagt es
+    # fridge: pure AI estimates are capped at 60 days, the hint says so
     assert response["days"] == 60
     assert "capped at 2 months" in response["tip"]
 
@@ -381,16 +381,16 @@ async def test_old_ai_estimates_are_refreshed_but_corrected_ones_stay(hass: Home
     hass.services.async_remove("ai_task", "generate_data")
     calls = _fake_ai(hass, data={"shelf_life_days": 6, "storage_tip": "neu"})
     response = (await _estimate(hass, overwrite=True))[_eid(hass, "date")]
-    assert (response["days"], len(calls)) == (6, 1)  # nach einem Jahr neu geschätzt
+    assert (response["days"], len(calls)) == (6, 1)  # re-estimated after a year
     assert estimator._cache[key]["created"] == dt_util.now().date().isoformat()
 
-    # KI nicht erreichbar: der alte Wert gilt weiter
+    # AI not reachable: the old value stays
     estimator._cache[key]["created"] = old
     hass.services.async_remove("ai_task", "generate_data")
     _fake_ai(hass, error=HomeAssistantError("offline"))
     assert (await _estimate(hass, overwrite=True))[_eid(hass, "date")]["days"] == 6
 
-    # vom Nutzer korrigierte Werte werden nie neu geschätzt
+    # values corrected by the user are never re-estimated
     estimator.learn(key, 9)
     estimator._cache[key]["created"] = old
     hass.services.async_remove("ai_task", "generate_data")
@@ -424,7 +424,7 @@ async def test_settings_change_updates_attribute(hass: HomeAssistant) -> None:
     assert hass.states.get(_eid(hass, "date")).attributes["estimates"] is True
 
 
-# ---------- Kontext des Lagerorts ----------
+# ---------- Context of the storage place ----------
 
 
 async def test_prompt_contains_area_temperature_sensor_and_label_description(hass: HomeAssistant) -> None:
@@ -481,7 +481,7 @@ def test_build_instructions_without_hints() -> None:
     assert "code 'de'" in text
 
 
-# ---------- MHD und "Befüllt am" leeren ----------
+# ---------- Clearing best-before and "Filled on" ----------
 
 
 async def test_clear_services_empty_single_fields(hass: HomeAssistant) -> None:
@@ -499,8 +499,8 @@ async def test_clear_services_empty_single_fields(hass: HomeAssistant) -> None:
 
     await hass.services.async_call(DOMAIN, "clear_best_before", {"entity_id": _eid(hass, "date")}, blocking=True)
     assert hass.states.get(_eid(hass, "date")).state == "unknown"
-    assert hass.states.get(_eid(hass, "datetime")).state != "unknown"  # nur das MHD
+    assert hass.states.get(_eid(hass, "datetime")).state != "unknown"  # only the best-before date
 
     await hass.services.async_call(DOMAIN, "clear_filled_at", {"entity_id": _eid(hass, "datetime")}, blocking=True)
     assert hass.states.get(_eid(hass, "datetime")).state == "unknown"
-    assert hass.states.get(_eid(hass, "text")).state == "Suppe"  # Inhalt bleibt
+    assert hass.states.get(_eid(hass, "text")).state == "Suppe"  # content stays

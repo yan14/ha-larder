@@ -1,4 +1,4 @@
-"""Jede Version in manifest.json braucht einen Abschnitt in CHANGELOG.md (Text der GitHub-Releases)."""
+"""Every version in manifest.json needs a section in CHANGELOG.md (text of the GitHub releases)."""
 
 import json
 from pathlib import Path

@@ -1,4 +1,4 @@
-"""Tests für den Scan-Webhook und den Options-Dialog."""
+"""Tests for the scan webhook and the options dialog."""
 
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
@@ -69,8 +69,8 @@ async def test_webhook_accepts_plain_body_query_and_bare_id(
 
     for resp in (
         await client.post(url, data=QR),  # Klartext-Body
-        await client.post(url, json={"cc": "34ol"}),  # nur ID, Kleinschreibung
-        await client.get(url, params={"code": "34OL"}),  # GET mit Query
+        await client.post(url, json={"cc": "34ol"}),  # ID only, lower case
+        await client.get(url, params={"code": "34OL"}),  # GET with query
     ):
         assert resp.status == 200
         data = await resp.json()
@@ -131,18 +131,18 @@ async def test_one_webhook_for_multiple_entries_and_cleanup(
         data = await (await client.post(f"/api/webhook/{webhook_id}", json={"code": cc})).json()
         assert data["known"] is True and data["device_id"] == _device_id(hass, cc)
 
-    # Erste Dose entladen: Webhook bleibt für die zweite aktiv
+    # unload the first container: webhook stays active for the second
     assert await hass.config_entries.async_unload(first.entry_id)
     await hass.async_block_till_done()
     assert hass.data[DOMAIN].get("webhook_id") == webhook_id
 
-    # Letzte Dose entladen: Webhook wird abgemeldet
+    # unload the last container: webhook is unregistered
     assert await hass.config_entries.async_unload(second.entry_id)
     await hass.async_block_till_done()
     assert "webhook_id" not in hass.data[DOMAIN]
     resp = await client.post(f"/api/webhook/{webhook_id}", json={"code": QR})
     assert resp.status == 200
-    assert await resp.text() == ""  # HA antwortet bei unbekannten Webhooks leer
+    assert await resp.text() == ""  # HA answers empty for unknown webhooks
 
 
 async def test_webhook_id_is_persistent(hass) -> None:

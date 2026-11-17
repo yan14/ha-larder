@@ -1,4 +1,4 @@
-"""Tests Block 7: Allergene im Haushalt und Nachkaufen mit Marke und Packung."""
+"""Tests block 7: allergens in the household and reordering with brand and pack."""
 
 from custom_components.larder.const import DOMAIN
 from custom_components.larder.product import watched_allergens
@@ -11,13 +11,13 @@ from .test_shopping import _todo
 
 
 def test_watched_allergens_from_field_and_content() -> None:
-    # Feld "Allergene" (Open Food Facts oder von Hand): Wortanfang
+    # field "allergens" (Open Food Facts or by hand): start of a word
     assert watched_allergens("Müsli", "Gluten, Schalenfrüchte", ["gluten", "nuts"], "de") == ["Gluten", "Schalenfrüchte"]
     assert watched_allergens("Müsli", "Hafer", ["gluten"], "en") == ["Gluten"]
-    # Inhalt: auch mitten im Wort, aber nur längere Begriffe
+    # content: also inside a word, but only longer terms
     assert watched_allergens("Haselnusscreme", "", ["nuts"], "de") == ["Schalenfrüchte"]
     assert watched_allergens("Milchreis", "", ["milk", "eggs"], "de") == ["Milch"]
-    assert watched_allergens("Reis mit Ei", "", ["eggs"], "de") == []  # "ei" zu kurz für den Inhalt
+    assert watched_allergens("Reis mit Ei", "", ["eggs"], "de") == []  # "ei" too short for the content
     assert watched_allergens("Erdnussbutter", "", ["milk"], "de") == []
     assert watched_allergens("Gulasch", "", ["gluten", "milk"], "de") == []
     assert watched_allergens("Gulasch", "Gluten", [], "de") == []
@@ -44,7 +44,7 @@ async def test_recipes_leave_out_containers_with_household_allergens(hass: HomeA
     out = await _suggest(hass)
     assert [i["content"] for i in out["ingredients"]] == ["Gulasch"]
     assert "avoids these allergens: Milk" in calls[0]["instructions"]
-    # ausdrücklich gewählt: bleibt drin, mit Hinweis
+    # chosen explicitly: stays in, with a hint
     device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "AAAA")}).id
     out = await _suggest(hass, containers=[device])
     assert [i["content"] for i in out["ingredients"]] == ["Milchreis"]
@@ -70,10 +70,10 @@ async def test_shopping_list_gets_brand_and_package(hass: HomeAssistant) -> None
 
     await _empty_with_product(hass, "AAAA", "Haferflocken", {"brand": "Kölln", "package": "500 g"})
     assert todo.summaries == ["Haferflocken (Kölln, 500 g)"]
-    # schon offen (auch ohne Zusatz): nicht doppelt
+    # already open (even without a note): not twice
     await _empty_with_product(hass, "AAAA", "haferflocken", {"brand": "Kölln"})
     assert todo.summaries == ["Haferflocken (Kölln, 500 g)"]
-    # mehrere Inhalte: ohne Zusatz
+    # several contents: without a note
     await _empty_with_product(hass, "AAAA", "Salami, Leberwurst", {"brand": "Metzger"})
     assert todo.summaries[1:] == ["Salami", "Leberwurst"]
     # ausgeschaltet

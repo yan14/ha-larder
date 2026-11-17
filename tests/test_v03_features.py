@@ -1,4 +1,4 @@
-"""Tests: MHD, QR-Bild, 'Neuen QR Code erstellen' und das Dosen-Panel."""
+"""Tests: best-before date, QR image, 'Create new QR code' and the container panel."""
 
 from datetime import date
 import re
@@ -60,7 +60,7 @@ async def test_best_before_set_and_restore(hass: HomeAssistant) -> None:
     )
     assert hass.states.get(mhd).state == "2026-12-24"
 
-    # Wiederherstellung nach Neustart
+    # restore after restart
     assert await hass.config_entries.async_unload(entry.entry_id)
     await hass.async_block_till_done()
     mock_restore_cache(hass, (State(mhd, "2027-01-15"),))
@@ -126,7 +126,7 @@ async def test_qr_image_opens_the_dashboard_at_the_container(hass: HomeAssistant
     body = await resp.read()
     assert body.startswith(b"\x89PNG\r\n\x1a\n")
 
-    # PNG zurücklesen und mit dem erwarteten Inhalt vergleichen
+    # read the PNG back and compare with the expected content
     from io import BytesIO
 
     import segno
@@ -137,7 +137,7 @@ async def test_qr_image_opens_the_dashboard_at_the_container(hass: HomeAssistant
 
 
 def test_qr_png_decodes_to_deep_link() -> None:
-    """Das erzeugte PNG enthält exakt den Deep Link (per OpenCV zurückgelesen, falls vorhanden)."""
+    """The generated PNG contains exactly the deep link (read back via OpenCV if available)."""
     cv2 = pytest.importorskip("cv2")
     import numpy as np
 
@@ -174,7 +174,7 @@ async def test_flow_create_generates_unique_id(hass: HomeAssistant) -> None:
     assert result["data"]["tc"] is None
     await hass.async_block_till_done()
 
-    # Gerät existiert mit allen fünf Entitäten und das Webhook-Parsing erkennt die ID
+    # device exists with all five entities and the webhook parsing recognises the ID
     device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, cc)})
     assert device is not None
     entities = er.async_entries_for_device(er.async_get(hass), device.id)
@@ -202,11 +202,11 @@ async def test_flow_create_default_name_and_two_distinct_ids(hass: HomeAssistant
 def test_generate_code_never_collides() -> None:
     first = generate_code()
     assert first.startswith("HA-") and len(first) == 11
-    # Kollisionen mit bestehenden IDs werden übersprungen (hier: Alphabet-Trick mit festem Zufall)
+    # collisions with existing IDs are skipped (here: alphabet trick with fixed randomness)
     taken = {generate_code() for _ in range(200)}
     fresh = generate_code(taken)
     assert fresh not in taken
-    # Zwilling-IDs haben kein "HA-"-Präfix, die Formate überschneiden sich nicht
+    # Zwilling IDs have no "HA-" prefix, the formats do not overlap
     assert not re.fullmatch(r"HA-[A-Z0-9]{8}", "34OL")
     assert generate_code(["34OL", None]).startswith("HA-")
 
@@ -222,12 +222,12 @@ async def test_panel_registered_and_static_js_served(hass: HomeAssistant, hass_c
     assert panel.sidebar_title == "Larder"
     assert panel.require_admin is False
     module_url = panel.config["_panel_custom"]["module_url"]
-    # seit 2.0: das neue Dashboard (früher "Larder experimental"); es lädt larder-panel.js für Dialoge und Karten
+    # since 2.0: the new dashboard (formerly "Larder experimental"); it loads larder-panel.js for dialogs and cards
     assert re.fullmatch(r"/larder_static/larder-dashboard\.js\?v=\d+\.\d+\.\d+", module_url)
     assert panel.config["_panel_custom"]["name"] == "larder-dashboard"
 
     client = await hass_client()
-    # Lovelace-Karte wird global geladen (keine Ressource nötig)
+    # the Lovelace card is loaded globally (no resource needed)
     card_urls = [u for u in hass.data[frontend.DATA_EXTRA_MODULE_URL].urls if "larder-card.js" in u]
     assert len(card_urls) == 1
     assert re.fullmatch(r"/larder_static/larder-card\.js\?v=\d+\.\d+\.\d+", card_urls[0])
@@ -237,7 +237,7 @@ async def test_panel_registered_and_static_js_served(hass: HomeAssistant, hass_c
         assert resp.status == 200
         assert "customElements.define" in await resp.text()
 
-    # Zweite Dose: Panel bleibt, nur eine Registrierung
+    # second container: panel stays, only one registration
     second = await _setup(hass, "77AB")
     assert "larder" in hass.data[frontend.DATA_PANELS]
 
@@ -250,7 +250,7 @@ async def test_panel_registered_and_static_js_served(hass: HomeAssistant, hass_c
     assert "larder" not in hass.data[frontend.DATA_PANELS]
     assert not [u for u in hass.data[frontend.DATA_EXTRA_MODULE_URL].urls if "larder-card.js" in u]
 
-    # Neu laden: Panel wird wieder registriert (statischer Pfad nur einmal)
+    # reload: panel is registered again (static path only once)
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
     assert "larder" in hass.data[frontend.DATA_PANELS]
@@ -269,7 +269,7 @@ async def _create_via_flow(hass: HomeAssistant, step: str, user_input: dict):
 
 
 async def test_flow_create_applies_selected_area_once(hass: HomeAssistant) -> None:
-    """Bereich aus dem Anlegen landet am Gerät und überschreibt später keine Änderung."""
+    """The area from creating ends up on the device and later does not overwrite a change."""
     from homeassistant.helpers import area_registry as ar
 
     kitchen = ar.async_get(hass).async_create("Küche")
@@ -282,13 +282,13 @@ async def test_flow_create_applies_selected_area_once(hass: HomeAssistant) -> No
     await hass.async_block_till_done()
 
     entry = hass.config_entries.async_entries(DOMAIN)[0]
-    assert "area_id" not in entry.data  # nur einmalig angewendet
+    assert "area_id" not in entry.data  # applied only once
     device = dr.async_get(hass).async_get_device(
         identifiers={(DOMAIN, entry.data["cc"])}
     )
     assert device.area_id == kitchen.id
 
-    # Nutzer ändert den Bereich später; ein Neuladen darf ihn nicht zurücksetzen
+    # the user changes the area later; a reload must not reset it
     dr.async_get(hass).async_update_device(device.id, area_id=cellar.id)
     assert await hass.config_entries.async_reload(entry.entry_id)
     await hass.async_block_till_done()
@@ -324,11 +324,11 @@ async def test_flow_without_area_leaves_device_unassigned(hass: HomeAssistant) -
 
 
 async def test_flow_works_via_rest_api_for_the_panel(hass: HomeAssistant, hass_client) -> None:
-    """Das Panel nutzt die REST-API des Config Flows: Menü → create → Eintrag."""
+    """The panel uses the REST API of the config flow: menu → create → entry."""
     from homeassistant.setup import async_setup_component
 
-    # Erst Integration und Config-API einrichten, dann den HTTP-Client holen
-    # (danach ist der Router eingefroren und es lassen sich keine Routen mehr anmelden).
+    # set up the integration and the config API first, then get the HTTP client
+    # (afterwards the router is frozen and no more routes can be registered).
     await _setup(hass)
     assert await async_setup_component(hass, "config", {})
     client = await hass_client()

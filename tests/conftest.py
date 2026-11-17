@@ -1,4 +1,4 @@
-"""Gemeinsame Test-Einstellungen."""
+"""Shared test settings."""
 
 from unittest.mock import patch
 
@@ -7,6 +7,6 @@ import pytest
 
 @pytest.fixture(autouse=True)
 def no_recall_polling():
-    """Kein zeitgesteuerter Abruf der Rückrufwarnungen in Tests (kein Netz); Tests rufen async_refresh selbst."""
+    """No scheduled fetching of recalls in tests (no network); tests call async_refresh themselves."""
     with patch("custom_components.larder.recall.Recalls.async_start"):
         yield

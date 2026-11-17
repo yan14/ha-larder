@@ -1,4 +1,4 @@
-"""Tests Block 12: Vorrat im Alltag (Strichcode, ältestes zuerst, Einkaufsliste → Vorrat)."""
+"""Tests block 12: stock in everyday use (barcode, oldest first, shopping list → stock)."""
 
 from datetime import timedelta
 
@@ -24,23 +24,23 @@ async def test_barcode_finds_the_oldest_pack_first(hass: HomeAssistant, hass_ws_
     pantry, fridge = areas.async_create("Vorrat"), areas.async_create("Kühlschrank")
     await _packs(hass, hass_ws_client, [{"content": "Ketchup", "quantity": 2, "unit": "pieces", "best_before": _day(300), "product": {"ean": "4000000000001"}}], pantry.id, "Keller")
     old = (await _packs(hass, hass_ws_client, [{"content": "ketchup", "quantity": 1, "unit": "pieces", "best_before": _day(20)}], fridge.id))[0]
-    # über die EAN gefunden (eine Packung hat sie), der Rest über den gleichen Inhalt
+    # found via the EAN (one pack has it), the rest via the same content
     aioclient_mock.get(API.format(code="4000000000001"), json={"status": 1, "product": {"product_name": "Ketchup"}})
     res = await _ws(hass, hass_ws_client, type="larder/stock_code", code="4000000000001")
     result = res["result"]
     assert result["name"] == "Ketchup"
-    assert [(e["area"], e["count"]) for e in result["entries"]] == [("Vorrat", 2)]  # EAN passt nur zu einer
-    # ohne EAN an den Packungen: über den Produktnamen aus Open Food Facts, früheste MHD zuerst
+    assert [(e["area"], e["count"]) for e in result["entries"]] == [("Vorrat", 2)]  # EAN only matches one
+    # no EAN on the packs: via the product name from Open Food Facts, earliest best-before first
     aioclient_mock.get(API.format(code="5000000000002"), json={"status": 1, "product": {"product_name": "Ketchup"}})
     res = await _ws(hass, hass_ws_client, type="larder/stock_code", code="5000000000002")
     entries = res["result"]["entries"]
     assert [(e["area"], e["compartment"], e["best_before"]) for e in entries] == [("Kühlschrank", "", _day(20)), ("Vorrat", "Keller", _day(300))]
     assert entries[0]["device_id"] == old["device_id"]
-    # unbekannt im Vorrat: Produktdaten zum Anlegen
+    # unknown in stock: product data for creating
     aioclient_mock.get(API.format(code="6000000000003"), json={"status": 1, "product": {"product_name": "Senf", "brands": "Develey"}})
     res = await _ws(hass, hass_ws_client, type="larder/stock_code", code="6000000000003")
     assert res["result"]["entries"] == [] and res["result"]["name"] == "Senf" and res["result"]["product"]["brand"] == "Develey"
-    # Vorrats-Ansicht: Orte nach MHD, frühestes MHD je Produkt
+    # stock view: places by best-before, earliest best-before per product
     res = await _ws(hass, hass_ws_client, type="larder/stock")
     ketchup = res["result"]["products"][0]
     assert ketchup["earliest"] == _day(20) and ketchup["places"][0]["area"] == "Kühlschrank"
@@ -78,7 +78,7 @@ async def test_checked_off_items_are_offered_for_the_stock(hass: HomeAssistant, 
     res = await _ws(hass, hass_ws_client, type="larder/bought")
     assert res["result"]["items"] == []
 
-    todo.check("Senf (Develey)")  # abgehakt: Larder bietet es für den Vorrat an
+    todo.check("Senf (Develey)")  # ticked off: Larder offers it for the stock
     await hass.async_block_till_done()
     res = await _ws(hass, hass_ws_client, type="larder/bought")
     items = res["result"]["items"]
@@ -108,17 +108,17 @@ async def test_emptied_container_on_the_list_is_tracked(hass: HomeAssistant, has
 async def test_renamed_pack_is_found_by_barcode_and_old_packs_can_be_linked(hass: HomeAssistant, hass_ws_client, aioclient_mock) -> None:
     await _setup(hass, "AAAA")
     aioclient_mock.get(API.format(code="4000000000017"), json={"status": 1, "product": {"product_name": "Hela Curry Gewürz Ketchup"}})
-    # mit EAN angelegt, aber umbenannt
+    # created with EAN, but renamed
     made = (await _packs(hass, hass_ws_client, [{"content": "Curryketchup", "quantity": 2, "unit": "pieces", "product": {"ean": "4000000000017"}}]))[0]
     res = await _ws(hass, hass_ws_client, type="larder/stock_code", code="4000000000017")
     assert [e["device_id"] for e in res["result"]["entries"]] == [made["device_id"]] and res["result"]["name"] == "Curryketchup"
-    # alle weg: der eigene Name ist gemerkt (nicht der von Open Food Facts)
+    # all gone: our own name is remembered (not the one from Open Food Facts)
     await _ws(hass, hass_ws_client, type="larder/empty", device_id=made["device_id"], outcome="eaten")
     await hass.async_block_till_done()
     res = await _ws(hass, hass_ws_client, type="larder/stock_code", code="4000000000017")
     assert res["result"]["entries"] == [] and res["result"]["name"] == "Curryketchup"
 
-    # ältere Packung ohne EAN: über "Mit Produkt im Vorrat verknüpfen"
+    # older pack without EAN: via "Link with product in stock"
     aioclient_mock.get(API.format(code="5000000000021"), json={"status": 1, "product": {"product_name": "Senf mittelscharf"}})
     old = (await _packs(hass, hass_ws_client, [{"content": "Senf", "quantity": 1, "unit": "pieces"}]))[0]
     res = await _ws(hass, hass_ws_client, type="larder/stock_code", code="5000000000021")

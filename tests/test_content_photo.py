@@ -1,4 +1,4 @@
-"""Tests: Inhalt aus einem Foto erkennen (simulierter AI-Task-Dienst, echter HTTP-Upload)."""
+"""Tests: recognise content from a photo (simulated AI task service, real HTTP upload)."""
 
 from http import HTTPStatus
 
@@ -16,7 +16,7 @@ async def test_content_from_photo(hass: HomeAssistant, hass_client, ready) -> No
     assert resp.status == HTTPStatus.OK
     assert (await resp.json()) == {"content": "Chili con carne"}
     assert calls[0]["files_present"] == [True]
-    assert not any(ready.rglob("*-photo.jpg"))  # wieder gelöscht
+    assert not any(ready.rglob("*-photo.jpg"))  # deleted again
 
     _fake_ai(hass, {"found": False})
     resp = await client.post(URL, data=_form(("a.jpg", "image/jpeg", b"x")))

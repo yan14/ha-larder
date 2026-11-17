@@ -1,4 +1,4 @@
-"""Tests: NFC-Tags (tag_scanned) mit Dosen verknüpfen."""
+"""Tests: link NFC tags (tag_scanned) with containers."""
 
 from datetime import timedelta
 
@@ -51,11 +51,11 @@ async def test_link_list_unlink_and_conflicts(hass: HomeAssistant, hass_ws_clien
     res = await _ws(hass, hass_ws_client, {"type": f"{DOMAIN}/nfc_link", "tag_id": "tag-1", "cc": "34OL"})
     assert res["success"] and res["result"]["links"] == {"34OL": "tag-1"}
 
-    # gleicher Tag an anderer Dose: Fehler mit Name der belegten Dose
+    # same tag on another container: error with the name of the occupied container
     res = await _ws(hass, hass_ws_client, {"type": f"{DOMAIN}/nfc_link", "tag_id": "tag-1", "cc": "56BR"})
     assert not res["success"] and "Dose 34OL" in res["error"]["message"]
 
-    # neuer Tag für dieselbe Dose ersetzt den alten
+    # a new tag for the same container replaces the old one
     res = await _ws(hass, hass_ws_client, {"type": f"{DOMAIN}/nfc_link", "tag_id": "tag-2", "cc": "34OL"})
     assert res["result"]["links"] == {"34OL": "tag-2"}
     res = await _ws(hass, hass_ws_client, {"type": f"{DOMAIN}/nfc_tags"})
@@ -74,7 +74,7 @@ async def test_link_via_entry_id_and_validation(hass: HomeAssistant, hass_ws_cli
     res = await _ws(hass, hass_ws_client, {"type": f"{DOMAIN}/nfc_link", "tag_id": "  ", "cc": "34OL"})
     assert not res["success"]
     res = await _ws(hass, hass_ws_client, {"type": f"{DOMAIN}/nfc_link", "tag_id": "t"})
-    assert not res["success"]  # weder cc noch entry_id
+    assert not res["success"]  # neither cc nor entry_id
 
 
 async def test_scan_fires_event_and_notifies_the_scanning_phone(hass: HomeAssistant, hass_ws_client) -> None:
@@ -96,7 +96,7 @@ async def test_scan_fires_event_and_notifies_the_scanning_phone(hass: HomeAssist
     assert call["title"] == "Dose 34OL"
     assert "Pizza" in call["message"] and day in call["message"]
     assert call["data"]["url"] == f"/larder?open={device.id}" == call["data"]["clickAction"]
-    assert other == []  # nur das scannende Gerät
+    assert other == []  # only the scanning device
 
 
 async def test_unknown_tags_and_missing_scanner_are_handled(hass: HomeAssistant, hass_ws_client) -> None:
@@ -106,10 +106,10 @@ async def test_unknown_tags_and_missing_scanner_are_handled(hass: HomeAssistant,
     await _ws(hass, hass_ws_client, {"type": f"{DOMAIN}/nfc_link", "tag_id": "abc", "cc": "34OL"})
     events = async_capture_events(hass, "larder_dose_scanned")
 
-    await _scan(hass, "fremder-tag", phone)  # nicht unser Tag
+    await _scan(hass, "fremder-tag", phone)  # not our tag
     assert events == [] and calls == []
 
-    await _scan(hass, "abc")  # kein scannendes Gerät: Ereignis ja, Benachrichtigung nein
+    await _scan(hass, "abc")  # no scanning device: event yes, notification no
     assert len(events) == 1 and calls == []
     await _scan(hass, "abc", "gibt-es-nicht")
     assert len(events) == 2 and calls == []
@@ -166,13 +166,13 @@ async def test_scan_session_receives_scans_and_suppresses_the_notification(hass:
     device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "34OL")})
     assert msg["id"] == 2 and msg["type"] == "event"
     assert msg["event"]["device_id"] == device.id and msg["event"]["name"] == "Dose 34OL"
-    assert len(events) == 1  # Automationen bekommen das Ereignis weiterhin
-    assert calls == []  # keine Benachrichtigung während des Serien-Scans
+    assert len(events) == 1  # automations still get the event
+    assert calls == []  # no notification during the series scan
 
     await client.send_json({"id": 3, "type": "unsubscribe_events", "subscription": 2})
     assert (await client.receive_json())["success"]
     await _scan(hass, "abc", phone)
-    assert len(calls) == 1  # nach dem Ende wieder wie gewohnt
+    assert len(calls) == 1  # back to normal afterwards
 
 
 async def test_qr_scan_reported_by_the_dashboard_fires_the_scan_event(hass: HomeAssistant, hass_ws_client) -> None:
@@ -188,5 +188,5 @@ async def test_qr_scan_reported_by_the_dashboard_fires_the_scan_event(hass: Home
     assert events[0].data["source"] == "qr" and events[0].data["device_id"] == device.id
     await client.send_json({"id": 2, "type": f"{DOMAIN}/report_scan", "cc": "GIBTSNICHT"})
     assert (await client.receive_json())["success"] is False
-    # der Inhalt der eigenen QR-Codes lässt sich auch im Serien-Scan auflösen
+    # the content of our own QR codes can also be resolved in the series scan
     assert parse_qr("homeassistant://navigate/larder?cc=34OL").cc == "34OL"

@@ -124,6 +124,8 @@ class LarderContent(TextEntity, LarderResettable):
             attrs["shopping_list"] = own  # own shopping list of the product (else the default list)
         if self._kind in PACK_KINDS and stock is not None:
             attrs["min_stock"] = stock.minimum(value)  # minimum stock of the product (for the card)
+            if (interval := stock.interval_info(value)) is not None:
+                attrs["replace"] = interval  # replacement interval (weeks, last, due, days) for the card
             if (usage := stock.usage(value)) is not None:
                 attrs["consumption_per_week"] = usage["per_week"]  # consumption of the product (for "lasts another …")
                 attrs["consumption_basis"] = {"takes": usage["takes"], "days": usage["days"]}
