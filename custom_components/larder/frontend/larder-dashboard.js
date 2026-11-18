@@ -15,6 +15,8 @@ const { installCare } = await import(`./larder-dashboard-care.js${VERSION_QUERY}
 const { installCook } = await import(`./larder-dashboard-cook.js${VERSION_QUERY}`);
 const { installSupply, supplyTexts } = await import(`./larder-dashboard-supply.js${VERSION_QUERY}`);
 const { installVouchers, money } = await import(`./larder-dashboard-vouchers.js${VERSION_QUERY}`);
+const { installShopping, shoppingTexts } = await import(`./larder-dashboard-shopping.js${VERSION_QUERY}`);
+const { sectionNames } = await import(`./larder-dashboard-supply.js${VERSION_QUERY}`);
 
 const DOMAIN = "larder";
 const STORAGE_KEY = `${DOMAIN}.experimental`; // historic name, kept so saved views survive
@@ -54,7 +56,7 @@ export const CATEGORY_ICONS = {
 };
 
 const VIEWS = ["start", "containers", "recipes", "areas", "categories"];
-const ALL_VIEWS = [...VIEWS, "estimates", "stats", "stock", "stocktake", "supply"]; // "estimates" and "stats" are reached through ☰/⚙
+const ALL_VIEWS = [...VIEWS, "estimates", "stats", "stock", "stocktake", "supply", "shopping"]; // "estimates" and "stats" are reached through ☰/⚙
 const MODES = ["grid", "list", "cards"];
 const VIEW_ICONS = { start: "🏠", containers: "🥫", recipes: "📖", areas: "📍", categories: "🏷️" };
 
@@ -266,7 +268,7 @@ export class LarderDashboard extends HTMLElement {
     this.shadowRoot.innerHTML = `
       <style>${STYLE}</style>
       <header><button id="menu" type="button" aria-label="Menu">☰</button><h1></h1><button id="settings" type="button" hidden>⋮</button></header>
-      <div class="menu" hidden><button type="button" data-role="menu-stats"></button><button type="button" data-role="menu-stock"></button><button type="button" data-role="menu-stocktake"></button><button type="button" data-role="menu-supply"></button><button type="button" data-role="menu-sections"></button><button type="button" data-role="menu-putaway"></button><button type="button" data-role="menu-batch"></button><button type="button" data-role="menu-sizes"></button><button type="button" data-role="menu-labels"></button><button type="button" data-role="menu-data"></button><button type="button" data-role="menu-estimates"></button><button type="button" data-role="menu-settings"></button></div>
+      <div class="menu" hidden><button type="button" data-role="menu-stats"></button><button type="button" data-role="menu-shopping"></button><button type="button" data-role="menu-stock"></button><button type="button" data-role="menu-stocktake"></button><button type="button" data-role="menu-supply"></button><button type="button" data-role="menu-sections"></button><button type="button" data-role="menu-putaway"></button><button type="button" data-role="menu-batch"></button><button type="button" data-role="menu-sizes"></button><button type="button" data-role="menu-labels"></button><button type="button" data-role="menu-data"></button><button type="button" data-role="menu-estimates"></button><button type="button" data-role="menu-settings"></button></div>
       <div class="notice" role="alert" hidden></div>
       <main></main>
       <nav></nav>
@@ -328,6 +330,10 @@ export class LarderDashboard extends HTMLElement {
     this._menu.querySelector('[data-role="menu-stock"]').addEventListener("click", () => {
       this._menu.hidden = true;
       this.setView("stock");
+    });
+    this._menu.querySelector('[data-role="menu-shopping"]').addEventListener("click", () => {
+      this._menu.hidden = true;
+      this.setView("shopping");
     });
     this._menu.querySelector('[data-role="menu-supply"]').addEventListener("click", () => {
       this._menu.hidden = true;
@@ -595,6 +601,7 @@ export class LarderDashboard extends HTMLElement {
     if (view === "stats") this.loadStats();
     if (view === "stock") this.loadStock();
     if (view === "supply") this.loadSupply();
+    if (view === "shopping") this.loadShopping();
     if (view === "containers" && this._opts.scope === "voucher") this.loadVoucherStats();
     if (view === "containers") this.loadSizes();
     if (view === "start" || view === "recipes") this.loadPlans();
@@ -691,12 +698,15 @@ export class LarderDashboard extends HTMLElement {
                 ? this.stocktakeTitle()
                 : this._view === "supply"
                   ? this.supplyTitle()
-                  : t.views[this._view];
+                  : this._view === "shopping"
+                    ? this.shoppingTitle()
+                    : t.views[this._view];
     // ⋮: statistics and labels for everyone, export, estimates and settings for administrators only
     const admin = isAdmin(hass);
     this._settingsBtn.hidden = false;
     this._settingsBtn.setAttribute("aria-label", t.moreActions);
     this._settingsBtn.title = t.moreActions;
+    this._menu.querySelector('[data-role="menu-shopping"]').textContent = shoppingTexts(hass).menu;
     const st = supplyTexts(hass);
     this._menu.querySelector('[data-role="menu-supply"]').textContent = st.menu;
     this._menu.querySelector('[data-role="menu-supply"]').hidden = this._supplyCheck === false;
@@ -757,6 +767,7 @@ export class LarderDashboard extends HTMLElement {
       this._view === "stats" ? [this._stats, this._statsDays, this._hhStats] : null,
       this._view === "stock" ? this._stock : null,
       this._view === "supply" ? this._supply : null,
+      this._view === "shopping" ? this.shoppingSig() : null,
       this._opts.scope === "voucher" ? this._voucherStats : null,
       this._supplyCheck,
       this._view === "stocktake" ? this.stocktakeSig() : null,
@@ -794,6 +805,9 @@ export class LarderDashboard extends HTMLElement {
         break;
       case "supply":
         this._renderSupply();
+        break;
+      case "shopping":
+        this._renderShopping();
         break;
       default:
         this._renderStart(t, rows);
@@ -2088,7 +2102,11 @@ export class LarderDashboard extends HTMLElement {
     putAway.type = "button";
     putAway.dataset.role = "putaway";
     putAway.addEventListener("click", () => this.openPutAway());
-    help.append(putAway);
+    const shop = el("button", "", shoppingTexts(hass).startButton);
+    shop.type = "button";
+    shop.dataset.role = "start-shopping";
+    shop.addEventListener("click", () => this.setView("shopping"));
+    help.append(shop, putAway);
     const show = el("button", "", t.helpContainers);
     show.type = "button";
     show.dataset.role = "containers";
@@ -3193,6 +3211,7 @@ export class LarderDashboard extends HTMLElement {
 installItems(LarderDashboard, { el, isAdmin, listAreas, todoLists, scopeOfKind, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment });
 installCook(LarderDashboard, { el, isAdmin, DOMAIN });
 installSupply(LarderDashboard, { el, DOMAIN });
+installShopping(LarderDashboard, { el, DOMAIN, todoLists, sectionNames });
 installVouchers(LarderDashboard, { el, isAdmin, listAreas, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment });
 installCare(LarderDashboard, { el, isAdmin, listAreas, scopeOfKind, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment, CATEGORY_ICONS });
 

@@ -94,6 +94,8 @@ class Stock:
         # product → replacement interval (4.6): {"name", "weeks", "last": ISO date, "notified": due date reported}
         self.intervals: dict[str, dict[str, Any]] = {}
         self.sections: dict[str, str] = {}  # product → store section chosen on the card (4.7), else suggested
+        # product → recurring purchase (4.10): {"name", "weekdays": [0-6] | "every_days": n, "list", "last": ISO date}
+        self.recurring: dict[str, dict[str, Any]] = {}
         self._unsub = None
         self._unsub_daily = None
 
@@ -113,6 +115,7 @@ class Stock:
         self.lists = {str(k): str(v) for k, v in (data.get("lists") or {}).items() if str(v).startswith("todo.")}
         self.intervals = {k: v for k, v in (data.get("intervals") or {}).items() if isinstance(v, dict) and v.get("weeks")}
         self.sections = {str(k): str(v) for k, v in (data.get("sections") or {}).items() if v in SECTIONS}
+        self.recurring = {k: v for k, v in (data.get("recurring") or {}).items() if isinstance(v, dict) and v.get("name")}
 
     def _data(self) -> dict[str, Any]:
         return {
@@ -130,6 +133,7 @@ class Stock:
             "lists": self.lists,
             "intervals": self.intervals,
             "sections": self.sections,
+            "recurring": self.recurring,
         }
 
     # ----- Consumption and prices -----
@@ -279,7 +283,13 @@ class Stock:
 
     @callback
     def _check_replace_due(self, _now: Any = None) -> None:
-        """Once a day: products due for replacement fire `larder_replace_due` (once per due date)."""
+        """Once a day: products due for replacement fire `larder_replace_due` (once per due date).
+
+        Recurring purchases (4.10) are put onto their lists at the same time.
+        """
+        from .shopping_mode import async_check_recurring  # noqa: PLC0415 - avoids an import cycle
+
+        self.hass.async_create_task(async_check_recurring(self.hass), f"{DOMAIN}_recurring")
         de = (self.hass.config.language or "en").lower().startswith("de")
         changed = False
         for item in self.replace_due(0):
@@ -309,6 +319,10 @@ class Stock:
 
     def _save(self) -> None:
         self._store.async_delay_save(self._data, 1)
+
+    def save_now(self) -> None:
+        """Save soon (recurring purchases, shopping mode)."""
+        self._save()
 
     # ----- Shopping list → stock -----
 
@@ -1063,15 +1077,22 @@ async def async_put_away(hass: HomeAssistant, code: str) -> dict[str, Any]:
     get a whole pack (pieces per pack). Bought items of the product on the start page are taken care of.
     Unknown: nothing is made, the dashboard collects it (with the name from the product databases).
     """
-    from .disposable import async_create_items  # noqa: PLC0415 - avoids an import cycle
 
     found = await async_find_by_code(hass, code)
     known = found.get("known")
     if not known:
         return {"status": "unknown", **{k: found.get(k) for k in ("code", "name", "product", "product_type")}}
+    return await async_add_known(hass, known)
+
+
+async def async_add_known(hass: HomeAssistant, known: dict[str, Any], packs: int = 1) -> dict[str, Any]:
+    """`packs` packs of a known product more, at its usual place (put away, shopping mode)."""
+    from .disposable import async_create_items  # noqa: PLC0415 - avoids an import cycle
+
     key = product_key(known["content"])
     area_id, compartment = known.get("area_id"), known.get("compartment") or ""
-    size = int(known["product"].get("pack_size") or 1) if known["kind"] == KIND_HOUSEHOLD else 1
+    packs = max(1, int(packs or 1))
+    size = (int(known["product"].get("pack_size") or 1) if known["kind"] == KIND_HOUSEHOLD else 1) * packs
     target = next(
         (
             p for p in pack_entries(hass)

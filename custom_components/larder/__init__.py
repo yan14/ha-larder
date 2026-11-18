@@ -34,6 +34,7 @@ from .recipe_photo import async_setup_recipe_photo
 from .recipes import async_setup_recipe_service
 from .repair_hints import async_get_repairs
 from .scan import async_setup_webhook, async_teardown_webhook
+from .shopping_mode import async_setup_shopping_mode_websocket
 from .sizes import async_get_sizes, async_setup_sizes_websocket
 from .stats import async_setup_statistics
 from .stock import async_get_stock, async_setup_stock_websocket
@@ -74,6 +75,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_household_websocket(hass)
     async_setup_week_plan_websocket(hass)
     async_setup_supply_websocket(hass)
+    async_setup_shopping_mode_websocket(hass)
     async_setup_voucher_websocket(hass)
     await async_get_sizes(hass)
     async_setup_learning_websocket(hass)

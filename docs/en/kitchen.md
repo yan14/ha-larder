@@ -145,6 +145,19 @@ Since 4.7 every product belongs to a **store section**: 🥦 fruit & vegetables,
 
 When Larder puts something on a list, it moves the new item behind the last open item of the same or an earlier section, so the list follows your way through the store. Set the order once under **⋮ → 🏪 Store sections** (administrators) with ↑ and ↓. Items you typed yourself are sorted in by their name as well. This needs a list that can move items, such as the built-in *Shopping list* or *Local To-do*; lists that cannot (some cloud lists) keep the order in which items were added.
 
+### Shopping mode
+
+**🛒 Go shopping** on the start page (or **⋮ → 🛒 Shopping mode**) shows every list Larder writes to, grouped by [store section](#store-sections) in your order. **Tick an item off** and two things happen: it is completed on its to-do list, and it goes **into stock right away** at its usual place, with brand, package and price as known and as many packs as Larder asked for (*→ Pantry · Shelf (+2)*). Items Larder does not know yet (*new – added at the end*) are collected: **＋ Add n new items** opens the pack dialog with their names. *Bought – into stock?* does not offer them again.
+
+### Recurring purchases
+
+Things you buy regularly but do not count go onto the list on their own: **🔁 Recurring** on the shopping page. Give a name, the **weekdays** (e.g. *Fri* for a crate of water) or **every n days** (milk every 3 days) and optionally a list. Larder adds them in the morning at 8, never twice while one is still open.
+
+<p align="center">
+<img src="../images/dashboard-shopping-en.png" width="250" alt="Shopping mode">
+<img src="../images/dashboard-recurring-en.png" width="250" alt="Recurring purchases">
+</p>
+
 ## Emergency supply
 
 **⋮ → 🛟 Emergency supply** compares the stock with the example supply of the German Federal Office of Civil Protection (BBK) for 10 days: per person 20 l of drinks, 3.5 kg of grain, bread, potatoes, pasta and rice, 4 kg of vegetables and pulses, 2.5 kg of fruit and nuts, 2.6 kg of milk and dairy, 1.5 kg of fish, meat and eggs, and 0.36 kg of fats and oils. Below that it checks candles or a torch, batteries, a radio, toilet paper, soap, a first aid kit, pain relief, a thermometer and disinfectant by name.

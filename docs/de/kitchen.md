@@ -145,6 +145,19 @@ Seit 4.7 gehört jedes Produkt zu einer **Abteilung**: 🥦 Obst & Gemüse, 🥖
 
 Setzt Larder etwas auf eine Liste, schiebt es den neuen Eintrag hinter den letzten offenen Eintrag derselben oder einer früheren Abteilung – die Liste folgt so deinem Weg durch den Laden. Die Reihenfolge stellst du einmal unter **⋮ → 🏪 Abteilungen** (Administratoren) mit ↑ und ↓ ein. Selbst eingetippte Einträge werden nach ihrem Namen mit einsortiert. Das braucht eine Liste, die Einträge verschieben kann, z. B. die eingebaute *Einkaufsliste* oder *Lokale To-do-Liste*; Listen, die das nicht können (manche Cloud-Listen), behalten die Reihenfolge des Hinzufügens.
 
+### Einkaufsmodus
+
+**🛒 Einkaufen** auf der Startseite (oder **⋮ → 🛒 Einkaufsmodus**) zeigt alle Listen, auf die Larder schreibt, nach [Abteilungen](#abteilungen-im-laden) in deiner Reihenfolge. **Abhaken** erledigt zweierlei: Der Eintrag wird auf seiner To-do-Liste abgehakt und kommt **gleich in den Vorrat**, an seinen üblichen Ort, mit Marke, Packung und Preis, soweit bekannt, und so vielen Packungen, wie Larder bestellt hat (*→ Vorratskammer · Regal (+2)*). Was Larder noch nicht kennt (*neu – wird am Ende angelegt*), wird gesammelt: **＋ n neue Artikel anlegen** öffnet den Packungs-Dialog mit den Namen. *Eingekauft – in den Vorrat?* bietet sie nicht noch einmal an.
+
+### Wiederkehrende Einkäufe
+
+Was du regelmäßig kaufst, aber nicht zählst, kommt von selbst auf die Liste: **🔁 Wiederkehrend** auf der Einkaufen-Seite. Name, **Wochentage** (z. B. *Fr* für die Wasserkiste) oder **alle n Tage** (Milch alle 3 Tage) und optional eine Liste. Larder trägt es morgens um 8 Uhr ein, nie doppelt, solange noch einer offen ist.
+
+<p align="center">
+<img src="../images/dashboard-shopping-de.png" width="250" alt="Einkaufsmodus">
+<img src="../images/dashboard-recurring-de.png" width="250" alt="Wiederkehrende Einkäufe">
+</p>
+
 ## Notvorrat
 
 **⋮ → 🛟 Notvorrat** vergleicht den Bestand mit dem Beispielvorrat des Bundesamts für Bevölkerungsschutz und Katastrophenhilfe (BBK) für 10 Tage: pro Person 20 l Getränke, 3,5 kg Getreide, Brot, Kartoffeln, Nudeln und Reis, 4 kg Gemüse und Hülsenfrüchte, 2,5 kg Obst und Nüsse, 2,6 kg Milch und Milchprodukte, 1,5 kg Fisch, Fleisch und Eier sowie 0,36 kg Fette und Öle. Darunter prüft er am Namen Kerzen oder Taschenlampe, Batterien, Radio, Klopapier, Seife, Verbandskasten, Schmerzmittel, Fieberthermometer und Desinfektionsmittel.

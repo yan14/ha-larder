@@ -3,6 +3,11 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 4.10.0
+
+- **Shopping mode:** **🛒 Go shopping** on the start page (or **⋮ → 🛒 Shopping mode**) shows every list Larder uses, grouped by store section. Ticking an item off completes it on its list and puts it into stock right away at its usual place (as many packs as Larder asked for); unknown items are collected and added together at the end. *Bought – into stock?* does not offer them again.
+- **Recurring purchases:** **🔁 Recurring** on the shopping page puts things you do not count onto the list on chosen weekdays or every n days (at 8:00), never twice while still open.
+
 ## 4.9.0
 
 - **Voucher from a photo:** with an AI Task set up, **📷 Read from a photo** in the voucher dialog fills in shop, value, valid until and code from a photo; everything can be checked before saving. The code is returned to administrators only.

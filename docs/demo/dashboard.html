@@ -261,6 +261,15 @@ const hass = {
       { key: "soap", present: true, names: [de ? "Seife" : "Soap"] }, { key: "first_aid", present: true, names: [de ? "Pflaster" : "Plasters"] },
       { key: "pain", present: true, names: ["Ibuprofen 400"] }, { key: "thermometer", present: false, names: [] }, { key: "disinfectant", present: false, names: [] },
     ] };
+    if (msg.type === "larder/shopping_mode") return { order: [], items: (de ? [
+      ["Bananen", "produce", false], ["Äpfel", "produce", false], ["Vollkornbrot", "bakery", true], ["Milch", "fridge", true], ["Gouda", "fridge", true],
+      ["Penne (Barilla, 500 g)", "dry", true], ["Gehackte Tomaten (Mutti, 400 g)", "dry", true], ["Wasserkiste", "drinks", false], ["Klopapier (Zewa, 2 Packungen)", "drugstore", true],
+    ] : [
+      ["Bananas", "produce", false], ["Apples", "produce", false], ["Wholemeal bread", "bakery", true], ["Milk", "fridge", true], ["Gouda", "fridge", true],
+      ["Penne (Barilla, 500 g)", "dry", true], ["Chopped tomatoes (Mutti, 400 g)", "dry", true], ["Crate of water", "drinks", false], ["Toilet paper (Zewa, 2 packs)", "drugstore", true],
+    ]).map(([summary, section, known], i) => ({ list: "todo.einkaufen", list_name: "Einkaufen", uid: `s${i}`, summary, section, known })) };
+    if (msg.type === "larder/shopping_check") return msg.uid === "s0" ? { status: "unknown", name: msg.summary } : { status: "added", area: de ? "Vorratskammer" : "Pantry", compartment: de ? "Regal" : "Shelf", added: 1 };
+    if (msg.type === "larder/recurring") return { items: [{ key: "w", name: de ? "Wasserkiste" : "Crate of water", weekdays: [4] }, { key: "m", name: de ? "Milch" : "Milk", every_days: 3 }] };
     if (msg.type === "larder/voucher_stats") return { count: 2, open_value: 55, lost_value: 15, redeemed_value: 20 };
     if (msg.type === "larder/voucher_code") return { code: "4711-0815-2026" };
     if (msg.type === "larder/sections") return { order: ["produce", "bakery", "meat", "fridge", "dry", "breakfast", "drinks", "frozen", "drugstore", "pharmacy", "other"] };
@@ -387,6 +396,12 @@ if (q.get("dialog") === "voucher") {
   await new Promise((r) => setTimeout(r, 50));
 }
 if (q.get("dialog") === "voucher-new") await el.openVoucherDialog();
+if (q.get("view") === "shopping") {
+  await new Promise((r) => setTimeout(r, 50));
+  for (const uid of ["s0", "s2", "s3"]) el.shadowRoot.querySelector(`[data-uid="${uid}"] [data-role="shop-check"]`).click();
+  await new Promise((r) => setTimeout(r, 50));
+}
+if (q.get("dialog") === "recurring") await el.openRecurringDialog();
 if (q.get("dialog") === "place") await el.openPlace("cellar", de ? "Regal oben" : "Top shelf");
 if (q.get("take")) {
   el._take = { areaId: q.get("take"), compartment: "", started: true, status: new Map() };

@@ -3171,3 +3171,54 @@ test("Voucher from a photo (4.9): the AI fills shop, value, date and code; vouch
   assert.equal(el._classicShow === "cards" && el._classicIds !== null, false);
   $(el, '.scope [data-scope="food"]').click();
 });
+
+test("Shopping mode (4.10): by store section, tick off into stock, unknown at the end; recurring purchases", async () => {
+  const hass = makeHass(DOSES);
+  let recurring = [];
+  hass.callWS = (base => async (msg) => {
+    if (msg.type.startsWith(`${D}/shopping`) || msg.type.startsWith(`${D}/recurring`)) hass.wsCalls.push(msg);
+    if (msg.type === `${D}/shopping_mode`) return { order: ["produce", "dry"], items: [
+      { list: "todo.einkaufen", list_name: "Einkaufen", uid: "u1", summary: "Bananen", section: "produce", known: false },
+      { list: "todo.einkaufen", list_name: "Einkaufen", uid: "u2", summary: "Senf (Develey)", section: "dry", known: true },
+    ] };
+    if (msg.type === `${D}/shopping_check`) return msg.uid === "u2" ? { status: "added", area: "Vorrat", compartment: "Schrank", added: 2 } : { status: "unknown", name: "Bananen" };
+    if (msg.type === `${D}/recurring`) return { items: recurring };
+    if (msg.type === `${D}/recurring_set`) {
+      recurring = [{ key: "wasserkiste", name: msg.name, weekdays: msg.weekdays }];
+      return { items: recurring };
+    }
+    return base(msg);
+  })(hass.callWS);
+  const el = mount(hass);
+  await flush();
+  $(el, '[data-role="start-shopping"]').click();
+  await flush();
+  await flush();
+  assert.equal($(el, "h1").textContent, "Einkaufen");
+  const sections = $$(el, "main section.shop").map((s) => s.querySelector("h3").textContent);
+  assert.deepEqual(sections, ["🥦 Obst & Gemüse", "🍝 Nudeln, Reis & Konserven"]);
+  $(el, '[data-uid="u2"] [data-role="shop-check"]').click();
+  await flush();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/shopping_check`), { type: `${D}/shopping_check`, list: "todo.einkaufen", uid: "u2", summary: "Senf (Develey)" });
+  assert.match($(el, '[data-uid="u2"]').textContent, /→ Vorrat · Schrank \(\+2\)/);
+  assert.equal($(el, '[data-uid="u2"]').classList.contains("done"), true);
+  $(el, '[data-uid="u1"] [data-role="shop-check"]').click();
+  await flush();
+  await flush();
+  const add = $(el, '[data-role="shop-add-unknown"]');
+  assert.equal(add.textContent, "＋ 1 neuen Artikel anlegen");
+  add.click();
+  assert.equal($(el, "form.dialog").querySelector('[data-i="content"]').value, "Bananen");
+  $(el, "form.dialog button.cancel").click();
+  // recurring: Friday
+  $(el, '[data-role="shop-recurring"]').click();
+  await flush();
+  const form = $(el, "form.dialog");
+  form.querySelector('[data-f="recurring-name"]').value = "Wasserkiste";
+  form.querySelector('[data-day="4"]').click();
+  form.querySelector('[data-role="recurring-add"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/recurring_set`), { type: `${D}/recurring_set`, name: "Wasserkiste", weekdays: [4] });
+  assert.match(form.querySelector('[data-key="wasserkiste"]').textContent, /WasserkisteFr/);
+});
