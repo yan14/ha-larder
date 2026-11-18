@@ -184,7 +184,7 @@ Since 4.4 medicines have a side of their own, **Pharmacy** (💊), next to food 
 
 ## Vouchers
 
-Since 4.8 Larder keeps **vouchers**, so none expires unused. **＋ → 🎟️ Voucher** adds one with the **shop or name**, **value**, **valid until**, place (area and compartment, e.g. *Study · desk drawer*) and optionally the **code**.
+Since 4.8 Larder keeps **vouchers**, so none expires unused. **＋ → 🎟️ Voucher** adds one with the **shop or name**, **value**, **valid until**, place (area and compartment, e.g. *Study · desk drawer*) and optionally the **code**. With an AI Task set up, **📷 Read from a photo** fills these in from a photo of the voucher (since 4.9; please check them, the code only for administrators).
 
 - **Own page.** As soon as there is a voucher, the switch on the **Larder** page gets **🎟️ Vouchers**; above the tiles: how many there are, the open value, and what expired or was redeemed in the last 12 months.
 - **Reminder.** Vouchers warn as early as medicines (60 days by default, setting *“Expires soon” for medicines, household and vouchers*): the start page has a section **🎟️ Vouchers**, and the [medicine reminder](kitchen.md#medicines-expiring) names them too (*“the Waterstones voucher worth 25 euros”*), switchable in the blueprint.

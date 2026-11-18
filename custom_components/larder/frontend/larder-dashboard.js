@@ -1574,11 +1574,11 @@ export class LarderDashboard extends HTMLElement {
         for (const row of items) box.append(mode === "grid" ? this._tile(row, t) : this._listRow(row, t));
         return box;
       };
-      if (mode === "cards") {
+      if (mode === "cards" && this._opts.scope !== "voucher") {
         // all details: the cards of the classic view, in this order and with these filters
         this._classicShow = "cards";
         this._classicIds = rows.map((r) => r.id).join(",");
-      } else if (!grouped) {
+      } else if (!grouped || mode === "cards") {
         frag.append(container(rows));
       } else {
         const keyOf = (r) =>

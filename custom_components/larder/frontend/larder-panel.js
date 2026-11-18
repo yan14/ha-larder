@@ -2580,7 +2580,9 @@ class LarderPanel extends HTMLElement {
       const byId = new Map(this._devices.map((d) => [d.deviceId, d]));
       this._arranged = ids.split(",").map((id) => byId.get(id)).filter(Boolean);
     } else {
-      this._arranged = arrangeDevices(hass, this._devices, this._opts);
+      // vouchers (4.8) have a dialog of their own in the dashboard, not a card
+      const isVoucher = (d) => ((hass.states[d.entities.text] || {}).attributes || {}).kind === "voucher";
+      this._arranged = arrangeDevices(hass, this._devices.filter((d) => !isVoucher(d)), this._opts);
     }
     const sig = JSON.stringify([this._arranged.map((d) => d.deviceId), this._opts.sort, this._devices.length, this._flat]);
     if (registriesChanged || sig !== this._layoutSig) {

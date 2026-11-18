@@ -8,6 +8,7 @@ from homeassistant.util import dt as dt_util
 
 from .test_block18 import _create
 from .test_disposable import _entities, _ws
+from .test_recipe_photo import ready  # noqa: F401
 from .test_recipes import _setup, auto_enable_custom_integrations  # noqa: F401
 
 
@@ -87,3 +88,28 @@ async def test_redeem_expire_stats_and_reminder(hass: HomeAssistant, hass_ws_cli
     # not food: no daily summary, no emergency supply
     res = await hass.services.async_call("larder", "get_expiring", {"days": 365}, blocking=True, return_response=True)
     assert not any(i["kind"] == "voucher" for i in res["items"])
+
+
+async def test_voucher_photo(hass: HomeAssistant, hass_client, hass_admin_user, ready) -> None:  # noqa: F811
+    from http import HTTPStatus
+
+    from custom_components.larder.voucher_photo import URL, parse_date
+
+    from .test_recipe_photo import _fake_ai, _form
+
+    assert parse_date("31.12.26") == "2026-12-31"
+    assert parse_date("2027-03-01") == "2027-03-01"
+    assert parse_date("bald") is None
+    calls = _fake_ai(hass, {"found": True, "shop": " Thalia ", "value": "25,00", "valid_until": "31.12.2026", "code": "AB 12-34"})
+    client = await hass_client()
+    resp = await client.post(URL, data=_form(("gutschein.jpg", "image/jpeg", b"\xff\xd8x")))
+    assert resp.status == HTTPStatus.OK
+    assert (await resp.json()) == {"shop": "Thalia", "value": 25, "valid_until": "2026-12-31", "code": "AB 12-34"}
+    assert "voucher" in calls[0]["instructions"]
+    # the code only for administrators
+    hass_admin_user.groups = []
+    resp = await client.post(URL, data=_form(("gutschein.jpg", "image/jpeg", b"\xff\xd8x")))
+    assert "code" not in await resp.json()
+    _fake_ai(hass, {"found": False})
+    resp = await client.post(URL, data=_form(("x.jpg", "image/jpeg", b"x")))
+    assert (await resp.json())["error"] == "voucher_photo_none"

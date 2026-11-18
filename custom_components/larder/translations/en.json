@@ -212,6 +212,9 @@
     },
     "place_tag_in_use": {
       "message": "This tag already belongs to the compartment {name}."
+    },
+    "voucher_photo_none": {
+      "message": "No voucher was recognised in the photo."
     }
   },
   "options": {

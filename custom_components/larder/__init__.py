@@ -39,6 +39,7 @@ from .stats import async_setup_statistics
 from .stock import async_get_stock, async_setup_stock_websocket
 from .supply import async_setup_supply_websocket
 from .temperature import async_get_temperature_watch
+from .voucher_photo import async_setup_voucher_photo
 from .vouchers import async_get_vouchers, async_setup_voucher_websocket
 from .websocket import async_setup_websocket
 from .week_plan import async_setup_week_plan_websocket
@@ -56,6 +57,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_recipe_photo(hass)
     async_setup_content_photo(hass)
     async_setup_receipt_photo(hass)
+    async_setup_voucher_photo(hass)
     async_setup_labels(hass)
     async_setup_export(hass)
     async_setup_history_websocket(hass)

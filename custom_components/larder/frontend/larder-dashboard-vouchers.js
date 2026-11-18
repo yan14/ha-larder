@@ -19,6 +19,10 @@ const TEXT = {
     compartmentHint: "z. B. Schublade",
     code: "Code (nur für Administratoren sichtbar)",
     codeHint: "optional",
+    photo: "📷 Vom Foto lesen",
+    photoBusy: "Die KI liest den Gutschein …",
+    photoDone: "Übernommen – bitte prüfen.",
+    photoFailed: "Der Gutschein konnte nicht gelesen werden.",
     save: "Speichern",
     create: "Hinzufügen",
     cancel: "Abbrechen",
@@ -57,6 +61,10 @@ const TEXT = {
     compartmentHint: "e.g. drawer",
     code: "Code (visible to administrators only)",
     codeHint: "optional",
+    photo: "📷 Read from a photo",
+    photoBusy: "The AI is reading the voucher …",
+    photoDone: "Filled in – please check.",
+    photoFailed: "The voucher could not be read.",
     save: "Save",
     create: "Add",
     cancel: "Cancel",
@@ -200,9 +208,49 @@ export function installVouchers(Dashboard, { el, isAdmin, listAreas, DOMAIN, att
     }
     const error = el("div", "error");
     error.setAttribute("role", "alert");
+    // 4.9: read shop, value, date and code from a photo (AI Task); the code comes back for administrators only
+    const extras = [];
+    if (!row && hass.services && hass.services.ai_task && hass.fetchWithAuth) {
+      const file = el("input");
+      file.type = "file";
+      file.accept = "image/*";
+      file.hidden = true;
+      file.dataset.role = "voucher-photo-file";
+      const status = el("p", "hint");
+      status.hidden = true;
+      status.dataset.role = "voucher-photo-status";
+      const photo = button("link", t.photo, () => file.click());
+      photo.dataset.role = "voucher-photo";
+      file.addEventListener("change", async () => {
+        const picked = file.files && file.files[0];
+        file.value = "";
+        if (!picked) return;
+        status.hidden = false;
+        status.textContent = t.photoBusy;
+        photo.disabled = true;
+        try {
+          const body = new FormData();
+          body.append("file", picked, picked.name || "voucher.jpg");
+          const res = await hass.fetchWithAuth(`/api/${DOMAIN}/voucher_photo`, { method: "POST", body });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.message || t.photoFailed);
+          if (data.shop) name.value = data.shop;
+          if (data.value) value.value = String(data.value).replace(".", de(hass) ? "," : ".");
+          if (data.valid_until) until.value = data.valid_until;
+          if (code && data.code) code.value = data.code;
+          status.textContent = t.photoDone;
+        } catch (err) {
+          status.textContent = (err && err.message) || t.photoFailed;
+        } finally {
+          photo.disabled = false;
+        }
+      });
+      extras.push(photo, file, status);
+    }
     const submit = button("submit", row ? t.save : t.create, null, "submit");
     this._form.replaceChildren(
       el("h2", "", row ? t.titleEdit : t.titleNew),
+      ...extras,
       ...(row ? [] : [field(t.name, name)]),
       field(t.value, value),
       field(t.validUntil, until),

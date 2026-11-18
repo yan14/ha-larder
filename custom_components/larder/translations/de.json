@@ -212,6 +212,9 @@
     },
     "place_tag_in_use": {
       "message": "Dieser Tag gehört schon zum Fach {name}."
+    },
+    "voucher_photo_none": {
+      "message": "Auf dem Foto wurde kein Gutschein erkannt."
     }
   },
   "options": {

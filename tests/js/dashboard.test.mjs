@@ -3133,3 +3133,41 @@ test("Vouchers (4.8): own scope only when there is one, start section, detail wi
   await go(plain, "containers");
   assert.equal($(plain, '.scope [data-scope="voucher"]'), null);
 });
+
+test("Voucher from a photo (4.9): the AI fills shop, value, date and code; vouchers never as classic cards", async () => {
+  const hass = makeHass([...DOSES, { id: "v1", name: "Gutschein 1", area: "kitchen", content: "Thalia", days: 20, category: "voucher" }]);
+  hass.states["text.v1_inhalt"].attributes = { category: "voucher", kind: "voucher", value: 25 };
+  const uploads = [];
+  hass.fetchWithAuth = async (url, init) => {
+    uploads.push(url);
+    return { ok: true, json: async () => ({ shop: "IKEA", value: 50.5, valid_until: "2027-06-30", code: "4711" }) };
+  };
+  const el = mount(hass);
+  await flush();
+  await go(el, "containers");
+  $(el, '[data-role="add"]').click();
+  $(el, '[data-role="add-voucher"]').click();
+  await flush();
+  const form = $(el, "form.dialog");
+  const file = form.querySelector('[data-role="voucher-photo-file"]');
+  Object.defineProperty(file, "files", { value: [new File(["x"], "g.jpg", { type: "image/jpeg" })], configurable: true });
+  Object.defineProperty(file, "value", { value: "", writable: true, configurable: true });
+  file.dispatchEvent(new Event("change"));
+  await flush();
+  await flush();
+  assert.deepEqual(uploads, ["/api/larder/voucher_photo"]);
+  assert.equal(form.querySelector('[data-f="voucher-name"]').value, "IKEA");
+  assert.equal(form.querySelector('[data-f="voucher-value"]').value, "50,5");
+  assert.equal(form.querySelector('[data-f="voucher-until"]').value, "2027-06-30");
+  assert.equal(form.querySelector('[data-f="voucher-code"]').value, "4711");
+  assert.equal(form.querySelector('[data-role="voucher-photo-status"]').textContent, "Übernommen – bitte prüfen.");
+  $(el, "form.dialog button.cancel").click();
+  // cards view: vouchers stay rows of their own
+  $(el, '.scope [data-scope="voucher"]').click();
+  el._opts.mode = "cards";
+  el._sig = "";
+  el._update();
+  assert.ok($(el, 'main [data-id="v1"]'));
+  assert.equal(el._classicShow === "cards" && el._classicIds !== null, false);
+  $(el, '.scope [data-scope="food"]').click();
+});

@@ -3,6 +3,11 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 4.9.0
+
+- **Voucher from a photo:** with an AI Task set up, **📷 Read from a photo** in the voucher dialog fills in shop, value, valid until and code from a photo; everything can be checked before saving. The code is returned to administrators only.
+- Vouchers no longer show up as classic cards (view *cards with all details* and the classic panel); they always open their own dialog.
+
 ## 4.8.0
 
 - **Vouchers:** **＋ → 🎟️ Voucher** keeps vouchers with value, valid until and place (area and compartment). They get a side of their own, **🎟️ Vouchers**, which appears once there is one, with the open value and what expired or was redeemed in the last 12 months. Tap a voucher to **redeem part** of it (the remaining value goes down), mark it **fully redeemed** or **expired**, or edit value, date and code.

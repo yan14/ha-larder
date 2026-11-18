@@ -184,7 +184,7 @@ Seit 4.4 haben Medikamente einen eigenen Bereich, **Apotheke** (💊), neben Leb
 
 ## Gutscheine
 
-Seit 4.8 verwaltet Larder **Gutscheine**, damit keiner verfällt. **＋ → 🎟️ Gutschein** legt einen an: **Laden oder Name**, **Wert**, **gültig bis**, Ort (Bereich und Fach, z. B. *Arbeitszimmer · Schreibtischschublade*) und optional der **Code**.
+Seit 4.8 verwaltet Larder **Gutscheine**, damit keiner verfällt. **＋ → 🎟️ Gutschein** legt einen an: **Laden oder Name**, **Wert**, **gültig bis**, Ort (Bereich und Fach, z. B. *Arbeitszimmer · Schreibtischschublade*) und optional der **Code**. Mit eingerichteter KI-Aufgabe füllt **📷 Vom Foto lesen** das aus einem Foto des Gutscheins aus (seit 4.9; bitte prüfen, den Code nur für Administratoren).
 
 - **Eigene Seite.** Sobald es einen Gutschein gibt, hat der Umschalter auf der Seite **Vorrat** zusätzlich **🎟️ Gutscheine**; über den Kacheln steht, wie viele es sind, welcher Wert offen ist und was in den letzten 12 Monaten verfallen oder eingelöst wurde.
 - **Erinnerung.** Gutscheine warnen so früh wie Medikamente (standardmäßig 60 Tage, Einstellung *„Läuft bald ab“ für Medikamente, Haushalt und Gutscheine*): Die Startseite hat einen Abschnitt **🎟️ Gutscheine**, und die [Medikamenten-Erinnerung](kitchen.md#ablaufende-medikamente) nennt sie mit (*„der Gutschein Thalia über 25 Euro“*), im Blueprint abschaltbar.
