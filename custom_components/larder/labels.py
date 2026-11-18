@@ -24,7 +24,7 @@ from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr, entity_registry as er
 
-from .const import DOMAIN, PACK_KINDS, larder_ids, scan_app_url
+from .const import DOMAIN, NO_CODE_KINDS, larder_ids, scan_app_url
 from .entity import kind_of
 from .places import place_app_url, place_name
 
@@ -591,7 +591,7 @@ def collect_labels(
         cc = entry.data.get("cc")
         if not cc or (wanted and cc.upper() not in wanted):
             continue
-        if not wanted and kind_of(entry) in PACK_KINDS:
+        if not wanted and kind_of(entry) in NO_CODE_KINDS:
             continue  # packs have no code: only on explicit request
         content = best = nutrition = ""
         if with_nutrition:

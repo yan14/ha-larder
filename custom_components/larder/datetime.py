@@ -12,7 +12,7 @@ from homeassistant.helpers.entity_platform import (
 )
 from homeassistant.util import dt as dt_util
 
-from .const import PACK_KINDS, SERVICE_CLEAR_FILLED_AT
+from .const import NO_CODE_KINDS, SERVICE_CLEAR_FILLED_AT
 from .entity import LarderConfigEntry, LarderResettable, kind_of
 
 
@@ -21,7 +21,7 @@ async def async_setup_entry(
     entry: LarderConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    if kind_of(entry) not in PACK_KINDS:  # packs: only content, quantity and best-before date
+    if kind_of(entry) not in NO_CODE_KINDS:  # packs: only content, quantity and best-before date
         filled_at = LarderFilledAt(entry)
         entry.runtime_data.resettable[filled_at._key] = filled_at
         async_add_entities([filled_at])

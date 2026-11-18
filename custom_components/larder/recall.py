@@ -179,8 +179,8 @@ def stock_items(hass: HomeAssistant) -> list[dict[str, Any]]:
     out = []
     for entry in hass.config_entries.async_entries(DOMAIN):
         cc = entry.data.get(CONF_CC)
-        if not cc:
-            continue
+        if not cc or entry.data.get("kind") == "voucher":
+            continue  # vouchers are never matched against recalls
         entity_id = registry.async_get_entity_id("text", DOMAIN, f"{cc}_content")
         state = hass.states.get(entity_id) if entity_id else None
         if state is None or state.state in (STATE_UNKNOWN, STATE_UNAVAILABLE) or not state.state.strip():

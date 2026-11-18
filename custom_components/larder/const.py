@@ -35,10 +35,12 @@ KIND_BAG = "bag"
 KIND_PACK = "pack"
 KIND_HOUSEHOLD = "household"  # household item: like a pack, counted in pieces, best-before date optional
 KIND_MEDICINE = "medicine"  # medicine (4.4): like a pack, with an expiry date and a longer warning
-KINDS = (KIND_CONTAINER, KIND_BAG, KIND_PACK, KIND_HOUSEHOLD, KIND_MEDICINE)
+KIND_VOUCHER = "voucher"  # voucher (4.8): value, valid until, place; no stock, no shopping list
+KINDS = (KIND_CONTAINER, KIND_BAG, KIND_PACK, KIND_HOUSEHOLD, KIND_MEDICINE, KIND_VOUCHER)
 PACK_KINDS = (KIND_PACK, KIND_HOUSEHOLD, KIND_MEDICINE)  # stock without a container
-DISPOSABLE_KINDS = (KIND_BAG, KIND_PACK, KIND_HOUSEHOLD, KIND_MEDICINE)  # disappear after emptying
-NON_FOOD_KINDS = (KIND_HOUSEHOLD, KIND_MEDICINE)  # not food: no recipes, food statistics or daily summary
+NO_CODE_KINDS = (*PACK_KINDS, KIND_VOUCHER)  # no code, no fill date, no switches; area and date optional
+DISPOSABLE_KINDS = (KIND_BAG, KIND_PACK, KIND_HOUSEHOLD, KIND_MEDICINE, KIND_VOUCHER)  # disappear after emptying
+NON_FOOD_KINDS = (KIND_HOUSEHOLD, KIND_MEDICINE, KIND_VOUCHER)  # not food: no recipes, food statistics or daily summary
 CONF_SOURCE = "source"  # "zwilling" (QR code read) or "generated" (newly created)
 
 SOURCE_ZWILLING = "zwilling"

@@ -16,7 +16,7 @@ Settings → Devices & services → **Larder** → **Configure** (on any contain
 | Time after thawing | 2 days | The same for the **Thawed** button |
 | Period for recipe ideas | 3 days | Containers that expire within this many days are used for [recipe ideas](kitchen.md#recipe-ideas) (0 = today only) |
 | "Expiring soon" from | 3 days | When a container counts as expiring soon: hint and filter in the dashboards, sensor `status`, default of `larder.get_expiring` |
-| "Expires soon" for medicines and household | 60 days | The same for [medicines](containers.md#medicines-pharmacy) and household items with a date; they are shown on the start page only |
+| "Expires soon" for medicines, household and vouchers | 60 days | The same for [medicines](containers.md#medicines-pharmacy), household items with a date and [vouchers](containers.md#vouchers); they are shown on the start page only |
 | Vacuum preset | on | Preset of the **Vacuum** switch for new containers |
 | NFC: notify the phone | on | Notification on the scanning phone after an [NFC scan](scanning.md#nfc-tags) |
 | Repair hints | on | Hints under Settings → System → Repairs, see [Repairs](#repairs) |
@@ -102,7 +102,7 @@ The values survive restarts. "Empty container" is a regular button entity, so yo
 | `larder.clear_best_before` / `larder.clear_filled_at` | Clear a single date |
 | `larder.mark_opened` / `larder.mark_thawed` | Shorten the best-before date after opening or thawing (`days` optional) |
 | `larder.get_expiring` | List what expires soon, with a ready-made text, see [Daily summary](kitchen.md#daily-summary) |
-| `larder.get_expiring_medicines` | The same for medicines and household items with a date, see [Medicines expiring](kitchen.md#medicines-expiring) |
+| `larder.get_expiring_medicines` | The same for medicines, household items with a date and vouchers, see [Medicines expiring](kitchen.md#medicines-expiring) |
 | `larder.suggest_recipes` | [Recipe ideas](kitchen.md#recipe-ideas) from what expires soon, from all or from selected containers |
 | `larder.get_statistics` | Eaten / thrown away, most frequent contents, storage time and current stock, see [Statistics](dashboard.md#statistics) |
 | `larder.get_monthly_report` | Report of a month (filled, emptied, eaten, thrown away, compared with the month before) with text and speech, see [Monthly report](kitchen.md#monthly-report) |

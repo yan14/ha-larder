@@ -236,7 +236,7 @@
           "thaw_days": "Auftauen: Tage vorher",
           "recipe_days": "Zeitraum für Rezeptideen (Tage)",
           "soon_days": "„Läuft bald ab“ ab (Tage)",
-          "long_soon_days": "„Läuft bald ab“ für Medikamente und Haushalt (Tage)",
+          "long_soon_days": "„Läuft bald ab“ für Medikamente, Haushalt und Gutscheine (Tage)",
           "shopping_details": "Marke und Packung mit auf die Einkaufsliste",
           "watch_allergens": "Allergene im Haushalt (optional)",
           "stock_lead_days": "Vorrat: Tage bis zum nächsten Einkauf",
@@ -310,7 +310,7 @@
     },
     "get_expiring_medicines": {
       "name": "Ablaufende Medikamente abrufen",
-      "description": "Liefert Medikamente und Haushaltsartikel mit Datum, die innerhalb ihrer Vorwarnung ablaufen oder abgelaufen sind, mit fertigem Text für Benachrichtigungen und Sprachausgabe (Antwort: count, expired, items, summary, speech).",
+      "description": "Liefert Medikamente, Haushaltsartikel mit Datum und Gutscheine, die innerhalb ihrer Vorwarnung ablaufen oder abgelaufen sind, mit fertigem Text für Benachrichtigungen und Sprachausgabe (Antwort: count, expired, items, summary, speech).",
       "fields": {
         "days": {
           "name": "Tage",
@@ -319,6 +319,10 @@
         "include_expired": {
           "name": "Abgelaufene einbeziehen",
           "description": "Auch bereits abgelaufene auflisten."
+        },
+        "include_vouchers": {
+          "name": "Gutscheine einbeziehen",
+          "description": "Auch Gutscheine, die bald ablaufen (abgelaufene nie)."
         }
       }
     },

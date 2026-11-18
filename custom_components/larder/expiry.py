@@ -16,6 +16,7 @@ from .const import (
     DEFAULT_LONG_SOON_DAYS,
     DEFAULT_UNIT,
     DOMAIN,
+    KIND_VOUCHER,
     NON_FOOD_KINDS,
     SERVICE_GET_EXPIRING,
     SERVICE_GET_EXPIRING_MEDICINES,
@@ -132,6 +133,34 @@ def quantity_text(text: dict[str, Any], item: dict[str, Any]) -> str:
     return text["units"].get(item.get("unit"), text["units"][DEFAULT_UNIT])(item["quantity"])
 
 
+def _voucher_value(state) -> float | None:
+    try:
+        return round(float((state.attributes if state is not None else {}).get("value")), 2)
+    except (TypeError, ValueError):
+        return None
+
+
+def _money(value: float | None, de: bool) -> str:
+    if not value:
+        return ""
+    text = str(int(value)) if value == int(value) else f"{value:.2f}"
+    return f"{text.replace('.', ',')} €" if de else f"€{text}"
+
+
+def _voucher_label(item: dict[str, Any], language: str, spoken: bool = False) -> str:
+    """"Gutschein Thalia (25 €)" / spoken "der Gutschein Thalia über 25 Euro"."""
+    de = language.lower().startswith("de")
+    name = (item.get("content") or item.get("name") or "").strip()
+    value = item.get("value")
+    if spoken:
+        amount = (str(int(value)) if value == int(value) else f"{value:.2f}".replace(".", "," if de else ".")) if value else ""
+        if de:
+            return f"der Gutschein {name}" + (f" über {amount} Euro" if amount else "")
+        return f"the {name} voucher" + (f" worth {amount} euros" if amount else "")
+    money = _money(value, de)
+    return (f"Gutschein {name}" if de else f"{name} voucher") + (f" ({money})" if money else "")
+
+
 def build_summary(items: list[dict[str, Any]], language: str, medicines: bool = False) -> str:
     """Short text for notifications, in Home Assistant's language (`medicines`: wording for medicines)."""
     text = _TEXT["de" if language.lower().startswith("de") else "en"]
@@ -141,7 +170,7 @@ def build_summary(items: list[dict[str, Any]], language: str, medicines: bool = 
     soon = len(items) - expired
     lines = [text["head_medicine" if medicines else "head"](soon, expired) + ":"]
     for item in items:
-        label = item["content"] or item["name"] or text["unnamed"]
+        label = _voucher_label(item, language) if item.get("kind") == KIND_VOUCHER else item["content"] or item["name"] or text["unnamed"]
         expired_item = item["days_left"] is not None and item["days_left"] < 0
         extras = []
         if expired_item and item["content"] and item["name"] and not medicines:
@@ -217,7 +246,7 @@ def build_speech(items: list[dict[str, Any]], language: str, limit: int = MAX_SP
     groups: dict[int, list[str]] = {}
     expired: list[str] = []
     for item in items:
-        name = (item["content"] or item["name"] or unnamed).strip()
+        name = _voucher_label(item, language, spoken=True) if item.get("kind") == KIND_VOUCHER else (item["content"] or item["name"] or unnamed).strip()
         if item["days_left"] is None:
             continue
         if item["days_left"] < 0:
@@ -260,6 +289,7 @@ def collect_expiring(
     include_expired: bool = True,
     include_undated: bool = False,
     medicines: bool = False,
+    vouchers: bool = True,
 ) -> list[dict[str, Any]]:
     """All containers with a date within the next `days` days (and expired ones if wanted), earliest first.
 
@@ -277,6 +307,9 @@ def collect_expiring(
         # food: medicines and household items are only on the start page (and in their own reminder)
         if not cc or (kind_of(entry) in NON_FOOD_KINDS) != medicines:
             continue
+        voucher = kind_of(entry) == KIND_VOUCHER
+        if voucher and not vouchers:
+            continue
         date_id = registry.async_get_entity_id("date", DOMAIN, f"{cc}_best_before")
         state = hass.states.get(date_id) if date_id else None
         best: date | None = None
@@ -291,7 +324,8 @@ def collect_expiring(
             left = None
         else:
             left = days_left(best)
-            if (days is not None and left > days) or (left < 0 and not include_expired):
+            # expired vouchers are worth nothing any more: never in the reminder
+            if (days is not None and left > days) or (left < 0 and (not include_expired or voucher)):
                 continue
         content_id = registry.async_get_entity_id("text", DOMAIN, f"{cc}_content")
         content_state = hass.states.get(content_id) if content_id else None
@@ -323,6 +357,7 @@ def collect_expiring(
                 "days_left": left,
                 "status": status_for(left, soon),
                 "entity_id": date_id,
+                **({"value": _voucher_value(content_state)} if voucher else {}),
             }
         )
     items.sort(
@@ -363,7 +398,9 @@ def async_setup_services(hass: HomeAssistant) -> None:
     async def handle_medicines(call: ServiceCall) -> dict[str, Any]:
         """Medicines and household items with a date within their (longer) warning period (#97)."""
         language = hass.config.language
-        items = collect_expiring(hass, call.data.get("days"), call.data["include_expired"], medicines=True)
+        items = collect_expiring(
+            hass, call.data.get("days"), call.data["include_expired"], medicines=True, vouchers=call.data["include_vouchers"]
+        )
         return {
             "count": len(items),
             "expired": sum(1 for i in items if i["status"] == STATUS_EXPIRED),
@@ -381,6 +418,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
             {
                 vol.Optional("days"): vol.All(vol.Coerce(int), vol.Range(min=1, max=365)),
                 vol.Optional("include_expired", default=True): cv.boolean,
+                vol.Optional("include_vouchers", default=True): cv.boolean,
             }
         ),
         supports_response=SupportsResponse.ONLY,

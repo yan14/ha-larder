@@ -176,11 +176,26 @@ Seit 4.0 verwaltet Larder auch Dinge ohne Haltbarkeitsdatum: Klopapier, Küchenr
 
 Seit 4.4 haben Medikamente einen eigenen Bereich, **Apotheke** (💊), neben Lebensmitteln und Haushalt. **＋ → 💊 Medikament** legt sie mit **Verfallsdatum**, Anzahl (Packungen) und Preis an.
 
-- **Längere Vorwarnung.** Medikamente gelten früher als *läuft bald ab* als Lebensmittel: standardmäßig **60 Tage** vor dem Verfallsdatum (Einstellung *„Läuft bald ab“ für Medikamente und Haushalt*). Sie stehen dann auf der Startseite im Abschnitt **💊 Apotheke**, nicht in der täglichen Zusammenfassung, bei Rezepten oder in der Lebensmittel-Statistik.
+- **Längere Vorwarnung.** Medikamente gelten früher als *läuft bald ab* als Lebensmittel: standardmäßig **60 Tage** vor dem Verfallsdatum (Einstellung *„Läuft bald ab“ für Medikamente, Haushalt und Gutscheine*). Sie stehen dann auf der Startseite im Abschnitt **💊 Apotheke**, nicht in der täglichen Zusammenfassung, bei Rezepten oder in der Lebensmittel-Statistik.
 - **Eigene Orte und Liste.** Bereiche mit dem Label `Larder: Apotheke` (oder `Larder: Pharmacy`), z. B. der Arzneischrank oder der Verbandskasten im Auto, werden nur für Medikamente angeboten, siehe [Lebensmittel, Haushalt oder Apotheke](#lebensmittel-haushalt-oder-apotheke). Eine eigene Standard-Einkaufsliste (*Einkaufsliste für Medikamente*), z. B. *Apotheke*.
 - **Nach dem Öffnen.** **Anbrechen** auf der Karte (oder im Strichcode-Dialog) markiert eine Packung als angebrochen. Steht auf ihrer Karte *Haltbar nach dem Öffnen (Monate)*, wird das Verfallsdatum der kürzere Wert aus aufgedrucktem Datum und dieser Frist, z. B. Augentropfen 1 Monat.
 - **Kategorien:** Schmerz & Fieber, Erkältung, Magen & Darm, Wunde & Verband, Allergie, Vitamine & Mineralstoffe, Sonstige.
 - Mindestbestand, *bald leer*, Umbuchen und Inventur funktionieren wie bei Packungen. Rückrufwarnungen von lebensmittelwarnung.de decken Medikamente nicht ab, deshalb wird dort nichts abgeglichen.
+
+## Gutscheine
+
+Seit 4.8 verwaltet Larder **Gutscheine**, damit keiner verfällt. **＋ → 🎟️ Gutschein** legt einen an: **Laden oder Name**, **Wert**, **gültig bis**, Ort (Bereich und Fach, z. B. *Arbeitszimmer · Schreibtischschublade*) und optional der **Code**.
+
+- **Eigene Seite.** Sobald es einen Gutschein gibt, hat der Umschalter auf der Seite **Vorrat** zusätzlich **🎟️ Gutscheine**; über den Kacheln steht, wie viele es sind, welcher Wert offen ist und was in den letzten 12 Monaten verfallen oder eingelöst wurde.
+- **Erinnerung.** Gutscheine warnen so früh wie Medikamente (standardmäßig 60 Tage, Einstellung *„Läuft bald ab“ für Medikamente, Haushalt und Gutscheine*): Die Startseite hat einen Abschnitt **🎟️ Gutscheine**, und die [Medikamenten-Erinnerung](kitchen.md#ablaufende-medikamente) nennt sie mit (*„der Gutschein Thalia über 25 Euro“*), im Blueprint abschaltbar.
+- **Einlösen.** Antippen öffnet den Gutschein: **Teilweise einlösen** senkt den Restwert (*15 € von 25 € übrig*), **Ganz eingelöst** entfernt ihn, **Verfallen** entfernt ihn als verloren (sein Wert zählt als verfallen). **Bearbeiten** ändert Wert, Datum und Code.
+- **Der Code** steht nie im Zustand der Entität (den könnte jeder Benutzer lesen): Nur Administratoren tragen ihn ein und sehen ihn (**Code anzeigen**).
+- Gutscheine dürfen in jedem Bereich liegen und gehören nicht zu Einkaufslisten, Bestand, Rezepten, Rückrufwarnungen, Notvorrat oder Statistik.
+
+<p align="center">
+<img src="../images/dashboard-vouchers-de.png" width="250" alt="Gutscheine">
+<img src="../images/dashboard-voucher-de.png" width="250" alt="Ein Gutschein">
+</p>
 
 ## Bereiche und Labels
 

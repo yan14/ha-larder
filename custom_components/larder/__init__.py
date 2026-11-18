@@ -39,6 +39,7 @@ from .stats import async_setup_statistics
 from .stock import async_get_stock, async_setup_stock_websocket
 from .supply import async_setup_supply_websocket
 from .temperature import async_get_temperature_watch
+from .vouchers import async_get_vouchers, async_setup_voucher_websocket
 from .websocket import async_setup_websocket
 from .week_plan import async_setup_week_plan_websocket
 
@@ -71,6 +72,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_household_websocket(hass)
     async_setup_week_plan_websocket(hass)
     async_setup_supply_websocket(hass)
+    async_setup_voucher_websocket(hass)
     await async_get_sizes(hass)
     async_setup_learning_websocket(hass)
     (await async_get_stock(hass)).async_start()
@@ -143,5 +145,6 @@ async def async_unload_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> b
 async def async_remove_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> None:
     """A container was deleted: remove its calendar event."""
     if cc := entry.data.get(CONF_CC):
+        await (await async_get_vouchers(hass)).async_forget(cc)
         await (await async_get_calendar_sync(hass)).async_remove_dose(cc)
         await (await async_get_nfc(hass)).async_unlink(cc)

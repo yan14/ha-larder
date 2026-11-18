@@ -236,7 +236,7 @@
           "thaw_days": "Thawing: days ahead",
           "recipe_days": "Period for recipe ideas (days)",
           "soon_days": "\"Expiring soon\" from (days)",
-          "long_soon_days": "“Expires soon” for medicines and household (days)",
+          "long_soon_days": "“Expires soon” for medicines, household and vouchers (days)",
           "shopping_details": "Brand and package on the shopping list",
           "watch_allergens": "Allergens in the household (optional)",
           "stock_lead_days": "Stock: days until the next shopping trip",
@@ -310,7 +310,7 @@
     },
     "get_expiring_medicines": {
       "name": "Get expiring medicines",
-      "description": "Returns medicines and household items with a date that expire within their warning period or have expired, with ready-made text for notifications and voice output (response: count, expired, items, summary, speech).",
+      "description": "Returns medicines, household items with a date and vouchers that expire within their warning period or have expired, with ready-made text for notifications and voice output (response: count, expired, items, summary, speech).",
       "fields": {
         "days": {
           "name": "Days",
@@ -319,6 +319,10 @@
         "include_expired": {
           "name": "Include expired",
           "description": "Also list the ones that have already expired."
+        },
+        "include_vouchers": {
+          "name": "Include vouchers",
+          "description": "Also vouchers that expire soon (never expired ones)."
         }
       }
     },

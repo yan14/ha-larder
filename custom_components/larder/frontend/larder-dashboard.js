@@ -14,6 +14,7 @@ const { installItems } = await import(`./larder-dashboard-items.js${VERSION_QUER
 const { installCare } = await import(`./larder-dashboard-care.js${VERSION_QUERY}`);
 const { installCook } = await import(`./larder-dashboard-cook.js${VERSION_QUERY}`);
 const { installSupply, supplyTexts } = await import(`./larder-dashboard-supply.js${VERSION_QUERY}`);
+const { installVouchers, money } = await import(`./larder-dashboard-vouchers.js${VERSION_QUERY}`);
 
 const DOMAIN = "larder";
 const STORAGE_KEY = `${DOMAIN}.experimental`; // historic name, kept so saved views survive
@@ -41,6 +42,7 @@ export const CATEGORY_ICONS = {
   hh_care: "🧴",
   hh_batteries: "🔋",
   hh_other: "🧰",
+  voucher: "🎟️",
   md_pain: "🌡️",
   md_cold: "🤧",
   md_digest: "🫖",
@@ -94,7 +96,7 @@ export function describeDevices(hass, devices, now = new Date()) {
     const attrs = (content && text.attributes) || {};
     const kind = (text && text.attributes && text.attributes.kind) || "container"; // container, bag, pack or household item
     const kcal = attrs.kcal_portion !== undefined ? { value: attrs.kcal_portion, per: "portion" } : attrs.kcal_100g !== undefined ? { value: attrs.kcal_100g, per: "100g" } : null;
-    return { dev, id: dev.deviceId, name: dev.name, content, days, soon: soonDaysOf(date), category, areaId: dev.areaId, areaName: dev.areaName, compartment, kcal, nutriScore: attrs.nutri_score || null, allergens: Array.isArray(attrs.allergen_warning) ? attrs.allergen_warning : [], kind, opened: attrs.opened || null, size: (text && text.attributes && (content ? text.attributes.size : text.attributes.size_fixed)) || null };
+    return { dev, id: dev.deviceId, name: dev.name, content, days, value: kind === "voucher" && attrs.value !== undefined ? Number(attrs.value) : null, soon: soonDaysOf(date), category, areaId: dev.areaId, areaName: dev.areaName, compartment, kcal, nutriScore: attrs.nutri_score || null, allergens: Array.isArray(attrs.allergen_warning) ? attrs.allergen_warning : [], kind, opened: attrs.opened || null, size: (text && text.attributes && (content ? text.attributes.size : text.attributes.size_fixed)) || null };
   });
 }
 
@@ -210,7 +212,7 @@ function loadOptions() {
       labelParts: raw.labelParts && typeof raw.labelParts === "object" ? raw.labelParts : { qr: true, name: true, content: false },
       labelLook: raw.labelLook && typeof raw.labelLook === "object" ? raw.labelLook : { color: "black", inverted: false, logo: false },
       itemArea: raw.itemArea && typeof raw.itemArea === "object" ? raw.itemArea : {},
-      scope: ["household", "pharmacy"].includes(raw.scope) ? raw.scope : "food",
+      scope: ["household", "pharmacy", "voucher"].includes(raw.scope) ? raw.scope : "food",
     };
   } catch {
     return { mode: "grid", sort: "date", areaSort: "name", recipeSort: "newest", recipePeriod: "default" };
@@ -593,6 +595,7 @@ export class LarderDashboard extends HTMLElement {
     if (view === "stats") this.loadStats();
     if (view === "stock") this.loadStock();
     if (view === "supply") this.loadSupply();
+    if (view === "containers" && this._opts.scope === "voucher") this.loadVoucherStats();
     if (view === "containers") this.loadSizes();
     if (view === "start" || view === "recipes") this.loadPlans();
     if (view === "start") {
@@ -633,7 +636,8 @@ export class LarderDashboard extends HTMLElement {
       this.toggleSelected(row.id);
       return;
     }
-    if (row.content === "" && isAdmin(this._hass)) this._classic.openFillDialog(row.id);
+    if (row.kind === "voucher") this.openVoucher(row);
+    else if (row.content === "" && isAdmin(this._hass)) this._classic.openFillDialog(row.id);
     else this.openDetail(row.id);
   }
 
@@ -753,6 +757,7 @@ export class LarderDashboard extends HTMLElement {
       this._view === "stats" ? [this._stats, this._statsDays, this._hhStats] : null,
       this._view === "stock" ? this._stock : null,
       this._view === "supply" ? this._supply : null,
+      this._opts.scope === "voucher" ? this._voucherStats : null,
       this._supplyCheck,
       this._view === "stocktake" ? this.stocktakeSig() : null,
       this._view === "areas" ? this._areaSig() : null,
@@ -838,6 +843,7 @@ export class LarderDashboard extends HTMLElement {
     tile.append(el("span", "sub", [row.name, showArea ? row.areaName : null, row.compartment, row.size].filter(Boolean).join(" · ")));
     if (!empty && row.days !== null) tile.append(el("span", `badge ${dayClass(row)}`, daysLabel(t, row.days)));
     if (!empty && row.kcal) tile.append(el("span", "kcal", t.kcal(row.kcal, this._lang())));
+    if (row.value) tile.append(el("span", "kcal", money(row.value, this._lang().startsWith("de"))));
     if (!empty && row.allergens.length) tile.append(el("span", "allergen", `⚠ ${row.allergens.join(", ")}`));
     this._markSelected(tile, row);
     tile.addEventListener("click", () => this.openContainer(row));
@@ -851,7 +857,7 @@ export class LarderDashboard extends HTMLElement {
     btn.dataset.id = row.id;
     const text = el("span", "text");
     text.append(el("span", "name", empty ? t.empty : row.content));
-    text.append(el("span", "sub", [row.name, row.areaName, row.compartment, row.size, !empty && row.kcal ? t.kcal(row.kcal, this._lang()) : null, !empty && row.allergens.length ? `⚠ ${row.allergens.join(", ")}` : null].filter(Boolean).join(" · ")));
+    text.append(el("span", "sub", [row.name, row.value ? money(row.value, this._lang().startsWith("de")) : null, row.areaName, row.compartment, row.size, !empty && row.kcal ? t.kcal(row.kcal, this._lang()) : null, !empty && row.allergens.length ? `⚠ ${row.allergens.join(", ")}` : null].filter(Boolean).join(" · ")));
     btn.append(el("span", "ico", CATEGORY_ICONS[row.category] || CATEGORY_ICONS.other), text);
     if (!empty && row.days !== null) btn.append(el("span", `badge ${dayClass(row)}`, daysLabel(t, row.days)));
     this._markSelected(btn, row);
@@ -1458,10 +1464,20 @@ export class LarderDashboard extends HTMLElement {
   _scopeSwitch(t = texts(this._hass)) {
     const box = el("div", "scope");
     box.setAttribute("role", "tablist");
-    for (const [scope, icon] of [["food", "🍎"], ["household", "🧻"], ["pharmacy", "💊"]]) {
-      const btn = el("button", scope === this._opts.scope ? "on" : "", `${icon} ${t.scopes[scope]}`);
+    const scopes = [["food", "🍎"], ["household", "🧻"], ["pharmacy", "💊"]];
+    // vouchers (4.8): only once there is one (not in the stock view and the statistics: no stock)
+    if (!["stock", "stats"].includes(this._view) && (this._opts.scope === "voucher" || this._rows().some((r) => r.kind === "voucher"))) scopes.push(["voucher", "🎟️"]);
+    if (scopes.length > 3) box.classList.add("compact");
+    for (const [scope, icon] of scopes) {
+      // four sides do not fit on a phone: the others show their symbol only
+      const short = scopes.length > 3 && scope !== this._opts.scope;
+      const btn = el("button", scope === this._opts.scope ? "on" : "", short ? icon : `${icon} ${t.scopes[scope]}`);
       btn.type = "button";
       btn.dataset.scope = scope;
+      if (short) {
+        btn.setAttribute("aria-label", t.scopes[scope]);
+        btn.title = t.scopes[scope];
+      }
       btn.setAttribute("role", "tab");
       btn.setAttribute("aria-selected", scope === this._opts.scope ? "true" : "false");
       btn.addEventListener("click", () => this.setScope(scope));
@@ -1471,7 +1487,8 @@ export class LarderDashboard extends HTMLElement {
   }
 
   setScope(scope) {
-    const next = ["household", "pharmacy"].includes(scope) ? scope : "food";
+    const next = ["household", "pharmacy", "voucher"].includes(scope) ? scope : "food";
+    if (next === "voucher") this.loadVoucherStats();
     if (next === this._opts.scope) return;
     this._opts.scope = next;
     saveOptions(this._opts);
@@ -1524,6 +1541,8 @@ export class LarderDashboard extends HTMLElement {
 
     const frag = document.createDocumentFragment();
     frag.append(this._scopeSwitch(t), bar);
+    const voucherStats = this._opts.scope === "voucher" ? this._voucherStatsBox() : null;
+    if (voucherStats) frag.append(voucherStats);
     if (this._scan) frag.append(this._scanPanel(t));
     if (this._inventory && this._selecting) frag.append(this._inventoryPanel(t));
     const chips = this._chips(t, allRows);
@@ -2007,12 +2026,12 @@ export class LarderDashboard extends HTMLElement {
     const soon = sortRows(rows.filter((r) => scopeOf(r) === "food" && isSoon(r)), "date", this._lang());
     const isHh = (item) => scopeOf(item) !== "food";
     // household and pharmacy: expiring soon (with their longer warning), running low, bought
-    const others = ["household", "pharmacy"].map((scope) => ({
+    const others = ["household", "pharmacy", "voucher"].map((scope) => ({
       scope,
       soon: sortRows(rows.filter((r) => scopeOf(r) === scope && isSoon(r)), "date", this._lang()),
-      low: this._lowBox((item) => scopeOf(item) === scope),
+      low: scope === "voucher" ? null : this._lowBox((item) => scopeOf(item) === scope),
       replace: scope === "household" ? this._replaceBox() : null,
-      bought: this._boughtBox((item) => scopeOf(item) === scope),
+      bought: scope === "voucher" ? null : this._boughtBox((item) => scopeOf(item) === scope),
       used: rows.some((r) => scopeOf(r) === scope),
     })).filter((s) => s.used || s.low || s.bought || s.replace);
     // sections once household items or medicines are in use: food first, the others below
@@ -2038,7 +2057,7 @@ export class LarderDashboard extends HTMLElement {
     const planned = this._plannedBox(t, false);
     if (planned) frag.append(planned);
     for (const other of others) {
-      const head = el("h2", "section", `${other.scope === "pharmacy" ? "💊" : "🧻"} ${t.scopes[other.scope]}`);
+      const head = el("h2", "section", `${{ pharmacy: "💊", voucher: "🎟️" }[other.scope] || "🧻"} ${t.scopes[other.scope]}`);
       head.dataset.role = `${other.scope}-section`;
       frag.append(head);
       if (other.soon.length) {
@@ -2051,7 +2070,7 @@ export class LarderDashboard extends HTMLElement {
       if (other.replace) frag.append(other.replace);
       if (other.low) frag.append(other.low);
       if (other.bought) frag.append(other.bought);
-      if (!other.soon.length && !other.low && !other.bought && !other.replace) frag.append(el("p", "lead", other.scope === "pharmacy" ? t.pharmacyFine : t.householdFine));
+      if (!other.soon.length && !other.low && !other.bought && !other.replace) frag.append(el("p", "lead", { pharmacy: t.pharmacyFine, voucher: t.voucherFine }[other.scope] || t.householdFine));
     }
     frag.append(el("p", "lead", t.help));
     const help = el("div", "help");
@@ -2689,8 +2708,8 @@ export class LarderDashboard extends HTMLElement {
       this._renderHouseholdStats(t, frag);
       return;
     }
-    if (this._opts.scope === "pharmacy") {
-      frag.append(el("p", "note", t.statsPharmacyNone));
+    if (this._opts.scope === "pharmacy" || this._opts.scope === "voucher") {
+      frag.append(el("p", "note", this._opts.scope === "voucher" ? t.statsVoucherNone : t.statsPharmacyNone));
       this._main.replaceChildren(frag);
       return;
     }
@@ -3174,6 +3193,7 @@ export class LarderDashboard extends HTMLElement {
 installItems(LarderDashboard, { el, isAdmin, listAreas, todoLists, scopeOfKind, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment });
 installCook(LarderDashboard, { el, isAdmin, DOMAIN });
 installSupply(LarderDashboard, { el, DOMAIN });
+installVouchers(LarderDashboard, { el, isAdmin, listAreas, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment });
 installCare(LarderDashboard, { el, isAdmin, listAreas, scopeOfKind, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment, CATEGORY_ICONS });
 
 if (!customElements.get("larder-dashboard")) {

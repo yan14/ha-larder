@@ -33,6 +33,11 @@ clear_filled_at:
       domain: datetime
 get_expiring_medicines:
   fields:
+    include_vouchers:
+      required: false
+      default: true
+      selector:
+        boolean:
     days:
       required: false
       selector:

@@ -18,7 +18,7 @@ from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
-from .const import CONF_CC, DOMAIN, KIND_HOUSEHOLD, KIND_MEDICINE
+from .const import CONF_CC, DOMAIN, KIND_HOUSEHOLD, KIND_MEDICINE, NON_FOOD_KINDS
 from .entity import kind_of
 
 # per person and 10 days (BBK example supply): group → (amount, unit)
@@ -149,7 +149,7 @@ def _entries(hass: HomeAssistant) -> list[dict[str, Any]]:
             amount = (quantity / 1000, "kg")
         elif unit == "milliliters" and quantity:
             amount = (quantity / 1000, "l")
-        elif unit == "portions" and quantity and kind not in (KIND_HOUSEHOLD, KIND_MEDICINE) and not attrs.get("package"):
+        elif unit == "portions" and quantity and kind not in NON_FOOD_KINDS and not attrs.get("package"):
             amount = (quantity * PORTION_KG, "kg")
         elif package := parse_amount(attrs.get("package")):
             packs = quantity if unit in ("pieces", "portions") and quantity else 1
@@ -168,7 +168,7 @@ def supply_report(hass: HomeAssistant, persons: int, days: int, language: str = 
     found: dict[str, list[str]] = {k: [] for k in ITEMS}
     for item in _entries(hass):
         text = f" {item['content'].casefold()} "
-        if item["kind"] not in (KIND_HOUSEHOLD, KIND_MEDICINE):
+        if item["kind"] not in NON_FOOD_KINDS:
             group = food_group(item["content"])
             if group:
                 amount = item["amount"]

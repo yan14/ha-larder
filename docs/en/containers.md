@@ -176,11 +176,26 @@ Since 4.0 Larder also keeps track of things without a best-before date: toilet p
 
 Since 4.4 medicines have a side of their own, **Pharmacy** (💊), next to food and household. **＋ → 💊 Medicine** adds them with their **expiry date**, count (packs) and price.
 
-- **Longer warning.** Medicines count as *expires soon* earlier than food: by default **60 days** before the expiry date (setting *“Expires soon” for medicines and household*). They then appear on the start page in the section **💊 Pharmacy**, not in the daily summary, recipes or food statistics.
+- **Longer warning.** Medicines count as *expires soon* earlier than food: by default **60 days** before the expiry date (setting *“Expires soon” for medicines, household and vouchers*). They then appear on the start page in the section **💊 Pharmacy**, not in the daily summary, recipes or food statistics.
 - **Own places and list.** Areas with the label `Larder: Pharmacy` (or `Larder: Apotheke`), e.g. the medicine cabinet or the first-aid kit in the car, are offered only for medicines, see [Food, household or pharmacy](#food-household-or-pharmacy). A default shopping list of its own (*Shopping list for medicines*), e.g. *Pharmacy*.
 - **After opening.** **Open** on the card (or in the barcode dialog) marks one pack as opened. With *Keeps after opening (months)* on its card, the expiry date becomes the shorter of the printed date and that period, e.g. eye drops 1 month.
 - **Categories:** pain & fever, colds, stomach & digestion, wounds & dressings, allergy, vitamins & minerals, other.
 - Minimum stock, *running low*, moving and stocktake work as for packs. Recall warnings on lebensmittelwarnung.de do not cover medicines, so none are matched.
+
+## Vouchers
+
+Since 4.8 Larder keeps **vouchers**, so none expires unused. **＋ → 🎟️ Voucher** adds one with the **shop or name**, **value**, **valid until**, place (area and compartment, e.g. *Study · desk drawer*) and optionally the **code**.
+
+- **Own page.** As soon as there is a voucher, the switch on the **Larder** page gets **🎟️ Vouchers**; above the tiles: how many there are, the open value, and what expired or was redeemed in the last 12 months.
+- **Reminder.** Vouchers warn as early as medicines (60 days by default, setting *“Expires soon” for medicines, household and vouchers*): the start page has a section **🎟️ Vouchers**, and the [medicine reminder](kitchen.md#medicines-expiring) names them too (*“the Waterstones voucher worth 25 euros”*), switchable in the blueprint.
+- **Redeem.** Tap a voucher: **Redeem part** lowers the remaining value (*€15 of €25 left*), **Fully redeemed** removes it, **Expired** removes it as lost (its value counts as expired). **Edit** changes value, date and code.
+- **The code** is never stored in the entity state (every user could read it there): only administrators enter and see it (**Show code**).
+- Vouchers can lie in any area and are not part of shopping lists, stock, recipes, recall warnings, the emergency supply or the statistics.
+
+<p align="center">
+<img src="../images/dashboard-vouchers-en.png" width="250" alt="Vouchers">
+<img src="../images/dashboard-voucher-en.png" width="250" alt="A voucher">
+</p>
 
 ## Areas and labels
 

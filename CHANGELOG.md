@@ -3,6 +3,14 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 4.8.0
+
+- **Vouchers:** **＋ → 🎟️ Voucher** keeps vouchers with value, valid until and place (area and compartment). They get a side of their own, **🎟️ Vouchers**, which appears once there is one, with the open value and what expired or was redeemed in the last 12 months. Tap a voucher to **redeem part** of it (the remaining value goes down), mark it **fully redeemed** or **expired**, or edit value, date and code.
+- **Reminder:** vouchers warn 60 days ahead like medicines, have a section on the start page and are named in the medicine reminder (blueprint switch *Include vouchers*, service field `include_vouchers`), e.g. "the Thalia voucher worth 25 euros".
+- **Code for administrators only:** the optional code is kept outside the entity state and shown to administrators only.
+- With four sides the switch shows the other sides as symbols.
+- Docs: example of a hygiene box with an NFC tag or QR code (household items in a compartment).
+
 ## 4.7.0
 
 - **One-click setup:** *Add integration* now creates a main entry **Larder** without a device or questions, so the dashboard is in the sidebar right away. While Larder is empty, the start page shows **🚀 Get started** (assign areas, choose a shopping list, add the first item). Existing installations get the main entry automatically; the settings are under its *Configure*. Adding the integration again offers the QR ways for a container.

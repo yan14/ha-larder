@@ -12,7 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
-from .const import PACK_KINDS, scan_app_url
+from .const import NO_CODE_KINDS, scan_app_url
 from .entity import LarderConfigEntry, LarderEntity, kind_of
 
 
@@ -28,7 +28,7 @@ async def async_setup_entry(
     entry: LarderConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    if kind_of(entry) not in PACK_KINDS:  # packs have no code
+    if kind_of(entry) not in NO_CODE_KINDS:  # packs have no code
         async_add_entities([ZwillingQrCode(hass, entry)])
 
 

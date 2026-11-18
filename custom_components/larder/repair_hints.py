@@ -30,7 +30,7 @@ from homeassistant.helpers.event import (
     async_track_time_change,
 )
 
-from .const import DOMAIN, PACK_KINDS, SIGNAL_SETTINGS_CHANGED, larder_id
+from .const import DOMAIN, NO_CODE_KINDS, SIGNAL_SETTINGS_CHANGED, larder_id
 from .entity import kind_of
 from .estimate import storage_context
 from .expiry import days_left
@@ -74,7 +74,7 @@ def find_problem_containers(hass: HomeAssistant, today: date | None = None) -> d
         if not cc:
             continue
         name = entry.title or cc
-        pack = kind_of(entry) in PACK_KINDS  # stock without a container: area and date are optional
+        pack = kind_of(entry) in NO_CODE_KINDS  # stock without a container: area and date are optional
         if not pack and storage_context(hass, cc).area_name is None:
             found[ISSUE_NO_AREA].append((name, cc))
         content = (_state(hass, registry, "text", f"{cc}_content") or "").strip()

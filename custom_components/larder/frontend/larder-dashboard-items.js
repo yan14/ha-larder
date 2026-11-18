@@ -22,6 +22,8 @@ const TEXT = {
     kindHousehold: "Haushaltsartikel",
     kindHouseholdHint: "Ohne Haltbarkeit, z. B. Klopapier, Waschmittel, Batterien",
     titleHousehold: "Haushaltsartikel anlegen",
+    kindVoucher: "Gutschein",
+    kindVoucherHint: "Mit Wert und Ablaufdatum – damit keiner verfällt",
     kindMedicine: "Medikament",
     kindMedicineHint: "Mit Verfallsdatum, z. B. Ibuprofen, Nasenspray, Pflaster",
     titleMedicine: "Medikamente anlegen",
@@ -181,6 +183,8 @@ const TEXT = {
     kindHousehold: "Household item",
     kindHouseholdHint: "No best-before date, e.g. toilet paper, detergent, batteries",
     titleHousehold: "Add household items",
+    kindVoucher: "Voucher",
+    kindVoucherHint: "With value and expiry date – so none expires unused",
     kindMedicine: "Medicine",
     kindMedicineHint: "With an expiry date, e.g. ibuprofen, nasal spray, plasters",
     titleMedicine: "Add medicines",
@@ -1192,6 +1196,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       choice("add-pack", "📦", t.kindPack, t.kindPackHint, () => this.openItemsDialog("pack")),
       choice("add-household", "🧻", t.kindHousehold, t.kindHouseholdHint, () => this.openItemsDialog("household")),
       choice("add-medicine", "💊", t.kindMedicine, t.kindMedicineHint, () => this.openItemsDialog("medicine")),
+      choice("add-voucher", "🎟️", t.kindVoucher, t.kindVoucherHint, () => this.openVoucherDialog()),
     );
     this._form.replaceChildren(el("h2", "", t.addTitle), choices, buttonsRow(button("cancel", t.cancel, () => this._closeDialog())));
     this._submit = null;

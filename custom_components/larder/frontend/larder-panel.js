@@ -286,7 +286,7 @@ let AREA_SCOPES = null; // area id → "food" | "household" | "pharmacy" | "both
 
 /** Which side of the dashboard an entry belongs to: food, household or pharmacy (medicines). */
 export function scopeOfKind(kind) {
-  return kind === "household" ? "household" : kind === "medicine" ? "pharmacy" : "food";
+  return kind === "household" ? "household" : kind === "medicine" ? "pharmacy" : kind === "voucher" ? "voucher" : "food";
 }
 
 /** Remember what each area is used for (food, household or both), see `listAreas`. */
@@ -297,7 +297,7 @@ export function setAreaScopes(scopes) {
 /** May this area hold entries of this scope ("food", "household" or "pharmacy")? Unknown or unlabelled areas may. */
 export function areaAllows(areaId, scope) {
   const s = AREA_SCOPES && AREA_SCOPES[areaId];
-  return !scope || !s || s === "both" || s === scope;
+  return !scope || scope === "voucher" || !s || s === "both" || s === scope; // vouchers may lie anywhere
 }
 
 /** ISO date as a short local date ("26.11." in German, "Nov 26" otherwise). */

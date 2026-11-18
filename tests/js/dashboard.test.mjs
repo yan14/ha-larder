@@ -3069,3 +3069,67 @@ test("⋮ → 🛟 Emergency supply: groups, checklist and 🛒; 🏪 store sect
   await flush();
   assert.equal($(other, '[data-role="menu-sections"]').hidden, true);
 });
+
+test("Vouchers (4.8): own scope only when there is one, start section, detail with partial redeem, add with code", async () => {
+  const hass = makeHass([...DOSES, { id: "v1", name: "Gutschein 1", area: "kitchen", content: "Thalia", days: 20, category: "voucher" }]);
+  hass.states["text.v1_inhalt"].attributes = { category: "voucher", kind: "voucher", value: 25, value_initial: 30 };
+  hass.states["date.v1_mhd"].attributes = { estimates: false, soon_days: 60 };
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type.startsWith(`${D}/voucher`) || msg.type === `${D}/create_items`) hass.wsCalls.push(msg);
+    if (msg.type === `${D}/voucher_stats`) return { count: 1, open_value: 25, lost_value: 12.5, redeemed_value: 0 };
+    if (msg.type === `${D}/voucher_code`) return { code: "ABC-123" };
+    if (msg.type === `${D}/voucher_redeem`) return { removed: false, value: 15 };
+    if (msg.type === `${D}/create_items`) return { items: [{ device_id: "v2", cc: "X", name: "Gutschein 2" }] };
+    if (msg.type === `${D}/voucher_update`) return { value: 50 };
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  // start page: section of its own
+  const heads = $$(el, "main h2.section").map((h) => h.textContent);
+  assert.ok(heads.includes("🎟️ Gutscheine"));
+  // larder page: switch with vouchers, tile with value
+  await go(el, "containers");
+  $(el, '.scope [data-scope="voucher"]').click();
+  await flush();
+  await flush();
+  assert.match($(el, '[data-role="voucher-stats"]').textContent, /1 Gutschein · 25 € offen/);
+  assert.match($(el, '[data-role="voucher-stats"]').textContent, /Verfallen \(12 Monate\): 12,50 €$/);
+  const tile = $(el, 'main .tile[data-id="v1"]');
+  assert.match(tile.textContent, /Thalia.*25 €/);
+  tile.click();
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelector("h2").textContent, "🎟️ Thalia");
+  assert.match(form.textContent, /25 € von 30 € übrig/);
+  form.querySelector('[data-role="voucher-show-code"]').click();
+  await flush();
+  assert.equal(form.querySelector('[data-role="voucher-code"]').textContent, "ABC-123");
+  form.querySelector('[data-role="voucher-redeem-part"]').click();
+  form.querySelector('[data-f="voucher-amount"]').value = "10";
+  form.querySelector('[data-role="voucher-redeem-part-ok"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/voucher_redeem`), { type: `${D}/voucher_redeem`, device_id: "v1", amount: 10 });
+  // add: name, value, date, code
+  $(el, '[data-role="add"]').click();
+  $(el, '[data-role="add-voucher"]').click();
+  await flush();
+  const add = $(el, "form.dialog");
+  add.querySelector('[data-f="voucher-name"]').value = "IKEA";
+  add.querySelector('[data-f="voucher-value"]').value = "50";
+  add.querySelector('[data-f="voucher-until"]').value = "2027-06-30";
+  add.querySelector('[data-f="voucher-code"]').value = "9999";
+  add.dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  await flush();
+  await flush();
+  const created = hass.wsCalls.find((m) => m.type === `${D}/create_items`);
+  assert.equal(created.kind, "voucher");
+  assert.deepEqual(created.items, [{ content: "IKEA", quantity: 1, unit: "pieces", best_before: "2027-06-30", product: { value: 50, value_initial: 50 } }]);
+  assert.deepEqual(hass.wsCalls.filter((m) => m.type === `${D}/voucher_update`).pop(), { type: `${D}/voucher_update`, device_id: "v2", code: "9999" });
+  // without vouchers no switch button (and the remembered choice goes back to food)
+  $(el, '.scope [data-scope="food"]').click();
+  const plain = mount(makeHass(DOSES));
+  await flush();
+  await go(plain, "containers");
+  assert.equal($(plain, '.scope [data-scope="voucher"]'), null);
+});

@@ -15,6 +15,7 @@ from .const import (
     KIND_CONTAINER,
     KIND_HOUSEHOLD,
     KIND_MEDICINE,
+    KIND_VOUCHER,
     PACK_KINDS,
     SIGNAL_SETTINGS_CHANGED,
     SIGNAL_STOCK_CHANGED,
@@ -51,6 +52,8 @@ PRODUCT_FIELDS: dict[str, type] = {
     "source": str,  # "openfoodfacts" or empty (by hand)
     "opened": str,  # pack opened on (ISO date)
     "price": float,  # price per pack in euros
+    "value": float,  # vouchers (4.8): remaining value
+    "value_initial": float,  # vouchers: value at the start
     "price_source": str,  # "receipt", "own" or "openprices" (estimate)
     "pack_size": float,  # household items: pieces per pack (e.g. 8 rolls)
     "piece": str,  # household items: name of one piece (e.g. "Rollen")
@@ -68,7 +71,7 @@ def clean_product(data: dict[str, Any]) -> dict[str, Any]:
             continue
         if kind is float:
             try:
-                number = round(float(str(value).replace(",", ".")), 2 if key == "price" else 1)
+                number = round(float(str(value).replace(",", ".")), 2 if key in ("price", "value", "value_initial") else 1)
             except ValueError:
                 continue
             if 0 <= number <= 10000:
@@ -113,7 +116,7 @@ class LarderContent(TextEntity, LarderResettable):
         """Category (for categories and icons in the dashboard) and, if present, product data."""
         value = self._attr_native_value or ""
         category = (
-            (household_category(value) if self._kind == KIND_HOUSEHOLD else medicine_category(value) if self._kind == KIND_MEDICINE else category_for(value))
+            ("voucher" if self._kind == KIND_VOUCHER else household_category(value) if self._kind == KIND_HOUSEHOLD else medicine_category(value) if self._kind == KIND_MEDICINE else category_for(value))
             if value
             else None
         )
@@ -123,7 +126,9 @@ class LarderContent(TextEntity, LarderResettable):
         stock = self.hass.data.get(DOMAIN, {}).get(DATA_STOCK)
         if value and stock is not None and (own := stock.lists.get(product_key(value))):
             attrs["shopping_list"] = own  # own shopping list of the product (else the default list)
-        if value:
+        if self._kind == KIND_VOUCHER:
+            attrs.pop("code", None)  # the code is never in the state (visible to every user), see vouchers.py
+        elif value:
             attrs["section"] = section_of(self.hass, value, self._kind)  # store section (4.7)
             if stock is not None and product_key(value) in stock.sections:
                 attrs["section_own"] = True

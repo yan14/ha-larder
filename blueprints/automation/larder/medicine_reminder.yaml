@@ -3,8 +3,8 @@ blueprint:
   description: >
     On the chosen weekdays (for example once a week): medicines and household items with a date
     (for example sunscreen) that expire within their warning period, as a push notification and
-    optionally read out loud, for example on Alexa. Nothing is sent when nothing expires.
-    Medikamente und Haushaltsartikel mit Datum, die bald ablaufen, an den gewählten Wochentagen
+    optionally read out loud, for example on Alexa; optionally vouchers as well. Nothing is sent when nothing expires.
+    Medikamente, Haushaltsartikel mit Datum und Gutscheine, die bald ablaufen, an den gewählten Wochentagen
     als Push und optional als Sprachausgabe, z. B. auf Alexa.
   domain: automation
   source_url: https://github.com/yan14/ha-larder/blob/main/blueprints/automation/larder/medicine_reminder.yaml
@@ -64,6 +64,12 @@ blueprint:
       default: true
       selector:
         boolean:
+    include_vouchers:
+      name: Include vouchers
+      description: Also vouchers that expire soon (expired vouchers are never included).
+      default: true
+      selector:
+        boolean:
     voice_action:
       name: Voice output (optional)
       description: >
@@ -91,6 +97,7 @@ variables:
   weekdays: !input weekdays
   days: !input days
   include_expired: !input include_expired
+  include_vouchers: !input include_vouchers
   push_targets: "{{ (notify_action or '') | string | lower | regex_findall('[a-z0-9_]+[.][a-z0-9_]+') }}"
   voice_targets: "{{ (voice_action or '') | string | lower | regex_findall('[a-z0-9_]+[.][a-z0-9_]+') }}"
   # run by hand (no time trigger): send even when nothing expires, as a test
@@ -108,7 +115,7 @@ conditions:
 actions:
   - action: larder.get_expiring_medicines
     data: >-
-      {{ {'include_expired': include_expired} | combine({'days': days | int} if days | int > 0 else {}) }}
+      {{ {'include_expired': include_expired, 'include_vouchers': include_vouchers} | combine({'days': days | int} if days | int > 0 else {}) }}
     response_variable: result
   - condition: template
     value_template: "{{ manual or result.count > 0 }}"

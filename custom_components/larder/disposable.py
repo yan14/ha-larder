@@ -36,6 +36,7 @@ from .const import (
     KIND_HOUSEHOLD,
     KIND_MEDICINE,
     KIND_PACK,
+    KIND_VOUCHER,
     PACK_KINDS,
     UNITS,
     larder_id,
@@ -54,7 +55,7 @@ STORAGE_VERSION = 1
 MAX_RETIRED = 1000
 MAX_ITEMS = 30  # this many bags/packs at once
 
-_NAMES = {KIND_BAG: ("Beutel", "Bag"), KIND_PACK: ("Packung", "Pack"), KIND_HOUSEHOLD: ("Artikel", "Item"), KIND_MEDICINE: ("Medikament", "Medicine")}
+_NAMES = {KIND_BAG: ("Beutel", "Bag"), KIND_PACK: ("Packung", "Pack"), KIND_HOUSEHOLD: ("Artikel", "Item"), KIND_MEDICINE: ("Medikament", "Medicine"), KIND_VOUCHER: ("Gutschein", "Voucher")}
 
 
 class Retired:
