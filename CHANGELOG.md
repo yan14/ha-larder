@@ -3,6 +3,10 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 4.10.1
+
+- Releases are now created only after all checks (hassfest, HACS action, lint, tests) have passed for that version – preparation for the default HACS catalogue. No functional changes.
+
 ## 4.10.0
 
 - **Shopping mode:** **🛒 Go shopping** on the start page (or **⋮ → 🛒 Shopping mode**) shows every list Larder uses, grouped by store section. Ticking an item off completes it on its list and puts it into stock right away at its usual place (as many packs as Larder asked for); unknown items are collected and added together at the end. *Bought – into stock?* does not offer them again.
