@@ -52,7 +52,7 @@ _FOOD_WORDS: tuple[tuple[str, tuple[str, ...]], ...] = (
 )
 _BY_CATEGORY = {
     "produce": "vegetables", "bread": "grain", "dry": "grain", "dairy": "dairy",
-    "raw_meat": "protein", "fish": "protein", "deli": "protein", "egg": "protein",
+    "raw_meat": "protein", "fish": "protein", "deli": "protein", "egg": "protein", "plant": "protein",
 }
 
 # other items of the checklist: key → (keywords, kind of the shopping list)

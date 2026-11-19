@@ -188,11 +188,14 @@ export const TEXTS = {
     expired: "abgelaufen",
     today: "heute",
     daysShort: (n) => `${n} T`,
+    // 4.10.2: how long something has been expired (tiles: short, list: long)
+    expiredSince: (n) => (n < 60 ? `${n} T` : n < 730 ? `${Math.floor(n / 30)} Mon.` : `${Math.floor(n / 365)} J.`),
     soonCount: (n) => `${n} bald`,
     categories: {
       fish: "Fisch",
       raw_meat: "Fleisch",
       deli: "Wurst & Aufschnitt",
+      plant: "Vegan & Tofu",
       dairy: "Milchprodukte",
       egg: "Eier",
       produce: "Obst & Gemüse",
@@ -485,11 +488,13 @@ export const TEXTS = {
     expired: "expired",
     today: "today",
     daysShort: (n) => `${n} d`,
+    expiredSince: (n) => (n < 60 ? `${n} d` : n < 730 ? `${Math.floor(n / 30)} mo` : `${Math.floor(n / 365)} y`),
     soonCount: (n) => `${n} soon`,
     categories: {
       fish: "Fish",
       raw_meat: "Meat",
       deli: "Cold cuts",
+      plant: "Plant-based",
       dairy: "Dairy",
       egg: "Eggs",
       produce: "Fruit & vegetables",

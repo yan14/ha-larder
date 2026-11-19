@@ -1137,7 +1137,7 @@ class DoseCard {
     if (days !== null) {
       if (days < 0) {
         badge.className = "badge expired";
-        badge.textContent = t.expired;
+        badge.textContent = t.expiredSince(-days);
       } else if (days <= soonDaysOf(date)) {
         badge.className = "badge soon";
         badge.textContent = days === 0 ? t.expiresToday : t.expiresInDays(days);

@@ -3,6 +3,13 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 4.10.2
+
+- **Plant-based food:** new category **🌱 Plant-based** (*Vegan & Tofu*) for tofu, tempeh, seitan, veggie burgers, falafel, hummus and dry soy chunks, lupin or pea protein (kept long when dry). Before, they showed up as *Other* or as a dish.
+- Soup pasta (*Sternchen*, *Buchstaben*, soup noodles) counts as dry goods instead of a cooked soup; bagels, tortillas, pita and naan as bread.
+- The shelf-life table was extended: remembered table estimates are calculated anew, your own corrections stay.
+- **How long expired:** tiles and lists show *expired (3 d)* (months and years for older ones), the card *expired 3 days ago*.
+
 ## 4.10.1
 
 - Releases are now created only after all checks (hassfest, HACS action, lint, tests) have passed for that version – preparation for the default HACS catalogue. No functional changes.

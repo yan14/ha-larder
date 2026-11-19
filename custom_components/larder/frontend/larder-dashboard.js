@@ -28,6 +28,7 @@ export const CATEGORY_ICONS = {
   fish: "🐟",
   raw_meat: "🥩",
   deli: "🥓",
+  plant: "🌱",
   dairy: "🧀",
   egg: "🥚",
   produce: "🥦",
@@ -135,7 +136,7 @@ function el(tag, cls = "", text = "") {
 
 function daysLabel(t, days) {
   if (days === null) return "";
-  if (days < 0) return t.expired;
+  if (days < 0) return `${t.expired} (${t.expiredSince(-days)})`;
   if (days === 0) return t.today;
   return t.daysShort(days);
 }

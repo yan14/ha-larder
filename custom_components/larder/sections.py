@@ -29,6 +29,7 @@ _BY_CATEGORY = {
     "raw_meat": "meat",
     "fish": "meat",
     "deli": "meat",
+    "plant": "fridge",
     "dairy": "fridge",
     "egg": "fridge",
     "dish": "fridge",

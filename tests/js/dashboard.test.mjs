@@ -163,7 +163,7 @@ test("Start: greeting, only containers expiring soon, help buttons", async () =>
   assert.equal($(el, ".hello").textContent, "Hallo Yan");
   assert.match($(el, ".lead").textContent, /bald verbraucht/);
   assert.deepEqual(names(el), ["Chili", "Lachs", "Reis"]); // expired first, then by days left
-  assert.deepEqual($$(el, "main .tile .badge").map((b) => b.textContent), ["abgelaufen", "1 T", "3 T"]);
+  assert.deepEqual($$(el, "main .tile .badge").map((b) => b.textContent), ["abgelaufen (1 T)", "1 T", "3 T"]);
   assert.ok($(el, '[data-role="recipes"]'));
   assert.equal($$(el, "nav button").length, 5);
   assert.deepEqual($$(el, "nav button").map((b) => b.textContent), ["🏠Start", "🥫Vorrat", "📖Rezepte", "📍Bereiche", "🏷️Kategorien"]);
@@ -3221,4 +3221,13 @@ test("Shopping mode (4.10): by store section, tick off into stock, unknown at th
   await flush();
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/recurring_set`), { type: `${D}/recurring_set`, name: "Wasserkiste", weekdays: [4] });
   assert.match(form.querySelector('[data-key="wasserkiste"]').textContent, /WasserkisteFr/);
+});
+
+test("How long something has been expired (4.10.2): days, months, years", async () => {
+  const { TEXTS } = await import("../../custom_components/larder/frontend/larder-dashboard-strings.js");
+  assert.deepEqual([3, 59, 90, 800].map((n) => TEXTS.de.expiredSince(n)), ["3 T", "59 T", "3 Mon.", "2 J."]);
+  assert.deepEqual([3, 90, 800].map((n) => TEXTS.en.expiredSince(n)), ["3 d", "3 mo", "2 y"]);
+  const panelStrings = await import("../../custom_components/larder/frontend/larder-panel-strings.js");
+  const de = panelStrings.STRINGS.de;
+  assert.deepEqual([1, 5, 90].map((n) => de.expiredSince(n)), ["seit gestern abgelaufen", "seit 5 Tagen abgelaufen", "seit 3 Monaten abgelaufen"]);
 });

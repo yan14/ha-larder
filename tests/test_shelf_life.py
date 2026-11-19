@@ -767,3 +767,23 @@ def test_several_items_in_one_container() -> None:
     # an unknown content: no match (it might spoil first)
     with pytest.raises(sl.TableNoMatch):
         lookup("Gouda, Xyzzy", **args)
+
+
+def test_plant_based_soup_pasta_and_bagels_4_10_2() -> None:
+    """Vegan products, soup pasta and bagels are recognised (from real use)."""
+    from custom_components.larder.shelf_life import category_for
+
+    cases = {
+        "Lupine geschrotet": "plant",
+        "Soja Schnetzel, fein": "plant",
+        "Falafel": "plant",
+        "Hummus - Pikant": "plant",
+        "Räuchertofu": "plant",
+        "Veggie Burger": "plant",
+        "Suppenliebe Buchstaben": "dry",
+        "Sternchensuppe": "dry",
+        "Bagels - Classic": "bread",
+        "Polenta aus Maisgrieß": "dry",
+        "Kürbissuppe": "dish",
+    }
+    assert {name: category_for(name) for name in cases} == cases

@@ -211,7 +211,7 @@ test("MHD-Hinweise: abgelaufen, bald, unkritisch", () => {
     return [c.querySelector(".name").textContent, b.className.replace("badge", "").trim(), b.textContent];
   });
   assert.deepEqual(badges, [
-    ["A", "expired", "abgelaufen"],
+    ["A", "expired", "seit gestern abgelaufen"],
     ["B", "soon", "läuft heute ab"],
     ["C", "soon", "noch 2 Tage"],
     ["D", "", ""],

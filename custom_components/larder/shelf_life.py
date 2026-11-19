@@ -104,6 +104,10 @@ TIPS: dict[str, tuple[str, str]] = {
         "Brot lässt sich gut in Scheiben einfrieren.",
         "Bread freezes well in slices.",
     ),
+    "plant": (
+        "Tofu, Tempeh und Fertiges wie Falafel oder Hummus kühlen und nach dem Öffnen rasch verbrauchen; Trockenes wie Sojaschnetzel trocken lagern.",
+        "Keep tofu, tempeh and ready-made food like falafel or hummus cold and use it soon after opening; store dry products like soy chunks dry.",
+    ),
     "dry": (
         "Trocken, dunkel und gut verschlossen lagern.",
         "Store dry, dark and tightly closed.",
@@ -124,7 +128,7 @@ TIPS: dict[str, tuple[str, str]] = {
 # "~a" is a weak keyword that only counts if nothing else matches ("filet").
 # Increase TABLE_VERSION when entries or the detection change: remembered table values
 # are then calculated anew (own corrections stay).
-TABLE_VERSION = 3  # 3: several contents (comma) are estimated one by one
+TABLE_VERSION = 4  # 3: several contents (comma) are estimated one by one; 4: plant-based, soup pasta, bagels
 ENTRIES: tuple[Entry, ...] = (
     # --- Dishes and leftovers (priority 3) ---
     _e("dish", "Gericht / Reste", "Dish / leftovers", "dish",
@@ -146,7 +150,7 @@ ENTRIES: tuple[Entry, ...] = (
        "teig|dough|pizzateig|hefeteig",
        3, 5, 90, None, pri=3),
     _e("pesto_dip", "Pesto / Dip / Aufstrich", "Pesto / dip / spread", "dish",
-       "pesto|hummus|guacamole|tzatziki|dip|aufstrich",
+       "pesto|guacamole|tzatziki|dip|aufstrich",
        5, 7, 60, None, pri=3, perishable=True),
     _e("soy_sauce", "Sojasoße", "Soy sauce", "sweet",
        "sojasosse|soy sauce|sojasauce|worcester|sriracha|ketchup|senf|mustard",
@@ -200,9 +204,15 @@ ENTRIES: tuple[Entry, ...] = (
     _e("egg", "Eier (roh, in der Schale)", "Eggs (raw, in shell)", "egg",
        "eier|egg|eggs",
        21, 28, None, 7, pri=2),
-    _e("tofu", "Tofu / Tempeh", "Tofu / tempeh", "deli",
-       "tofu|tempeh|seitan",
-       5, 7, 90, None, pri=2, perishable=True),
+    _e("tofu", "Tofu / Tempeh / Seitan", "Tofu / tempeh / seitan", "plant",
+       "tofu|tempeh|seitan|veggie+schnitzel|vegane wurst|veganer aufschnitt|vegan+wurst|vegan+aufschnitt|vegan+burger|veggie burger|veggie+burger|plant based|plant-based",
+       5, 7, 90, None, pri=3, perishable=True),
+    _e("falafel_hummus", "Falafel / Hummus", "Falafel / hummus", "plant",
+       "falafel|hummus|humus",
+       5, 7, 60, None, pri=3, perishable=True),
+    _e("dry_protein", "Sojaschnetzel / Lupinen / Erbsenprotein (trocken)", "Soy chunks / lupin / pea protein (dry)", "plant",
+       "sojaschnetzel|soja+schnetzel|sojagranulat|soja+granulat|sojabrocken|soja+brocken|sojafleisch|texturiertes|tvp|lupine|lupinen|lupin|erbsenprotein|pea protein|soy chunks|soya chunks",
+       3, 4, 90, 365, pri=3),
     _e("juice", "Saft / Smoothie", "Juice / smoothie", "dairy",
        "saft|juice|smoothie",
        4, 6, 90, None, pri=2, perishable=True),
@@ -236,7 +246,7 @@ ENTRIES: tuple[Entry, ...] = (
        7, 12, 90, 3, pri=1),
     # --- Baked goods, sweets ---
     _e("bread", "Brot / Brötchen", "Bread / rolls", "bread",
-       "brot|broetchen|semmel|toast|bread|brioche|baguette|croissant",
+       "brot|broetchen|semmel|toast|bread|brioche|baguette|croissant|bagel|tortilla|fladenbrot|pita|naan|wraps",
        7, 7, 90, 4, pri=2),
     _e("cake", "Kuchen / Torte", "Cake / pastry", "bread",
        "kuchen|torte|gebaeck|muffin|cake|pastry|brownie|kaesekuchen",
@@ -257,6 +267,9 @@ ENTRIES: tuple[Entry, ...] = (
        "honig|honey|sirup|syrup|ahornsirup|essig|vinegar|zucker|sugar|salz|salt",
        730, 730, 730, 730, pri=2),
     # --- Dry goods and pantry ---
+    _e("soup_pasta", "Suppennudeln (trocken)", "Soup pasta (dry)", "dry",
+       "suppennudel|suppeneinlage|buchstabennudel|buchstaben|sternchennudel|sternchensuppe|sternchen|fadennudel|alphabet pasta|soup noodle",
+       3, 4, 90, 365, pri=3),
     _e("pasta", "Nudeln (trocken) / gekocht", "Pasta (dry) / cooked", "dry",
        "nudel|pasta|spaghetti|penne|fusilli|makkaroni|macaroni|tagliatelle|spaetzle|farfalle|rigatoni|tortellini",
        3, 4, 90, 365, pri=1),
