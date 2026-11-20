@@ -3,6 +3,18 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 4.10.4
+
+Better categories, from a real larder:
+
+- **New category 🧂 Sauces, oil & spices:** ketchup, mustard, mayonnaise, soy sauce, curry paste, tomato paste, oils and spices (before: sweets or dry goods).
+- **Game:** venison (Reh), deer, wild boar, rabbit, and cuts like *Unterschale*, *Keule*, *Rücken*, *Nacken*; marinated meat and gyros count as raw meat instead of a dish.
+- **Fish:** more kinds (redfish, sea bream, halibut, Alaska pollock …) and canned fish (herring fillets in tomato sauce or cream, sardines, tuna in its own juice) instead of a sauce or dish.
+- **More:** Brezen as bread, pumpkin seeds and nut butters as dry goods, cocoa drinks (Caotina, Kaba) with coffee, jam brands and fruit spreads as sweets, ready meals (teriyaki, dim sum, gyoza) as dishes, more pasta shapes.
+- Raw pudding rice: *Milchreis roh*, *Milchreis ungekocht* or *Rundkornreis* count as dry goods; plain *Milchreis* stays a dish (cooked).
+- Long shelf lives on tiles and in lists are shown in months or years from 60 days on (*8 mo*, *4 y* instead of *1556 d*).
+- Remembered table estimates are calculated anew, your own corrections stay.
+
 ## 4.10.3
 
 Changes requested in the review for the HACS default catalogue: Larder no longer reaches into other integrations.

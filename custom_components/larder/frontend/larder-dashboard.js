@@ -29,6 +29,7 @@ export const CATEGORY_ICONS = {
   raw_meat: "🥩",
   deli: "🥓",
   plant: "🌱",
+  condiment: "🧂",
   dairy: "🧀",
   egg: "🥚",
   produce: "🥦",

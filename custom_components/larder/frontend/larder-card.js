@@ -36,7 +36,7 @@ const TEXT = {
 };
 
 const ICONS = {
-  fish: "🐟", raw_meat: "🥩", deli: "🥓", plant: "🌱", dairy: "🧀", egg: "🥚", produce: "🥦", bread: "🍞",
+  fish: "🐟", raw_meat: "🥩", deli: "🥓", plant: "🌱", condiment: "🧂", dairy: "🧀", egg: "🥚", produce: "🥦", bread: "🍞",
   dish: "🍲", dry: "🌾", sweet: "🍫", coffee: "☕", mixed: "🍱", other: "📦",
 };
 

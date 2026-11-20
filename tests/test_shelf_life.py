@@ -787,3 +787,22 @@ def test_plant_based_soup_pasta_and_bagels_4_10_2() -> None:
         "Kürbissuppe": "dish",
     }
     assert {name: category_for(name) for name in cases} == cases
+
+
+def test_categories_from_a_real_larder_4_10_4() -> None:
+    """Names from a real larder (block of screenshots, 4.10.4)."""
+    from custom_components.larder.shelf_life import category_for
+
+    cases = {
+        "Schweine Pfannengyros": "raw_meat", "TK Brezen": "bread", "Reh Rücken": "raw_meat", "Reh Unterschale": "raw_meat",
+        "Rehoberschenkel": "raw_meat", "Rotbarsch filet": "fish", "Teriyaki Chicken Rice": "dish", "Dim sum mix": "dish",
+        "Heinz Tomatenketchup": "condiment", "Senf Altbayerisch": "condiment", "Grüne Curry Paste": "condiment",
+        "Grüner Pfeffer": "condiment", "Sonnenblumenöl": "condiment", "getrocknete Kürbiskerne": "dry",
+        "Caotina Blanc": "coffee", "MyProtein Peanut Butter": "dry", "Ritornelli": "dry",
+        "Schwartau Erdbeer weniger Zucker": "sweet", "Heringsfilet Pikante Tomatensauce": "fish",
+        "Herings Filets - Tomate & Basilikum": "fish", "Zarte Filets vom Hering in Creme": "fish",
+        "Haselnüsse": "dry", "Kalbsnacken": "raw_meat", "Leberkäse": "deli", "Kürbissuppe": "dish",
+        "Tomatensoße": "dish", "Bio frische Alpenmilch": "dairy", "Kichererbsen": "dry",
+        "Milchreis": "dish", "Milchreis roh": "dry", "Milchreis ungekocht": "dry", "Rundkornreis": "dry",
+    }
+    assert {name: category_for(name) for name in cases} == cases

@@ -3227,6 +3227,7 @@ test("How long something has been expired (4.10.2): days, months, years", async 
   const { TEXTS } = await import("../../custom_components/larder/frontend/larder-dashboard-strings.js");
   assert.deepEqual([3, 59, 90, 800].map((n) => TEXTS.de.expiredSince(n)), ["3 T", "59 T", "3 Mon.", "2 J."]);
   assert.deepEqual([3, 90, 800].map((n) => TEXTS.en.expiredSince(n)), ["3 d", "3 mo", "2 y"]);
+  assert.deepEqual([12, 59, 60, 400, 1556].map((n) => TEXTS.de.daysShort(n)), ["12 T", "59 T", "2 Mon.", "13 Mon.", "4 J."]);
   const panelStrings = await import("../../custom_components/larder/frontend/larder-panel-strings.js");
   const de = panelStrings.STRINGS.de;
   assert.deepEqual([1, 5, 90].map((n) => de.expiredSince(n)), ["seit gestern abgelaufen", "seit 5 Tagen abgelaufen", "seit 3 Monaten abgelaufen"]);

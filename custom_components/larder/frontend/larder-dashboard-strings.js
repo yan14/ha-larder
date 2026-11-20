@@ -187,7 +187,7 @@ export const TEXTS = {
     containersCount: (n) => (n === 1 ? "1 Eintrag" : `${n} Einträge`),
     expired: "abgelaufen",
     today: "heute",
-    daysShort: (n) => `${n} T`,
+    daysShort: (n) => (n < 60 ? `${n} T` : n < 730 ? `${Math.floor(n / 30)} Mon.` : `${Math.floor(n / 365)} J.`),
     // 4.10.2: how long something has been expired (tiles: short, list: long)
     expiredSince: (n) => (n < 60 ? `${n} T` : n < 730 ? `${Math.floor(n / 30)} Mon.` : `${Math.floor(n / 365)} J.`),
     soonCount: (n) => `${n} bald`,
@@ -196,6 +196,7 @@ export const TEXTS = {
       raw_meat: "Fleisch",
       deli: "Wurst & Aufschnitt",
       plant: "Vegan & Tofu",
+      condiment: "Soßen, Öl & Gewürze",
       dairy: "Milchprodukte",
       egg: "Eier",
       produce: "Obst & Gemüse",
@@ -487,7 +488,7 @@ export const TEXTS = {
     containersCount: (n) => (n === 1 ? "1 entry" : `${n} entries`),
     expired: "expired",
     today: "today",
-    daysShort: (n) => `${n} d`,
+    daysShort: (n) => (n < 60 ? `${n} d` : n < 730 ? `${Math.floor(n / 30)} mo` : `${Math.floor(n / 365)} y`),
     expiredSince: (n) => (n < 60 ? `${n} d` : n < 730 ? `${Math.floor(n / 30)} mo` : `${Math.floor(n / 365)} y`),
     soonCount: (n) => `${n} soon`,
     categories: {
@@ -495,6 +496,7 @@ export const TEXTS = {
       raw_meat: "Meat",
       deli: "Cold cuts",
       plant: "Plant-based",
+      condiment: "Sauces, oil & spices",
       dairy: "Dairy",
       egg: "Eggs",
       produce: "Fruit & vegetables",
