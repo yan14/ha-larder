@@ -20,7 +20,6 @@ from typing import Any
 from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.storage import Store
 from homeassistant.util import slugify
 
@@ -243,7 +242,7 @@ class NfcTags:
 
     async def _retired_scanned(self, tag_id: str, scanner: str | None) -> None:
         """Sticker of a bag that was already emptied: say so instead of doing nothing."""
-        from .disposable import async_delete_ha_tag, async_get_retired, retired_text  # noqa: PLC0415
+        from .disposable import async_get_retired, retired_text  # noqa: PLC0415
 
         info = (await async_get_retired(self.hass)).by_tag(tag_id)
         if info is None:
@@ -251,11 +250,6 @@ class NfcTags:
         text = retired_text(info, self.hass.config.language or "en")
         data = {"retired": True, "name": info.get("name"), "message": text, "scanned_by": scanner}
         self.hass.bus.async_fire(EVENT_DOSE_SCANNED, data)
-        # Home Assistant creates the tag again when scanning (shortly after this event): clean up afterwards
-        async def cleanup(_now: Any) -> None:
-            await async_delete_ha_tag(self.hass, tag_id)
-
-        async_call_later(self.hass, 2, cleanup)
         if self._sessions:
             for forward in list(self._sessions):
                 forward(data)

@@ -258,7 +258,7 @@
           "ai_task_entity": "Only needed if you have set up more than one AI service and an AI option is chosen.",
           "opened_days": "The “Opened” button on the dashboard shortens the best-before date to at most this many days from today.",
           "thawed_days": "The “Thawed” button on the dashboard shortens the best-before date to at most this many days from today. Do not refreeze thawed food.",
-          "calendar_entity": "Writes each container's best-before date to this calendar as an all-day event (create, move, delete). The calendar must support creating and deleting events, e.g. Google, CalDAV or “Local Calendar”. Leave empty = off.",
+          "calendar_entity": "Writes each container's best-before date to this calendar as an all-day event (create, move, delete). The calendar must support creating and deleting events, e.g. Google or “Local Calendar” (not CalDAV, which cannot delete). Leave empty = off.",
           "nfc_notify": "When someone scans a linked tag, their phone (Companion app) gets a notification. Tapping it opens the container in the dashboard.",
           "repair_hints": "Shows hints under Settings → System → Repairs for containers without an area, filled containers without a best-before date and containers that expired at least 7 days ago.",
           "temperature_warning": "Warns (repair hint and event larder_temperature_warning) when a storage place with a temperature sensor stays too warm: freezer above −12 °C for 30 minutes, fridge above 8 °C or 0 °C drawer above 6 °C for 60 minutes.",
@@ -285,7 +285,7 @@
       }
     },
     "error": {
-      "calendar_not_supported": "This calendar cannot be used: Larder must be able to create and delete events. Use for example \"Local Calendar\", Google or CalDAV."
+      "calendar_not_supported": "This calendar cannot be used: Larder must be able to create and delete events. Use for example \"Local Calendar\" or Google; Home Assistant's CalDAV calendar cannot delete events."
     }
   },
   "services": {

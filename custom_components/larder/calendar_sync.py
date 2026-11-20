@@ -6,8 +6,9 @@ when the date or the content changes, and deleted when the date is cleared or th
 is removed. Our own events are recognised by a marker in the description. For this the
 calendar must be able to create AND delete events (read-only ones like an iCal link do not work).
 
-Home Assistant's CalDAV calendar (iCloud, Nextcloud, …) can only create; for it
-`CalDavBackend` reads and deletes directly through the CalDAV connection.
+Only Home Assistant's calendar entity features are used. A calendar that cannot delete events (e.g. Home
+Assistant's CalDAV calendar for iCloud or Nextcloud) gets no events at all: without deleting, every change would add
+another one. Larder then logs a warning once and the settings say the calendar is not supported.
 
 The sync is self-healing: it looks for the events of a container in the whole calendar (not only on
 the day remembered last), keeps exactly one matching event, deletes all others and only creates
@@ -122,51 +123,8 @@ class CalendarBackend:
         await self.entity.async_delete_event(item.uid, item.ref.recurrence_id)
 
 
-class CalDavBackend(CalendarBackend):
-    """CalDAV: Home Assistant's CalDAV calendar can only create events and gives no event IDs.
-
-    Reading and deleting therefore go directly through the CalDAV connection that the CalDAV
-    integration keeps open anyway (`entity.coordinator.calendar`). Creating still goes through Home Assistant.
-    """
-
-    @staticmethod
-    def matches(entity: CalendarEntity) -> bool:
-        platform = getattr(entity, "platform", None)
-        calendar = getattr(getattr(entity, "coordinator", None), "calendar", None)
-        return getattr(platform, "platform_name", None) == "caldav" and callable(getattr(calendar, "search", None))
-
-    @property
-    def can_delete(self) -> bool:
-        return True
-
-    def _search(self, start: datetime, end: datetime) -> list[CalendarItem]:
-        items = []
-        for obj in self.entity.coordinator.calendar.search(start=start, end=end, event=True, expand=False):
-            vevent = getattr(getattr(obj, "instance", None), "vevent", None)
-            if vevent is None or not hasattr(vevent, "dtstart"):
-                continue
-            begin = vevent.dtstart.value
-            if isinstance(begin, datetime):
-                begin = (dt_util.as_local(begin) if begin.tzinfo else begin).date()
-
-            def text(name: str, vevent: Any = vevent) -> str:
-                return str(getattr(getattr(vevent, name, None), "value", "") or "")
-
-            items.append(CalendarItem(text("uid") or None, begin, text("summary"), text("description"), obj))
-        return items
-
-    async def async_scan(self, start: datetime | None = None, end: datetime | None = None) -> list[CalendarItem]:
-        start, end = self._range(start, end)
-        return await self.hass.async_add_executor_job(self._search, start, end)
-
-    async def async_delete(self, item: CalendarItem) -> None:
-        await self.hass.async_add_executor_job(item.ref.delete)
-        if refresh := getattr(self.entity.coordinator, "async_request_refresh", None):
-            await refresh()
-
-
 def backend_for(hass: HomeAssistant, entity: CalendarEntity) -> CalendarBackend:
-    return CalDavBackend(hass, entity) if CalDavBackend.matches(entity) else CalendarBackend(hass, entity)
+    return CalendarBackend(hass, entity)
 
 
 class CalendarSync:

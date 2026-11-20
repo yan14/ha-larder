@@ -258,7 +258,7 @@
           "ai_task_entity": "Nur nötig, wenn du mehrere KI-Dienste eingerichtet hast und eine KI-Stufe gewählt ist.",
           "opened_days": "Der Button „Geöffnet“ im Dashboard kürzt das MHD auf höchstens so viele Tage ab heute.",
           "thawed_days": "Der Button „Aufgetaut“ im Dashboard kürzt das MHD auf höchstens so viele Tage ab heute. Aufgetautes nicht wieder einfrieren.",
-          "calendar_entity": "Schreibt das MHD jeder Dose als Ganztags-Termin in diesen Kalender (anlegen, verschieben, löschen). Der Kalender muss Termine anlegen und löschen können, z. B. Google, CalDAV oder „Lokaler Kalender“. Leer lassen = aus.",
+          "calendar_entity": "Schreibt das MHD jeder Dose als Ganztags-Termin in diesen Kalender (anlegen, verschieben, löschen). Der Kalender muss Termine anlegen und löschen können, z. B. Google oder „Lokaler Kalender“ (nicht CalDAV, das nicht löschen kann). Leer lassen = aus.",
           "nfc_notify": "Scannt jemand einen verknüpften Tag, bekommt sein Handy (Companion-App) eine Benachrichtigung. Antippen öffnet die Dose im Dashboard.",
           "repair_hints": "Zeigt unter Einstellungen → System → Reparaturen Hinweise zu Dosen ohne Bereich, gefüllten Dosen ohne MHD und Dosen, die seit mindestens 7 Tagen abgelaufen sind.",
           "temperature_warning": "Warnt (Reparaturhinweis und Ereignis larder_temperature_warning), wenn ein Lagerort mit Temperatursensor zu lange zu warm ist: Gefrierschrank über −12 °C für 30 Minuten, Kühlschrank über 8 °C bzw. 0-°C-Fach über 6 °C für 60 Minuten.",
@@ -285,7 +285,7 @@
       }
     },
     "error": {
-      "calendar_not_supported": "Dieser Kalender kann nicht verwendet werden: Larder muss Termine anlegen und wieder löschen können. Nimm z. B. „Lokaler Kalender“, Google oder CalDAV."
+      "calendar_not_supported": "Dieser Kalender kann nicht verwendet werden: Larder muss Termine anlegen und wieder löschen können. Nimm z. B. „Lokaler Kalender“ oder Google; der CalDAV-Kalender von Home Assistant kann keine Termine löschen."
     }
   },
   "services": {

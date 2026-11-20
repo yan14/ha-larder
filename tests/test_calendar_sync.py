@@ -444,36 +444,17 @@ class FakeCalDav(CalendarEntity):
         )
 
 
-async def test_caldav_calendar_moves_and_deletes_via_the_server(hass: HomeAssistant, monkeypatch) -> None:
-    from types import SimpleNamespace
-
-    from custom_components.larder.calendar_sync import CalDavBackend
-
-    # detection: platform "caldav" with an open connection
-    assert CalDavBackend.matches(SimpleNamespace(platform=SimpleNamespace(platform_name="caldav"), coordinator=SimpleNamespace(calendar=SimpleNamespace(search=print))))
-    assert not CalDavBackend.matches(SimpleNamespace(platform=SimpleNamespace(platform_name="google"), coordinator=None))
-    monkeypatch.setattr(CalDavBackend, "matches", staticmethod(lambda entity: isinstance(entity, FakeCalDav)))
-
+async def test_caldav_calendar_is_not_written_to(hass: HomeAssistant) -> None:
+    """Home Assistant's CalDAV calendar cannot delete: only calendar entity features are used, so nothing is written
+    (no access to the CalDAV integration's own connection)."""
     entry = await _setup(hass)
     assert await async_setup_component(hass, "calendar", {})
     cal = FakeCalDav("calendar.muell")
     await hass.data[ha_calendar.DATA_COMPONENT].async_add_entities([cal])
-    day = TODAY() + timedelta(days=5)
-    # leftovers like in a real calendar: many identical events over several days, plus a foreign one
-    for i, offset in enumerate((5, 5, 5, 7, 9, 12)):
-        cal.server.append(FakeDavObject(cal.server, f"alt-{i}", TODAY() + timedelta(days=offset), "Best before: Gekochte Eier", "Dose\n[zwilling:34OL]"))
-    cal.server.append(FakeDavObject(cal.server, "fremd", day, "Restmüll", None))
-
-    await _choose_calendar(hass, entry, "calendar.muell")
-    assert hass.data[DOMAIN]["calendar_sync"].supports("calendar.muell") is True
-    await _set(hass, "Gekochte Eier", day)
-    summaries = lambda: sorted((o.instance.vevent.summary.value, o.day) for o in cal.server)  # noqa: E731
-    assert summaries() == [("Best before: Gekochte Eier", day), ("Restmüll", day)]
-
-    await _set(hass, day=day + timedelta(days=3))  # verschieben
-    assert summaries() == [("Best before: Gekochte Eier", day + timedelta(days=3)), ("Restmüll", day)]
-
-    await hass.services.async_call(DOMAIN, "clear_best_before", {"entity_id": _eid(hass, "date")}, blocking=True)  # leeren
-    await _settle(hass)
-    assert summaries() == [("Restmüll", day)]
-    assert cal.refreshed > 0
+    assert hass.data[DOMAIN]["calendar_sync"].supports("calendar.muell") is False
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {"estimate_mode": "table", "calendar_entity": "calendar.muell"})
+    assert result["errors"] == {"calendar_entity": "calendar_not_supported"}
+    await _set(hass, "Gekochte Eier", TODAY() + timedelta(days=5))
+    assert cal.server == []
+    assert cal.refreshed == 0

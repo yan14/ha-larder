@@ -3,6 +3,13 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 4.10.3
+
+Changes requested in the review for the HACS default catalogue: Larder no longer reaches into other integrations.
+
+- **Calendar:** only Home Assistant's calendar entity features are used. **CalDAV calendars are no longer supported**, because Home Assistant's CalDAV calendar cannot delete events (before, Larder used the CalDAV integration's own connection). Choosing one is rejected in the settings; events written earlier stay in that calendar.
+- **NFC tags:** emptying a bag no longer deletes its tag from Settings → Tags (that list belongs to Home Assistant). The link in Larder is still removed, and an old sticker scanned by mistake still says when the bag was emptied.
+
 ## 4.10.2
 
 - **Plant-based food:** new category **🌱 Plant-based** (*Vegan & Tofu*) for tofu, tempeh, seitan, veggie burgers, falafel, hummus and dry soy chunks, lupin or pea protein (kept long when dry). Before, they showed up as *Other* or as a dish.

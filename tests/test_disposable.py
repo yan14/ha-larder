@@ -64,7 +64,7 @@ async def test_create_bags_fills_and_estimates(hass: HomeAssistant, hass_ws_clie
     assert res["result"]["items"][0]["name"] == "Bag 3"
 
 
-async def test_emptying_a_bag_removes_it_and_its_tag(hass: HomeAssistant, hass_ws_client) -> None:
+async def test_emptying_a_bag_removes_it_but_keeps_the_ha_tag(hass: HomeAssistant, hass_ws_client) -> None:
     assert await async_setup_component(hass, "tag", {})
     await _setup(hass, "AAAA")
     res = await _ws(hass, hass_ws_client, type="larder/create_items", kind="bag", items=[{"content": "Rehgulasch"}])
@@ -79,7 +79,7 @@ async def test_emptying_a_bag_removes_it_and_its_tag(hass: HomeAssistant, hass_w
 
     assert dr.async_get(hass).async_get(item["device_id"]) is None
     assert not [e for e in hass.config_entries.async_entries(DOMAIN) if e.data.get("cc") == cc]
-    assert "tag-1" not in hass.data[ha_tag.TAG_DATA].data
+    assert "tag-1" in hass.data[ha_tag.TAG_DATA].data  # Home Assistant's tag list is left alone
     assert (await async_get_nfc(hass)).tag_of(cc) is None
     record = (await async_get_history(hass)).list()[0]
     assert record["content"] == "Rehgulasch" and record["name"] == "Bag 1" and record["kind"] == "bag"
@@ -96,7 +96,7 @@ async def test_emptying_a_bag_removes_it_and_its_tag(hass: HomeAssistant, hass_w
     assert events and events[0]["retired"] is True and "emptied" in events[0]["message"]
     async_fire_time_changed(hass, dt_util.utcnow() + timedelta(seconds=5))
     await hass.async_block_till_done()
-    assert "tag-1" not in hass.data[ha_tag.TAG_DATA].data  # cleaned up right away
+    assert "tag-1" in hass.data[ha_tag.TAG_DATA].data  # never deleted from Settings → Tags
     # sticker used for a new bag: no longer counts as old
     res = await _ws(hass, hass_ws_client, type="larder/create_items", kind="bag", items=[{"content": "Hack"}])
     await (await async_get_nfc(hass)).async_link("tag-1", res["result"]["items"][0]["cc"])

@@ -123,20 +123,12 @@ def retired_text(info: dict[str, Any], language: str) -> str:
     return f"{name} was emptied{' on ' + when if when else ''}. This label or sticker is no longer valid."
 
 
-async def async_delete_ha_tag(hass: HomeAssistant, tag_id: str) -> None:
-    """Remove the tag from Home Assistant's tag list (Settings → Tags), if present."""
-    try:
-        from homeassistant.components.tag import TAG_DATA  # noqa: PLC0415 - the tag integration is optional
-
-        collection = hass.data.get(TAG_DATA)
-        if collection is not None and tag_id in collection.data:
-            await collection.async_delete_item(tag_id)
-    except Exception:  # noqa: BLE001 - cleaning up must never prevent emptying
-        _LOGGER.debug("Tag %s konnte nicht entfernt werden", tag_id, exc_info=True)
-
-
 async def async_dispose(hass: HomeAssistant, entry_id: str, content: str = "", remember: bool = True) -> None:
-    """Remove an emptied bag or empty pack (device, entities, NFC link, HA tag)."""
+    """Remove an emptied bag or empty pack (device, entities, NFC link).
+
+    Home Assistant's tag list (Settings → Tags) belongs to the tag integration and is left alone: dropping the
+    link in Larder's own storage is enough for Larder to stop reacting to the sticker.
+    """
     entry = hass.config_entries.async_get_entry(entry_id)
     if entry is None or kind_of(entry) not in DISPOSABLE_KINDS:
         return
@@ -150,8 +142,6 @@ async def async_dispose(hass: HomeAssistant, entry_id: str, content: str = "", r
             {"name": name, "content": content, "emptied": dt_util.now().isoformat(timespec="seconds"), "kind": KIND_BAG},
             tag_id,
         )
-    if tag_id:
-        await async_delete_ha_tag(hass, tag_id)
     pack = kind_of(entry) in PACK_KINDS
     if pack and content and remember is not False:
         stock = hass.data.get(DOMAIN, {}).get("stock")

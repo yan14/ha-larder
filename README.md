@@ -22,7 +22,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 - 🔔 **[Daily summary](docs/en/kitchen.md#daily-summary)**: push with buttons to several phones and read out on Alexa or other speakers, optionally at the first motion in the kitchen
 - 🛒 **[Shopping list](docs/en/kitchen.md#shopping-list)**: on request, the contents of an emptied container go onto a to-do list, never leftovers
 - 🗓 **[Meal plan](docs/en/kitchen.md#meal-plan)** with thaw reminder and a [week suggestion](docs/en/kitchen.md#week-suggestion) from what expires first, **[nutrition and allergens](docs/en/containers.md#nutrition)** from the barcode, **[statistics](docs/en/dashboard.md#statistics)** of what was eaten and thrown away with a [monthly report](docs/en/kitchen.md#monthly-report), and a best-before estimate that [learns from your history](docs/en/best-before.md#managing-remembered-estimates)
-- 📅 **[Calendar entries](docs/en/kitchen.md#best-before-dates-in-your-calendar)**: best-before dates in your calendar (Local Calendar, Google, CalDAV …)
+- 📅 **[Calendar entries](docs/en/kitchen.md#best-before-dates-in-your-calendar)**: best-before dates in your calendar (Local Calendar, Google …)
 - 🌍 Available in English and German
 
 <p align="center">
