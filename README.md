@@ -79,19 +79,30 @@ Then came a second idea: why not give ordinary boxes a QR code too? Printing tho
 
 ## Installation
 
-Since Home Assistant 2026.11 the community store HACS is built in as the **Marketplace**. Larder is not in the default catalogue yet, so you add it as a custom repository:
+Larder is in the default catalogue of HACS, which is built into Home Assistant as the **Marketplace** since 2026.11.
 
-1. **Settings → Marketplace** → **Add from link**
-2. URL: `https://github.com/yan14/ha-larder`, category **Integration**
-3. Download "Larder" (adding a custom repository needs a GitHub connection; Home Assistant shows a code to enter on GitHub).
-4. Set it up under **Settings → Devices & services → Add integration → Larder** (see below).
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=yan14&repository=ha-larder&category=integration)
+
+1. **Settings → Marketplace**, search for **Larder** and download it (or use the button above).
+2. Restart Home Assistant if it asks you to.
+3. Set it up under **Settings → Devices & services → Add integration → Larder** (see below).
 
 <details>
 <summary>Home Assistant before 2026.11 (classic HACS)</summary>
 
-1. HACS → three-dot menu → **Custom repositories**
+1. **HACS**, search for **Larder** and download it.
+2. Restart Home Assistant.
+
+</details>
+
+<details>
+<summary>Fallback: add it as a custom repository</summary>
+
+Only needed if Larder does not show up in the search yet (for example right after it was added to the catalogue).
+
+1. **Settings → Marketplace** → **Add from link** (classic HACS: three-dot menu → **Custom repositories**)
 2. URL: `https://github.com/yan14/ha-larder`, category **Integration**
-3. Install "Larder" and restart Home Assistant.
+3. Download "Larder" (a custom repository needs a GitHub connection; Home Assistant shows a code to enter on GitHub).
 
 </details>
 

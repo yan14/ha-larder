@@ -79,19 +79,30 @@ Dann kam eine zweite Idee: Auch gewöhnliche Boxen sollten einen QR-Code bekomme
 
 ## Installation
 
-Seit Home Assistant 2026.11 ist der Community Store HACS als **Marketplace** fest eingebaut. Larder ist noch nicht im Standardkatalog, daher fügst du es als benutzerdefiniertes Repository hinzu:
+Larder ist im Standardkatalog von HACS, das seit Home Assistant 2026.11 als **Marketplace** fest eingebaut ist.
 
-1. **Einstellungen → Marketplace** → **Über Link hinzufügen**
-2. URL: `https://github.com/yan14/ha-larder`, Kategorie **Integration**
-3. „Larder“ herunterladen (für ein eigenes Repository braucht es eine GitHub-Verbindung; Home Assistant zeigt dafür einen Code, den du bei GitHub eingibst).
-4. Einrichten unter **Einstellungen → Geräte & Dienste → Integration hinzufügen → Larder** (siehe unten).
+[![Open in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=yan14&repository=ha-larder&category=integration)
+
+1. **Einstellungen → Marketplace**, nach **Larder** suchen und herunterladen (oder den Knopf oben nutzen).
+2. Home Assistant neu starten, falls es danach fragt.
+3. Einrichten unter **Einstellungen → Geräte & Dienste → Integration hinzufügen → Larder** (siehe unten).
 
 <details>
 <summary>Home Assistant vor 2026.11 (klassisches HACS)</summary>
 
-1. HACS → Drei-Punkte-Menü → **Benutzerdefinierte Repositories**
+1. **HACS** öffnen, nach **Larder** suchen und herunterladen.
+2. Home Assistant neu starten.
+
+</details>
+
+<details>
+<summary>Notlösung: als benutzerdefiniertes Repository hinzufügen</summary>
+
+Nur nötig, wenn Larder in der Suche noch nicht auftaucht (etwa kurz nach der Aufnahme in den Katalog).
+
+1. **Einstellungen → Marketplace** → **Über Link hinzufügen** (klassisches HACS: Drei-Punkte-Menü → **Benutzerdefinierte Repositories**)
 2. URL: `https://github.com/yan14/ha-larder`, Kategorie **Integration**
-3. „Larder“ installieren, Home Assistant neu starten.
+3. „Larder“ herunterladen (für ein eigenes Repository braucht es eine GitHub-Verbindung; Home Assistant zeigt dafür einen Code, den du bei GitHub eingibst).
 
 </details>
 
