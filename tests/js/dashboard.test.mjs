@@ -2167,8 +2167,11 @@ test("stock: lasts, suggested minimum stock, price and value; price in the pack 
   form.querySelector("button.submit").click();
   await flush();
   await flush();
-  const created = hass.wsCalls.find((m) => m.type === `${D}/create_items`);
-  assert.deepEqual(created.items[0].product, { price: 1.99, price_source: "receipt" });
+  // 4.11.1: rows from the receipt go through receipt_add (known products to their usual place)
+  const fromReceipt = hass.wsCalls.find((m) => m.type === `${D}/receipt_add`);
+  assert.deepEqual(fromReceipt.items[0].product, { price: 1.99, price_source: "receipt" });
+  assert.equal(fromReceipt.items[0].receipt, undefined);
+  assert.equal(hass.wsCalls.find((m) => m.type === `${D}/create_items`), undefined);
 });
 
 // ---------- Block 16: running low and recalls ----------

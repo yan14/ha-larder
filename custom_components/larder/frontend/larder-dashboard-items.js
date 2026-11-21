@@ -159,6 +159,7 @@ const TEXT = {
     stockNone: "keine mehr da",
     stockFailed: "Speichern fehlgeschlagen.",
     receipt: "Kassenbon",
+    receiptJoined: (n) => (n === 1 ? "1 bekanntes Produkt an seinen üblichen Ort gelegt." : `${n} bekannte Produkte an ihren üblichen Ort gelegt.`),
     receiptBusy: "Kassenbon wird gelesen …",
     receiptDone: (n) => `${n} Produkt(e) vom Kassenbon übernommen. Bitte prüfen und das MHD ergänzen.`,
     receiptFailed: "Auf dem Foto wurde kein Kassenbon erkannt.",
@@ -321,6 +322,7 @@ const TEXT = {
     stockNone: "none left",
     stockFailed: "Saving failed.",
     receipt: "Receipt",
+    receiptJoined: (n) => (n === 1 ? "1 known product put at its usual place." : `${n} known products put at their usual place.`),
     receiptBusy: "Reading the receipt …",
     receiptDone: (n) => `${n} product(s) taken from the receipt. Please check them and add the best-before dates.`,
     receiptFailed: "No receipt was recognised in the photo.",
@@ -385,6 +387,7 @@ export function buildItems(kind, rows, vacuum = true) {
     const price = parseFloat(String(row.price || "").replace(",", "."));
     if (price > 0) item.product = { ...(item.product || {}), price: Math.round(price * 100) / 100, price_source: row.priceSource || "own" };
     if (kind === "bag") item.vacuum = !!vacuum;
+    if (row.receipt && kind === "pack") item.receipt = true; // 4.11.1: known products go to their usual place
     const copies = kind === "bag" ? Math.max(1, parseInt(row.count, 10) || 1) : 1;
     for (let i = 0; i < copies; i++) items.push({ ...item });
   }
@@ -1406,6 +1409,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
               priceInput.dataset.source = "receipt";
             }
             row._product = null;
+            row._receipt = true;
           }
           status.textContent = t.receiptDone(data.items.length);
         } catch (err) {
@@ -1457,7 +1461,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
         return {
           content: v("content"), quantity: v("quantity"), unit: v("unit"), date: v("date"), count: v("count"), product: row._product,
           packSize: v("packSize"), piece: v("piece"),
-          price: v("price"), priceSource: priceNode && priceNode.dataset.source,
+          price: v("price"), priceSource: priceNode && priceNode.dataset.source, receipt: !!row._receipt,
         };
       });
       const items = buildItems(kind, data, vacuum ? vacuum.querySelector("input").checked : true);
@@ -1472,18 +1476,39 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       }
       submit.disabled = true;
       try {
-        const msg = { type: `${DOMAIN}/create_items`, kind, items };
-        if (area.value) msg.area_id = area.value;
-        if (shopList && shopList.value) msg.shopping_list = shopList.value;
+        // rows read from a receipt: known products go to their usual place and join a pack there (4.11.1)
+        const fromReceipt = items.filter((i) => i.receipt).map(({ receipt, ...rest }) => rest);
+        const typed = items.filter((i) => !i.receipt);
+        const place = {};
+        if (area.value) place.area_id = area.value;
         if (compartment.value.trim()) {
-          msg.compartment = compartment.value.trim();
-          rememberCompartment(area.value, msg.compartment);
+          place.compartment = compartment.value.trim();
+          rememberCompartment(area.value, place.compartment);
         }
-        const res = await hass.callWS(msg);
+        let res = { items: [] };
+        let joined = 0;
+        if (fromReceipt.length) {
+          const rec = await hass.callWS({ type: `${DOMAIN}/receipt_add`, items: fromReceipt, ...place });
+          joined = (rec.added || []).length;
+          res.items.push(...(rec.created || []));
+        }
+        if (typed.length) {
+          const msg = { type: `${DOMAIN}/create_items`, kind, items: typed, ...place };
+          if (shopList && shopList.value) msg.shopping_list = shopList.value;
+          const created = await hass.callWS(msg);
+          res.items.push(...((created && created.items) || []));
+        }
         this._opts.itemArea = { ...(this._opts.itemArea || {}), [kind]: area.value };
         this._saveOptions();
-        const created = ((res && res.items) || []).map((it, i) => ({ ...it, content: items[i] ? items[i].content : "" }));
-        this._itemsCreated(kind, created);
+        const contents = fromReceipt.length ? [] : items.map((i) => i.content);
+        const created = ((res && res.items) || []).map((it, i) => ({ ...it, content: contents[i] || "" }));
+        if (created.length) this._itemsCreated(kind, created);
+        else {
+          this.setScope(scopeOfKind(kind));
+          this.setView("containers");
+          this._closeDialog();
+        }
+        if (joined) this.showNotice(created.length ? `${t.receiptJoined(joined)} ${t.createdPack(created.length)}` : t.receiptJoined(joined));
         if (preset && preset.onCreated) preset.onCreated(created);
       } catch (err) {
         error.textContent = (err && err.message) || t.failed;

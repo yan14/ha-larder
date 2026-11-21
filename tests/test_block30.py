@@ -51,3 +51,22 @@ async def test_scan_ticks_off_and_details(hass: HomeAssistant, hass_ws_client) -
         res = await _ws(hass, hass_ws_client, type="larder/shopping_scan", code="7394376616501")
     assert res["result"]["status"] == "unknown" and res["result"]["name"] == "Hafermilch"
     assert res["result"]["product"] == {"brand": "Oatly"}
+
+
+async def test_receipt_rows_go_to_their_usual_place(hass: HomeAssistant, hass_ws_client) -> None:
+    hass.config.language = "de"
+    await _setup(hass, "AAAA")
+    pantry = ar.async_get(hass).async_create("Vorrat")
+    kitchen = ar.async_get(hass).async_create("Küche")
+    await _packs(hass, hass_ws_client, [{"content": "Senf", "quantity": 1, "unit": "pieces", "product": {"brand": "Develey"}}], pantry.id, "Schrank")
+    day = (dt_util.now().date() + timedelta(days=100)).isoformat()
+    res = await _ws(hass, hass_ws_client, type="larder/receipt_add", area_id=kitchen.id, compartment="Tür", items=[
+        {"content": "Senf", "quantity": 2, "product": {"price": 1.49, "price_source": "receipt"}},
+        {"content": "Ketchup", "quantity": 1, "best_before": day, "product": {"price": 2.29, "price_source": "receipt"}},
+    ])
+    assert res["success"], res
+    assert len(res["result"]["added"]) == 1 and len(res["result"]["created"]) == 1
+    places = sorted((p["content"], p["area"], p["compartment"], p["count"], p["price"]) for p in pack_entries(hass))
+    # known mustard joined the pack in the pantry; unknown ketchup at the chosen place
+    assert places == [("Ketchup", "Küche", "Tür", 1, 2.29), ("Senf", "Vorrat", "Schrank", 3, 1.49)]
+    assert [p["price"] for p in (await async_get_stock(hass)).price_history["senf"]] == [1.49]

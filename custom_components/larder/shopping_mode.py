@@ -292,6 +292,59 @@ async def ws_shopping_details(hass: HomeAssistant, connection: websocket_api.Act
     connection.send_result(msg["id"], result)
 
 
+async def async_receipt_add(
+    hass: HomeAssistant, items: list[dict[str, Any]], area_id: str | None, compartment: str | None
+) -> dict[str, Any]:
+    """Rows read from a receipt (4.11.1): known products go to their usual place and join a pack there (like the
+    shopping mode), with price and date; only unknown ones are created at the place chosen in the dialog."""
+    from .const import KIND_PACK  # noqa: PLC0415
+    from .disposable import async_create_items  # noqa: PLC0415
+
+    packs = pack_entries(hass)
+    added: list[dict[str, Any]] = []
+    unknown: list[dict[str, Any]] = []
+    for item in items:
+        key = product_key(item["content"])
+        found = [p for p in packs if product_key(p["content"]) == key and p["kind"] == KIND_PACK]
+        if not found:
+            unknown.append(item)
+            continue
+        count = max(1, int(item.get("quantity") or 1))
+        result = await async_add_known(hass, _known_product(found, ""), count)
+        price = (item.get("product") or {}).get("price")
+        best = item.get("best_before")
+        if isinstance(best, str):
+            best = date.fromisoformat(best)
+        if price or best:
+            details = await async_shopping_details(hass, result["device_id"], result.get("added") or count, price, best)
+            result["device_id"] = details["device_id"]
+        added.append(result)
+        packs = pack_entries(hass)
+    created = await async_create_items(hass, KIND_PACK, unknown, area_id, compartment) if unknown else []
+    return {"added": added, "created": created}
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/receipt_add",
+        vol.Required("items"): vol.All([dict], vol.Length(min=1, max=30)),
+        vol.Optional("area_id"): vol.Any(str, None),
+        vol.Optional("compartment"): vol.All(str, vol.Length(max=60)),
+    }
+)
+@websocket_api.async_response
+async def ws_receipt_add(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    from .disposable import _ITEM  # noqa: PLC0415
+
+    try:
+        items = [_ITEM(item) for item in msg["items"]]
+        result = await async_receipt_add(hass, items, msg.get("area_id"), msg.get("compartment"))
+    except (vol.Invalid, HomeAssistantError) as err:
+        connection.send_error(msg["id"], "receipt_failed", str(err))
+        return
+    connection.send_result(msg["id"], result)
+
+
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/recurring"})
 @websocket_api.async_response
 async def ws_recurring(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
@@ -350,5 +403,5 @@ def async_setup_shopping_mode_websocket(hass: HomeAssistant) -> None:
     if domain_data.get("shopping_mode_ws"):
         return
     domain_data["shopping_mode_ws"] = True
-    for command in (ws_shopping_mode, ws_shopping_check, ws_shopping_scan, ws_shopping_details, ws_recurring, ws_recurring_set, ws_recurring_delete):
+    for command in (ws_shopping_mode, ws_shopping_check, ws_shopping_scan, ws_shopping_details, ws_receipt_add, ws_recurring, ws_recurring_set, ws_recurring_delete):
         websocket_api.async_register_command(hass, command)

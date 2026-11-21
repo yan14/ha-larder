@@ -3,6 +3,10 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 4.11.1
+
+- **Receipt like the shopping mode:** products from a receipt that are already in stock go to their usual place and join a pack there (with the price from the receipt and, if entered, their own best-before date). Only new products are created at the area and compartment chosen in the dialog.
+
 ## 4.11.0
 
 - **Scan in the shopping mode:** **📷 Scan** (Home Assistant app) ticks off the matching item on the list and puts it into stock. Known products that are not on the list go into stock anyway; unknown ones are collected with their name from Open Food Facts and added at the end.
