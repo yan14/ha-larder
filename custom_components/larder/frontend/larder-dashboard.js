@@ -19,6 +19,7 @@ const { installShopping, shoppingTexts } = await import(`./larder-dashboard-shop
 const { installDataCare, dataCareTexts } = await import(`./larder-dashboard-datacare.js${VERSION_QUERY}`);
 const { sectionNames } = await import(`./larder-dashboard-supply.js${VERSION_QUERY}`);
 const { installSearch, searchTexts } = await import(`./larder-dashboard-search.js${VERSION_QUERY}`);
+const { installHistory } = await import(`./larder-dashboard-history.js${VERSION_QUERY}`);
 
 const DOMAIN = "larder";
 const STORAGE_KEY = `${DOMAIN}.experimental`; // historic name, kept so saved views survive
@@ -314,6 +315,10 @@ export class LarderDashboard extends HTMLElement {
     // The embedded classic view sits between content and bar (for cards and estimates)
     this._nav.before(this._classic);
     this._classic.addEventListener("larder-detail-closed", () => this._closeDetail());
+    // 5.1: "History of this product" on a card
+    this._classic.addEventListener("larder-product-history", (ev) => {
+      if (ev.detail && ev.detail.content) this.openProductHistory(ev.detail.content);
+    });
     this._classic.addEventListener("larder-filled", (ev) => {
       if (this._selecting) this.stopSelecting();
       // label right after filling (e.g. for freezer bags): one tap opens the label dialog
@@ -3248,6 +3253,7 @@ installCook(LarderDashboard, { el, isAdmin, DOMAIN });
 installSupply(LarderDashboard, { el, DOMAIN });
 installDataCare(LarderDashboard, { el, DOMAIN });
 installSearch(LarderDashboard, { el });
+installHistory(LarderDashboard, { el, DOMAIN, money });
 installShopping(LarderDashboard, { el, DOMAIN, todoLists, sectionNames });
 installVouchers(LarderDashboard, { el, isAdmin, listAreas, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment });
 installCare(LarderDashboard, { el, isAdmin, listAreas, scopeOfKind, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment, CATEGORY_ICONS });

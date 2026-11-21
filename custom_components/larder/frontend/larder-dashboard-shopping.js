@@ -221,8 +221,9 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
       this._update();
     });
     save.dataset.role = "shop-details-save";
-    // household items have no best-before date to enter here
-    box.append(...(done.kind === "household" ? [price, save] : [price, date, save]));
+    // household items have no best-before date to enter here; 📷 reads the printed date (5.1)
+    const photo = done.kind === "household" ? null : this._datePhotoButton(date);
+    box.append(...[price, done.kind === "household" ? null : date, photo, save].filter(Boolean));
     row.after(box);
     return box;
   };

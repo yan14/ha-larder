@@ -260,4 +260,11 @@ export const STYLE = `
   details.more > * + * { margin-top: 10px; }
   details.more select.convert { align-self: flex-start; font: inherit; font-size: 14px; }
   details.more select.convert[hidden] { display: none; }
+  /* 5.1: date from a photo, product history */
+  .bbrow button.datephoto { flex: 0 0 auto; font-size: 18px; padding: 4px 8px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--divider-color); background: none; }
+  .bbrow button.datephoto[hidden] { display: none; }
+  details.history button.producthistory { margin-top: 6px; font: inherit; font-size: 13px; padding: 0; border: 0; background: none;
+    color: var(--primary-color); cursor: pointer; }
+  details.history button.producthistory[hidden] { display: none; }
 `;

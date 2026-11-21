@@ -29,7 +29,7 @@ A bar at the bottom switches between five pages: **Start · Larder · Shopping �
 
 **The card of a container** (in the card view, or after tapping a container) shows the frequent actions as big buttons at the top – **−1**, **Open** (packs), **Empty / Used up** and **Move** –, below them contents, amount, best-before date and place; everything rarely needed (price, store section, list, minimum stock, nutrition, NFC, replacement interval, convert …) is under **More**. For packs **−1** asks *Used up* or *🗑 Thrown away* (like the barcode dialog), so what is thrown away ends up in the history, the statistics and the value. In detail:
 
-- area (dropdown; which areas are offered can be narrowed down with a label, see [Areas and labels](containers.md#areas-and-labels)), **compartment** (optional, e.g. "drawer 2" in the freezer; shown on the tile, searchable, sorted with the area), **contents**, **quantity and unit** (**−1** takes one portion, piece or slice; at the last one it asks whether to empty the container), **best before** (with a hint "expired" or "n days left" once it expires soon), **filled on** ("Now" sets the current time),
+- area (dropdown; which areas are offered can be narrowed down with a label, see [Areas and labels](containers.md#areas-and-labels)), **compartment** (optional, e.g. "drawer 2" in the freezer; shown on the tile, searchable, sorted with the area), **contents**, **quantity and unit** (**−1** takes one portion, piece or slice; at the last one it asks whether to empty the container), **best before** (with a hint "expired" or "n days left" once it expires soon; **📷** reads the printed date from a photo, since 5.1), **filled on** ("Now" sets the current time),
 - **+1 day** moves the best-before date by a day, **Opened** shortens it to the days set in the settings (default 3), **Thawed** does the same for food out of the freezer (default 2 days, do not refreeze). Neither ever extends a date; without a date one is set,
 - **Estimate best before** (when [estimating](best-before.md#best-before-estimate) is on, contents are entered and the date is empty),
 - **Vacuum**, **Add to shopping list when emptied** (once a [shopping list](kitchen.md#shopping-list) is chosen), **Flexible storage place** with **After emptying, back to** (see [Filling containers](containers.md#filling-containers)), the **NFC tag** (link or unlink), **Open device** and **Empty container**. Before emptying, the card asks **😋 Eaten** or **🗑 Thrown away**; the answer goes into the container's **History** (fold-out list at the bottom of the card, the last ten fillings).
@@ -96,6 +96,14 @@ show_opened: true     # optional
 Once a month, while something is missing, the start page shows **🧹 Data care** (✕ hides it until next month; **More → 🧹 Data care** shows it any time): opened packs without a date, packs without a best-before date, products without a price, entries without an area or compartment, and products used often but without a minimum stock. Tapping an entry opens its card, where you fill it in. With complete data, statistics, *lasts about …*, shopping suggestions and the stock value get more accurate. Opened packs show **🫙 opened 12 Nov** on their tile, so it is clear why the date is shorter than printed.
 
 <p align="center"><img src="../images/dashboard-datacare-en.png" width="250" alt="Data care"></p>
+
+### Product history
+
+**📜 History of …** at the bottom of a card (under *History*), **📜 History** in the stock view and in the barcode dialog (also reached from the 🔍 search) show what happened to a **product** across all containers, bags and packs – *ham was in container 3 last week and is in container 7 this week*. At the top: how often in the last year, how long it lasted on average, how much was thrown away (with its value, if the price is known), the prices over time and a hint, e.g. *thrown away 2 of 6 times – buy smaller amounts or freeze some?*. Below, every emptied or used-up entry with date, eaten or thrown away, where it was and how long it was stored. Entries with the same contents count as one product (upper/lower case does not matter); a renamed product starts a history of its own.
+
+<p align="center"><img src="../images/dashboard-history-en.png" width="250" alt="Product history"></p>
+
+**Recently used.** **＋** and the empty 🔍 search show the last products added as chips. One tap adds one pack at its usual place (where it is now, otherwise where it was last), even when none is left; then price and date as after putting away.
 
 ## Statistics
 

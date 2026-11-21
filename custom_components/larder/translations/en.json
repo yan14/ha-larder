@@ -195,6 +195,9 @@
     "transfer_invalid": {
       "message": "Transfer only works from a pack with contents into an empty container or bag."
     },
+    "date_photo_none": {
+      "message": "No readable best-before date was found in the photo."
+    },
     "receipt_photo_none": {
       "message": "No receipt with food was recognised in the photo."
     },

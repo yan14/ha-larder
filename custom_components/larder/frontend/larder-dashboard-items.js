@@ -511,7 +511,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       this._codeAdded(added);
     });
     another.dataset.role = "code-new";
-    const parts = [el("h2", "", res.name), el("p", "lead", t.codeOldest(placeName(res.entries[0], t))), list, another];
+    const parts = [el("h2", "", res.name), el("p", "lead", t.codeOldest(placeName(res.entries[0], t))), list, another, this._historyLink(res.name, "code-history")];
     parts.push(buttonsRow(close));
     form.replaceChildren(...parts);
     this._submit = null;
@@ -528,13 +528,30 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     text.append(el("span", "name", `${added.content} +1`), sub);
     row.append(text);
     const done = { ...added };
+    // 5.1 (#124): several packs at once – one more without scanning again
+    const plus = button("", "＋1", async () => {
+      plus.disabled = true;
+      try {
+        const more = await this._hass.callWS({ type: `${DOMAIN}/put_away`, content: added.content });
+        if (more && more.status === "added") {
+          done.added = (done.added || 1) + 1;
+          done.count = more.count;
+          row.querySelector(".name").textContent = `${added.content} +${done.added}`;
+          sub.textContent = [placeName(added, t), t.putAwayNow(done.count), done.details].filter(Boolean).join(" · ");
+        }
+      } finally {
+        plus.disabled = false;
+      }
+    });
+    plus.dataset.role = "code-added-plus";
+    row.append(plus);
     const ok = button("submit", t.done, () => this._closeDialog());
     ok.dataset.role = "code-added-done";
     const move = button("", t.codeMove, () => this.openMoveDialog(done.device_id));
     move.dataset.role = "code-added-move";
     this._form.replaceChildren(el("h2", "", added.content), el("p", "lead", t.codeAdded(placeName(added, t))), row, buttonsRow(move, ok));
     this._shopDetails(done, row, () => {
-      sub.textContent = [placeName(added, t), t.putAwayNow(added.count), done.details].filter(Boolean).join(" · ");
+      sub.textContent = [placeName(added, t), t.putAwayNow(done.count), done.details].filter(Boolean).join(" · ");
     });
     this._submit = null;
     this._overlay.hidden = false;
@@ -679,6 +696,10 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
             el("span", "sub", [placeOf(r), t.putAwayNow(r.count), r.ticked && r.ticked.length ? t.putAwayTicked : null, r.details].filter(Boolean).join(" · ")),
           );
           row.append(text);
+          // 5.1 (#124): one more of the same without scanning again
+          const plus = button("", "＋1", () => handle(null, r.content));
+          plus.dataset.role = "putaway-plus";
+          row.append(plus);
           // 5.0 (#120): price and best-before date right here, like in the shopping mode
           if (!r.details) {
             const details = button("link", r.kind === "household" ? t.putAwayPrice : t.putAwayDate, () => {
@@ -700,20 +721,22 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       list.replaceChildren(...parts);
     };
 
-    const handle = async (raw) => {
+    const handle = async (raw, content = null) => {
       const value = String(raw || "").trim();
-      if (!value) return "";
+      if (!value && !content) return "";
       let res;
       try {
-        res = await hass.callWS({ type: `${DOMAIN}/put_away`, code: value });
+        res = await hass.callWS(content ? { type: `${DOMAIN}/put_away`, content } : { type: `${DOMAIN}/put_away`, code: value });
       } catch (err) {
         status.textContent = (err && err.message) || t.failed;
         return status.textContent;
       }
+      if (!res) return "";
       let message;
       if (res.status === "added") {
         const known = state.done.find((r) => r.device_id === res.device_id);
-        if (known) Object.assign(known, res, { times: known.times + 1, new_entry: known.new_entry || res.new_entry, details: "" });
+        // several packs of it: price and date then apply to all of them (added)
+        if (known) Object.assign(known, res, { times: known.times + 1, added: known.times + 1, new_entry: known.new_entry || res.new_entry, details: "" });
         else state.done.unshift({ ...res, times: 1 });
         message = t.putAwayDoneOne(res.content, placeOf(res));
       } else {
@@ -1174,6 +1197,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
         line.dataset.role = "stock-price-history";
         item.append(line);
       }
+      item.append(this._historyLink(p.name, "stock-history"));
       const places = el("div", "places");
       for (const place of p.places) {
         const date = (place.best_before ? ` · ${fmtDate(hass, place.best_before)}` : "") + (place.opened ? " · 🔓" : "");
@@ -1302,9 +1326,13 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       choice("add-medicine", "💊", t.kindMedicine, t.kindMedicineHint, () => this.openItemsDialog("medicine")),
       choice("add-voucher", "🎟️", t.kindVoucher, t.kindVoucherHint, () => this.openVoucherDialog()),
     );
-    this._form.replaceChildren(el("h2", "", t.addTitle), choices, buttonsRow(button("cancel", t.cancel, () => this._closeDialog())));
+    // 5.1 (#125): recently used products, one tap adds one pack at its usual place
+    const recent = el("div", "recent");
+    recent.dataset.role = "recent";
+    this._form.replaceChildren(el("h2", "", t.addTitle), recent, choices, buttonsRow(button("cancel", t.cancel, () => this._closeDialog())));
     this._submit = null;
     this._overlay.hidden = false;
+    return this._recentChips(recent);
   };
 
   /** Create bags, packs or household items: several rows, one content per row. */

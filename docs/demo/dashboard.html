@@ -287,6 +287,20 @@ const hass = {
       ? { key: "b", content: "Gekochte Eier", area: "Kühlschrank", vacuum: false, days: 7, suggested: 5, direction: "shorter", count: 2 }
       : { key: "b", content: "Boiled eggs", area: "Fridge", vacuum: false, days: 7, suggested: 5, direction: "shorter", count: 2 }] };
     if (msg.type === "larder/shopping_lists") return { lists: ["todo.einkaufsliste"] };
+    if (msg.type === "larder/recent_products") return { items: (de ? ["Senf", "Haferflocken", "Tomaten gehackt", "Milch"] : ["Mustard", "Oats", "Chopped tomatoes", "Milk"]).map((content) => ({ content, area: de ? "Vorratskammer" : "Pantry", compartment: "" })) };
+    if (msg.type === "larder/product_history") return {
+      name: de ? "Schinken" : "Ham",
+      summary: { count: 6, per_year: 5, avg_days: 6, eaten: 4, thrown: 2, thrown_value: 4.98 },
+      hint: { key: "thrown_often", thrown: 2, of: 6 },
+      price_history: [{ price: 2.29 }, { price: 2.49 }, { price: 2.39 }],
+      records: [
+        { emptied: "2026-11-18T19:00:00+01:00", outcome: "eaten", name: de ? "Dose 7" : "Container 7", area: de ? "Kühlschrank" : "Fridge", days_stored: 5 },
+        { emptied: "2026-11-09T19:00:00+01:00", outcome: "thrown", name: de ? "Dose 3" : "Container 3", area: de ? "Kühlschrank" : "Fridge", days_stored: 9 },
+        { emptied: "2026-10-28T19:00:00+01:00", outcome: "eaten", name: de ? "Packung 2" : "Pack 2", area: de ? "Kühlschrank" : "Fridge", compartment: de ? "Fach oben" : "Top shelf", days_stored: 4 },
+        { emptied: "2026-10-12T19:00:00+01:00", outcome: "eaten", name: de ? "Dose 3" : "Container 3", area: de ? "Kühlschrank" : "Fridge", days_stored: 6 },
+        { emptied: "2026-09-30T19:00:00+01:00", outcome: "thrown", name: de ? "Dose 5" : "Container 5", area: de ? "Kühlschrank" : "Fridge", days_stored: 10 },
+      ],
+    };
     if (msg.type === "larder/bought") return { items: q.get("view") === "start" ? [de
       ? { id: "b1", summary: "Senf (Develey)", content: "Senf", product: { brand: "Develey" }, area_id: "pantry", compartment: "Schrank", count: 1 }
       : { id: "b1", summary: "Mustard (Develey)", content: "Mustard", product: { brand: "Develey" }, area_id: "pantry", compartment: "Cupboard", count: 1 },
@@ -410,6 +424,7 @@ if (q.get("view") === "shopping") {
 }
 if (q.get("dialog") === "recurring") await el.openRecurringDialog();
 if (q.get("dialog") === "datacare") await el.openDataCare();
+if (q.get("dialog") === "history") await el.openProductHistory(de ? "Schinken" : "Ham");
 if (q.get("dialog") === "search") {
   const input = el.openSearch();
   input.value = de ? "to" : "to";

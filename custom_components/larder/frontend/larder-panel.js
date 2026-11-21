@@ -413,7 +413,7 @@ class DoseCard {
       <div class="row"><label data-l="content"></label><input data-f="content" type="text" maxlength="255"></div>
       <div class="row quantityrow"><label data-l="quantity"></label><span class="qty"><input data-f="quantity" type="number" min="0" max="9999" step="1" inputmode="numeric"><select data-f="unit"></select><button class="take" type="button">−1</button></span></div>
       <div class="lastrow" hidden><span class="lasttext"></span><button class="lastempty" type="button"></button><button class="lastkeep" type="button"></button></div>
-      <div class="row bbrow"><label data-l="bestBefore"></label><input data-f="bestBefore" type="date"><span class="badge"></span></div>
+      <div class="row bbrow"><label data-l="bestBefore"></label><input data-f="bestBefore" type="date"><button class="datephoto" type="button" hidden>📷</button><input class="datefile" type="file" accept="image/*" capture="environment" hidden><span class="badge"></span></div>
       <div class="quickrow"><button class="plus1" type="button"></button><button class="opened" type="button"></button><button class="thawed" type="button"></button></div>
       <div class="row filledrow"><label data-l="filledAt"></label><input data-f="filledAt" type="datetime-local"><button class="now" type="button"></button></div>
       <div class="estimaterow"><button class="estimate" type="button"></button><span class="tip" role="status"></span></div>
@@ -454,7 +454,7 @@ class DoseCard {
       <div class="actions"><button class="fill" type="button"></button><button class="transfer" type="button" hidden></button><button class="move" type="button" hidden></button><button class="openpack" type="button" hidden></button><select class="convert" hidden></select><button class="empty" type="button"></button><span class="spacer"></span><img class="qr" alt=""></div>
       <div class="outcomerow" hidden><span class="otext"></span><button class="eaten" type="button"></button><button class="thrown" type="button"></button><button class="ocancel" type="button"></button></div>
       <details class="more"><summary></summary></details>
-      <details class="history"><summary></summary><ul></ul></details>`;
+      <details class="history"><summary></summary><ul></ul><button class="producthistory" type="button" hidden></button></details>`;
     this.el = el;
     this.q = (sel) => el.querySelector(sel);
     // 5.0 (#119): the frequent actions as big buttons at the top, everything rarely needed under "More"
@@ -559,6 +559,37 @@ class DoseCard {
         this._panel.showError((err && err.message) || strings(hass).takeFailed);
       }
     };
+    // 5.1 (#126): the history of the product across containers and packs (opened by the dashboard)
+    this.q("button.producthistory").addEventListener("click", () => {
+      const content = this.inputs.content.value.trim();
+      if (content) this._panel.dispatchEvent(new CustomEvent("larder-product-history", { detail: { content }, bubbles: true, composed: true }));
+    });
+    // 5.1 (#123): read the printed best-before date from a photo (AI Task)
+    const dateFile = this.q("input.datefile");
+    this.q("button.datephoto").addEventListener("click", () => dateFile.click());
+    dateFile.addEventListener("change", async () => {
+      const photo = dateFile.files && dateFile.files[0];
+      dateFile.value = "";
+      const hass = this._panel.hass;
+      if (!photo || !hass || !hass.fetchWithAuth || !this.ids.date) return;
+      const t = strings(hass);
+      const btn = this.q("button.datephoto");
+      btn.disabled = true;
+      this._setTip(t.dateBusy);
+      try {
+        const body = new FormData();
+        body.append("file", photo, photo.name || "date.jpg");
+        const res = await hass.fetchWithAuth(`/api/${DOMAIN}/date_photo`, { method: "POST", body });
+        const data = await res.json();
+        if (!res.ok || !data.date) throw new Error(data.message || t.dateFailed);
+        this._call("date", "set_value", { entity_id: this.ids.date, date: data.date });
+        this._setTip("");
+      } catch (err) {
+        this._setTip((err && err.message) || t.dateFailed);
+      } finally {
+        btn.disabled = false;
+      }
+    });
     this.q("button.teaten").addEventListener("click", () => takePack("eaten"));
     this.q("button.tthrown").addEventListener("click", () => takePack("thrown"));
     this.q("button.tcancel").addEventListener("click", () => (this.q(".takerow").hidden = true));
@@ -923,6 +954,13 @@ class DoseCard {
     this.q("button.tthrown").textContent = t.thrownOne;
     this.q("button.tcancel").textContent = t.cancel;
     this.q("details.more > summary").textContent = t.more;
+    const historyBtn = this.q("button.producthistory");
+    historyBtn.hidden = !(this._panel.hasAttribute("embedded") && hasContentNow);
+    historyBtn.textContent = t.productHistory(isValidState(text) ? text.state.trim() : "");
+    const datePhoto = this.q("button.datephoto");
+    datePhoto.hidden = !(admin && ok(date) && hasContentNow && hass.fetchWithAuth && hass.services && hass.services.ai_task);
+    datePhoto.title = t.datePhoto;
+    datePhoto.setAttribute("aria-label", t.datePhoto);
     const nonFoodKind = kind === "household" || kind === "medicine";
     // packs, household items and medicines are used up, containers and bags are emptied
     if (kind !== "container" && kind !== "bag") {

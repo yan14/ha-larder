@@ -69,6 +69,10 @@ PRICE_HISTORY = 12
 REPLACE_AHEAD = 7  # "replace soon": due within this many days
 
 
+RECENT_MAX = 12
+RECENT_PRODUCT_KEYS = ("brand", "package", "ean", "price", "pack_size", "piece", "kcal_100g", "kcal_portion", "nutri_score", "allergens")
+
+
 def product_key(content: str | None) -> str:
     return " ".join((content or "").split()).casefold()
 
@@ -99,6 +103,8 @@ class Stock:
         self.recurring: dict[str, dict[str, Any]] = {}
         # product → own prices over time (4.11): [{"day", "price"}], oldest first, at most PRICE_HISTORY
         self.price_history: dict[str, list[dict[str, Any]]] = {}
+        # recently added products (5.1, #125), newest first: {"content", "kind", "product", "area_id", "compartment"}
+        self.recent: list[dict[str, Any]] = []
         self._unsub = None
         self._unsub_daily = None
 
@@ -120,6 +126,7 @@ class Stock:
         self.sections = {str(k): str(v) for k, v in (data.get("sections") or {}).items() if v in SECTIONS}
         self.recurring = {k: v for k, v in (data.get("recurring") or {}).items() if isinstance(v, dict) and v.get("name")}
         self.price_history = {k: [p for p in v if isinstance(p, dict)] for k, v in (data.get("price_history") or {}).items() if isinstance(v, list)}
+        self.recent = [r for r in data.get("recent") or [] if isinstance(r, dict) and r.get("content")]
 
     def _data(self) -> dict[str, Any]:
         return {
@@ -139,7 +146,21 @@ class Stock:
             "sections": self.sections,
             "recurring": self.recurring,
             "price_history": self.price_history,
+            "recent": self.recent,
         }
+
+    def remember_recent(
+        self, content: str, kind: str, product: dict[str, Any] | None, area_id: str | None, compartment: str | None
+    ) -> None:
+        """Remember a product that was just added (＋ dialog, put away, receipt …) for "recently used"."""
+        key = product_key(content)
+        if not key or kind not in PACK_KINDS:
+            return
+        keep = {k: v for k, v in (product or {}).items() if k in RECENT_PRODUCT_KEYS and v not in (None, "")}
+        entry = {"content": content.strip(), "kind": kind, "product": keep, "area_id": area_id, "compartment": compartment or ""}
+        self.recent = [entry] + [r for r in self.recent if product_key(r.get("content")) != key]
+        del self.recent[RECENT_MAX:]
+        self._save()
 
     # ----- Consumption and prices -----
 
@@ -1089,7 +1110,7 @@ async def async_take_one(hass: HomeAssistant, cc: str, outcome: str) -> dict[str
     return {"left": source["count"] - 1}
 
 
-async def async_put_away(hass: HomeAssistant, code: str, content: str | None = None) -> dict[str, Any]:
+async def async_put_away(hass: HomeAssistant, code: str, content: str | None = None, packs: int = 1) -> dict[str, Any]:
     """Put one bought product away by its barcode (#96).
 
     Known product: one pack more at its usual place (where most of it is). It joins an entry there without a
@@ -1105,7 +1126,7 @@ async def async_put_away(hass: HomeAssistant, code: str, content: str | None = N
         return {"status": "unknown", **{k: found.get(k) for k in ("code", "name", "product", "product_type")}}
     from .shopping_mode import async_tick_off  # noqa: PLC0415 - avoids an import cycle
 
-    result = await async_add_known(hass, known)
+    result = await async_add_known(hass, known, packs)
     # 5.0 (#120): like the shopping mode and the receipt, the shopping list item is ticked off
     result["ticked"] = await async_tick_off(hass, [known["content"]])
     return result
@@ -1138,6 +1159,7 @@ async def async_add_known(hass: HomeAssistant, known: dict[str, Any], packs: int
         count, device_id = size, created[0]["device_id"]
     stock = await async_get_stock(hass)
     stock.dismiss_product(known["content"])
+    stock.remember_recent(known["content"], known["kind"], known.get("product"), area_id, compartment)
     area = ar.async_get(hass).async_get_area(area_id) if area_id else None
     return {
         "status": "added",
@@ -1336,6 +1358,8 @@ async def ws_pack_take(hass: HomeAssistant, connection: websocket_api.ActiveConn
         vol.Required("type"): f"{DOMAIN}/put_away",
         vol.Exclusive("code", "what"): vol.All(str, vol.Length(min=1, max=64)),
         vol.Exclusive("content", "what"): vol.All(str, vol.Length(min=1, max=255)),
+        # 5.1 (#124): several packs of the product at once
+        vol.Optional("packs", default=1): vol.All(int, vol.Range(min=1, max=50)),
     }
 )
 @websocket_api.async_response
@@ -1344,7 +1368,7 @@ async def ws_put_away(hass: HomeAssistant, connection: websocket_api.ActiveConne
     try:
         if not msg.get("code") and not msg.get("content"):
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="move_invalid")
-        result = await async_put_away(hass, msg.get("code", ""), msg.get("content"))
+        result = await async_put_away(hass, msg.get("code", ""), msg.get("content"), msg["packs"])
     except HomeAssistantError as err:
         connection.send_error(msg["id"], "put_away_failed", str(err))
         return

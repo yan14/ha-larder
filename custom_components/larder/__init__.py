@@ -14,6 +14,7 @@ from .calendar_sync import async_get_calendar_sync, async_setup_calendar_service
 from .const import CONF_AREA, CONF_CC, CONF_INITIAL, CONF_SOURCE, DOMAIN, MAIN_UNIQUE_ID, PLATFORMS, SOURCE_MAIN
 from .content_photo import async_setup_content_photo
 from .datacare import async_setup_datacare_websocket
+from .date_photo import async_setup_date_photo
 from .disposable import async_get_retired, async_setup_disposable_websocket
 from .entity import LarderConfigEntry, LarderRuntime, is_main
 from .estimate import async_get_estimator
@@ -28,6 +29,7 @@ from .panel import async_setup_panel, async_teardown_panel
 from .places import async_get_places, async_setup_place_websocket
 from .plan import async_get_plan, async_setup_plan_websocket
 from .product import async_setup_product_websocket
+from .product_history import async_setup_product_history_websocket
 from .recall import async_get_recalls, async_setup_recall_websocket
 from .receipt_photo import async_setup_receipt_photo
 from .recipe_book import async_setup_recipe_book_websocket
@@ -59,6 +61,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_recipe_photo(hass)
     async_setup_content_photo(hass)
     async_setup_receipt_photo(hass)
+    async_setup_date_photo(hass)
     async_setup_voucher_photo(hass)
     async_setup_labels(hass)
     async_setup_export(hass)
@@ -78,6 +81,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_supply_websocket(hass)
     async_setup_datacare_websocket(hass)
     async_setup_shopping_mode_websocket(hass)
+    async_setup_product_history_websocket(hass)
     async_setup_voucher_websocket(hass)
     await async_get_sizes(hass)
     async_setup_learning_websocket(hass)

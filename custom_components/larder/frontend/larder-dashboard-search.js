@@ -130,6 +130,13 @@ export function installSearch(Dashboard, { el }) {
       }
       if (!parts.length) parts.push(el("p", "hint", q.length < 2 ? t.hint : t.none(q)));
       results.replaceChildren(...parts);
+      // 5.1 (#125): without a query the recently used products
+      if (!q) {
+        const recent = el("div", "recent");
+        recent.dataset.role = "recent";
+        results.prepend(recent);
+        this._recentChips(recent);
+      }
     };
     input.addEventListener("input", draw);
     input.addEventListener("keydown", (ev) => {

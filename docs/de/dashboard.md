@@ -29,7 +29,7 @@ Eine Leiste unten wechselt zwischen fünf Seiten: **Start · Vorrat · Einkaufen
 
 **Die Karte einer Dose** (in der Kartenansicht oder nach dem Antippen) zeigt oben die häufigen Aktionen als große Knöpfe – **−1**, **Anbrechen** (Packungen), **Leeren / Aufgebraucht** und **Verschieben** –, darunter Inhalt, Menge, MHD und Ort; alles Seltene (Preis, Abteilung, Liste, Mindestbestand, Nährwerte, NFC, Wechselintervall, Umwandeln …) liegt unter **Mehr**. Bei Packungen fragt **−1** *Aufgebraucht* oder *🗑 Weggeworfen* (wie im Strichcode-Dialog), damit Weggeworfenes in Verlauf, Statistik und Wert landet. Im Einzelnen:
 
-- Bereich (Auswahlfeld; welche Bereiche angeboten werden, lässt sich mit einem Label eingrenzen, siehe [Bereiche und Labels](containers.md#bereiche-und-labels)), **Fach** (optional, z. B. „Schublade 2“ im Gefrierschrank; steht auf der Kachel, ist durchsuchbar und wird mit dem Bereich sortiert), **Inhalt**, **Menge und Einheit** (**−1** entnimmt eine Portion, ein Stück oder eine Scheibe; bei der letzten fragt es, ob die Dose geleert werden soll), **MHD** (mit Hinweis „abgelaufen“ oder „noch n Tage“, sobald es bald abläuft), **Eingelagert am** („Jetzt“ setzt die aktuelle Zeit),
+- Bereich (Auswahlfeld; welche Bereiche angeboten werden, lässt sich mit einem Label eingrenzen, siehe [Bereiche und Labels](containers.md#bereiche-und-labels)), **Fach** (optional, z. B. „Schublade 2“ im Gefrierschrank; steht auf der Kachel, ist durchsuchbar und wird mit dem Bereich sortiert), **Inhalt**, **Menge und Einheit** (**−1** entnimmt eine Portion, ein Stück oder eine Scheibe; bei der letzten fragt es, ob die Dose geleert werden soll), **MHD** (mit Hinweis „abgelaufen“ oder „noch n Tage“, sobald es bald abläuft; **📷** liest das aufgedruckte Datum vom Foto, seit 5.1), **Eingelagert am** („Jetzt“ setzt die aktuelle Zeit),
 - **+1 Tag** verschiebt das MHD um einen Tag, **Geöffnet** kürzt es auf die in den Einstellungen gesetzte Zahl Tage (Standard 3), **Aufgetaut** macht dasselbe für Essen aus dem Gefrierfach (Standard 2 Tage, nicht wieder einfrieren). Beides verlängert nie ein Datum; ohne Datum wird eines gesetzt,
 - **MHD schätzen** (wenn die [Schätzung](best-before.md#mhd-schätzung) aktiv ist, ein Inhalt eingetragen und das MHD leer ist),
 - **Vakuum**, **Beim Leeren auf die Einkaufsliste** (sobald eine [Einkaufsliste](kitchen.md#einkaufsliste) gewählt ist), **Variabler Lagerort** mit **Nach dem Leeren zurück in** (siehe [Dosen befüllen](containers.md#dosen-befüllen)), der **NFC-Tag** (verknüpfen oder lösen), **Gerät öffnen** und **Behälter leeren**. Vor dem Leeren fragt die Karte **😋 Gegessen** oder **🗑 Weggeworfen**; die Antwort kommt in den **Verlauf** der Dose (aufklappbare Liste unten auf der Karte, die letzten zehn Befüllungen).
@@ -96,6 +96,14 @@ show_opened: true     # optional
 Einmal im Monat, solange etwas fehlt, zeigt die Startseite **🧹 Datenpflege** (✕ blendet es bis zum nächsten Monat aus; **Mehr → 🧹 Datenpflege** zeigt es jederzeit): angebrochene Packungen ohne Datum, Packungen ohne MHD, Produkte ohne Preis, Einträge ohne Bereich oder Fach und oft verbrauchte Produkte ohne Mindestbestand. Antippen öffnet die Karte, dort trägst du es nach. Mit vollständigen Daten werden Statistik, *reicht noch …*, Einkaufsvorschläge und der Bestandswert genauer. Angebrochene Packungen zeigen auf der Kachel **🫙 offen seit 12.11.**, damit klar ist, warum das Datum kürzer ist als aufgedruckt.
 
 <p align="center"><img src="../images/dashboard-datacare-de.png" width="250" alt="Datenpflege"></p>
+
+### Produktverlauf
+
+**📜 Verlauf von …** unten auf einer Karte (unter *Verlauf*), **📜 Verlauf** in der Bestands-Ansicht und im Strichcode-Dialog (auch über die 🔍 Suche) zeigen, was mit einem **Produkt** über alle Dosen, Beutel und Packungen passiert ist – *Schinken war letzte Woche in Dose 3 und ist diese Woche in Dose 7*. Oben: wie oft im letzten Jahr, wie lange es im Schnitt gehalten hat, wie viel weggeworfen wurde (mit Wert, wenn der Preis bekannt ist), die Preise im Verlauf und ein Hinweis, z. B. *2 von 6 Mal weggeworfen – lieber kleinere Mengen kaufen oder einfrieren?*. Darunter jeder geleerte oder aufgebrauchte Eintrag mit Datum, gegessen oder weggeworfen, wo er lag und wie lange. Einträge mit gleichem Inhalt zählen als ein Produkt (Groß- und Kleinschreibung egal); ein umbenanntes Produkt beginnt einen eigenen Verlauf.
+
+<p align="center"><img src="../images/dashboard-history-de.png" width="250" alt="Produktverlauf"></p>
+
+**Zuletzt verwendet.** **＋** und die leere 🔍 Suche zeigen die zuletzt angelegten Produkte als Chips. Ein Tipp legt eine Packung an ihren üblichen Ort (wo sie jetzt liegt, sonst wo sie zuletzt lag), auch wenn keine mehr da ist; danach Preis und MHD wie beim Einräumen.
 
 ## Statistik
 

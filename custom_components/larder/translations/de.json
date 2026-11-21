@@ -195,6 +195,9 @@
     "transfer_invalid": {
       "message": "Umfüllen geht nur von einer Packung mit Inhalt in eine leere Dose oder einen leeren Beutel."
     },
+    "date_photo_none": {
+      "message": "Auf dem Foto wurde kein lesbares MHD gefunden."
+    },
     "receipt_photo_none": {
       "message": "Auf dem Foto wurde kein Kassenbon mit Lebensmitteln erkannt."
     },

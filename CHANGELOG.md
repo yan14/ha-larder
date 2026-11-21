@@ -3,6 +3,15 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 5.1.0
+
+Faster entry and a history per product.
+
+- **Product history:** what happened to a product across all containers, bags and packs – *ham was in container 3 last week, in container 7 this week* – with how often a year, how long it lasted on average, how much was thrown away (and its value), the prices and a hint like *thrown away 2 of 6 times – buy smaller amounts or freeze some?*. Open it with **📜 History of …** on the card, **📜 History** in the stock view or in the barcode dialog (also from the search).
+- **Best-before date from a photo:** **📷** next to the date when putting away, in the shopping mode, after *One pack more* and on the card. The AI reads the printed date (administrators with an AI Task); only month and year printed → the last day of that month.
+- **Several packs at once:** **＋1** next to a product when putting away and after *One pack more* adds another pack without scanning again; price and date then apply to all of them.
+- **Recently used:** the last products added appear as chips in **＋** and in the empty search. One tap adds one pack at its usual place, even when none is left.
+
 ## 5.0.0
 
 **Larder is now in the HACS default catalogue** – search for *Larder* in HACS (or the Home Assistant Marketplace), no custom repository needed any more. Existing installations keep updating as before.

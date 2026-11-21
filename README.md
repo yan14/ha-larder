@@ -31,6 +31,8 @@ Home Assistant integration for reusable food storage containers: note what is in
 <img src="docs/images/dashboard-cards-en.png" width="250" alt="Cards with all details">
 </p>
 
+> **New in 5.1:** a [history per product](docs/en/dashboard.md#product-history) across all containers and packs, **📷 best-before date from a photo**, **＋1** for several packs at once and **recently used** products in ＋.
+>
 > **New in 5.0:** Larder is in the **HACS default catalogue**. A new [bar](docs/en/dashboard.md#dashboard-larder) with **Shopping** and **More**, quick actions on the start page, **one 📷 scan button** and a **🔍 search** on every page, a slimmer card with big buttons, and the same rules for putting things away and taking them out everywhere.
 >
 > **New in 4.12:** [data care](docs/en/dashboard.md#data-care) shows missing prices, dates and places once a month, *🫙 opened since …* on tiles, and the receipt ticks off the shopping list.

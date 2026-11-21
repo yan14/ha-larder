@@ -223,6 +223,12 @@ async def async_create_items(
                 )
         device = registry.async_get_device(identifiers={(DOMAIN, entry.data[CONF_CC])})
         created.append({"device_id": device.id if device else None, "cc": entry.data[CONF_CC], "name": name})
+    if kind in PACK_KINDS:
+        from .stock import async_get_stock  # noqa: PLC0415 - avoids an import cycle
+
+        stock = await async_get_stock(hass)
+        for item in reversed(items):  # the first one ends up first
+            stock.remember_recent(str(item["content"]), kind, item.get("product"), area_id, compartment)
     return created
 
 

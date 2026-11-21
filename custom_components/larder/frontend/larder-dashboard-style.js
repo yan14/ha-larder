@@ -334,4 +334,15 @@ export const STYLE = `
   .dialog .buttons button { font: inherit; padding: 8px 16px; border-radius: 8px; cursor: pointer; background: none; border: 0; color: var(--primary-color); }
   .dialog .buttons button.submit { background: var(--primary-color); color: var(--text-primary-color, #fff); }
   larder-panel-embedded[only] { flex: 1; }
+  /* 5.1: recently used, product history, date photo */
+  .recent h3 { margin: 4px 0 6px; font-size: 13px; font-weight: 500; color: var(--secondary-text-color); }
+  .recentchips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+  .recentchips .chip { font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 16px; cursor: pointer;
+    border: 1px solid var(--divider-color); background: var(--card-background-color, #fff); color: var(--primary-text-color); }
+  .historyfacts { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+  .historyfacts .fact { font-size: 13px; padding: 4px 10px; border-radius: 12px; background: var(--secondary-background-color, #f2f2f2); }
+  ul.historylist { list-style: none; margin: 8px 0; padding: 0; max-height: 45vh; overflow-y: auto; }
+  ul.historylist li { display: flex; flex-direction: column; padding: 8px 0; border-bottom: 1px solid var(--divider-color); }
+  ul.historylist li .sub { font-size: 12px; color: var(--secondary-text-color); }
+  .datephoto { display: inline-flex; }
 `;

@@ -2960,6 +2960,10 @@ test("Put away (4.3): scan one product after another, unknown ones are added at 
   assert.equal(form.querySelector('.putrow[data-id="h1"] [data-role="putaway-details"]').textContent, "Preis");
   form.querySelector('.putrow[data-id="h1"] [data-role="putaway-details"]').click();
   assert.equal(form.querySelector('[data-f="shop-date"]'), null);
+  // 5.1: ＋1 – one more of the same without scanning
+  form.querySelector('.putrow[data-id="p1"] [data-role="putaway-plus"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.filter((m) => m.type === `${D}/put_away`).at(-1), { type: `${D}/put_away`, content: "Ketchup" });
   assert.deepEqual([...form.querySelectorAll(".putrow.unknown")].map((n) => n.textContent), ["Senf", "Zahnpasta"]);
   // typing a code works too (browser without a camera)
   form.querySelector('[data-f="putaway-code"]').value = "4000000000002";
@@ -3426,4 +3430,76 @@ test("5.0: search in the header – packs by product, containers to their card, 
   assert.ok(form.querySelector('[data-role="search-barcode"]'));
   el.openSearch("xyz");
   assert.match(form.textContent, /Nichts gefunden/);
+});
+
+// ---------- 5.1: faster entry and product history ----------
+
+test("5.1: product history, recently used in ＋, several packs and the date from a photo", async () => {
+  const hass = makeHass(DOSES);
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/product_history`) {
+      hass.wsCalls.push(msg);
+      return {
+        name: "Schinken",
+        summary: { count: 4, per_year: 3, avg_days: 6, eaten: 2, thrown: 2, thrown_value: 4.98 },
+        hint: { key: "thrown_often", thrown: 2, of: 4 },
+        price_history: [{ price: 2.29 }, { price: 2.49 }],
+        records: [{ emptied: "2026-11-01T10:00:00+01:00", outcome: "thrown", name: "Dose 3", area: "Küche", days_stored: 9 }],
+      };
+    }
+    if (msg.type === `${D}/recent_products`) return { items: [{ content: "Senf", area: "Keller", compartment: "Regal", count: 1 }] };
+    if (msg.type === `${D}/recent_add` || msg.type === `${D}/put_away`) {
+      hass.wsCalls.push(msg);
+      added += 1;
+      return { status: "added", content: "Senf", kind: "pack", device_id: "p1", area: "Keller", compartment: "Regal", count: added, added: 1 };
+    }
+    if (msg.type === `${D}/shopping_details`) {
+      hass.wsCalls.push(msg);
+      return { device_id: "p9" };
+    }
+    return base(msg);
+  };
+  let added = 0;
+  hass.fetchWithAuth = async (url) => {
+    hass.fetched = url;
+    return { ok: true, json: async () => ({ date: "2027-03-12" }) };
+  };
+  const el = mount(hass);
+  await flush();
+  // product history
+  await el.openProductHistory("schinken");
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelector("h2").textContent, "Verlauf: Schinken");
+  assert.match(form.querySelector('[data-role="history-facts"]').textContent, /3× im letzten Jahr.*hält im Schnitt 6 Tage.*2 von 4 weggeworfen.*4,98/);
+  assert.match(form.querySelector('[data-role="history-hint"]').textContent, /kleinere Mengen/);
+  assert.match(form.querySelector('[data-role="history-prices"]').textContent, /2,29 € → 2,49 €/);
+  assert.match(form.querySelector('[data-role="history-records"]').textContent, /weggeworfen.*Dose 3 · Küche · 9 Tage gelagert/);
+  // the card asks the dashboard for it
+  el._classic.dispatchEvent(new dom.window.CustomEvent("larder-product-history", { detail: { content: "Chili" } }));
+  await flush();
+  assert.deepEqual(hass.wsCalls.filter((m) => m.type === `${D}/product_history`).at(-1), { type: `${D}/product_history`, content: "Chili" });
+  // ＋: recently used, one tap → one pack at its usual place, then ＋1, price and date (📷 reads it)
+  await go(el, "containers");
+  $(el, '[data-role="add"]').click();
+  await flush();
+  const chip = form.querySelector('[data-role="recent-chip"]');
+  assert.equal(chip.textContent, "＋ Senf");
+  chip.click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.filter((m) => m.type === `${D}/recent_add`).at(-1), { type: `${D}/recent_add`, content: "Senf" });
+  form.querySelector('[data-role="code-added-plus"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/put_away`, content: "Senf" });
+  assert.match(form.querySelector(".putrow .name").textContent, /Senf \+2/);
+  const file = form.querySelector('[data-role="date-photo-file"]');
+  Object.defineProperty(file, "files", { value: [new File(["x"], "mhd.jpg", { type: "image/jpeg" })], configurable: true });
+  file.dispatchEvent(new dom.window.Event("change"));
+  await flush();
+  await flush();
+  assert.equal(hass.fetched, `/api/${D}/date_photo`);
+  assert.equal(form.querySelector('[data-f="shop-date"]').value, "2027-03-12");
+  form.querySelector('[data-role="shop-details-save"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/shopping_details`, device_id: "p1", added: 2, best_before: "2027-03-12" });
 });

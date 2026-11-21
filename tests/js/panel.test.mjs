@@ -2247,3 +2247,32 @@ test("Card: store section with suggestion, own choice and back to automatic (4.7
   const empty = $$(el, ".card").find((c) => c.querySelector(".name").textContent === "Dose 2");
   assert.equal(empty.querySelector(".sectionrow").hidden, true);
 });
+
+test("5.1: 📷 reads the best-before date; 'History of …' asks the dashboard (embedded only)", async () => {
+  const hass = adminHass([{ id: "d1", name: "Dose A", content: "Schinken", mhd: iso(3) }]);
+  hass.services = { ai_task: { generate_data: {} } };
+  hass.fetchWithAuth = async () => ({ ok: true, json: async () => ({ date: "2027-03-12" }) });
+  const el = mount(hass);
+  const card = $(el, ".card");
+  assert.equal(card.querySelector("button.datephoto").hidden, false);
+  const file = card.querySelector("input.datefile");
+  Object.defineProperty(file, "files", { value: [new File(["x"], "mhd.jpg", { type: "image/jpeg" })], configurable: true });
+  file.dispatchEvent(new window.Event("change"));
+  await flush();
+  await flush();
+  assert.deepEqual(hass.calls.at(-1), { domain: "date", service: "set_value", data: { entity_id: "date.d1_mhd", date: "2027-03-12" } });
+  // not embedded in the dashboard: no product history link
+  assert.equal(card.querySelector("button.producthistory").hidden, true);
+  document.body.innerHTML = "";
+  const embedded = document.createElement("larder-panel");
+  embedded.setAttribute("embedded", "");
+  document.body.appendChild(embedded);
+  embedded.hass = hass;
+  const btn = $(embedded, ".card button.producthistory");
+  assert.equal(btn.hidden, false);
+  assert.equal(btn.textContent, "📜 Verlauf von Schinken");
+  let asked = null;
+  embedded.addEventListener("larder-product-history", (ev) => (asked = ev.detail.content));
+  btn.click();
+  assert.equal(asked, "Schinken");
+});
