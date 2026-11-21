@@ -199,6 +199,8 @@ export const STYLE = `
   .weekday .acts button, .bar.week button, .dialog button[data-role="loose-add"], .dialog button[data-role="batch-suggest"] { font: inherit; padding: 4px 12px; border-radius: 8px; cursor: pointer; border: 1px solid var(--divider-color); background: none; color: inherit; }
   .placetag { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
   .placetag button { font: inherit; padding: 6px 12px; border-radius: 8px; cursor: pointer; border: 1px solid var(--divider-color); background: none; color: inherit; }
+  .shopdetails { display: flex; gap: 8px; align-items: center; padding: 4px 0 8px 48px; flex-wrap: wrap; }
+  .shopdetails input { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--divider-color); background: none; color: inherit; max-width: 140px; }
   .shop .boughtrow > button:first-child { min-width: 40px; font-size: 18px; }
   .shop .boughtrow.done .name > span:first-child { text-decoration: line-through; color: var(--secondary-text-color); }
   .daychip { font: inherit; font-size: 13px; padding: 6px 10px; border-radius: 16px; border: 1px solid var(--divider-color); background: none; color: inherit; cursor: pointer; }

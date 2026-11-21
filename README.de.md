@@ -31,6 +31,8 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 <img src="docs/images/dashboard-cards-de.png" width="250" alt="Karten mit allen Details">
 </p>
 
+> **Neu in 4.11:** im Einkaufsmodus **scannen** zum Abhaken, **Preis und MHD** eintragen, ein **Preisverlauf** und **🧾 Kassenbon** direkt auf der Startseite.
+>
 > **Neu in 4.10:** ein [Einkaufsmodus](docs/de/kitchen.md#einkaufsmodus) – die Liste nach Abteilungen, Abhaken legt es in den Vorrat – und [wiederkehrende Einkäufe](docs/de/kitchen.md#wiederkehrende-einkäufe).
 >
 > **Neu in 4.9:** [Gutschein vom Foto](docs/de/containers.md#gutscheine) lesen (KI).

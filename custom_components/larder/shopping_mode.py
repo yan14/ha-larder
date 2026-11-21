@@ -27,7 +27,7 @@ from homeassistant.util import dt as dt_util
 from .const import DOMAIN, KIND_PACK, PACK_KINDS
 from .sections import section_of, section_order
 from .shopping import async_add_to_shopping_list, default_list, shopping_list_for
-from .stock import _known_product, async_add_known, async_get_stock, pack_entries, product_key
+from .stock import _known_product, async_add_known, async_find_by_code, async_get_stock, pack_entries, product_key
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -123,6 +123,71 @@ def _base_name(summary: str) -> str:
     return summary.split(" (", 1)[0].strip()
 
 
+async def async_shopping_scan(hass: HomeAssistant, code: str) -> dict[str, Any]:
+    """Barcode scanned in the store (4.11): tick off the matching list item and put it into stock.
+
+    Matching by the product's own name (barcode in stock, remembered barcode → name, Open Food Facts name).
+    No list item: a known product goes into stock anyway; an unknown one is reported with its name.
+    """
+    stock = await async_get_stock(hass)
+    found = await async_find_by_code(hass, code)
+    known = found.get("known")
+    names = {product_key(n) for n in (found.get("name"), known and known.get("content")) if n}
+    for entity_id in shopping_lists(hass, stock):
+        try:
+            open_items = await _open_items(hass, entity_id)
+        except HomeAssistantError:
+            continue
+        for item in open_items:
+            summary = str(item.get("summary") or "").strip()
+            tracked = stock.tracked.get(summary.casefold()) or {}
+            keys = {product_key(_base_name(summary)), product_key(tracked.get("content"))}
+            if item.get("uid") and names & keys:
+                result = await async_shopping_check(hass, entity_id, item["uid"], summary)
+                return {**result, "matched": True, "uid": item["uid"], "summary": summary}
+    if known:
+        return {**(await async_add_known(hass, known)), "matched": False}
+    return {"status": "unknown", "name": found.get("name"), "code": found.get("code"), "product": found.get("product"),
+            "product_type": found.get("product_type")}
+
+
+async def async_shopping_details(
+    hass: HomeAssistant, device_id: str, added: int, price: float | None, best_before: date | None
+) -> dict[str, Any]:
+    """Price and best-before date of what was just put into stock (4.11).
+
+    The price goes onto the entry and into the price history. With a date, the new packs get an entry of their
+    own if they were added to an entry with more packs (other packs keep their date).
+    """
+    from homeassistant.helpers import device_registry as dr  # noqa: PLC0415
+
+    from .const import CONF_CC, larder_id  # noqa: PLC0415
+    from .disposable import async_create_items  # noqa: PLC0415
+
+    device = dr.async_get(hass).async_get(device_id)
+    cc = larder_id(device) if device else None
+    entry = next((e for e in hass.config_entries.async_loaded_entries(DOMAIN) if cc and e.data.get(CONF_CC) == cc), None)
+    if entry is None:
+        raise HomeAssistantError("entry not found")
+    ents = entry.runtime_data.resettable
+    if price:
+        await ents["content"].async_set_product({"price": round(price, 2), "price_source": "own"}, replace=False)
+    if best_before is None:
+        return {"device_id": device_id}
+    source = next((p for p in pack_entries(hass) if p["cc"] == cc), None)
+    if source is None or source["count"] <= added:
+        await ents["best_before"].async_set_value(best_before)
+        return {"device_id": device_id}
+    # split: the new packs with their date as an entry of their own
+    await ents["portions"].async_set_native_value(float(source["count"] - added))
+    item = {
+        "content": source["content"], "quantity": added, "unit": "pieces", "best_before": best_before,
+        "product": {k: v for k, v in ents["content"].product.items() if k != "opened"},
+    }
+    created = await async_create_items(hass, source["kind"], [item], source["area_id"], source["compartment"])
+    return {"device_id": created[0]["device_id"]}
+
+
 # ---------- Recurring purchases ----------
 
 
@@ -192,6 +257,41 @@ async def ws_shopping_check(hass: HomeAssistant, connection: websocket_api.Activ
     connection.send_result(msg["id"], result)
 
 
+@websocket_api.websocket_command(
+    {vol.Required("type"): f"{DOMAIN}/shopping_scan", vol.Required("code"): vol.All(str, vol.Length(min=1, max=64))}
+)
+@websocket_api.async_response
+async def ws_shopping_scan(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    try:
+        result = await async_shopping_scan(hass, msg["code"])
+    except HomeAssistantError as err:
+        connection.send_error(msg["id"], "scan_failed", str(err))
+        return
+    connection.send_result(msg["id"], result)
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/shopping_details",
+        vol.Required("device_id"): str,
+        vol.Optional("added", default=1): vol.All(vol.Coerce(int), vol.Range(min=1, max=999)),
+        vol.Optional("price"): vol.All(vol.Coerce(float), vol.Range(min=0, max=10000)),
+        vol.Optional("best_before"): vol.Date(),
+    }
+)
+@websocket_api.async_response
+async def ws_shopping_details(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    best = msg.get("best_before")
+    if isinstance(best, str):
+        best = date.fromisoformat(best)
+    try:
+        result = await async_shopping_details(hass, msg["device_id"], msg["added"], msg.get("price"), best)
+    except HomeAssistantError as err:
+        connection.send_error(msg["id"], "details_failed", str(err))
+        return
+    connection.send_result(msg["id"], result)
+
+
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/recurring"})
 @websocket_api.async_response
 async def ws_recurring(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
@@ -250,5 +350,5 @@ def async_setup_shopping_mode_websocket(hass: HomeAssistant) -> None:
     if domain_data.get("shopping_mode_ws"):
         return
     domain_data["shopping_mode_ws"] = True
-    for command in (ws_shopping_mode, ws_shopping_check, ws_recurring, ws_recurring_set, ws_recurring_delete):
+    for command in (ws_shopping_mode, ws_shopping_check, ws_shopping_scan, ws_shopping_details, ws_recurring, ws_recurring_set, ws_recurring_delete):
         websocket_api.async_register_command(hass, command)

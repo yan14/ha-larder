@@ -149,6 +149,11 @@ Setzt Larder etwas auf eine Liste, schiebt es den neuen Eintrag hinter den letzt
 
 **🛒 Einkaufen** auf der Startseite (oder **⋮ → 🛒 Einkaufsmodus**) zeigt alle Listen, auf die Larder schreibt, nach [Abteilungen](#abteilungen-im-laden) in deiner Reihenfolge. **Abhaken** erledigt zweierlei: Der Eintrag wird auf seiner To-do-Liste abgehakt und kommt **gleich in den Vorrat**, an seinen üblichen Ort, mit Marke, Packung und Preis, soweit bekannt, und so vielen Packungen, wie Larder bestellt hat (*→ Vorratskammer · Regal (+2)*). Was Larder noch nicht kennt (*neu – wird am Ende angelegt*), wird gesammelt: **＋ n neue Artikel anlegen** öffnet den Packungs-Dialog mit den Namen. *Eingekauft – in den Vorrat?* bietet sie nicht noch einmal an.
 
+Seit 4.11:
+- **📷 Scannen** (Home-Assistant-App): den Strichcode im Laden scannen. Der passende Eintrag auf der Liste wird abgehakt und kommt in den Vorrat; ein bekanntes Produkt, das nicht auf der Liste steht, kommt trotzdem in den Vorrat (*Gescannt, nicht auf der Liste*); ein unbekanntes wird mit seinem Namen aus Open Food Facts gesammelt.
+- **€ / MHD** neben einem abgehakten Eintrag: **Preis** (kommt in den Preisverlauf) und **MHD** eintragen. Ist die Packung zu einem Eintrag mit weiteren Packungen dazugekommen, bekommt sie einen eigenen, damit die anderen ihr Datum behalten.
+- **🧾 Kassenbon** liest stattdessen einen Kassenbon (siehe [Packungen](containers.md#beutel-und-packungen)).
+
 ### Wiederkehrende Einkäufe
 
 Was du regelmäßig kaufst, aber nicht zählst, kommt von selbst auf die Liste: **🔁 Wiederkehrend** auf der Einkaufen-Seite. Name, **Wochentage** (z. B. *Fr* für die Wasserkiste) oder **alle n Tage** (Milch alle 3 Tage) und optional eine Liste. Larder trägt es morgens um 8 Uhr ein, nie doppelt, solange noch einer offen ist.

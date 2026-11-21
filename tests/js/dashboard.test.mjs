@@ -3232,3 +3232,46 @@ test("How long something has been expired (4.10.2): days, months, years", async 
   const de = panelStrings.STRINGS.de;
   assert.deepEqual([1, 5, 90].map((n) => de.expiredSince(n)), ["seit gestern abgelaufen", "seit 5 Tagen abgelaufen", "seit 3 Monaten abgelaufen"]);
 });
+
+test("Shopping mode (4.11): scan ticks off, price and date, scanned extras, receipt button", async () => {
+  const hass = makeHass(DOSES);
+  hass.fetchWithAuth = async () => ({ ok: true, json: async () => ({ items: [] }) });
+  hass.callWS = (base => async (msg) => {
+    if (msg.type.startsWith(`${D}/shopping`)) hass.wsCalls.push(msg);
+    if (msg.type === `${D}/shopping_mode`) return { order: ["dry"], items: [{ list: "todo.einkaufen", list_name: "Einkaufen", uid: "u2", summary: "Senf (Develey)", section: "dry", known: true }] };
+    if (msg.type === `${D}/shopping_scan`) {
+      if (msg.code === "1") return { status: "added", matched: true, uid: "u2", summary: "Senf (Develey)", content: "Senf", area: "Vorrat", compartment: "Schrank", device_id: "p1", added: 1 };
+      if (msg.code === "2") return { status: "added", matched: false, content: "Ketchup", area: "Küche", compartment: "", device_id: "p2", added: 1 };
+      return { status: "unknown", name: "Hafermilch", code: "7394376616501", product: { brand: "Oatly" } };
+    }
+    if (msg.type === `${D}/shopping_details`) return { device_id: "p9" };
+    return base(msg);
+  })(hass.callWS);
+  const el = mount(hass);
+  await flush();
+  // receipt on the start page
+  assert.equal($(el, '[data-role="start-receipt"]').textContent, "🧾 Kassenbon");
+  await go(el, "start");
+  el.setView("shopping");
+  await flush();
+  await flush();
+  assert.ok($(el, '[data-role="shop-receipt"]'));
+  assert.equal(await el._shopScan("1"), "Senf → Vorrat · Schrank");
+  assert.equal($(el, '[data-uid="u2"]').classList.contains("done"), true);
+  assert.equal(await el._shopScan("2"), "Ketchup → Küche");
+  assert.match($(el, '[data-role="shop-extra"]').textContent, /Ketchup/);
+  assert.equal(await el._shopScan("7394376616501"), "Hafermilch: neu, wird am Ende angelegt");
+  // price and date for the mustard
+  $(el, '[data-uid="u2"] [data-role="shop-details"]').click();
+  $(el, '[data-f="shop-price"]').value = "1,99";
+  $(el, '[data-f="shop-date"]').value = "2027-06-30";
+  $(el, '[data-role="shop-details-save"]').click();
+  await flush();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/shopping_details`), { type: `${D}/shopping_details`, device_id: "p1", added: 1, price: 1.99, best_before: "2027-06-30" });
+  assert.match($(el, '[data-uid="u2"]').textContent, /1,99 € · MHD 30\.06\.2027/);
+  // unknown: the pack dialog with name and barcode
+  $(el, '[data-role="shop-add-unknown"]').click();
+  const row = $(el, "form.dialog").querySelector('[data-i="content"]');
+  assert.equal(row.value, "Hafermilch");
+});

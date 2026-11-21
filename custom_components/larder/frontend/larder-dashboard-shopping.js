@@ -19,6 +19,18 @@ const TEXT = {
     failed: "Abhaken fehlgeschlagen.",
     addUnknown: (n) => (n === 1 ? "＋ 1 neuen Artikel anlegen" : `＋ ${n} neue Artikel anlegen`),
     reload: "🔄 Aktualisieren",
+    scan: "📷 Scannen",
+    receipt: "🧾 Kassenbon",
+    details: "€ / MHD",
+    detailsLabel: "Preis und MHD eintragen",
+    price: "Preis (€)",
+    bestBefore: "MHD",
+    save: "Speichern",
+    detailsDone: (price, date) => [price ? `${price.toFixed(2).replace(".", ",")} €` : null, date ? `MHD ${date.split("-").reverse().join(".")}` : null].filter(Boolean).join(" · "),
+    extraTitle: "Gescannt, nicht auf der Liste",
+    scanAdded: (name, place) => `${name} → ${place}`,
+    scanUnknown: (name) => `${name || "Unbekannt"}: neu, wird am Ende angelegt`,
+    scanFailed: "Scannen fehlgeschlagen.",
     recurring: "🔁 Wiederkehrend",
     recurringTitle: "Wiederkehrende Einkäufe",
     recurringIntro: "Kommt automatisch auf die Liste – an den gewählten Tagen oder alle paar Tage, morgens um 8 Uhr; nie doppelt, solange es noch offen ist.",
@@ -49,6 +61,18 @@ const TEXT = {
     failed: "Ticking off failed.",
     addUnknown: (n) => (n === 1 ? "＋ Add 1 new item" : `＋ Add ${n} new items`),
     reload: "🔄 Refresh",
+    scan: "📷 Scan",
+    receipt: "🧾 Receipt",
+    details: "€ / date",
+    detailsLabel: "Enter price and best-before date",
+    price: "Price (€)",
+    bestBefore: "Best before",
+    save: "Save",
+    detailsDone: (price, date) => [price ? `€${price.toFixed(2)}` : null, date ? `best before ${date}` : null].filter(Boolean).join(" · "),
+    extraTitle: "Scanned, not on the list",
+    scanAdded: (name, place) => `${name} → ${place}`,
+    scanUnknown: (name) => `${name || "Unknown"}: new, added at the end`,
+    scanFailed: "Scanning failed.",
     recurring: "🔁 Recurring",
     recurringTitle: "Recurring purchases",
     recurringIntro: "Goes onto the list automatically – on the chosen days or every few days, in the morning at 8; never twice while it is still open.",
@@ -95,6 +119,7 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
     }
     this._shopDone = {};
     this._shopUnknown = [];
+    this._shopExtra = [];
     this._sig = "";
     this._update();
   };
@@ -108,10 +133,10 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
     try {
       const res = await this._hass.callWS({ type: `${DOMAIN}/shopping_check`, list: item.list, uid: item.uid, summary: item.summary });
       if (res.status === "unknown") {
-        this._shopUnknown.push(res.name);
+        this._shopUnknown.push({ content: res.name });
         this._shopDone[item.uid] = { text: t.unknown };
       } else {
-        this._shopDone[item.uid] = { text: t.added(res) };
+        this._shopDone[item.uid] = { text: t.added(res), device_id: res.device_id, added: res.added || 1 };
       }
     } catch {
       delete this._shopDone[item.uid];
@@ -122,7 +147,86 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
   };
 
   proto.shoppingSig = function shoppingSig() {
-    return [this._shopping, this._shopDone, this._shopUnknown];
+    return [this._shopping, this._shopDone, this._shopUnknown, this._shopExtra];
+  };
+
+  /** 4.11: a barcode scanned in the store – ticks off the matching item, else into stock or collected. */
+  proto._shopScan = async function _shopScan(code) {
+    const t = shoppingTexts(this._hass);
+    const value = String(code || "").trim();
+    if (!value) return "";
+    let res;
+    try {
+      res = await this._hass.callWS({ type: `${DOMAIN}/shopping_scan`, code: value });
+    } catch {
+      return t.scanFailed;
+    }
+    const place = (r) => [r.area, r.compartment].filter(Boolean).join(" · ");
+    let message;
+    if (res.status === "unknown") {
+      if (!this._shopUnknown.some((u) => u.code && u.code === res.code)) {
+        this._shopUnknown.push({ content: res.name || "", code: res.code, product: res.product || null });
+      }
+      message = t.scanUnknown(res.name);
+    } else if (res.matched) {
+      this._shopDone[res.uid] = { text: t.added(res), device_id: res.device_id, added: res.added || 1 };
+      message = t.scanAdded(res.content, place(res));
+    } else {
+      this._shopExtra.push({ content: res.content, text: t.added(res), device_id: res.device_id, added: res.added || 1, key: `x${this._shopExtra.length}` });
+      message = t.scanAdded(res.content, place(res));
+    }
+    this._sig = "";
+    this._update();
+    return message;
+  };
+
+  /** Price and best-before date for what was just put into stock (inline under the item). */
+  proto._shopDetails = function _shopDetails(done, row) {
+    const hass = this._hass;
+    const t = shoppingTexts(hass);
+    const box = el("div", "shopdetails");
+    const price = el("input");
+    price.type = "text";
+    price.inputMode = "decimal";
+    price.placeholder = t.price;
+    price.setAttribute("aria-label", t.price);
+    price.dataset.f = "shop-price";
+    const date = el("input");
+    date.type = "date";
+    date.setAttribute("aria-label", t.bestBefore);
+    date.dataset.f = "shop-date";
+    const save = button("primary", t.save, async () => {
+      const msg = { type: `${DOMAIN}/shopping_details`, device_id: done.device_id, added: done.added || 1 };
+      const amount = parseFloat(String(price.value).replace(",", "."));
+      if (amount > 0) msg.price = Math.round(amount * 100) / 100;
+      if (date.value) msg.best_before = date.value;
+      if (!msg.price && !msg.best_before) return;
+      save.disabled = true;
+      try {
+        const res = await hass.callWS(msg);
+        if (res && res.device_id) done.device_id = res.device_id;
+        done.details = t.detailsDone(msg.price, msg.best_before);
+      } catch {
+        save.disabled = false;
+        return;
+      }
+      done.editing = false;
+      this._sig = "";
+      this._update();
+    });
+    save.dataset.role = "shop-details-save";
+    box.append(price, date, save);
+    row.after(box);
+  };
+
+  proto.openReceipt = function openReceipt() {
+    this.openItemsDialog("pack");
+    const file = this._form.querySelector('[data-role="receipt-file"]');
+    if (file) file.click();
+  };
+
+  proto.canReadReceipt = function canReadReceipt() {
+    return !!(this._canGenerate() && this._hass && this._hass.fetchWithAuth);
   };
 
   proto._renderShopping = function _renderShopping() {
@@ -136,7 +240,18 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
     recurring.dataset.role = "shop-recurring";
     const reload = button("", t.reload, () => this.loadShopping());
     reload.dataset.role = "shop-reload";
-    bar.append(el("span", "grow"), recurring, reload);
+    bar.append(el("span", "grow"));
+    if (this._classic._hasBarcodeScanner && this._classic._hasBarcodeScanner()) {
+      const scan = button("", t.scan, () => this._classic.scanBarcodeSeries((code) => this._shopScan(code)));
+      scan.dataset.role = "shop-scan";
+      bar.append(scan);
+    }
+    if (this.canReadReceipt()) {
+      const receipt = button("", t.receipt, () => this.openReceipt());
+      receipt.dataset.role = "shop-receipt";
+      bar.append(receipt);
+    }
+    bar.append(recurring, reload);
     frag.append(bar);
     if (!data) {
       this._main.replaceChildren(frag);
@@ -168,10 +283,33 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
       const sub = [done && done.text, lists.size > 1 ? item.list_name : null].filter(Boolean).join(" · ");
       if (sub) text.append(el("span", "sub", sub));
       row.append(check, text);
+      if (done && done.device_id) {
+        if (done.details) text.append(el("span", "sub", done.details));
+        const details = button("link", t.details, () => this._shopDetails(done, row));
+        details.dataset.role = "shop-details";
+        details.setAttribute("aria-label", t.detailsLabel);
+        row.append(details);
+      }
       box.append(row);
     }
+    if (this._shopExtra.length) {
+      const extra = el("section", "stat shop");
+      extra.dataset.role = "shop-extra";
+      extra.append(el("h3", "", t.extraTitle));
+      for (const done of this._shopExtra) {
+        const row = el("div", "boughtrow done");
+        row.dataset.uid = done.key;
+        const text = el("span", "name");
+        text.append(el("span", "", done.content), el("span", "sub", [done.text, done.details].filter(Boolean).join(" · ")));
+        const details = button("link", t.details, () => this._shopDetails(done, row));
+        details.dataset.role = "shop-details";
+        row.append(el("span", "", "✓"), text, details);
+        extra.append(row);
+      }
+      frag.append(extra);
+    }
     if (this._shopUnknown.length) {
-      const rows = this._shopUnknown.map((content) => ({ content, quantity: 1 }));
+      const rows = this._shopUnknown.map((u) => ({ content: u.content || "", quantity: 1, product: { ...(u.product || {}), ...(u.code && u.code.length >= 8 ? { ean: u.code } : {}) } }));
       const add = button("primary", t.addUnknown(rows.length), () => {
         this._shopUnknown = [];
         this.openItemsDialog("pack", { rows });

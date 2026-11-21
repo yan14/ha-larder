@@ -3,6 +3,12 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 4.11.0
+
+- **Scan in the shopping mode:** **📷 Scan** (Home Assistant app) ticks off the matching item on the list and puts it into stock. Known products that are not on the list go into stock anyway; unknown ones are collected with their name from Open Food Facts and added at the end.
+- **Price and best-before date when ticking off:** **€ / date** next to a ticked-off item. The price goes onto the pack and into a new **price history** (stock view: *€1.79 → €1.99 → €2.49*); with a date, the new pack gets an entry of its own when it joined one with more packs.
+- **🧾 Receipt** is now also on the start page and in the shopping mode (administrators with an AI Task), not only in ＋ → Pack.
+
 ## 4.10.4
 
 Better categories, from a real larder:

@@ -65,6 +65,7 @@ AGAIN_MAX = 3
 REORDER_SNOOZE = 7  # "✕" at "Running low" hides a product for this many days
 EVENT_RUNNING_LOW = f"{DOMAIN}_running_low"
 EVENT_REPLACE_DUE = f"{DOMAIN}_replace_due"
+PRICE_HISTORY = 12
 REPLACE_AHEAD = 7  # "replace soon": due within this many days
 
 
@@ -96,6 +97,8 @@ class Stock:
         self.sections: dict[str, str] = {}  # product → store section chosen on the card (4.7), else suggested
         # product → recurring purchase (4.10): {"name", "weekdays": [0-6] | "every_days": n, "list", "last": ISO date}
         self.recurring: dict[str, dict[str, Any]] = {}
+        # product → own prices over time (4.11): [{"day", "price"}], oldest first, at most PRICE_HISTORY
+        self.price_history: dict[str, list[dict[str, Any]]] = {}
         self._unsub = None
         self._unsub_daily = None
 
@@ -116,6 +119,7 @@ class Stock:
         self.intervals = {k: v for k, v in (data.get("intervals") or {}).items() if isinstance(v, dict) and v.get("weeks")}
         self.sections = {str(k): str(v) for k, v in (data.get("sections") or {}).items() if v in SECTIONS}
         self.recurring = {k: v for k, v in (data.get("recurring") or {}).items() if isinstance(v, dict) and v.get("name")}
+        self.price_history = {k: [p for p in v if isinstance(p, dict)] for k, v in (data.get("price_history") or {}).items() if isinstance(v, list)}
 
     def _data(self) -> dict[str, Any]:
         return {
@@ -134,6 +138,7 @@ class Stock:
             "intervals": self.intervals,
             "sections": self.sections,
             "recurring": self.recurring,
+            "price_history": self.price_history,
         }
 
     # ----- Consumption and prices -----
@@ -208,6 +213,13 @@ class Stock:
         if source == "openprices" and current and current.get("source") != "openprices":
             return  # own prices take precedence over estimates
         entry = {"price": round(float(price), 2), "source": source, "day": dt_util.now().date().isoformat()}
+        if source != "openprices":
+            # price history of own prices: one per day, the last one counts
+            history = [p for p in self.price_history.get(key, []) if p.get("day") != entry["day"]]
+            if not history or history[-1].get("price") != entry["price"]:
+                history.append({"day": entry["day"], "price": entry["price"]})
+            self.price_history[key] = history[-PRICE_HISTORY:]
+            self._save()
         if current and {k: current.get(k) for k in ("price", "source")} == {k: entry[k] for k in ("price", "source")}:
             return
         self.prices[key] = entry
@@ -553,6 +565,8 @@ def stock_overview(hass: HomeAssistant, minimums: dict[str, dict[str, Any]], sto
         product["places"].sort(key=lambda p: (not p["opened"], p["best_before"] or "9999", str(p["area"] or "￿").casefold(), p["compartment"].casefold()))
         product["opened"] = sum(p["count"] for p in product["places"] if p["opened"])
         product["earliest"] = next((p["best_before"] for p in product["places"] if p["best_before"]), None)
+        if stock is not None and len(history := stock.price_history.get(product["key"]) or []) > 1:
+            product["price_history"] = history[-5:]  # 4.11: e.g. 1.99 → 2.49
         if stock is not None:
             usage = forecast([t for t in stock.takes if t.get("key") == product["key"]], product["count"])
             product["usage"] = usage

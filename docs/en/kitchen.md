@@ -149,6 +149,11 @@ When Larder puts something on a list, it moves the new item behind the last open
 
 **🛒 Go shopping** on the start page (or **⋮ → 🛒 Shopping mode**) shows every list Larder writes to, grouped by [store section](#store-sections) in your order. **Tick an item off** and two things happen: it is completed on its to-do list, and it goes **into stock right away** at its usual place, with brand, package and price as known and as many packs as Larder asked for (*→ Pantry · Shelf (+2)*). Items Larder does not know yet (*new – added at the end*) are collected: **＋ Add n new items** opens the pack dialog with their names. *Bought – into stock?* does not offer them again.
 
+Since 4.11:
+- **📷 Scan** (Home Assistant app): scan the barcode in the store. The matching item on the list is ticked off and put into stock; a known product that is not on the list goes into stock anyway (*Scanned, not on the list*); an unknown one is collected with its name from Open Food Facts.
+- **€ / date** next to a ticked-off item: enter the **price** (goes into the price history) and the **best-before date**. If the pack joined an entry with more packs, it gets an entry of its own, so the others keep their date.
+- **🧾 Receipt** reads a receipt instead (see [Packs](containers.md#bags-and-packs)).
+
 ### Recurring purchases
 
 Things you buy regularly but do not count go onto the list on their own: **🔁 Recurring** on the shopping page. Give a name, the **weekdays** (e.g. *Fri* for a crate of water) or **every n days** (milk every 3 days) and optionally a list. Larder adds them in the morning at 8, never twice while one is still open.

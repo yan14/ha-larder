@@ -84,6 +84,7 @@ const TEXT = {
     usageLasts: (weeks, takes, months) => `reicht noch ca. ${weeks} · aus ${takes} Entnahmen in ${months}`,
     suggestMin: (n) => `Vorschlag: mindestens ${n}`,
     priceEach: (p, est) => `${est ? "ca. " : ""}${p} € je Packung${est ? " (Open Prices)" : ""}`,
+    priceHistory: "Preisverlauf",
     valueOf: (v) => `Wert ca. ${v} €`,
     stockValue: (v, n) => `Vorrat im Wert von ca. ${v} € (${n} Produkte mit Preis)`,
     price: "€",
@@ -245,6 +246,7 @@ const TEXT = {
     usageLasts: (weeks, takes, months) => `lasts about ${weeks} · from ${takes} takes in ${months}`,
     suggestMin: (n) => `Suggested: at least ${n}`,
     priceEach: (p, est) => `${est ? "approx. " : ""}€${p} per pack${est ? " (Open Prices)" : ""}`,
+    priceHistory: "Price history",
     valueOf: (v) => `value approx. €${v}`,
     stockValue: (v, n) => `Stock worth approx. €${v} (${n} products with a price)`,
     price: "€",
@@ -1069,6 +1071,12 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
         const parts = [t.priceEach(money(p.price.price, de), p.price.source === "openprices")];
         if (p.value) parts.push(t.valueOf(money(p.value, de)));
         item.append(el("div", "sub price", parts.join(" · ")));
+      }
+      if (p.price_history && p.price_history.length > 1) {
+        // 4.11: own prices over time, e.g. 1,79 € → 1,99 € → 2,49 €
+        const line = el("div", "sub pricehistory", `${t.priceHistory}: ${p.price_history.map((h) => money(h.price, de)).join(" → ")}`);
+        line.dataset.role = "stock-price-history";
+        item.append(line);
       }
       const places = el("div", "places");
       for (const place of p.places) {

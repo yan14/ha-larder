@@ -2109,6 +2109,14 @@ export class LarderDashboard extends HTMLElement {
     shop.dataset.role = "start-shopping";
     shop.addEventListener("click", () => this.setView("shopping"));
     help.append(shop, putAway);
+    if (this.canReadReceipt()) {
+      // 4.11: the receipt scan right on the start page (before only in ＋ → Pack)
+      const receipt = el("button", "", shoppingTexts(hass).receipt);
+      receipt.type = "button";
+      receipt.dataset.role = "start-receipt";
+      receipt.addEventListener("click", () => this.openReceipt());
+      help.append(receipt);
+    }
     const show = el("button", "", t.helpContainers);
     show.type = "button";
     show.dataset.role = "containers";

@@ -31,6 +31,8 @@ Home Assistant integration for reusable food storage containers: note what is in
 <img src="docs/images/dashboard-cards-en.png" width="250" alt="Cards with all details">
 </p>
 
+> **New in 4.11:** in the shopping mode, **scan** to tick off, enter **price and best-before date**, a **price history**, and **🧾 Receipt** right on the start page.
+>
 > **New in 4.10:** a [shopping mode](docs/en/kitchen.md#shopping-mode) – the list by store section, ticking off puts it into stock – and [recurring purchases](docs/en/kitchen.md#recurring-purchases).
 >
 > **New in 4.9:** read a [voucher from a photo](docs/en/containers.md#vouchers) (AI).
