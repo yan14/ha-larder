@@ -18,12 +18,27 @@ export const STYLE = `
   /* Cards view: the bar on top (main), below it the embedded view scrolls */
   :host([classic-view]) main { flex: 0 0 auto; padding-bottom: 0; overflow: visible; }
   larder-panel-embedded { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
-  .menu { position: absolute; top: 52px; right: 8px; z-index: 5; display: flex; flex-direction: column; min-width: 220px;
-    background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 12px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, .2); overflow: hidden; }
-  .menu button { font: inherit; font-size: 15px; text-align: left; padding: 12px 16px; border: 0; background: none;
-    color: var(--primary-text-color); cursor: pointer; }
-  .menu button + button { border-top: 1px solid var(--divider-color); }
+  /* 5.0: More – sections of actions (instead of the ⋮ menu) */
+  section.more { background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 12px;
+    margin-bottom: 14px; overflow: hidden; display: flex; flex-direction: column; }
+  section.more h3 { margin: 0; padding: 10px 16px 6px; font-size: 13px; font-weight: 500; color: var(--secondary-text-color);
+    text-transform: uppercase; letter-spacing: .04em; }
+  section.more button.moreitem { font: inherit; font-size: 15px; text-align: left; padding: 12px 16px; border: 0; background: none;
+    color: var(--primary-text-color); cursor: pointer; border-top: 1px solid var(--divider-color); }
+  .quick { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin: -4px 0 16px; }
+  .quick button { font: inherit; font-size: 15px; padding: 12px 10px; border-radius: 12px; cursor: pointer; text-align: center;
+    background: var(--card-background-color, #fff); color: var(--primary-text-color); border: 1px solid var(--divider-color); }
+  .groupbar { display: flex; gap: 0; margin: 0 0 12px; border: 1px solid var(--divider-color, #ddd); border-radius: 18px; overflow: hidden; }
+  .groupbar button { flex: 1; border: 0; background: none; padding: 8px 4px; font: inherit; font-size: 14px; color: inherit; cursor: pointer; }
+  .groupbar button.active { background: var(--primary-color); color: var(--text-primary-color, #fff); }
+  nav button .ico { position: relative; }
+  .navbadge { position: absolute; top: -4px; right: -12px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box;
+    border-radius: 8px; background: var(--error-color, #db4437); color: #fff; font-size: 10px; font-weight: 600; line-height: 16px; text-align: center; }
+  .searchlist { display: flex; flex-direction: column; gap: 6px; max-height: 55vh; overflow-y: auto; margin: 8px 0; }
+  .searchrow { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; font: inherit; text-align: left; padding: 10px 12px;
+    border-radius: 10px; border: 1px solid var(--divider-color); background: var(--card-background-color, #fff); color: var(--primary-text-color); cursor: pointer; }
+  .searchrow .sub { font-size: 12px; color: var(--secondary-text-color); }
+  .dialog input[type="search"] { width: 100%; box-sizing: border-box; }
   .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
   .bar .grow { flex: 1; }
   .scope { display: flex; gap: 0; margin: 0 0 12px; border: 1px solid var(--divider-color, #ddd); border-radius: 18px; overflow: hidden; }
@@ -49,6 +64,7 @@ export const STYLE = `
   .dialog button.choice .sub { font-size: 12px; color: var(--secondary-text-color); }
   .dialog .itemrows { display: flex; flex-direction: column; gap: 10px; max-height: 45vh; overflow: auto; }
   .dialog .itemrow { display: flex; flex-direction: column; gap: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--divider-color); }
+  .dialog .itemrow.household::before { content: "🧻"; font-size: 12px; color: var(--secondary-text-color); }
   .dialog .itemmain, .dialog .itemsub { display: flex; gap: 6px; align-items: center; }
   .dialog .itemsub { flex-wrap: wrap; }
   .dialog .itemsub label.datelabel { flex: 1 1 100%; flex-direction: row; align-items: center; gap: 8px; font-size: 12px; }

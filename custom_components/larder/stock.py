@@ -978,27 +978,33 @@ async def _async_fill_open_prices(hass: HomeAssistant, stock: Stock, products: l
 # ---------- Strichcode ----------
 
 
-async def async_find_by_code(hass: HomeAssistant, code: str) -> dict[str, Any]:
-    """Packs for a barcode (by the EAN, else by the product name), earliest date first."""
+async def async_find_by_code(hass: HomeAssistant, code: str, content: str | None = None) -> dict[str, Any]:
+    """Packs for a barcode (by the EAN, else by the product name), earliest date first.
+
+    5.0 (search, #118): with `content` the packs of that product, without a barcode.
+    """
     from .product import async_lookup  # noqa: PLC0415 - avoids an import cycle
 
     digits = "".join(ch for ch in code if ch.isdigit())
     packs = pack_entries(hass)
     found = [p for p in packs if digits and str(p.get("ean") or "") == digits]
+    if content:
+        found = [p for p in packs if product_key(p["content"]) == product_key(content)]
+        digits = ""
     lookup: dict[str, Any] = {}
     stock = hass.data.get(DOMAIN, {}).get(DATA_STOCK)
     own = stock.ean_names.get(digits) if stock is not None and digits else None
     if not found and own:
         # created with this barcode before (possibly renamed): by the own name
         found = [p for p in packs if product_key(p["content"]) == product_key(own)]
-    if not found:
+    if not found and digits:
         lookup = await async_lookup(hass, digits)
         if lookup.get("found"):
             key = product_key(lookup["name"])
             found = [p for p in packs if product_key(p["content"]) == key]
     # opened ones first, then the earliest date
     found.sort(key=lambda p: (not p["opened"], p["best_before"] or "9999", str(p["area"] or "￿").casefold(), p["compartment"].casefold()))
-    name = found[0]["content"] if found else own or lookup.get("name")
+    name = found[0]["content"] if found else own or lookup.get("name") or content
     product = None if found else (lookup.get("product") if lookup.get("found") else None)
     return {
         "code": digits,
@@ -1083,20 +1089,26 @@ async def async_take_one(hass: HomeAssistant, cc: str, outcome: str) -> dict[str
     return {"left": source["count"] - 1}
 
 
-async def async_put_away(hass: HomeAssistant, code: str) -> dict[str, Any]:
+async def async_put_away(hass: HomeAssistant, code: str, content: str | None = None) -> dict[str, Any]:
     """Put one bought product away by its barcode (#96).
 
     Known product: one pack more at its usual place (where most of it is). It joins an entry there without a
-    best-before date, else a new entry is made (the printed date can be added on its card). Household items
+    best-before date, else a new entry is made (price and date can be added right away, 5.0). The matching
+    shopping list item is ticked off. Household items
     get a whole pack (pieces per pack). Bought items of the product on the start page are taken care of.
     Unknown: nothing is made, the dashboard collects it (with the name from the product databases).
     """
 
-    found = await async_find_by_code(hass, code)
+    found = await async_find_by_code(hass, code, content)
     known = found.get("known")
     if not known:
         return {"status": "unknown", **{k: found.get(k) for k in ("code", "name", "product", "product_type")}}
-    return await async_add_known(hass, known)
+    from .shopping_mode import async_tick_off  # noqa: PLC0415 - avoids an import cycle
+
+    result = await async_add_known(hass, known)
+    # 5.0 (#120): like the shopping mode and the receipt, the shopping list item is ticked off
+    result["ticked"] = await async_tick_off(hass, [known["content"]])
+    return result
 
 
 async def async_add_known(hass: HomeAssistant, known: dict[str, Any], packs: int = 1) -> dict[str, Any]:
@@ -1189,10 +1201,16 @@ async def ws_stock_min(hass: HomeAssistant, connection: websocket_api.ActiveConn
     connection.send_result(msg["id"], {"products": stock_overview(hass, stock.minimums, stock)})
 
 
-@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/stock_code", vol.Required("code"): str})
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/stock_code",
+        vol.Optional("code", default=""): str,
+        vol.Optional("content"): vol.All(str, vol.Length(min=1, max=255)),
+    }
+)
 @websocket_api.async_response
 async def ws_stock_code(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    connection.send_result(msg["id"], await async_find_by_code(hass, msg["code"]))
+    connection.send_result(msg["id"], await async_find_by_code(hass, msg["code"], msg.get("content")))
 
 
 @websocket_api.websocket_command(
@@ -1313,12 +1331,20 @@ async def ws_pack_take(hass: HomeAssistant, connection: websocket_api.ActiveConn
     connection.send_result(msg["id"], result)
 
 
-@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/put_away", vol.Required("code"): vol.All(str, vol.Length(min=1, max=64))})
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/put_away",
+        vol.Exclusive("code", "what"): vol.All(str, vol.Length(min=1, max=64)),
+        vol.Exclusive("content", "what"): vol.All(str, vol.Length(min=1, max=255)),
+    }
+)
 @websocket_api.async_response
 async def ws_put_away(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
     """Put away after shopping: one scanned product (for everyone in the household, like adding packs)."""
     try:
-        result = await async_put_away(hass, msg["code"])
+        if not msg.get("code") and not msg.get("content"):
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="move_invalid")
+        result = await async_put_away(hass, msg.get("code", ""), msg.get("content"))
     except HomeAssistantError as err:
         connection.send_error(msg["id"], "put_away_failed", str(err))
         return

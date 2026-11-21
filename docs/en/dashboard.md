@@ -10,28 +10,35 @@ Right after adding the integration a sidebar entry **Larder** appears; as long a
 
 <p align="center"><img src="../images/dashboard-getstarted-en.png" width="250" alt="Get started"></p>
 
-A bar at the bottom switches between five pages. **Larder**, **Areas** and **Categories** have a switch **Food | Household | Pharmacy** at the top (see [Household items](containers.md#household-items)):
+A bar at the bottom switches between five pages: **Start · Larder · Shopping · Recipes · More** (since 5.0; *Shopping* shows the number of open items on the shopping lists). At the top of every page are **🔍 Search** and – in the Home Assistant app – **📷 Scan**:
 
-- **Start**: a greeting with your Home Assistant name, tiles for everything that should be used up soon (expired first), and shortcuts to the recipe suggestions and the larder. With [household items](containers.md#household-items) the page has two sections, *Food* and *Household*. In the Home Assistant app there is also **📷 Scan container** (see [Scanning in the app](scanning.md#scanning-in-the-app)).
+- **🔍 Search**: typing a product shows every match with count, places and best-before date. A product in packs opens the same view as scanning its barcode (−1, open, move, one pack more), a container or voucher its card. The digits of a barcode look it up like a scan.
+- **📷 Scan** recognises what was scanned: barcode → the packs of that product, QR code or NFC of a container → its card, compartment label → the [compartment view](scanning.md#compartments) (see [Scanning in the app](scanning.md#scanning-in-the-app)).
+
+- **Start**: a greeting with your Home Assistant name, below it the **quick actions** 📷 Scan · 📥 Put away · 🧾 Receipt · 🍳 Recipe idea, tiles for everything that should be used up soon (expired first), and a shortcut to the larder. With [household items](containers.md#household-items) the page has two sections, *Food* and *Household*.
 - **Larder** (*Storage* in 4.0–4.5, *Containers* before): everything in store with a symbol for the kind of food, the contents, the container name and the days left.
   - **Search** in name, contents and area; **filter** by *expiring soon*, *expired*, *filled*, *empty*, *bags* or *packs*; **sort** by best-before date, area, area and compartment, alphabet or category (area, area and compartment, and category are grouped; *area and compartment* shows exactly what is in each compartment). The number of containers shown is above the list.
   - The button on the right switches between **tiles**, a **list** and **cards with all details**. Your choice is remembered on the device.
   - Tap a filled container to open its card, tap an empty one to fill it right away (see [Filling containers](containers.md#filling-containers)).
-  - **📷** scans a container (only in the Home Assistant app, see [Scanning in the app](scanning.md#scanning-in-the-app)), **＋** adds one (see [From the dashboard](containers.md#from-the-dashboard-recommended)), **☑** starts the [selection](#selecting-several-containers).
+  - **＋** adds one (see [From the dashboard](containers.md#from-the-dashboard-recommended)), **☑** starts the [selection](#selecting-several-containers).
+  - At the top, **List · Areas · Categories** switches the grouping (separate pages in the bar up to 4.12); all three have the switch **Food | Household | Pharmacy** (see [Household items](containers.md#household-items)).
 - **Areas**: one tile per area with the number of containers and how many expire soon; tapping shows its containers. Administrators add areas with **＋** and rename them or set their storage kind with **✏️** (see [Areas and labels](containers.md#areas-and-labels)).
 - **Categories**: the same for kinds of food (fish, meat, dairy, plant-based, sauces & spices, dishes and leftovers, dry goods, …). The category comes from the built-in shelf-life table and is the attribute `category` of the **Contents** entity. Containers without a match are listed under "Other", containers with [several contents](containers.md#several-contents-in-one-container) of different kinds under "Mixed", empty ones under "Empty".
+- **Shopping**: the [shopping mode](kitchen.md#shopping-mode).
 - **Recipes**: your [recipe book](kitchen.md#recipe-book) with [recipe ideas](kitchen.md#recipe-ideas) and recipes read from a photo.
 
-**The card of a container** (in the card view, or after tapping a container) shows everything and lets you edit it:
+**The card of a container** (in the card view, or after tapping a container) shows the frequent actions as big buttons at the top – **−1**, **Open** (packs), **Empty / Used up** and **Move** –, below them contents, amount, best-before date and place; everything rarely needed (price, store section, list, minimum stock, nutrition, NFC, replacement interval, convert …) is under **More**. For packs **−1** asks *Used up* or *🗑 Thrown away* (like the barcode dialog), so what is thrown away ends up in the history, the statistics and the value. In detail:
 
 - area (dropdown; which areas are offered can be narrowed down with a label, see [Areas and labels](containers.md#areas-and-labels)), **compartment** (optional, e.g. "drawer 2" in the freezer; shown on the tile, searchable, sorted with the area), **contents**, **quantity and unit** (**−1** takes one portion, piece or slice; at the last one it asks whether to empty the container), **best before** (with a hint "expired" or "n days left" once it expires soon), **filled on** ("Now" sets the current time),
 - **+1 day** moves the best-before date by a day, **Opened** shortens it to the days set in the settings (default 3), **Thawed** does the same for food out of the freezer (default 2 days, do not refreeze). Neither ever extends a date; without a date one is set,
 - **Estimate best before** (when [estimating](best-before.md#best-before-estimate) is on, contents are entered and the date is empty),
 - **Vacuum**, **Add to shopping list when emptied** (once a [shopping list](kitchen.md#shopping-list) is chosen), **Flexible storage place** with **After emptying, back to** (see [Filling containers](containers.md#filling-containers)), the **NFC tag** (link or unlink), **Open device** and **Empty container**. Before emptying, the card asks **😋 Eaten** or **🗑 Thrown away**; the answer goes into the container's **History** (fold-out list at the bottom of the card, the last ten fillings).
 
-**⋮** at the top opens a menu: **📊 Statistics** and **🖨 Print labels** for everyone, **📦 Export and import**, the [remembered estimates](best-before.md#managing-remembered-estimates) and the integration settings for administrators. The ☰ on the left is the Home Assistant sidebar.
+**More** (the **⋮** menu up to 4.12) collects everything else in three sections: *Everyday* (📥 Put away, 🧾 Receipt, 📋 Stocktake, batch cooking, 🖨 Print labels), *Overview* (🗃️ Stock, 📊 Statistics, 🛟 Emergency supply, 🧹 Data care) and – for administrators only – *Setup* (📍 Edit areas, 🏪 Store sections, container sizes, 📦 Export and import, the [remembered estimates](best-before.md#managing-remembered-estimates) and the integration settings). Old links like `?view=areas` keep working. The ☰ on the left is the Home Assistant sidebar.
 
 <p>
+<img src="../images/dashboard-more-en.png" width="250" alt="More">
+<img src="../images/dashboard-search-en.png" width="250" alt="Search">
 <img src="../images/dashboard-areas-en.png" width="250" alt="Areas">
 <img src="../images/dashboard-recipes-en.png" width="250" alt="Recipes">
 <img src="../images/dashboard-estimates-en.png" width="250" alt="Remembered estimates">
@@ -86,7 +93,7 @@ show_opened: true     # optional
 
 ### Data care
 
-Once a month, while something is missing, the start page shows **🧹 Data care** (✕ hides it until next month; **⋮ → 🧹 Data care** shows it any time): opened packs without a date, packs without a best-before date, products without a price, entries without an area or compartment, and products used often but without a minimum stock. Tapping an entry opens its card, where you fill it in. With complete data, statistics, *lasts about …*, shopping suggestions and the stock value get more accurate. Opened packs show **🫙 opened 12 Nov** on their tile, so it is clear why the date is shorter than printed.
+Once a month, while something is missing, the start page shows **🧹 Data care** (✕ hides it until next month; **More → 🧹 Data care** shows it any time): opened packs without a date, packs without a best-before date, products without a price, entries without an area or compartment, and products used often but without a minimum stock. Tapping an entry opens its card, where you fill it in. With complete data, statistics, *lasts about …*, shopping suggestions and the stock value get more accurate. Opened packs show **🫙 opened 12 Nov** on their tile, so it is clear why the date is shorter than printed.
 
 <p align="center"><img src="../images/dashboard-datacare-en.png" width="250" alt="Data care"></p>
 
@@ -96,7 +103,7 @@ Once a month, while something is missing, the start page shows **🧹 Data care*
 
 At the top: the **report of the previous month** (see [Monthly report](kitchen.md#monthly-report)).
 
-**⋮ → 📊 Statistics** in the dashboard shows, for the last 30 or 90 days, a year or everything:
+**More → 📊 Statistics** in the dashboard shows, for the last 30 or 90 days, a year or everything:
 
 - **In stock now**: filled, empty, expiring soon, expired (and filled without a date).
 - **Emptied**: how many were eaten and thrown away, the share thrown away, the value thrown away (packs with a price) and the average storage time until eaten.
@@ -132,7 +139,7 @@ template:
 
 ## Export and import
 
-In the dashboard **⋮ → 📦 Export and import** (administrators):
+In the dashboard **More → 📦 Export and import** (administrators):
 
 - **📄 Inventory as a table (CSV)**: all containers with name, ID, area, compartment, contents, quantity, unit, filled on, best before, days left, status, vacuum and the nutrition (brand, package, EAN, kcal, Nutri-Score, allergens, nutrients). In German with semicolons, so Excel opens it directly.
 - **🕘 History (CSV)**: every emptied filling with container, contents, quantity, filled on, best before, emptied on, days stored, whether it was expired and whether it was eaten or thrown away. Containers emptied without the question (automation, device page) have no outcome.

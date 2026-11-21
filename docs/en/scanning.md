@@ -8,7 +8,10 @@ There are four ways to get from a container to its entry in the dashboard. They 
 
 ## Scanning in the app
 
-In the Home Assistant app (**iOS and Android**) the dashboard has a **📷** button: on the start page (**📷 Scan container**) and next to **＋** on the containers, areas and categories pages. It opens the app's own QR scanner and reads **both kinds of codes**, your own and the original Zwilling codes:
+In the Home Assistant app (**iOS and Android**) the dashboard has **one 📷 button** at the top of every page (since 5.0; also a quick action on the start page). It opens the app's own scanner and recognises what was scanned – **both kinds of container codes** (your own and the original Zwilling codes), barcodes of bought products and compartment labels:
+
+- **Barcode of a product (EAN):** the packs of this product with every place (−1, open, move, one pack more).
+- **Compartment label:** the [compartment view](#compartments).
 
 - **Known container:** its card opens; an empty container opens the fill dialog right away. The event `larder_dose_scanned` fires as with any other scan.
 - **Zwilling code that has not been added yet** (administrators): the dialog **Add container** opens with the code already filled in.
@@ -30,7 +33,7 @@ The same codes work in the [serial scan](dashboard.md#selecting-several-containe
 
 <p align="center"><img src="../images/dashboard-labels-en.png" width="250" alt="Print labels"></p>
 
-To print many labels at once: **⋮ → 🖨 Print labels** in the dashboard (all containers), or select containers and press **🖨 Labels**. Then choose
+To print many labels at once: **More → 🖨 Print labels** in the dashboard (all containers), or select containers and press **🖨 Labels**. Then choose
 
 - the **format**: an A4 sheet with 3 × 8 (70 × 36 mm), 3 × 7 (70 × 42.3 mm) or 2 × 4 (105 × 74 mm) labels, as sold by Avery Zweckform, Herma and others, or a **label printer** (62 × 29 mm like Brother DK-11209, 54 × 25 mm like Dymo 11352, 89 × 36 mm like Dymo 99012; one label per page),
 - **Skip labels already used** (A4 only), to continue on a partly used sheet,

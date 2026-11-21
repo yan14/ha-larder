@@ -112,7 +112,14 @@ function mount(hass) {
 }
 
 const go = async (el, view) => {
-  $(el, `nav button[data-view="${view}"]`).click();
+  const nav = $(el, `nav button[data-view="${view}"]`);
+  if (nav) nav.click();
+  else {
+    // 5.0: areas and categories are groupings of the Larder page
+    $(el, 'nav button[data-view="containers"]').click();
+    await flush();
+    $(el, `.groupbar button[data-group="${view}"]`).click();
+  }
   await flush();
 };
 
@@ -166,7 +173,14 @@ test("Start: greeting, only containers expiring soon, help buttons", async () =>
   assert.deepEqual($$(el, "main .tile .badge").map((b) => b.textContent), ["abgelaufen (1 T)", "1 T", "3 T"]);
   assert.ok($(el, '[data-role="recipes"]'));
   assert.equal($$(el, "nav button").length, 5);
-  assert.deepEqual($$(el, "nav button").map((b) => b.textContent), ["🏠Start", "🥫Vorrat", "📖Rezepte", "📍Bereiche", "🏷️Kategorien"]);
+  assert.deepEqual($$(el, "nav button").map((b) => b.textContent), ["🏠Start", "🥫Vorrat", "🛒Einkaufen", "📖Rezepte", "⋯Mehr"]);
+  // 5.0: quick actions at the top (put away for everyone; recipe idea with AI)
+  assert.deepEqual($$(el, "main .quick button").map((b) => b.dataset.role), ["putaway", "recipes"]);
+  // areas and categories are groupings of the Larder page
+  await go(el, "areas");
+  assert.equal($(el, 'nav button[data-view="containers"]').classList.contains("active"), true);
+  assert.deepEqual($$(el, ".groupbar button").map((b) => b.dataset.group), ["containers", "areas", "categories"]);
+  assert.equal($(el, '.groupbar button[data-group="areas"]').classList.contains("active"), true);
 });
 
 test("Start: nothing expires, user without AI and without a name", () => {
@@ -322,7 +336,11 @@ test("non-administrator: an empty container opens the detail view, adding only f
   assert.equal($(el, '[data-role="add-container"]'), null);
   assert.ok($(el, '[data-role="add-bag"]') && $(el, '[data-role="add-pack"]'));
   $(el, ".overlay").click();
-  assert.equal($(el, '[data-role="menu-settings"]').hidden, true);
+  // 5.0: More without the section "Setup" for users
+  await go(el, "more");
+  assert.equal($(el, '[data-role="menu-settings"]'), null);
+  assert.equal($(el, 'section.more[data-section="setup"]'), null);
+  await go(el, "containers");
   $$(el, "main .tile").find((t) => t.dataset.id === "d5").click();
   assert.equal(el._classic.getAttribute("only"), "d5");
 });
@@ -336,7 +354,7 @@ test("Add opens the dialog of the normal dashboard", async () => {
   $(el, '[data-role="add-container"]').click();
   assert.equal(opened, 1);
   assert.equal($(el, ".overlay").hidden, true);
-  assert.equal($(el, "#settings").hidden, false);
+  assert.equal($(el, "#search").hidden, false);
 });
 
 test("manage areas: create with storage type, empty storage places, edit", async () => {
@@ -497,7 +515,7 @@ test("navigation resets filters", async () => {
 test("English interface", async () => {
   const el = mount(makeHass(DOSES, { language: "en" }));
   assert.equal($(el, ".hello").textContent, "Hello Yan");
-  assert.deepEqual($$(el, "nav button").map((b) => b.textContent), ["🏠Start", "🥫Larder", "📖Recipes", "📍Areas", "🏷️Categories"]);
+  assert.deepEqual($$(el, "nav button").map((b) => b.textContent), ["🏠Start", "🥫Larder", "🛒Shopping", "📖Recipes", "⋯More"]);
   await go(el, "containers");
   assert.equal($$(el, "main .tile .name").pop().textContent, "Empty");
 });
@@ -868,9 +886,10 @@ test("single scan (📷): opens known containers, adds unknown Zwilling codes", 
   el._classic.openAddDialog = (code) => added.push(code);
   el._classic.openFillDialog = (id) => filled.push(id);
 
-  // the start page has the button, so does the containers page
-  assert.ok($(el, '.help [data-role="scan-one"]'));
-  $(el, '.help [data-role="scan-one"]').click();
+  // 5.0: one scan button in the header on every page, and a quick action on the start page
+  assert.ok($(el, '.quick [data-role="quick-scan"]'));
+  assert.equal($(el, "#scan").hidden, false);
+  $(el, '[data-role="scan-one"]').click();
   assert.equal(sent[0].type, "bar_code/scan");
   assert.equal(sent[0].payload.title, "Dose scannen");
   assert.notEqual(external._commandHandler, original);
@@ -893,21 +912,21 @@ test("single scan (📷): opens known containers, adds unknown Zwilling codes", 
 
   // empty container: fill dialog
   await go(el, "containers");
-  $(el, '.bar [data-role="scan-one"]').click();
+  $(el, '[data-role="scan-one"]').click();
   external._commandHandler({ command: "bar_code/scan_result", payload: { rawValue: "cc=d5", format: "qr_code" } });
   await flush();
   await flush();
   assert.deepEqual(filled, ["d5"]);
 
   // unknown Zwilling code: add with the whole code
-  $(el, '.bar [data-role="scan-one"]').click();
+  $(el, '[data-role="scan-one"]').click();
   external._commandHandler({ command: "bar_code/scan_result", payload: { rawValue: ZW, format: "qr_code" } });
   await flush();
   await flush();
   assert.deepEqual(added, [ZW]);
 
   // cancel gives the app's receiver back
-  $(el, '.bar [data-role="scan-one"]').click();
+  $(el, '[data-role="scan-one"]').click();
   external._commandHandler({ command: "bar_code/aborted", payload: { reason: "canceled" } });
   assert.equal(external._commandHandler, original);
   assert.equal(el._single, null);
@@ -917,9 +936,10 @@ test("single scan: no button without the app's scanner", async () => {
   document.body.innerHTML = "";
   const el = mount(makeHass(DOSES));
   await flush();
-  assert.equal($(el, '[data-role="scan-one"]'), null);
+  assert.equal($(el, "#scan").hidden, true);
+  assert.equal($(el, '[data-role="quick-scan"]'), null);
   await go(el, "containers");
-  assert.equal($(el, '[data-role="scan-one"]'), null);
+  assert.equal($(el, "#scan").hidden, true);
 });
 
 test("export and import: signed downloads and importing the estimates", async () => {
@@ -937,7 +957,7 @@ test("export and import: signed downloads and importing the estimates", async ()
   };
   const el = mount(hass);
   await flush();
-  $(el, "#settings").click();
+  await go(el, "more");
   $(el, '[data-role="menu-data"]').click();
   await flush();
   await flush();
@@ -982,7 +1002,7 @@ test("statistics: via the menu, change the period, empty history", async () => {
   };
   const el = mount(hass);
   await flush();
-  $(el, "#settings").click();
+  await go(el, "more");
   $(el, '[data-role="menu-stats"]').click();
   await flush();
   await flush();
@@ -1140,7 +1160,7 @@ test("QR labels: dialog from menu and selection, signed link to the PDF", async 
   const el = mount(hass);
   await flush();
   // menu: all containers
-  $(el, "#settings").click();
+  await go(el, "more");
   $(el, '[data-role="menu-labels"]').click();
   const form = $(el, "form.dialog");
   assert.equal($(el, ".overlay").hidden, false);
@@ -1459,22 +1479,24 @@ test(`view "Cards": all details via the classic card, with filter and sorting`, 
   window.localStorage.clear();
 });
 
-test("⋮ menu: remembered estimates (administrators only) and settings", async () => {
+test("More (5.0, was ⋮): sections, remembered estimates (administrators only) and settings", async () => {
   document.body.innerHTML = "";
   const hass = makeHass(DOSES);
   const base = hass.callWS;
   hass.callWS = async (msg) => (msg.type === `${D}/estimates` ? { mode: "table", entries: [] } : base(msg));
   const el = mount(hass);
   await flush();
-  assert.equal($(el, ".menu").hidden, true);
-  $(el, "#settings").click();
-  assert.equal($(el, ".menu").hidden, false);
+  await go(el, "more");
+  assert.equal($(el, "h1").textContent, "Mehr");
+  assert.deepEqual($$(el, "section.more h3").map((h) => h.textContent), ["Alltag", "Überblick", "Einrichtung"]);
+  assert.deepEqual($$(el, 'section.more[data-section="overview"] button').map((b) => b.dataset.role), ["menu-stock", "menu-stats", "menu-supply", "menu-datacare"]);
   assert.equal($(el, '[data-role="menu-estimates"]').textContent, "📋 Gemerkte Schätzungen");
   $(el, '[data-role="menu-estimates"]').click();
   await flush();
   await flush();
-  assert.equal($(el, ".menu").hidden, true);
   assert.equal($(el, "h1").textContent, "Schätzungen");
+  // pages reached through More highlight "More" in the bar
+  assert.equal($(el, 'nav button[data-view="more"]').classList.contains("active"), true);
   assert.equal(el._classic.getAttribute("show"), "estimates");
   assert.equal(el._classic.shadowRoot.querySelector("#estimates").hidden, false);
   await go(el, "start");
@@ -1484,15 +1506,14 @@ test("⋮ menu: remembered estimates (administrators only) and settings", async 
   document.body.innerHTML = "";
   const user = mount(makeHass(DOSES, { admin: false }));
   await flush();
-  // non-admins: ⋮ with statistics and labels, without export, estimates and settings
-  assert.equal($(user, "#settings").hidden, false);
-  assert.equal($(user, "#settings").textContent, "⋮");
-  assert.equal($(user, '[data-role="menu-stats"]').hidden, false);
-  assert.equal($(user, '[data-role="menu-labels"]').hidden, false);
-  for (const role of ["menu-data", "menu-estimates", "menu-settings"]) assert.equal($(user, `[data-role="${role}"]`).hidden, true);
+  // non-admins: statistics and labels, without export, estimates and settings
+  await go(user, "more");
+  assert.ok($(user, '[data-role="menu-stats"]'));
+  assert.ok($(user, '[data-role="menu-labels"]'));
+  for (const role of ["menu-data", "menu-estimates", "menu-settings", "menu-areas"]) assert.equal($(user, `[data-role="${role}"]`), null);
   user.setView("estimates");
   await flush();
-  assert.equal($(user, "h1").textContent, "Larder"); // stays on the start page
+  assert.equal($(user, "h1").textContent, "Mehr"); // stays where it was
 });
 
 test("links from scans: ?open opens the container (empty ones for filling), ?add the dialog with code", async () => {
@@ -1753,7 +1774,7 @@ test("stock: view from the menu, change minimum stock, a place opens the pack", 
     return base(msg);
   };
   const el = mount(hass);
-  $(el, "#settings").click();
+  await go(el, "more");
   $(el, '[data-role="menu-stock"]').click();
   await flush();
   await flush();
@@ -1783,7 +1804,7 @@ test("move/split a pack and receipt in the pack dialog", async () => {
   hass.states["select.d1_einheit"].state = "pieces";
   hass.fetchWithAuth = async (url, init) => {
     hass.fetched = { url, file: init.body.get("file") };
-    return { ok: true, json: async () => ({ items: [{ name: "Gehackte Tomaten", count: 3 }, { name: "Milch", count: 1 }] }) };
+    return { ok: true, json: async () => ({ items: [{ name: "Gehackte Tomaten", count: 3 }, { name: "Milch", count: 1 }, { name: "Spülmittel", count: 1, household: true }] }) };
   };
   const base = hass.callWS;
   hass.callWS = async (msg) => {
@@ -1818,8 +1839,10 @@ test("move/split a pack and receipt in the pack dialog", async () => {
   await flush();
   assert.equal(hass.fetched.url, `/api/${D}/receipt_photo`);
   const rows = [...form.querySelectorAll(".itemrow")].map((r) => [r.querySelector('[data-i="content"]').value, r.querySelector('[data-i="quantity"]').value]);
-  assert.deepEqual(rows, [["Gehackte Tomaten", "3"], ["Milch", "1"]]);
-  assert.match(form.querySelector('[data-role="item-status"]').textContent, /2 Produkt/);
+  assert.deepEqual(rows, [["Gehackte Tomaten", "3"], ["Milch", "1"], ["Spülmittel", "1"]]);
+  assert.match(form.querySelector('[data-role="item-status"]').textContent, /3 Produkt/);
+  // 5.0: household goods are marked and sent as such (new ones become household items)
+  assert.deepEqual([...form.querySelectorAll(".itemrow")].map((r) => r.classList.contains("household")), [false, false, true]);
 });
 
 // ---------- Block 12: stock in everyday use ----------
@@ -1843,8 +1866,14 @@ test("barcode: shows all places, oldest best-before first, −1 at the chosen pl
       hass.wsCalls.push(msg);
       return {};
     }
+    if (msg.type === `${D}/put_away` || msg.type === `${D}/shopping_details`) {
+      hass.wsCalls.push(msg);
+      if (msg.type === `${D}/shopping_details`) return { device_id: "d4" };
+      return putAway;
+    }
     return base(msg);
   };
+  let putAway = { status: "added", content: "Ketchup", kind: "pack", device_id: "d2", area: "Keller", compartment: "Regal", count: 4, added: 1, new_entry: false };
   const el = mount(hass);
   await go(el, "containers");
   let added = 0;
@@ -1879,9 +1908,22 @@ test("barcode: shows all places, oldest best-before first, −1 at the chosen pl
   await el.takeByCode("4000000000001");
   form.querySelectorAll('[data-role="code-open"]')[1].click();
   assert.match(form.querySelector("h2").textContent, /anbrechen/i);
-  // a new pack of the same product: prefilled with product data, price and the place where most of it is
+  // 5.0: a new pack of the same product joins the pack at its usual place, then price and date inline
   await el.takeByCode("4000000000001");
   form.querySelector('[data-role="code-new"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/put_away`, code: "4000000000001" });
+  assert.match(form.querySelector("p.lead").textContent, /Eine Packung mehr in Keller · Regal/);
+  form.querySelector('[data-f="shop-price"]').value = "2,19";
+  form.querySelector('[data-role="shop-details-save"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/shopping_details`, device_id: "d2", added: 1, price: 2.19 });
+  assert.match(form.querySelector(".putrow .sub").textContent, /2,19/);
+  // not possible (e.g. no usual place): the dialog, prefilled with product data, price and the usual place
+  putAway = { status: "unknown" };
+  await el.takeByCode("4000000000001");
+  form.querySelector('[data-role="code-new"]').click();
+  await flush();
   assert.match(form.querySelector("h2").textContent, /Packungen anlegen/);
   assert.equal(form.querySelector('[data-i="content"]').value, "Ketchup");
   assert.equal(form.querySelector('[data-i="price"]').value, "1,99");
@@ -1901,6 +1943,8 @@ test("bought: start page offers ticked-off entries, creating takes over place an
   const base = hass.callWS;
   hass.callWS = async (msg) => {
     if (msg.type === `${D}/bought`) return { items: bought };
+    // not in stock yet: the dialog asks (5.0)
+    if (msg.type === `${D}/bought_add`) return { status: "unknown", kind: "pack" };
     if (msg.type === `${D}/bought_dismiss`) {
       hass.wsCalls.push(msg);
       bought = bought.filter((b) => b.id !== msg.item_id);
@@ -1919,6 +1963,7 @@ test("bought: start page offers ticked-off entries, creating takes over place an
   assert.match(box.textContent, /Eingekauft/);
   assert.match(box.querySelector(".boughtrow .name").textContent, /Senf \(Develey\)/);
   box.querySelector('[data-role="bought-add"]').click();
+  await flush();
   const form = $(el, "form.dialog");
   assert.equal(form.querySelector('[data-f="area"]').value, "cellar");
   assert.equal(form.querySelector('[data-f="compartment"]').value, "Regal");
@@ -2015,7 +2060,7 @@ test("statistics show the monthly report of the previous month", async () => {
     return base(msg);
   };
   const el = mount(hass);
-  $(el, "#settings").click();
+  await go(el, "more");
   $(el, '[data-role="menu-stats"]').click();
   await flush();
   await flush();
@@ -2072,7 +2117,7 @@ test("stocktaking: choose a place, tick off, correct the count, remove, scan, su
   };
   hass.user.is_admin = false; // stocktaking without administrator rights too
   const el = mount(hass);
-  $(el, "#settings").click();
+  await go(el, "more");
   $(el, '[data-role="menu-stocktake"]').click();
   await flush();
   assert.equal($(el, "h1").textContent, "Inventur");
@@ -2155,7 +2200,7 @@ test("stock: lasts, suggested minimum stock, price and value; price in the pack 
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/stock_min`), { type: `${D}/stock_min`, content: "Ketchup", min: 2 });
 
   // the receipt fills the price, which ends up in the product data
-  $(el, "#settings").click();
+  await go(el, "more");
   el.openItemsDialog("pack");
   const form = $(el, "form.dialog");
   const file = form.querySelector('[data-role="receipt-file"]');
@@ -2276,6 +2321,9 @@ test("compartment via link (NFC notification): list oldest first, −1, link a t
   assert.deepEqual([...form.querySelectorAll(".placelist .name")].map((n) => n.textContent.replace(/^\S+ /, "")), ["Chili", "Reis", "Tomaten · 3"]);
   // pack: −1
   form.querySelector('.coderow[data-id="p1"] [data-role="place-take"]').click();
+  // 5.0: used up or thrown away
+  assert.ok(form.querySelector('.coderow[data-id="p1"] [data-role="place-take-thrown"]'));
+  form.querySelector('.coderow[data-id="p1"] [data-role="place-take-used"]').click();
   await flush();
   assert.ok(hass.wsCalls.some((m) => m.type === `${D}/pack_take` && m.device_id === "p1" && m.outcome === "eaten"));
   // container: open instead of −1
@@ -2443,7 +2491,7 @@ test("batch cooking: dish, amount, suggest containers, on to filling with amount
     opened = { ids, preset };
     return true;
   };
-  $(el, "#settings").click();
+  await go(el, "more");
   $(el, '[data-role="menu-batch"]').click();
   await flush();
   const form = $(el, "form.dialog");
@@ -2695,6 +2743,12 @@ test("Start: sections Lebensmittel and Haushalt; bought household item opens the
     if (msg.type === `${D}/running_low`) {
       return { shopping_list: true, items: [{ key: "spuelmittel", name: "Spülmittel", count: 1, min: 1, lasts_days: 3, kind: "household" }] };
     }
+    if (msg.type === `${D}/bought_add`) {
+      hass.wsCalls.push(msg);
+      // 5.0: known mustard straight to its place, the toilet paper is new (dialog)
+      if (msg.item_id === "b1") return { status: "added", content: "Senf", area: "Keller", compartment: "Regal", items: [] };
+      return { status: "unknown", kind: "household" };
+    }
     return base(msg);
   };
   const el = mount(hass);
@@ -2712,12 +2766,18 @@ test("Start: sections Lebensmittel and Haushalt; bought household item opens the
   assert.equal(boxes.length, 3);
   assert.equal($$(el, "main .stat.bought")[1].querySelector(".name").textContent, "Klopapier (2 Packungen)");
   $$(el, "main .stat.bought")[1].querySelector('[data-role="bought-add"]').click();
+  await flush();
   const form = $(el, "form.dialog");
   assert.equal(form.querySelector("h2").textContent, "Haushaltsartikel anlegen");
   assert.deepEqual(
     ["quantity", "packSize", "piece"].map((n) => form.querySelector(`[data-i="${n}"]`).value),
     ["2", "8", "Rollen"],
   );
+  $(el, "form.dialog button.cancel").click();
+  $$(el, "main .stat.bought")[0].querySelector('[data-role="bought-add"]').click();
+  await flush();
+  assert.match($(el, ".notice").textContent, /Senf → Keller · Regal/);
+  assert.equal($$(el, "main .stat.bought").length, 0);
   // without household items the start page has no sections
   const plain = mount(makeHass(DOSES));
   await flush();
@@ -2737,7 +2797,7 @@ test("stock: household products show pieces and packs, minimum in pieces", async
     return base(msg);
   };
   const el = mount(hass);
-  $(el, "#settings").click();
+  await go(el, "more");
   $(el, '[data-role="menu-stock"]').click();
   await flush();
   await flush();
@@ -2895,8 +2955,11 @@ test("Put away (4.3): scan one product after another, unknown ones are added at 
   assert.equal(hass.wsCalls.filter((m) => m.type === `${D}/put_away`).length, 6);
   assert.deepEqual(sent.filter((m) => m.type === "bar_code/notify").map((m) => m.payload.message).slice(0, 2), ["Ketchup → Keller · Regal", "Ketchup → Keller · Regal"]);
   assert.deepEqual([...form.querySelectorAll(".putrow:not(.unknown) .name")].map((n) => n.textContent), ["Klopapier +1", "Ketchup +2"]);
-  assert.ok(form.querySelector('.putrow[data-id="p1"] [data-role="putaway-date"]')); // new food entry without a date
-  assert.equal(form.querySelector('.putrow[data-id="h1"] [data-role="putaway-date"]'), null);
+  // 5.0: price and date inline for every row (household items: price only)
+  assert.equal(form.querySelector('.putrow[data-id="p1"] [data-role="putaway-details"]').textContent, "Preis/MHD");
+  assert.equal(form.querySelector('.putrow[data-id="h1"] [data-role="putaway-details"]').textContent, "Preis");
+  form.querySelector('.putrow[data-id="h1"] [data-role="putaway-details"]').click();
+  assert.equal(form.querySelector('[data-f="shop-date"]'), null);
   assert.deepEqual([...form.querySelectorAll(".putrow.unknown")].map((n) => n.textContent), ["Senf", "Zahnpasta"]);
   // typing a code works too (browser without a camera)
   form.querySelector('[data-f="putaway-code"]').value = "4000000000002";
@@ -3014,7 +3077,7 @@ test("Start without anything in Larder: 'Get started' with three steps (4.7)", a
   assert.equal($(full, '[data-role="get-started"]'), null);
 });
 
-test("⋮ → 🛟 Emergency supply: groups, checklist and 🛒; 🏪 store sections for administrators (4.7)", async () => {
+test("More → 🛟 Emergency supply: groups, checklist and 🛒; 🏪 store sections for administrators (4.7)", async () => {
   const hass = makeHass(DOSES);
   const base = hass.callWS;
   hass.callWS = async (msg) => {
@@ -3041,6 +3104,7 @@ test("⋮ → 🛟 Emergency supply: groups, checklist and 🛒; 🏪 store sect
   };
   const el = mount(hass);
   await flush();
+  await go(el, "more");
   const item = $(el, '[data-role="menu-supply"]');
   assert.equal(item.textContent, "🛟 Notvorrat");
   item.click();
@@ -3059,6 +3123,7 @@ test("⋮ → 🛟 Emergency supply: groups, checklist and 🛒; 🏪 store sect
   assert.match(items[0].textContent, /✅ Kerzen oder TaschenlampeKerzen/);
   assert.ok(items[1].querySelector('[data-role="supply-shop"]'));
   // store sections: move drinks up once, save
+  await go(el, "more");
   $(el, '[data-role="menu-sections"]').click();
   await flush();
   const drinks = () => $(el, 'form.dialog [data-key="drinks"]');
@@ -3070,7 +3135,8 @@ test("⋮ → 🛟 Emergency supply: groups, checklist and 🛒; 🏪 store sect
   // not for others
   const other = mount(makeHass(DOSES, { admin: false }));
   await flush();
-  assert.equal($(other, '[data-role="menu-sections"]').hidden, true);
+  await go(other, "more");
+  assert.equal($(other, '[data-role="menu-sections"]'), null);
 });
 
 test("Vouchers (4.8): own scope only when there is one, start section, detail with partial redeem, add with code", async () => {
@@ -3194,7 +3260,7 @@ test("Shopping mode (4.10): by store section, tick off into stock, unknown at th
   })(hass.callWS);
   const el = mount(hass);
   await flush();
-  $(el, '[data-role="start-shopping"]').click();
+  await go(el, "shopping");
   await flush();
   await flush();
   assert.equal($(el, "h1").textContent, "Einkaufen");
@@ -3315,4 +3381,49 @@ test("Data care (4.12): monthly box on the start page, ⋮ dialog, opened since 
   await flush();
   await flush();
   assert.equal($(third, '[data-role="datacare"]'), null);
+});
+
+// ---------- 5.0: navigation, search, quick actions ----------
+
+test("5.0: search in the header – packs by product, containers to their card, barcode digits", async () => {
+  const hass = makeHass(DOSES);
+  hass.states["text.d4_inhalt"].attributes.kind = "pack";
+  hass.states["number.d4_portionen"].state = "2";
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/stock_code`) {
+      hass.wsCalls.push(msg);
+      return { code: "", name: "Reis", entries: [{ device_id: "d4", area: "Keller", compartment: "", count: 2, best_before: null, kind: "pack" }], known: { content: "Reis", kind: "pack", product: {} } };
+    }
+    if (msg.type === `${D}/shopping_lists`) return { lists: ["todo.einkaufen"] };
+    return base(msg);
+  };
+  hass.states["todo.einkaufen"] = { entity_id: "todo.einkaufen", state: "3", attributes: {} };
+  const el = mount(hass);
+  await flush();
+  await flush();
+  // badge with the open items on "Shopping"
+  assert.equal($(el, '[data-role="shop-badge"]').textContent, "3");
+  $(el, "#search").click();
+  const form = $(el, "form.dialog");
+  const input = form.querySelector('[data-f="search-input"]');
+  assert.match(form.querySelector('[data-role="search-results"]').textContent, /zwei Buchstaben/);
+  input.value = "rei";
+  input.dispatchEvent(new dom.window.Event("input"));
+  const items = [...form.querySelectorAll('[data-role="search-item"]')];
+  assert.equal(items.length, 1);
+  assert.match(items[0].textContent, /Reis2× · Keller/);
+  items[0].click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.filter((m) => m.type === `${D}/stock_code`).at(-1), { type: `${D}/stock_code`, content: "Reis" });
+  assert.ok(form.querySelector('[data-role="code-take"]'));
+  // a container opens its card
+  el.openSearch("lach");
+  form.querySelector('[data-role="search-item"]').click();
+  assert.equal(el._detail, "d1");
+  // barcode digits: look up like a scan
+  el.openSearch("4000000000001");
+  assert.ok(form.querySelector('[data-role="search-barcode"]'));
+  el.openSearch("xyz");
+  assert.match(form.textContent, /Nichts gefunden/);
 });

@@ -43,9 +43,12 @@ def shopping_lists(hass: HomeAssistant, stock) -> list[str]:
     return [entity for entity in dict.fromkeys(lists) if entity and hass.states.get(entity) is not None]
 
 
-def known_for(hass: HomeAssistant, stock, summary: str) -> tuple[dict[str, Any] | None, int]:
+def known_for(
+    hass: HomeAssistant, stock, summary: str, tracked: dict[str, Any] | None = None
+) -> tuple[dict[str, Any] | None, int]:
     """What a list item is in Larder (content, kind, product data, usual place) and how many packs; or None."""
-    tracked = stock.tracked.get(summary.strip().casefold()) or {}
+    if tracked is None:
+        tracked = stock.tracked.get(summary.strip().casefold()) or {}
     content = tracked.get("content") or summary.split(" (", 1)[0].strip()
     key = product_key(content)
     packs = int(tracked.get("count") or 1)
@@ -116,6 +119,37 @@ async def async_shopping_check(hass: HomeAssistant, entity_id: str, uid: str, su
     if known is None:
         return {"status": "unknown", "name": _base_name(summary)}
     result = await async_add_known(hass, known, packs)
+    return result
+
+
+async def async_bought_add(hass: HomeAssistant, item_id: str) -> dict[str, Any]:
+    """"Bought – into stock?" (5.0, #120): a known product goes straight to its usual place, like the shopping mode.
+
+    Unknown ones are reported (with the kind Larder knew), the dashboard opens the dialog for them.
+    """
+    from .const import KIND_HOUSEHOLD, KIND_MEDICINE  # noqa: PLC0415
+
+    stock = await async_get_stock(hass)
+    item = next((b for b in stock.bought if b.get("id") == item_id), None)
+    if item is None:
+        raise HomeAssistantError(translation_domain=DOMAIN, translation_key="move_invalid")
+    summary = str(item.get("summary") or item.get("content") or "")
+    known, packs = known_for(hass, stock, summary, item)
+    in_stock = known is not None and any(product_key(p["content"]) == product_key(known["content"]) for p in pack_entries(hass))
+    # no usual place known (not in stock, no place remembered): the dialog asks for it
+    if known is None or not (in_stock or known.get("area_id")):
+        kind = item.get("kind")
+        return {
+            "status": "unknown",
+            "name": item.get("content") or _base_name(summary),
+            "kind": kind if kind in (KIND_HOUSEHOLD, KIND_MEDICINE) else "pack",
+            "count": packs,
+            "product": item.get("product") or {},
+            "area_id": item.get("area_id"),
+            "compartment": item.get("compartment") or "",
+        }
+    result = await async_add_known(hass, known, packs)
+    stock.dismiss(item_id)
     return result
 
 
@@ -297,17 +331,19 @@ async def async_receipt_add(
 ) -> dict[str, Any]:
     """Rows read from a receipt (4.11.1): known products go to their usual place and join a pack there (like the
     shopping mode), with price and date; only unknown ones are created at the place chosen in the dialog."""
-    from .const import KIND_PACK  # noqa: PLC0415
+    from .const import KIND_HOUSEHOLD, KIND_PACK  # noqa: PLC0415
     from .disposable import async_create_items  # noqa: PLC0415
 
     packs = pack_entries(hass)
     added: list[dict[str, Any]] = []
     unknown: list[dict[str, Any]] = []
+    unknown_household: list[dict[str, Any]] = []
     for item in items:
         key = product_key(item["content"])
-        found = [p for p in packs if product_key(p["content"]) == key and p["kind"] == KIND_PACK]
+        found = [p for p in packs if product_key(p["content"]) == key and p["kind"] in (KIND_PACK, KIND_HOUSEHOLD)]
         if not found:
-            unknown.append(item)
+            # 5.0 (#121): household goods from the receipt become household items, the rest food packs
+            (unknown_household if item.get("household") else unknown).append({k: v for k, v in item.items() if k != "household"})
             continue
         count = max(1, int(item.get("quantity") or 1))
         result = await async_add_known(hass, _known_product(found, ""), count)
@@ -321,6 +357,8 @@ async def async_receipt_add(
         added.append(result)
         packs = pack_entries(hass)
     created = await async_create_items(hass, KIND_PACK, unknown, area_id, compartment) if unknown else []
+    if unknown_household:
+        created += await async_create_items(hass, KIND_HOUSEHOLD, unknown_household, area_id, compartment)
     ticked = await async_tick_off(hass, [item["content"] for item in items])
     return {"added": added, "created": created, "ticked": ticked}
 
@@ -373,12 +411,36 @@ async def ws_receipt_add(hass: HomeAssistant, connection: websocket_api.ActiveCo
     from .disposable import _ITEM  # noqa: PLC0415
 
     try:
-        items = [_ITEM(item) for item in msg["items"]]
+        # 5.0 (#121): "household" (from the receipt) decides the kind of an unknown product
+        items = [
+            {**_ITEM({k: v for k, v in item.items() if k != "household"}), **({"household": True} if item.get("household") is True else {})}
+            for item in msg["items"]
+        ]
         result = await async_receipt_add(hass, items, msg.get("area_id"), msg.get("compartment"))
     except (vol.Invalid, HomeAssistantError) as err:
         connection.send_error(msg["id"], "receipt_failed", str(err))
         return
     connection.send_result(msg["id"], result)
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/shopping_lists"})
+@websocket_api.async_response
+async def ws_shopping_lists(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """The shopping lists Larder uses (5.0: badge with the open items on "Shopping" in the bar)."""
+    stock = await async_get_stock(hass)
+    connection.send_result(msg["id"], {"lists": shopping_lists(hass, stock)})
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/bought_add", vol.Required("item_id"): str})
+@websocket_api.async_response
+async def ws_bought_add(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    try:
+        result = await async_bought_add(hass, msg["item_id"])
+    except HomeAssistantError as err:
+        connection.send_error(msg["id"], "bought_add_failed", str(err))
+        return
+    stock = await async_get_stock(hass)
+    connection.send_result(msg["id"], {**result, "items": list(reversed(stock.bought))})
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/recurring"})
@@ -439,5 +501,5 @@ def async_setup_shopping_mode_websocket(hass: HomeAssistant) -> None:
     if domain_data.get("shopping_mode_ws"):
         return
     domain_data["shopping_mode_ws"] = True
-    for command in (ws_shopping_mode, ws_shopping_check, ws_shopping_scan, ws_shopping_details, ws_receipt_add, ws_recurring, ws_recurring_set, ws_recurring_delete):
+    for command in (ws_shopping_mode, ws_shopping_check, ws_shopping_scan, ws_shopping_details, ws_receipt_add, ws_bought_add, ws_shopping_lists, ws_recurring, ws_recurring_set, ws_recurring_delete):
         websocket_api.async_register_command(hass, command)

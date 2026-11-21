@@ -49,7 +49,7 @@ Home Assistant bietet im Dialog keine Kamera zum Scannen. Einfacher: die erste D
 
 ### Dose umbenennen
 
-Einstellungen → Geräte & Dienste → **Larder** → Eintrag der Dose → ⋮ → **Neu konfigurieren**. Die ID bleibt, gedruckte QR-Codes und NFC-Tags gelten weiter.
+Einstellungen → Geräte & Dienste → **Larder** → Eintrag der Dose → Mehr → **Neu konfigurieren**. Die ID bleibt, gedruckte QR-Codes und NFC-Tags gelten weiter.
 
 ## Beutel und Packungen
 
@@ -78,7 +78,7 @@ Ein Beutel funktioniert wie eine Dose (scannen, Portion entnehmen, **Geöffnet**
 
 **Packungen.** Pro Produkt eine Zeile mit der **Anzahl** und dem aufgedruckten MHD; **📷 Strichcode scannen** (Home Assistant App) trägt Name, Marke und [Nährwerte](#nährwerte) aus Open Food Facts ein. Packungen haben keinen Code und nur wenige Entitäten (Inhalt, Fach, Menge, Einheit, MHD, Resttage, Leeren), so bleiben auch viele davon schlank. Sie tauchen überall auf, wo Dosen auftauchen: läuft bald ab, [tägliche Zusammenfassung](kitchen.md#tägliche-zusammenfassung), [Rezepte](kitchen.md#rezepte), [Statistik](dashboard.md#statistik), der Filter **Packungen** auf der Seite **Vorrat** (📦 auf der Kachel).
 
-**📷 Kassenbon** (mit eingerichteter [KI](best-before.md#ki-optional)) liest ein Foto deines Kassenbons: Die Lebensmittel mit Anzahl erscheinen als Zeilen, Nicht-Lebensmittel, Pfand und Summen bleiben weg, der Preis einer Packung kommt ins Preisfeld. Prüfen, MHD ergänzen (oder leer lassen) und **Anlegen** drücken. Produkte, die schon im Vorrat sind, kommen an ihren **üblichen Ort** und zählen zu einer Packung dort dazu, wie im Einkaufsmodus (seit 4.11.1); **Bereich** und optionales **Fach** im Dialog gelten nur für neue Produkte. Seit 4.12 hakt der Kassenbon auch die passenden Einträge auf den Einkaufslisten ab, damit nichts doppelt dazukommt. Seit 4.11 gibt es **🧾 Kassenbon** auch auf der Startseite und im Einkaufsmodus; es öffnet diesen Dialog und gleich die Kamera.
+**📷 Kassenbon** (mit eingerichteter [KI](best-before.md#ki-optional)) liest ein Foto deines Kassenbons: Die Lebensmittel mit Anzahl erscheinen als Zeilen, Haushaltswaren mit 🧻 markiert (neue werden Haushaltsartikel, seit 5.0), Pfand und Summen bleiben weg, der Preis einer Packung kommt ins Preisfeld. Prüfen, MHD ergänzen (oder leer lassen) und **Anlegen** drücken. Produkte, die schon im Vorrat sind, kommen an ihren **üblichen Ort** und zählen zu einer Packung dort dazu, wie im Einkaufsmodus (seit 4.11.1); **Bereich** und optionales **Fach** im Dialog gelten nur für neue Produkte. Seit 4.12 hakt der Kassenbon auch die passenden Einträge auf den Einkaufslisten ab, damit nichts doppelt dazukommt. Seit 4.11 gibt es **🧾 Kassenbon** auch auf der Startseite und im Einkaufsmodus; es öffnet diesen Dialog und gleich die Kamera.
 
 **Fach-Vorschläge:** Überall, wo du ein Fach einträgst (Beutel und Packungen anlegen, Verschieben, Karte, Befüll-Dialog), erscheinen die im gewählten Bereich schon benutzten Fächer als Chips unter dem Feld, die häufigsten zuerst; antippen statt tippen. Tippen filtert die Chips, und früher eingetragene Fächer merkt sich das Gerät, auch wenn dort gerade nichts liegt.
 
@@ -99,7 +99,7 @@ Ein Beutel funktioniert wie eine Dose (scannen, Portion entnehmen, **Geöffnet**
 <img src="../images/dashboard-move-de.png" width="250" alt="Move">
 </p>
 
-**⋮ → 🗃️ Bestand** im Dashboard zeigt alle Packungen nach Produkt, über alle Orte zusammengezählt, mit Marke, Packung und wo sie liegen (Antippen eines Orts öffnet die Packung). Den **Mindestbestand** jedes Produkts stellst du direkt dort ein; was darunter liegt, ist mit *zu wenig* oder *keine mehr da* markiert. Produkte mit Mindestbestand bleiben in der Liste, auch wenn keins mehr da ist. **Ältestes zuerst:** Die Orte eines Produkts sind nach MHD sortiert, das früheste steht beim Produkt, und die Karte einer Packung warnt, wenn dieselbe Ware woanders mit früherem MHD liegt.
+**Mehr → 🗃️ Bestand** im Dashboard zeigt alle Packungen nach Produkt, über alle Orte zusammengezählt, mit Marke, Packung und wo sie liegen (Antippen eines Orts öffnet die Packung). Den **Mindestbestand** jedes Produkts stellst du direkt dort ein; was darunter liegt, ist mit *zu wenig* oder *keine mehr da* markiert. Produkte mit Mindestbestand bleiben in der Liste, auch wenn keins mehr da ist. **Ältestes zuerst:** Die Orte eines Produkts sind nach MHD sortiert, das früheste steht beim Produkt, und die Karte einer Packung warnt, wenn dieselbe Ware woanders mit früherem MHD liegt.
 
 **Wie lange es reicht.** Jede entnommene Packung (−1, Leeren, Inventur) wird gezählt; Umlagern und Anbrechen nicht. Daraus zeigen die Bestands-Ansicht und die Karte einer Packung **reicht noch ca. 6 Wochen · aus 4 Entnahmen in 6 Monaten**. Die Prognose schaut auf die letzten 90 Tage und weitet sich auf 180 oder 365 Tage, wenn es weniger als 3 Entnahmen gibt; jüngere Entnahmen zählen mehr. Darunter setzt **Vorschlag: mindestens 2** den Mindestbestand auf das, was du in der *Vorrat: Tage bis zum nächsten Einkauf* (Einstellung, Standard 7 Tage) verbrauchst – per Antippen, von selbst ändert sich nichts.
 
@@ -116,7 +116,7 @@ Ein Beutel funktioniert wie eine Dose (scannen, Portion entnehmen, **Geöffnet**
 
 <p align="center"><img src="../images/dashboard-code-de.png" width="250" alt="Entnehmen per Strichcode"></p>
 
-**Einräumen nach dem Einkauf.** **📥 Einräumen** (Startseite, Bestands-Ansicht oder ⋮) öffnet den Strichcode-Scanner der App und lässt ihn offen: die gekauften Produkte nacheinander scannen. Ein Produkt, das schon im Vorrat ist, wird eine Packung mehr an seinem gewohnten Ort (wo das meiste davon liegt), mit Marke, Strichcode und Preis; der Scanner bestätigt es sofort (*Ketchup → Keller · Regal*). Sie kommt zu einem Eintrag dort ohne MHD, sonst entsteht ein neuer Eintrag; **MHD eintragen** führt zu seiner Karte für das aufgedruckte Datum. Haushaltsartikel bekommen eine ganze Packung (Stück je Packung). Unbekannte Strichcodes sammelt Larder mit dem Namen aus den Produktdatenbanken, am Ende legst du sie gesammelt an (**Als Packungen anlegen** / **als Haushaltsartikel**). Einträge dieser Produkte unter *Eingekauft – in den Vorrat?* sind damit erledigt. Ohne Kamera der App (z. B. im Browser) den Strichcode eintippen.
+**Einräumen nach dem Einkauf.** **📥 Einräumen** (Startseite, Bestands-Ansicht oder Mehr) öffnet den Strichcode-Scanner der App und lässt ihn offen: die gekauften Produkte nacheinander scannen. Ein Produkt, das schon im Vorrat ist, wird eine Packung mehr an seinem gewohnten Ort (wo das meiste davon liegt), mit Marke, Strichcode und Preis; der Scanner bestätigt es sofort (*Ketchup → Keller · Regal*). Sie kommt zu einem Eintrag dort ohne MHD, sonst entsteht ein neuer Eintrag; **Preis/MHD** daneben trägt Preis und aufgedrucktes Datum gleich ein (eine Packung mit eigenem Datum bekommt einen eigenen Eintrag). Der passende Eintrag auf der Einkaufsliste wird abgehakt (seit 5.0). Haushaltsartikel bekommen eine ganze Packung (Stück je Packung). Unbekannte Strichcodes sammelt Larder mit dem Namen aus den Produktdatenbanken, am Ende legst du sie gesammelt an (**Als Packungen anlegen** / **als Haushaltsartikel**). Einträge dieser Produkte unter *Eingekauft – in den Vorrat?* sind damit erledigt. Ohne Kamera der App (z. B. im Browser) den Strichcode eintippen.
 
 <p align="center"><img src="../images/dashboard-putaway-de.png" width="250" alt="Einräumen nach dem Einkauf"></p>
 
@@ -126,7 +126,7 @@ Ein Beutel funktioniert wie eine Dose (scannen, Portion entnehmen, **Geöffnet**
 
 **Bald leer.** Reicht ein Produkt mit Mindestbestand laut Prognose nur noch die *Tage bis zum nächsten Einkauf*, steht es auf der Startseite unter **⏳ Bald leer** – bevor der Mindestbestand unterschritten ist. **🛒 Einkaufsliste** setzt es auf die Liste, **✕** blendet es eine Woche aus. Mit der Einstellung *Bald leer: gleich auf die Einkaufsliste* kommt es sofort auf die Liste. Für eine Push-Nachricht gibt es den Blueprint [Bald leer und Rückrufe](kitchen.md#bald-leer-und-rückrufe) (Ereignis `larder_running_low`).
 
-**Von der Einkaufsliste zurück in den Vorrat.** Hakst du auf der Einkaufsliste etwas ab, das Larder dort eingetragen hat (Mindestbestand oder geleerte Dose), fragt die Startseite **🛒 Eingekauft – in den Vorrat?**. **In den Vorrat** öffnet den Packungs-Dialog mit Inhalt, Marke, Anzahl und dem Ort, an dem das Produkt sonst liegt; **✕** verwirft den Hinweis.
+**Von der Einkaufsliste zurück in den Vorrat.** Hakst du auf der Einkaufsliste etwas ab, das Larder dort eingetragen hat (Mindestbestand oder geleerte Dose), fragt die Startseite **🛒 Eingekauft – in den Vorrat?**. **In den Vorrat** legt ein Produkt, das schon im Vorrat ist, gleich an seinen üblichen Ort (ein Tipp, seit 5.0); nur ein neues Produkt öffnet den Packungs-Dialog mit Inhalt, Marke, Anzahl und Ort. **✕** verwirft den Hinweis.
 
 ### Rückrufwarnungen
 
@@ -140,7 +140,7 @@ Ein Treffer ist ein Hinweis, keine Gewissheit: Charge und MHD stehen in der Orig
 
 ### Inventur
 
-**⋮ → 📋 Inventur** (für alle im Haushalt) geht einen Bereich oder ein Fach darin durch. Larder listet alles, was dort sein sollte; pro Zeile:
+**Mehr → 📋 Inventur** (für alle im Haushalt) geht einen Bereich oder ein Fach darin durch. Larder listet alles, was dort sein sollte; pro Zeile:
 
 - **✓** ist da; bei Packungen und Beuteln die **Anzahl** direkt in der Zeile korrigieren,
 - **Weg** → gegessen oder weggeworfen (kommt in den Verlauf),
@@ -160,7 +160,7 @@ Seit 4.0 verwaltet Larder auch Dinge ohne Haltbarkeitsdatum: Klopapier, Küchenr
 - **Strichcode.** Kennt Open Food Facts einen Strichcode nicht, fragt Larder auch die Schwester-Datenbanken **Open Beauty Facts**, **Open Products Facts** und **Open Pet Food Facts**. Ein dort gefundenes Produkt wird als Haushaltsartikel angeboten.
 - **Umwandeln.** Eine Packung, die eigentlich ein Haushaltsartikel ist (oder umgekehrt), wandelst du mit **→ Haushaltsartikel** / **→ Lebensmittel-Packung** unten auf ihrer Karte um. Automatisch wird nichts umgewandelt.
 - **Regelmäßig wechseln (seit 4.6).** Für Verbrauchsmaterial wie Wasserfilter, Staubsaugerbeutel oder Zahnbürstenköpfe legt **Wechseln alle (Wochen)** auf der Karte ein Intervall fest. Die Karte zeigt, wann es fällig ist; **🔁 Gewechselt** entnimmt ein Stück und startet das Intervall neu. Ab einer Woche vorher steht es im Haushalts-Abschnitt der Startseite unter **🔁 Bald wechseln**, mit demselben Knopf. Am Fälligkeitstag wird einmal das Ereignis `larder_replace_due` ausgelöst (auch im [Blueprint für Bald leer und Rückrufe](kitchen.md#bald-leer-und-rückrufe)).
-- **Box mit Code, z. B. für Hygieneartikel.** Haushaltsartikel kommen nicht in eine Dose, sondern in ein **Fach**: Binden und Tampons z. B. im Bereich *Bad* mit dem Fach *Hygienebox*. In der Fach-Ansicht (**Bereiche → Bad → Hygienebox**) verknüpft **🏷 Fach-Tag** einen NFC-Sticker oder druckt einen QR-Code für die Box ([Fächer](scanning.md#fächer)). Ein Scan an der Box zeigt alles, was darin liegt, **−1** nimmt ein Stück; Mindestbestand und Einkaufsliste laufen wie gewohnt. Mehrere Produkte in einer Box gehen, und das Etikett bleibt gültig, auch wenn sich der Inhalt ändert.
+- **Box mit Code, z. B. für Hygieneartikel.** Haushaltsartikel kommen nicht in eine Dose, sondern in ein **Fach**: Binden und Tampons z. B. im Bereich *Bad* mit dem Fach *Hygienebox*. In der Fach-Ansicht (**Vorrat → Bereiche → Bad → Hygienebox**) verknüpft **🏷 Fach-Tag** einen NFC-Sticker oder druckt einen QR-Code für die Box ([Fächer](scanning.md#fächer)). Ein Scan an der Box zeigt alles, was darin liegt, **−1** nimmt ein Stück; Mindestbestand und Einkaufsliste laufen wie gewohnt. Mehrere Produkte in einer Box gehen, und das Etikett bleibt gültig, auch wenn sich der Inhalt ändert.
 - **Kategorien:** Papier & Hygiene, Waschen, Putzen & Spülen, Körperpflege, Batterien & Leuchtmittel, Sonstiges.
 - **Statistik** (seit 4.1): Verbrauch und Ausgaben je Monat, je Produkt und gesamt, auf der Haushalts-Seite der [Statistik](dashboard.md#statistik). **Rückrufwarnungen** für Kosmetik und Bedarfsgegenstände, siehe [Rückrufwarnungen](#rückrufwarnungen). **Eine eigene Einkaufsliste**, siehe [Einkaufsliste](kitchen.md#einkaufsliste).
 
@@ -268,14 +268,14 @@ Eine Dose kann eine **Größe** haben (Feld **Größe** auf ihrer Karte, freier 
 
 - **Feste Größe** (Standard): Die Größe gehört zur Dose.
 - **variabel**: für Deckel, die auf Behälter verschiedener Größe passen (z. B. Zwilling, wo der Code auf dem Deckel sitzt). Die Größe wird bei jeder Befüllung im Befüll-Dialog gewählt; vorgeschlagen wird die zuletzt benutzte Größe dieses Deckels.
-- **Lose Behälter:** Unter **⋮ → 📏 Behältergrößen** trägst du ein, wie viele Behälter je Größe du für die variablen Deckel hast, z. B. 4 × 1 l, 2 × 2 l.
+- **Lose Behälter:** Unter **Mehr → 📏 Behältergrößen** trägst du ein, wie viele Behälter je Größe du für die variablen Deckel hast, z. B. 4 × 1 l, 2 × 2 l.
 - **Freie Behälter:** Die Seite Vorrat zeigt *Frei: 3 × 1 l, 1 × 0,5 l*: leere Dosen mit fester Größe plus die losen Behälter, die gerade nicht mit einem variablen Deckel befüllt sind. Antippen öffnet die Größen.
 
 ### Vorkochen
 
 <p align="center"><img src="../images/dashboard-batch-de.png" width="250" alt="Vorkochen"></p>
 
-**⋮ → 🍲 Vorkochen** (Administratoren) teilt ein Gericht auf mehrere leere Dosen auf: **Gericht** und **Menge insgesamt** (Portionen, ml, g oder Stück) eintragen und die Dosen anhaken. Bei Millilitern wählt **Passende vorschlagen** nach Größe die wenigsten Dosen, die die Menge fassen; variable Deckel bekommen eine Größe aus den freien losen Behältern. Die Menge wird aufgeteilt (bei Millilitern so viel, wie jede Dose fasst, sonst gleichmäßig), dann öffnet sich das gewohnte Befüllen für alle, mit der Menge je Dose. Danach bietet Larder an, die Etiketten zu drucken.
+**Mehr → 🍲 Vorkochen** (Administratoren) teilt ein Gericht auf mehrere leere Dosen auf: **Gericht** und **Menge insgesamt** (Portionen, ml, g oder Stück) eintragen und die Dosen anhaken. Bei Millilitern wählt **Passende vorschlagen** nach Größe die wenigsten Dosen, die die Menge fassen; variable Deckel bekommen eine Größe aus den freien losen Behältern. Die Menge wird aufgeteilt (bei Millilitern so viel, wie jede Dose fasst, sonst gleichmäßig), dann öffnet sich das gewohnte Befüllen für alle, mit der Menge je Dose. Danach bietet Larder an, die Etiketten zu drucken.
 
 ### Nährwerte
 

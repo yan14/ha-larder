@@ -49,7 +49,7 @@ Home Assistant has no camera in this dialog. Easier: add the first container wit
 
 ### Renaming a container
 
-Settings → Devices & services → **Larder** → the container's entry → ⋮ → **Reconfigure**. The ID stays, so printed QR codes and NFC tags keep working.
+Settings → Devices & services → **Larder** → the container's entry → More → **Reconfigure**. The ID stays, so printed QR codes and NFC tags keep working.
 
 ## Bags and packs
 
@@ -78,7 +78,7 @@ A bag works like a container (scan it, take a portion, **Opened**, **Thawed**, r
 
 **Packs.** One row per product with the **count** and the best-before date printed on the package; **📷 Scan barcode** (Home Assistant app) fills in the name, brand and [nutrition](#nutrition) from Open Food Facts. Packs have no code and only a few entities (contents, compartment, quantity, unit, best-before date, days left, empty), so even many of them stay light. They show up everywhere containers do: expiring soon, [daily summary](kitchen.md#daily-summary), [recipes](kitchen.md#recipes), [statistics](dashboard.md#statistics), the filter **Packs** on the containers page (📦 on the tile).
 
-**📷 Receipt** (with an [AI](best-before.md#ai-optional) set up) reads a photo of your shopping receipt: the food items and their count appear as rows, non-food lines, deposits and totals are left out, and the price of one pack goes into the price field. Check them, add the best-before dates (or leave them empty) and press **Add**. Products that are already in stock go to their **usual place** and join a pack there, like in the shopping mode (since 4.11.1); the **area** and optional **compartment** in the dialog apply to new products only. Since 4.12 the receipt also ticks off the matching items on the shopping lists, so nothing is added twice. Since 4.11 **🧾 Receipt** is also on the start page and in the shopping mode; it opens this dialog and the camera right away.
+**📷 Receipt** (with an [AI](best-before.md#ai-optional) set up) reads a photo of your shopping receipt: the food items and their count appear as rows, household goods marked 🧻 (new ones become household items, since 5.0), deposits and totals are left out, and the price of one pack goes into the price field. Check them, add the best-before dates (or leave them empty) and press **Add**. Products that are already in stock go to their **usual place** and join a pack there, like in the shopping mode (since 4.11.1); the **area** and optional **compartment** in the dialog apply to new products only. Since 4.12 the receipt also ticks off the matching items on the shopping lists, so nothing is added twice. Since 4.11 **🧾 Receipt** is also on the start page and in the shopping mode; it opens this dialog and the camera right away.
 
 **Compartment suggestions:** wherever you enter a compartment (adding bags and packs, moving, the card, the fill dialog), the compartments already used in the chosen area appear as chips below the field, the most used first; tap one instead of typing. Typing filters the chips, and compartments you entered before are remembered on the device even when nothing is left in them.
 
@@ -99,7 +99,7 @@ A bag works like a container (scan it, take a portion, **Opened**, **Thawed**, r
 <img src="../images/dashboard-move-en.png" width="250" alt="Move">
 </p>
 
-**⋮ → 🗃️ Stock** in the dashboard lists all packs by product, summed over every place, with brand, package and where they are (tap a place to open the pack). Set the **minimum stock** of every product right there; products below it are marked *too few* or *none left*. Products with a minimum stay in the list even when none are left. **Oldest first:** the places of a product are sorted by best-before date, the earliest one is shown next to the product, and the card of a pack warns when an older pack of the same food lies somewhere else.
+**More → 🗃️ Stock** in the dashboard lists all packs by product, summed over every place, with brand, package and where they are (tap a place to open the pack). Set the **minimum stock** of every product right there; products below it are marked *too few* or *none left*. Products with a minimum stay in the list even when none are left. **Oldest first:** the places of a product are sorted by best-before date, the earliest one is shown next to the product, and the card of a pack warns when an older pack of the same food lies somewhere else.
 
 **How long it lasts.** Every pack you take (−1, emptying, stocktake) is counted; moving or opening a pack is not. From that, the stock view and the card of a pack show **lasts about 6 weeks · from 4 takes in 6 months**. The forecast looks at the last 90 days and widens to 180 or 365 days when there are fewer than 3 takes; recent takes count more. Below the line, **Suggestion: at least 2** sets the minimum stock to what you use during the *Stock: days until the next shopping trip* (setting, 7 days by default) – with a tap, nothing changes by itself.
 
@@ -116,7 +116,7 @@ A bag works like a container (scan it, take a portion, **Opened**, **Thawed**, r
 
 <p align="center"><img src="../images/dashboard-code-en.png" width="250" alt="Take by barcode"></p>
 
-**Put away after shopping.** **📥 Put away** (start page, stock view or ⋮) opens the app's barcode scanner and keeps it open: scan the bought products one after another. A product that is already in stock becomes one more pack at its usual place (where most of it is), with brand, barcode and price; the scanner confirms it right away (*Ketchup → Basement · Shelf*). It joins an entry there without a best-before date, otherwise a new entry is made; **Add date** leads to its card for the printed date. Household items get a whole pack (pieces per pack). Unknown barcodes are collected with the name from the product databases and added together at the end (**Add as packs** / **as household items**). Items of these products under *Bought – add to stock* are taken care of. Without the app's camera (e.g. in a browser) type the barcode instead.
+**Put away after shopping.** **📥 Put away** (start page, stock view or More) opens the app's barcode scanner and keeps it open: scan the bought products one after another. A product that is already in stock becomes one more pack at its usual place (where most of it is), with brand, barcode and price; the scanner confirms it right away (*Ketchup → Basement · Shelf*). It joins an entry there without a best-before date, otherwise a new entry is made; **Price/date** next to it enters the price and the printed date right away (a pack with its own date gets an entry of its own). The matching item on the shopping list is ticked off (since 5.0). Household items get a whole pack (pieces per pack). Unknown barcodes are collected with the name from the product databases and added together at the end (**Add as packs** / **as household items**). Items of these products under *Bought – add to stock* are taken care of. Without the app's camera (e.g. in a browser) type the barcode instead.
 
 <p align="center"><img src="../images/dashboard-putaway-en.png" width="250" alt="Put away after shopping"></p>
 
@@ -126,7 +126,7 @@ A bag works like a container (scan it, take a portion, **Opened**, **Thawed**, r
 
 **Running low.** When a product with a minimum stock will only last the *days until the next shopping trip* according to the forecast, the start page lists it under **⏳ Running low** – before it drops below the minimum. **🛒 Shopping list** adds it to the list, **✕** hides it for a week. With the setting *Running low: add to the shopping list right away* it goes onto the list at once. For a push notification there is the blueprint [Running low and recalls](kitchen.md#running-low-and-recalls) (event `larder_running_low`).
 
-**From the shopping list back into the stock.** When you tick off an item on your shopping list that Larder put there (minimum stock or an emptied container), the start page asks **🛒 Bought – add to the stock?**. **Add to stock** opens the pack dialog with the contents, brand, count and the place where the product usually is; **✕** drops the hint.
+**From the shopping list back into the stock.** When you tick off an item on your shopping list that Larder put there (minimum stock or an emptied container), the start page asks **🛒 Bought – add to the stock?**. **Add to stock** puts a product that is already in stock straight at its usual place (one tap, since 5.0); only a new product opens the pack dialog with the contents, brand, count and place. **✕** drops the hint.
 
 ### Recall warnings
 
@@ -140,7 +140,7 @@ A match is a hint, not a certainty: batch and best-before date are in the origin
 
 ### Stocktake
 
-**⋮ → 📋 Stocktake** (for everyone in the household) goes through one area, or one compartment of it. Larder lists everything that should be there; per line:
+**More → 📋 Stocktake** (for everyone in the household) goes through one area, or one compartment of it. Larder lists everything that should be there; per line:
 
 - **✓** it is there; for packs and bags correct the **count** right in the line,
 - **Gone** → eaten or thrown away (goes into the history),
@@ -160,7 +160,7 @@ Since 4.0 Larder also keeps track of things without a best-before date: toilet p
 - **Barcode.** If Open Food Facts does not know a barcode, Larder also asks its sister databases **Open Beauty Facts**, **Open Products Facts** and **Open Pet Food Facts**. A product found there is offered as a household item.
 - **Converting.** A pack that should have been a household item (or the other way round) is converted with **→ Household item** / **→ Food pack** at the bottom of its card. Nothing is converted automatically.
 - **Replace regularly (since 4.6).** For consumables such as a water filter, vacuum cleaner bags or toothbrush heads, **Replace every (weeks)** on the card sets an interval. The card shows when it is due; **🔁 Replaced** takes one piece and starts the interval again. From a week before it is due, the household section of the start page shows it under **🔁 Replace soon**, with the same button. On the due day the event `larder_replace_due` fires once (also in the [stock alerts blueprint](kitchen.md#running-low-and-recalls)).
-- **A box with a code, e.g. for sanitary products.** Household items do not go into a container but into a **compartment**: pads and tampons, for example, in the area *Bathroom* with the compartment *Hygiene box*. In the compartment view (**Areas → Bathroom → Hygiene box**) **🏷 Compartment tag** links an NFC sticker or prints a QR code for the box ([Compartments](scanning.md#compartments)). Scanning the box shows everything in it, **−1** takes one piece; minimum stock and the shopping list work as usual. Several products fit in one box, and the label stays valid when the contents change.
+- **A box with a code, e.g. for sanitary products.** Household items do not go into a container but into a **compartment**: pads and tampons, for example, in the area *Bathroom* with the compartment *Hygiene box*. In the compartment view (**Larder → Areas → Bathroom → Hygiene box**) **🏷 Compartment tag** links an NFC sticker or prints a QR code for the box ([Compartments](scanning.md#compartments)). Scanning the box shows everything in it, **−1** takes one piece; minimum stock and the shopping list work as usual. Several products fit in one box, and the label stays valid when the contents change.
 - **Categories:** paper & hygiene, laundry, cleaning & dishes, personal care, batteries & bulbs, other.
 - **Statistics** (since 4.1): use and spending per month, per product and in total, on the household side of [Statistics](dashboard.md#statistics). **Recall warnings** for cosmetics and consumer goods, see [Recall warnings](#recall-warnings). **A shopping list of their own**, see [Shopping list](kitchen.md#shopping-list).
 
@@ -268,14 +268,14 @@ A container can have a **size** (field **Size** on its card, free text like `1 l
 
 - **Fixed size** (default): the size belongs to the container.
 - **variable**: for lids that fit boxes of different sizes (e.g. Zwilling, where the code sits on the lid). The size is chosen in the fill dialog at every filling; the last size of this lid is suggested.
-- **Loose boxes:** **⋮ → 📏 Container sizes** takes how many boxes of each size you own for the variable lids, e.g. 4 × 1 l, 2 × 2 l.
+- **Loose boxes:** **More → 📏 Container sizes** takes how many boxes of each size you own for the variable lids, e.g. 4 × 1 l, 2 × 2 l.
 - **Free containers:** the **Larder** page shows *Free: 3 × 1 l, 1 × 0.5 l*: empty containers with a fixed size plus the loose boxes not filled with a variable lid. Tap it to open the sizes.
 
 ### Batch cooking
 
 <p align="center"><img src="../images/dashboard-batch-en.png" width="250" alt="Batch cooking"></p>
 
-**⋮ → 🍲 Batch cooking** (administrators) splits one dish into several empty containers: enter the **dish** and the **total amount** (portions, ml, g or pieces) and tick the containers. With millilitres, **Suggest fitting ones** picks the fewest containers that hold the amount, by their size; variable lids get a size from the free loose boxes. The amount is split (in millilitres as much as each container holds, otherwise evenly), then the usual fill dialog opens for all of them with the amount per container. Afterwards Larder offers to print the labels.
+**More → 🍲 Batch cooking** (administrators) splits one dish into several empty containers: enter the **dish** and the **total amount** (portions, ml, g or pieces) and tick the containers. With millilitres, **Suggest fitting ones** picks the fewest containers that hold the amount, by their size; variable lids get a size from the free loose boxes. The amount is split (in millilitres as much as each container holds, otherwise evenly), then the usual fill dialog opens for all of them with the amount per container. Afterwards Larder offers to print the labels.
 
 ### Nutrition
 

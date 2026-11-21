@@ -154,13 +154,13 @@ const suggestions = de ? [
 ];
 // to-do lists for the shopping list choice (4.1)
 for (const [id, name] of [["todo.einkaufsliste", de ? "Einkaufsliste" : "Shopping list"], ["todo.drogerie", de ? "Drogerie" : "Drugstore"], ["todo.metzger", de ? "Metzger" : "Butcher"]]) {
-  states[id] = { entity_id: id, state: "0", attributes: { friendly_name: name } };
+  states[id] = { entity_id: id, state: id === "todo.einkaufsliste" ? "4" : "0", attributes: { friendly_name: name } };
 }
 const hass = {
   entities, devices, states, language: lang, user: { is_admin: true, name: "Yan" },
   areas: Object.fromEntries(Object.entries(areas).map(([k, v]) => [k, { area_id: k, name: v, labels: areaLabels[k] || [] }])),
   services: { ai_task: { generate_data: {} }, larder: { suggest_recipes: {} } },
-  auth: { external: { config: { canWriteTag: false }, fireMessage() {} } },
+  auth: { external: { config: { canWriteTag: false, hasBarCodeScanner: true }, fireMessage() {}, addCommandHandler() {}, _commandHandler() {} } },
   hassUrl: (p) => p, callService() {}, callApi: async () => ({}),
   fetchWithAuth: async () => ({ ok: true, json: async () => ({ recipe: de
     ? { title: "Omas Apfelkuchen", minutes: 75, ingredients: ["Portionen: 12", "500 g Äpfel", "200 g Mehl", "100 g Zucker"], steps: ["Teig kneten.", "Äpfel schneiden.", "45 Minuten backen."], source: "photo" }
@@ -286,6 +286,7 @@ const hass = {
     if (msg.type === "larder/estimate_suggestions") return { suggestions: [de
       ? { key: "b", content: "Gekochte Eier", area: "Kühlschrank", vacuum: false, days: 7, suggested: 5, direction: "shorter", count: 2 }
       : { key: "b", content: "Boiled eggs", area: "Fridge", vacuum: false, days: 7, suggested: 5, direction: "shorter", count: 2 }] };
+    if (msg.type === "larder/shopping_lists") return { lists: ["todo.einkaufsliste"] };
     if (msg.type === "larder/bought") return { items: q.get("view") === "start" ? [de
       ? { id: "b1", summary: "Senf (Develey)", content: "Senf", product: { brand: "Develey" }, area_id: "pantry", compartment: "Schrank", count: 1 }
       : { id: "b1", summary: "Mustard (Develey)", content: "Mustard", product: { brand: "Develey" }, area_id: "pantry", compartment: "Cupboard", count: 1 },
@@ -409,6 +410,11 @@ if (q.get("view") === "shopping") {
 }
 if (q.get("dialog") === "recurring") await el.openRecurringDialog();
 if (q.get("dialog") === "datacare") await el.openDataCare();
+if (q.get("dialog") === "search") {
+  const input = el.openSearch();
+  input.value = de ? "to" : "to";
+  input.dispatchEvent(new Event("input"));
+}
 if (q.get("dialog") === "place") await el.openPlace("cellar", de ? "Regal oben" : "Top shelf");
 if (q.get("take")) {
   el._take = { areaId: q.get("take"), compartment: "", started: true, status: new Map() };

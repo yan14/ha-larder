@@ -241,4 +241,23 @@ export const STYLE = `
   .none { text-align: center; padding: 48px 16px; color: var(--secondary-text-color); }
   .none h2 { color: var(--primary-text-color); font-weight: 400; }
   .none a { color: var(--primary-color); cursor: pointer; }
+  /* 5.0 (#119): big actions at the top, rarely needed fields under "More" */
+  .bigactions { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; }
+  .bigactions:empty { display: none; }
+  .bigactions button { min-width: 0; min-height: 44px; font: inherit; font-size: 15px; padding: 8px 10px; overflow-wrap: anywhere;
+    border-radius: 10px; cursor: pointer; background: none; color: var(--primary-color); border: 1px solid var(--primary-color); }
+  .bigactions button.take, .bigactions button.empty { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: var(--primary-color); }
+  .bigactions button[hidden] { display: none; }
+  .takerow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; }
+  .takerow[hidden] { display: none; }
+  .takerow .ttext { flex: 1 1 100%; }
+  .takerow button { font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--divider-color); background: none; color: var(--primary-color); }
+  .takerow button.teaten { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: var(--primary-color); }
+  details.more { display: flex; flex-direction: column; gap: 12px; }
+  details.more > summary { cursor: pointer; color: var(--primary-color); font-size: 14px; }
+  details.more[open] > summary { margin-bottom: 4px; }
+  details.more > * + * { margin-top: 10px; }
+  details.more select.convert { align-self: flex-start; font: inherit; font-size: 14px; }
+  details.more select.convert[hidden] { display: none; }
 `;

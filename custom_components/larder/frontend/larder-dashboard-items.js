@@ -129,7 +129,11 @@ const TEXT = {
     putAwayAddCode: "Einräumen",
     putAwayAdded: "Eingeräumt",
     putAwayNow: (n) => `jetzt ${n}`,
-    putAwayDate: "MHD eintragen",
+    putAwayDate: "Preis/MHD",
+    putAwayPrice: "Preis",
+    putAwayTicked: "✓ abgehakt",
+    codeAdded: (place) => `Eine Packung mehr in ${place}. Preis und MHD gleich eintragen:`,
+    boughtAdded: (name, place) => `${name} → ${place}`,
     putAwayUnknown: (n) => (n === 1 ? "1 unbekanntes Produkt" : `${n} unbekannte Produkte`),
     putAwayAddPacks: (n) => (n === 1 ? "Als Packung anlegen" : `${n} als Packungen anlegen`),
     putAwayAddHousehold: (n) => (n === 1 ? "Als Haushaltsartikel anlegen" : `${n} als Haushaltsartikel anlegen`),
@@ -292,7 +296,11 @@ const TEXT = {
     putAwayAddCode: "Put away",
     putAwayAdded: "Put away",
     putAwayNow: (n) => `now ${n}`,
-    putAwayDate: "Add date",
+    putAwayDate: "Price/date",
+    putAwayPrice: "Price",
+    putAwayTicked: "✓ ticked off",
+    codeAdded: (place) => `One pack more in ${place}. Add price and date right away:`,
+    boughtAdded: (name, place) => `${name} → ${place}`,
     putAwayUnknown: (n) => (n === 1 ? "1 unknown product" : `${n} unknown products`),
     putAwayAddPacks: (n) => (n === 1 ? "Add as a pack" : `Add ${n} as packs`),
     putAwayAddHousehold: (n) => (n === 1 ? "Add as a household item" : `Add ${n} as household items`),
@@ -388,6 +396,7 @@ export function buildItems(kind, rows, vacuum = true) {
     if (price > 0) item.product = { ...(item.product || {}), price: Math.round(price * 100) / 100, price_source: row.priceSource || "own" };
     if (kind === "bag") item.vacuum = !!vacuum;
     if (row.receipt && kind === "pack") item.receipt = true; // 4.11.1: known products go to their usual place
+    if (item.receipt && row.household) item.household = true; // 5.0: new ones become household items
     const copies = kind === "bag" ? Math.max(1, parseInt(row.count, 10) || 1) : 1;
     for (let i = 0; i < copies; i++) items.push({ ...item });
   }
@@ -405,12 +414,13 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
   const placeName = (p, t) => [p.area, p.compartment].filter(Boolean).join(" · ") || t.noArea;
 
   /** Take a bought pack by barcode: shows all places, the one with the earliest date first. */
-  proto.takeByCode = async function takeByCode(code) {
+  proto.takeByCode = async function takeByCode(code, content = null) {
     const hass = this._hass;
     const t = itemTexts(hass);
     let res;
     try {
-      res = await hass.callWS({ type: `${DOMAIN}/stock_code`, code });
+      // 5.0 (search): by the product name instead of a barcode
+      res = await hass.callWS(content ? { type: `${DOMAIN}/stock_code`, content } : { type: `${DOMAIN}/stock_code`, code });
     } catch {
       res = null;
     }
@@ -476,13 +486,30 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     const known = res.known;
     // the price goes into the price field (editable), the rest of the product data stays with the row
     const { price: knownPrice, ...knownProduct } = (known && known.product) || {};
-    const another = button("link", `＋ ${t.codeNewPack}`, () =>
+    const newPackDialog = () =>
       this.openItemsDialog(known && ["household", "medicine"].includes(known.kind) ? known.kind : "pack", {
         rows: [{ content: (known && known.content) || res.name, quantity: 1, product: knownProduct, price: knownPrice }],
         area_id: known && known.area_id,
         compartment: known && known.compartment,
-      }),
-    );
+      });
+    // 5.0 (#120): one pack more joins the pack at the usual place (like put away), then price and date
+    const another = button("link", `＋ ${t.codeNewPack}`, async () => {
+      if (!known || !(res.code || content)) {
+        newPackDialog();
+        return;
+      }
+      let added;
+      try {
+        added = await hass.callWS(res.code ? { type: `${DOMAIN}/put_away`, code: res.code } : { type: `${DOMAIN}/put_away`, content: known.content });
+      } catch {
+        added = null;
+      }
+      if (!added || added.status !== "added") {
+        newPackDialog();
+        return;
+      }
+      this._codeAdded(added);
+    });
     another.dataset.role = "code-new";
     const parts = [el("h2", "", res.name), el("p", "lead", t.codeOldest(placeName(res.entries[0], t))), list, another];
     parts.push(buttonsRow(close));
@@ -490,6 +517,28 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     this._submit = null;
     this._overlay.hidden = false;
     return res;
+  };
+
+  /** Barcode dialog: one pack more was put at its usual place – price and date right away, or move it. */
+  proto._codeAdded = function _codeAdded(added) {
+    const t = itemTexts(this._hass);
+    const row = el("div", "putrow");
+    const sub = el("span", "sub", `${placeName(added, t)} · ${t.putAwayNow(added.count)}`);
+    const text = el("span", "text");
+    text.append(el("span", "name", `${added.content} +1`), sub);
+    row.append(text);
+    const done = { ...added };
+    const ok = button("submit", t.done, () => this._closeDialog());
+    ok.dataset.role = "code-added-done";
+    const move = button("", t.codeMove, () => this.openMoveDialog(done.device_id));
+    move.dataset.role = "code-added-move";
+    this._form.replaceChildren(el("h2", "", added.content), el("p", "lead", t.codeAdded(placeName(added, t))), row, buttonsRow(move, ok));
+    this._shopDetails(done, row, () => {
+      sub.textContent = [placeName(added, t), t.putAwayNow(added.count), done.details].filter(Boolean).join(" · ");
+    });
+    this._submit = null;
+    this._overlay.hidden = false;
+    if (this._view === "stock") this.loadStock();
   };
 
   /** Assign a barcode to a product in the stock (pack without EAN, e.g. created under another name). */
@@ -557,6 +606,41 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     }
   };
 
+  /**
+   * Unknown products, collected while putting away, shopping or scanning (5.0, #121): one button for food packs
+   * and one for household items, by the product type from the product databases (beauty, product → household).
+   */
+  proto._unknownButtons = function _unknownButtons(unknown, role, onOpen = null, foodLabel = null) {
+    const t = itemTexts(this._hass);
+    const isHousehold = (u) => u.kind === "household" || (u.product_type && u.product_type !== "food");
+    const food = unknown.filter((u) => !isHousehold(u));
+    const household = unknown.filter(isHousehold);
+    const rows = (items) =>
+      items.map((u) => ({
+        content: u.name || u.content || "",
+        quantity: 1,
+        product: { ...(u.product || {}), ...(u.code && String(u.code).length >= 8 ? { ean: u.code } : {}) },
+      }));
+    const out = [];
+    if (food.length) {
+      const add = button("primary", (foodLabel || t.putAwayAddPacks)(food.length), () => {
+        if (onOpen) onOpen();
+        this.openItemsDialog("pack", { rows: rows(food) });
+      });
+      add.dataset.role = role;
+      out.push(add);
+    }
+    if (household.length) {
+      const add = button("primary", t.putAwayAddHousehold(household.length), () => {
+        if (onOpen) onOpen();
+        this.openItemsDialog("household", { rows: rows(household) });
+      });
+      add.dataset.role = `${role}-household`;
+      out.push(add);
+    }
+    return out;
+  };
+
   proto.putAwayTitle = function putAwayTitle() {
     return itemTexts(this._hass).putAway;
   };
@@ -590,16 +674,19 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
           const row = el("div", "putrow");
           row.dataset.id = r.device_id;
           const text = el("span", "text");
-          text.append(el("span", "name", `${r.content} +${r.times}`), el("span", "sub", `${placeOf(r)} · ${t.putAwayNow(r.count)}`));
+          text.append(
+            el("span", "name", `${r.content} +${r.times}`),
+            el("span", "sub", [placeOf(r), t.putAwayNow(r.count), r.ticked && r.ticked.length ? t.putAwayTicked : null, r.details].filter(Boolean).join(" · ")),
+          );
           row.append(text);
-          // a new entry of food has no best-before date yet: one tap to its card
-          if (r.new_entry && r.kind === "pack") {
-            const date = button("link", t.putAwayDate, () => {
-              this._closeDialog();
-              this.openDetail(r.device_id);
+          // 5.0 (#120): price and best-before date right here, like in the shopping mode
+          if (!r.details) {
+            const details = button("link", r.kind === "household" ? t.putAwayPrice : t.putAwayDate, () => {
+              details.remove();
+              this._shopDetails(r, row, render);
             });
-            date.dataset.role = "putaway-date";
-            row.append(date);
+            details.dataset.role = "putaway-details";
+            row.append(details);
           }
           parts.push(row);
         }
@@ -607,19 +694,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       if (state.unknown.length) {
         parts.push(el("h3", "", t.putAwayUnknown(state.unknown.length)));
         for (const u of state.unknown) parts.push(el("div", "putrow unknown", u.name || u.code));
-        const food = state.unknown.filter((u) => !u.product_type || u.product_type === "food");
-        const household = state.unknown.filter((u) => u.product_type && u.product_type !== "food");
-        const rows = (items) => items.map((u) => ({ content: u.name || "", quantity: 1, product: { ...(u.product || {}), ...(u.code && u.code.length >= 8 ? { ean: u.code } : {}) } }));
-        if (food.length) {
-          const add = button("primary", t.putAwayAddPacks(food.length), () => this.openItemsDialog("pack", { rows: rows(food) }));
-          add.dataset.role = "putaway-new";
-          parts.push(add);
-        }
-        if (household.length) {
-          const add = button("primary", t.putAwayAddHousehold(household.length), () => this.openItemsDialog("household", { rows: rows(household) }));
-          add.dataset.role = "putaway-new-household";
-          parts.push(add);
-        }
+        parts.push(...this._unknownButtons(state.unknown, "putaway-new"));
       }
       if (!parts.length) parts.push(el("p", "hint", t.putAwayEmpty));
       list.replaceChildren(...parts);
@@ -638,7 +713,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       let message;
       if (res.status === "added") {
         const known = state.done.find((r) => r.device_id === res.device_id);
-        if (known) Object.assign(known, res, { times: known.times + 1, new_entry: known.new_entry || res.new_entry });
+        if (known) Object.assign(known, res, { times: known.times + 1, new_entry: known.new_entry || res.new_entry, details: "" });
         else state.done.unshift({ ...res, times: 1 });
         message = t.putAwayDoneOne(res.content, placeOf(res));
       } else {
@@ -726,14 +801,32 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     for (const item of items) {
       const row = el("div", "boughtrow");
       row.dataset.id = item.id;
-      const add = button("primary", t.boughtAdd, () =>
-        this.openItemsDialog(["household", "medicine"].includes(item.kind) ? item.kind : "pack", {
+      const dialog = (kind = item.kind) =>
+        this.openItemsDialog(["household", "medicine"].includes(kind) ? kind : "pack", {
           rows: [{ content: item.content, quantity: item.count || 1, product: item.product || null }],
           area_id: item.area_id,
           compartment: item.compartment,
           onCreated: () => dismiss(item),
-        }),
-      );
+        });
+      // 5.0 (#120): a known product goes straight to its usual place; the dialog only for new ones
+      const add = button("primary", t.boughtAdd, async () => {
+        add.disabled = true;
+        let res;
+        try {
+          res = await hass.callWS({ type: `${DOMAIN}/bought_add`, item_id: item.id });
+        } catch {
+          res = null;
+        }
+        add.disabled = false;
+        if (!res || res.status !== "added") {
+          dialog(res && res.kind);
+          return;
+        }
+        this._bought = res.items || this._bought.filter((b) => b.id !== item.id);
+        this.showNotice(t.boughtAdded(res.content, placeName(res, t)));
+        this._sig = "";
+        this._update();
+      });
       add.dataset.role = "bought-add";
       const drop = button("", "✕", () => dismiss(item));
       drop.dataset.role = "bought-dismiss";
@@ -1410,6 +1503,9 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
             }
             row._product = null;
             row._receipt = true;
+            // 5.0 (#121): household goods from the receipt become household items (if new)
+            row._household = !!item.household;
+            row.classList.toggle("household", row._household);
           }
           status.textContent = t.receiptDone(data.items.length);
         } catch (err) {
@@ -1461,7 +1557,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
         return {
           content: v("content"), quantity: v("quantity"), unit: v("unit"), date: v("date"), count: v("count"), product: row._product,
           packSize: v("packSize"), piece: v("piece"),
-          price: v("price"), priceSource: priceNode && priceNode.dataset.source, receipt: !!row._receipt,
+          price: v("price"), priceSource: priceNode && priceNode.dataset.source, receipt: !!row._receipt, household: !!row._household,
         };
       });
       const items = buildItems(kind, data, vacuum ? vacuum.querySelector("input").checked : true);

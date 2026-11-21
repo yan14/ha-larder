@@ -406,6 +406,8 @@ class DoseCard {
     el.innerHTML = `
       <div class="head"><span class="name"></span><a class="open"></a></div>
       <div class="arealine"></div>
+      <div class="bigactions"></div>
+      <div class="takerow" hidden><span class="ttext"></span><button class="teaten" type="button"></button><button class="tthrown" type="button"></button><button class="tcancel" type="button"></button></div>
       <div class="row arearow"><label data-l="area"></label><select data-f="area"></select></div>
       <div class="row comprow"><label data-l="compartment"></label><input data-f="compartment" type="text" maxlength="60"></div>
       <div class="row"><label data-l="content"></label><input data-f="content" type="text" maxlength="255"></div>
@@ -451,9 +453,16 @@ class DoseCard {
       <div class="nfcrow"><span class="nfcstate"></span><button class="nfcbtn" type="button"></button></div>
       <div class="actions"><button class="fill" type="button"></button><button class="transfer" type="button" hidden></button><button class="move" type="button" hidden></button><button class="openpack" type="button" hidden></button><select class="convert" hidden></select><button class="empty" type="button"></button><span class="spacer"></span><img class="qr" alt=""></div>
       <div class="outcomerow" hidden><span class="otext"></span><button class="eaten" type="button"></button><button class="thrown" type="button"></button><button class="ocancel" type="button"></button></div>
+      <details class="more"><summary></summary></details>
       <details class="history"><summary></summary><ul></ul></details>`;
     this.el = el;
     this.q = (sel) => el.querySelector(sel);
+    // 5.0 (#119): the frequent actions as big buttons at the top, everything rarely needed under "More"
+    this.q(".bigactions").append(...["button.take", "button.openpack", "button.empty", "button.move"].map((sel) => this.q(sel)));
+    const more = this.q("details.more");
+    for (const sel of [".filledrow", ".estimaterow", ".vacrow", ".shoprow", ".flexrow", ".homerow", ".sizerow", ".minrow", ".replrow", ".listrow", ".sectionrow", "details.nutrition", ".nfcrow", "select.convert"]) {
+      more.append(this.q(sel));
+    }
     this.inputs = {
       content: this.q('[data-f="content"]'),
       bestBefore: this.q('[data-f="bestBefore"]'),
@@ -530,12 +539,29 @@ class DoseCard {
     this.q("button.take").addEventListener("click", () => {
       const n = parseQuantity(this.inputs.quantity.value);
       if (!this.ids.number || !(n > 0)) return;
+      // 5.0 (#122): one pack is used up or thrown away, like in the barcode dialog (history, statistics, value)
+      if (this._packLike) {
+        this.q(".takerow").hidden = false;
+        return;
+      }
       if (n > 1) {
         this._call("number", "set_value", { entity_id: this.ids.number, value: n - 1 });
         return;
       }
       this.q(".lastrow").hidden = false;
     });
+    const takePack = async (outcome) => {
+      this.q(".takerow").hidden = true;
+      const hass = this._panel.hass;
+      try {
+        await hass.callWS({ type: `${DOMAIN}/pack_take`, device_id: this.deviceId, outcome });
+      } catch (err) {
+        this._panel.showError((err && err.message) || strings(hass).takeFailed);
+      }
+    };
+    this.q("button.teaten").addEventListener("click", () => takePack("eaten"));
+    this.q("button.tthrown").addEventListener("click", () => takePack("thrown"));
+    this.q("button.tcancel").addEventListener("click", () => (this.q(".takerow").hidden = true));
     this.q("button.lastempty").addEventListener("click", () => {
       this.q(".lastrow").hidden = true;
       this._empty("eaten"); // the last portion was just taken after all
@@ -868,7 +894,10 @@ class DoseCard {
     take.hidden = !(countable && nQuantity > 0 && ok(quantity));
     take.title = t.takeOne;
     take.setAttribute("aria-label", t.takeOne);
-    if (take.hidden) this.q(".lastrow").hidden = true;
+    if (take.hidden) {
+      this.q(".lastrow").hidden = true;
+      this.q(".takerow").hidden = true;
+    }
     this.q(".lasttext").textContent = t.lastOne;
     this.q("button.lastempty").textContent = t.emptyContainer;
     this.q("button.lastkeep").textContent = t.keep;
@@ -888,6 +917,12 @@ class DoseCard {
     const nfc = this._panel.nfcState(this.deviceId);
     const kind = (text && text.attributes && text.attributes.kind) || "container";
     const packLike = kind === "pack" || kind === "household" || kind === "medicine";
+    this._packLike = packLike;
+    this.q(".ttext").textContent = kind === "household" ? t.takePiece : t.takePack;
+    this.q("button.teaten").textContent = t.usedUp;
+    this.q("button.tthrown").textContent = t.thrownOne;
+    this.q("button.tcancel").textContent = t.cancel;
+    this.q("details.more > summary").textContent = t.more;
     const nonFoodKind = kind === "household" || kind === "medicine";
     // packs, household items and medicines are used up, containers and bags are emptied
     if (kind !== "container" && kind !== "bag") {

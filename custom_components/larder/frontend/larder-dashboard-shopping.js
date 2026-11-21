@@ -181,7 +181,8 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
   };
 
   /** Price and best-before date for what was just put into stock (inline under the item). */
-  proto._shopDetails = function _shopDetails(done, row) {
+  /** Price and best-before date of what was just put into stock (shopping mode, put away, barcode dialog). */
+  proto._shopDetails = function _shopDetails(done, row, onSaved = null) {
     const hass = this._hass;
     const t = shoppingTexts(hass);
     const box = el("div", "shopdetails");
@@ -211,12 +212,19 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
         return;
       }
       done.editing = false;
+      if (onSaved) {
+        box.remove();
+        onSaved(done);
+        return;
+      }
       this._sig = "";
       this._update();
     });
     save.dataset.role = "shop-details-save";
-    box.append(price, date, save);
+    // household items have no best-before date to enter here
+    box.append(...(done.kind === "household" ? [price, save] : [price, date, save]));
     row.after(box);
+    return box;
   };
 
   proto.openReceipt = function openReceipt() {
@@ -309,13 +317,8 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
       frag.append(extra);
     }
     if (this._shopUnknown.length) {
-      const rows = this._shopUnknown.map((u) => ({ content: u.content || "", quantity: 1, product: { ...(u.product || {}), ...(u.code && u.code.length >= 8 ? { ean: u.code } : {}) } }));
-      const add = button("primary", t.addUnknown(rows.length), () => {
-        this._shopUnknown = [];
-        this.openItemsDialog("pack", { rows });
-      });
-      add.dataset.role = "shop-add-unknown";
-      frag.append(add);
+      // 5.0 (#121): like put away – food packs and household items separately
+      frag.append(...this._unknownButtons(this._shopUnknown, "shop-add-unknown", () => (this._shopUnknown = []), t.addUnknown));
     }
     this._main.replaceChildren(frag);
   };

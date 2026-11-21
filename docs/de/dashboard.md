@@ -10,28 +10,35 @@ Gleich nach dem Hinzufügen der Integration erscheint in der Seitenleiste der Ei
 
 <p align="center"><img src="../images/dashboard-getstarted-de.png" width="250" alt="Los geht's"></p>
 
-Eine Leiste unten wechselt zwischen fünf Seiten. **Vorrat**, **Bereiche** und **Kategorien** haben oben einen Umschalter **Lebensmittel | Haushalt | Apotheke** (siehe [Haushaltsartikel](containers.md#haushaltsartikel)):
+Eine Leiste unten wechselt zwischen fünf Seiten: **Start · Vorrat · Einkaufen · Rezepte · Mehr** (seit 5.0; *Einkaufen* zeigt die Zahl der offenen Einträge auf den Einkaufslisten). Oben auf jeder Seite stehen **🔍 Suchen** und – in der Home Assistant App – **📷 Scannen**:
 
-- **Start**: eine Begrüßung mit deinem Home-Assistant-Namen, Kacheln für alles, was bald verbraucht werden sollte (Abgelaufenes zuerst), und Abkürzungen zu den Rezeptvorschlägen und zum Vorrat. Mit [Haushaltsartikeln](containers.md#haushaltsartikel) hat die Seite zwei Abschnitte, *Lebensmittel* und *Haushalt*. In der Home Assistant App gibt es dort auch **📷 Dose scannen** (siehe [Scannen in der App](scanning.md#scannen-in-der-app)).
+- **🔍 Suchen**: ein Produkt eintippen zeigt jeden Treffer mit Anzahl, Orten und MHD. Ein Produkt in Packungen öffnet dieselbe Ansicht wie nach dem Scannen seines Strichcodes (−1, anbrechen, verschieben, eine Packung mehr), eine Dose oder ein Gutschein seine Karte. Ziffern eines Strichcodes suchen ihn wie ein Scan.
+- **📷 Scannen** erkennt, was gescannt wurde: Strichcode → die Packungen dieses Produkts, QR-Code oder NFC einer Dose → ihre Karte, Fach-Etikett → die [Fach-Ansicht](scanning.md#fächer) (siehe [Scannen in der App](scanning.md#scannen-in-der-app)).
+
+- **Start**: eine Begrüßung mit deinem Home-Assistant-Namen, darunter die **Schnellaktionen** 📷 Scannen · 📥 Einräumen · 🧾 Kassenbon · 🍳 Rezeptidee, Kacheln für alles, was bald verbraucht werden sollte (Abgelaufenes zuerst), und eine Abkürzung zum Vorrat. Mit [Haushaltsartikeln](containers.md#haushaltsartikel) hat die Seite zwei Abschnitte, *Lebensmittel* und *Haushalt*.
 - **Vorrat** (4.0–4.5 *Lager*, bis 3.x *Behälter*): alles Eingelagerte mit einem Symbol für die Art des Essens, dem Inhalt, dem Namen der Dose und den Resttagen.
   - **Suche** in Name, Inhalt und Bereich; **Filter** nach *läuft bald ab*, *abgelaufen*, *befüllt*, *leer*, *Beutel* oder *Packungen*; **Sortierung** nach MHD, Bereich, Bereich und Fach, Alphabet oder Kategorie (Bereich, Bereich und Fach sowie Kategorie gruppiert; *Bereich und Fach* zeigt genau, was in jedem Fach liegt). Über der Liste steht, wie viele Dosen angezeigt werden.
   - Der Knopf rechts wechselt zwischen **Kacheln**, **Liste** und **Karten mit allen Details**. Die Wahl merkt sich das Gerät.
   - Eine gefüllte Dose öffnet beim Antippen ihre Karte, eine leere lässt sich gleich befüllen (siehe [Dosen befüllen](containers.md#dosen-befüllen)).
-  - **📷** scannt eine Dose (nur in der Home Assistant App, siehe [Scannen in der App](scanning.md#scannen-in-der-app)), **＋** legt eine an (siehe [Im Dashboard](containers.md#im-dashboard-empfohlen)), **☑** startet die [Auswahl](#mehrere-dosen-auswählen).
+  - **＋** legt eine an (siehe [Im Dashboard](containers.md#im-dashboard-empfohlen)), **☑** startet die [Auswahl](#mehrere-dosen-auswählen).
+  - Oben wechselt **Liste · Bereiche · Kategorien** die Gruppierung (bis 4.12 eigene Seiten in der Leiste); alle drei haben den Umschalter **Lebensmittel | Haushalt | Apotheke** (siehe [Haushaltsartikel](containers.md#haushaltsartikel)).
 - **Bereiche**: eine Kachel pro Bereich mit der Anzahl der Dosen und wie viele bald ablaufen; Antippen zeigt seine Dosen. Administratoren legen mit **＋** Bereiche an und benennen sie mit **✏️** um oder ändern ihre Lagerart (siehe [Bereiche und Labels](containers.md#bereiche-und-labels)).
 - **Kategorien**: dasselbe für Arten von Lebensmitteln (Fisch, Fleisch, Milchprodukte, Vegan & Tofu, Soßen & Gewürze, Gerichte und Reste, Trockenware, …). Die Kategorie stammt aus der eingebauten Haltbarkeitstabelle und ist das Attribut `category` der Entität **Inhalt**. Dosen ohne Treffer stehen unter „Sonstiges“, Dosen mit [mehreren Inhalten](containers.md#mehrere-inhalte-in-einer-dose) verschiedener Art unter „Gemischt“, leere unter „Leer“.
+- **Einkaufen**: der [Einkaufsmodus](kitchen.md#einkaufsmodus).
 - **Rezepte**: dein [Rezeptbuch](kitchen.md#rezeptbuch) mit [Rezeptideen](kitchen.md#rezeptideen) und Rezepten, die die KI von einem Foto liest.
 
-**Die Karte einer Dose** (in der Kartenansicht oder nach dem Antippen) zeigt alles und lässt es dich ändern:
+**Die Karte einer Dose** (in der Kartenansicht oder nach dem Antippen) zeigt oben die häufigen Aktionen als große Knöpfe – **−1**, **Anbrechen** (Packungen), **Leeren / Aufgebraucht** und **Verschieben** –, darunter Inhalt, Menge, MHD und Ort; alles Seltene (Preis, Abteilung, Liste, Mindestbestand, Nährwerte, NFC, Wechselintervall, Umwandeln …) liegt unter **Mehr**. Bei Packungen fragt **−1** *Aufgebraucht* oder *🗑 Weggeworfen* (wie im Strichcode-Dialog), damit Weggeworfenes in Verlauf, Statistik und Wert landet. Im Einzelnen:
 
 - Bereich (Auswahlfeld; welche Bereiche angeboten werden, lässt sich mit einem Label eingrenzen, siehe [Bereiche und Labels](containers.md#bereiche-und-labels)), **Fach** (optional, z. B. „Schublade 2“ im Gefrierschrank; steht auf der Kachel, ist durchsuchbar und wird mit dem Bereich sortiert), **Inhalt**, **Menge und Einheit** (**−1** entnimmt eine Portion, ein Stück oder eine Scheibe; bei der letzten fragt es, ob die Dose geleert werden soll), **MHD** (mit Hinweis „abgelaufen“ oder „noch n Tage“, sobald es bald abläuft), **Eingelagert am** („Jetzt“ setzt die aktuelle Zeit),
 - **+1 Tag** verschiebt das MHD um einen Tag, **Geöffnet** kürzt es auf die in den Einstellungen gesetzte Zahl Tage (Standard 3), **Aufgetaut** macht dasselbe für Essen aus dem Gefrierfach (Standard 2 Tage, nicht wieder einfrieren). Beides verlängert nie ein Datum; ohne Datum wird eines gesetzt,
 - **MHD schätzen** (wenn die [Schätzung](best-before.md#mhd-schätzung) aktiv ist, ein Inhalt eingetragen und das MHD leer ist),
 - **Vakuum**, **Beim Leeren auf die Einkaufsliste** (sobald eine [Einkaufsliste](kitchen.md#einkaufsliste) gewählt ist), **Variabler Lagerort** mit **Nach dem Leeren zurück in** (siehe [Dosen befüllen](containers.md#dosen-befüllen)), der **NFC-Tag** (verknüpfen oder lösen), **Gerät öffnen** und **Behälter leeren**. Vor dem Leeren fragt die Karte **😋 Gegessen** oder **🗑 Weggeworfen**; die Antwort kommt in den **Verlauf** der Dose (aufklappbare Liste unten auf der Karte, die letzten zehn Befüllungen).
 
-**⋮** oben öffnet ein Menü: **📊 Statistik** und **🖨 Etiketten drucken** für alle, **📦 Export und Import**, die [gemerkten Schätzungen](best-before.md#gemerkte-schätzungen-verwalten) und die Einstellungen der Integration für Administratoren. Das ☰ links ist die Seitenleiste von Home Assistant.
+**Mehr** (bis 4.12 das Menü **⋮**) sammelt alles Weitere in drei Abschnitten: *Alltag* (📥 Einräumen, 🧾 Kassenbon, 📋 Inventur, Vorkochen, 🖨 Etiketten drucken), *Überblick* (🗃️ Bestand, 📊 Statistik, 🛟 Notvorrat, 🧹 Datenpflege) und – nur für Administratoren – *Einrichtung* (📍 Bereiche bearbeiten, 🏪 Abteilungen, Dosengrößen, 📦 Export und Import, die [gemerkten Schätzungen](best-before.md#gemerkte-schätzungen-verwalten) und die Einstellungen der Integration). Alte Links wie `?view=areas` funktionieren weiter. Das ☰ links ist die Seitenleiste von Home Assistant.
 
 <p>
+<img src="../images/dashboard-more-de.png" width="250" alt="Mehr">
+<img src="../images/dashboard-search-de.png" width="250" alt="Suchen">
 <img src="../images/dashboard-areas-de.png" width="250" alt="Bereiche">
 <img src="../images/dashboard-recipes-de.png" width="250" alt="Rezepte">
 <img src="../images/dashboard-estimates-de.png" width="250" alt="Gemerkte Schätzungen">
@@ -86,7 +93,7 @@ show_opened: true     # optional
 
 ### Datenpflege
 
-Einmal im Monat, solange etwas fehlt, zeigt die Startseite **🧹 Datenpflege** (✕ blendet es bis zum nächsten Monat aus; **⋮ → 🧹 Datenpflege** zeigt es jederzeit): angebrochene Packungen ohne Datum, Packungen ohne MHD, Produkte ohne Preis, Einträge ohne Bereich oder Fach und oft verbrauchte Produkte ohne Mindestbestand. Antippen öffnet die Karte, dort trägst du es nach. Mit vollständigen Daten werden Statistik, *reicht noch …*, Einkaufsvorschläge und der Bestandswert genauer. Angebrochene Packungen zeigen auf der Kachel **🫙 offen seit 12.11.**, damit klar ist, warum das Datum kürzer ist als aufgedruckt.
+Einmal im Monat, solange etwas fehlt, zeigt die Startseite **🧹 Datenpflege** (✕ blendet es bis zum nächsten Monat aus; **Mehr → 🧹 Datenpflege** zeigt es jederzeit): angebrochene Packungen ohne Datum, Packungen ohne MHD, Produkte ohne Preis, Einträge ohne Bereich oder Fach und oft verbrauchte Produkte ohne Mindestbestand. Antippen öffnet die Karte, dort trägst du es nach. Mit vollständigen Daten werden Statistik, *reicht noch …*, Einkaufsvorschläge und der Bestandswert genauer. Angebrochene Packungen zeigen auf der Kachel **🫙 offen seit 12.11.**, damit klar ist, warum das Datum kürzer ist als aufgedruckt.
 
 <p align="center"><img src="../images/dashboard-datacare-de.png" width="250" alt="Datenpflege"></p>
 
@@ -96,7 +103,7 @@ Einmal im Monat, solange etwas fehlt, zeigt die Startseite **🧹 Datenpflege** 
 
 Ganz oben steht der **Bericht des Vormonats** (siehe [Monatsbericht](kitchen.md#monatsbericht)).
 
-**⋮ → 📊 Statistik** im Dashboard zeigt für die letzten 30 oder 90 Tage, ein Jahr oder alles:
+**Mehr → 📊 Statistik** im Dashboard zeigt für die letzten 30 oder 90 Tage, ein Jahr oder alles:
 
 - **Jetzt im Vorrat**: gefüllt, leer, läuft bald ab, abgelaufen (und gefüllt ohne MHD).
 - **Geleert**: wie viel gegessen und weggeworfen wurde, den Anteil weggeworfen, den Wert des Weggeworfenen (bei Packungen mit Preis) und die durchschnittliche Lagerdauer, bis etwas gegessen wurde.
@@ -132,7 +139,7 @@ template:
 
 ## Export und Import
 
-Im Dashboard **⋮ → 📦 Export und Import** (Administratoren):
+Im Dashboard **Mehr → 📦 Export und Import** (Administratoren):
 
 - **📄 Bestand als Tabelle (CSV)**: alle Dosen mit Name, ID, Bereich, Fach, Inhalt, Menge, Einheit, Eingelagert am, MHD, Tage übrig, Status, Vakuum und den Nährwerten (Marke, Packung, EAN, kcal, Nutri-Score, Allergene, Nährwerte). Auf Deutsch mit Semikolon, damit Excel sie direkt öffnet.
 - **🕘 Verlauf (CSV)**: jede geleerte Befüllung mit Dose, Inhalt, Menge, Eingelagert am, MHD, Geleert am, Tage gelagert, ob sie abgelaufen war und ob sie gegessen oder weggeworfen wurde. Ohne die Frage geleerte Dosen (Automation, Geräteseite) haben kein Ergebnis.

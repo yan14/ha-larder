@@ -2,7 +2,12 @@
 export const TEXTS = {
   de: {
     title: "Larder",
-    views: { start: "Start", containers: "Vorrat", recipes: "Rezepte", areas: "Bereiche", categories: "Kategorien" },
+    views: { start: "Start", containers: "Vorrat", shopping: "Einkaufen", recipes: "Rezepte", more: "Mehr", areas: "Bereiche", categories: "Kategorien" },
+    groups: { containers: "Liste", areas: "Bereiche", categories: "Kategorien" },
+    moreSections: { everyday: "Alltag", overview: "Überblick", setup: "Einrichtung" },
+    menuAreas: "Bereiche bearbeiten",
+    quickScan: "Scannen",
+    quickRecipe: "Rezeptidee",
     hello: (name) => (name ? `Hallo ${name}` : "Hallo"),
     soonTitle: "Dieser Vorrat sollte bald verbraucht werden:",
     soonNone: (n) => (n === 0 ? "Heute läuft nichts ab." : `In den nächsten ${n} Tagen läuft nichts ab.`),
@@ -304,7 +309,12 @@ export const TEXTS = {
   },
   en: {
     title: "Larder",
-    views: { start: "Start", containers: "Larder", recipes: "Recipes", areas: "Areas", categories: "Categories" },
+    views: { start: "Start", containers: "Larder", shopping: "Shopping", recipes: "Recipes", more: "More", areas: "Areas", categories: "Categories" },
+    groups: { containers: "List", areas: "Areas", categories: "Categories" },
+    moreSections: { everyday: "Everyday", overview: "Overview", setup: "Setup" },
+    menuAreas: "Edit areas",
+    quickScan: "Scan",
+    quickRecipe: "Recipe idea",
     hello: (name) => (name ? `Hello ${name}` : "Hello"),
     soonTitle: "This food should be used up soon:",
     soonNone: (n) => (n === 0 ? "Nothing expires today." : `Nothing expires in the next ${n} days.`),

@@ -54,7 +54,10 @@ const TEXT = {
     placeTagDone: "NFC-Tag mit dem Fach verknüpft.",
     placeTagUnlink: "Tag lösen",
     placeTagFailed: "Verknüpfen fehlgeschlagen.",
-    placeTaken: (name) => `${name}: eine entnommen.`,
+    placeTaken: (name) => `${name}: eine verbraucht.`,
+    placeThrown: (name) => `${name}: eine weggeworfen.`,
+    placeUsed: "Verbraucht",
+    placeThrow: "🗑 Weggeworfen",
     placeButton: "🏷 Fach-Tag",
     close: "Schließen",
     noDate: "ohne MHD",
@@ -109,7 +112,10 @@ const TEXT = {
     placeTagDone: "NFC tag linked to the compartment.",
     placeTagUnlink: "Unlink tag",
     placeTagFailed: "Linking failed.",
-    placeTaken: (name) => `${name}: took one.`,
+    placeTaken: (name) => `${name}: one used up.`,
+    placeThrown: (name) => `${name}: one thrown away.`,
+    placeUsed: "Used up",
+    placeThrow: "🗑 Thrown away",
     placeButton: "🏷 Compartment tag",
     close: "Close",
     noDate: "no best-before date",
@@ -254,11 +260,19 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, scopeOfKind, DO
       );
       line.append(text);
       if (["pack", "household", "medicine"].includes(row.kind)) {
-        const take = button("primary", t.placeTake, async () => {
-          take.disabled = true;
-          await this._takeOne({ device_id: row.id, count });
-          this.showNotice(t.placeTaken(row.content));
+        // 5.0 (#122): −1 asks used up or thrown away, like the barcode dialog and the card
+        const takeAs = (outcome) => async (ev) => {
+          ev.currentTarget.disabled = true;
+          await this._takeOne({ device_id: row.id, count }, outcome);
+          this.showNotice(outcome === "thrown" ? t.placeThrown(row.content) : t.placeTaken(row.content));
           setTimeout(() => this.openPlace(areaId, compartment), 300);
+        };
+        const take = button("primary", t.placeTake, () => {
+          const used = button("primary", t.placeUsed, takeAs("eaten"));
+          used.dataset.role = "place-take-used";
+          const thrown = button("", t.placeThrow, takeAs("thrown"));
+          thrown.dataset.role = "place-take-thrown";
+          take.replaceWith(used, thrown);
         });
         take.dataset.role = "place-take";
         take.title = t.placeTakeLabel;

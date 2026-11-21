@@ -18,6 +18,7 @@ const { installVouchers, money } = await import(`./larder-dashboard-vouchers.js$
 const { installShopping, shoppingTexts } = await import(`./larder-dashboard-shopping.js${VERSION_QUERY}`);
 const { installDataCare, dataCareTexts } = await import(`./larder-dashboard-datacare.js${VERSION_QUERY}`);
 const { sectionNames } = await import(`./larder-dashboard-supply.js${VERSION_QUERY}`);
+const { installSearch, searchTexts } = await import(`./larder-dashboard-search.js${VERSION_QUERY}`);
 
 const DOMAIN = "larder";
 const STORAGE_KEY = `${DOMAIN}.experimental`; // historic name, kept so saved views survive
@@ -58,10 +59,12 @@ export const CATEGORY_ICONS = {
   empty: "🫙",
 };
 
-const VIEWS = ["start", "containers", "recipes", "areas", "categories"];
-const ALL_VIEWS = [...VIEWS, "estimates", "stats", "stock", "stocktake", "supply", "shopping"]; // "estimates" and "stats" are reached through ☰/⚙
+// 5.0 (#117): the bar – Start · Larder · Shopping · Recipes · More; areas and categories are groupings of Larder
+const VIEWS = ["start", "containers", "shopping", "recipes", "more"];
+const GROUP_VIEWS = ["containers", "areas", "categories"];
+const ALL_VIEWS = [...VIEWS, "areas", "categories", "estimates", "stats", "stock", "stocktake", "supply"];
 const MODES = ["grid", "list", "cards"];
-const VIEW_ICONS = { start: "🏠", containers: "🥫", recipes: "📖", areas: "📍", categories: "🏷️" };
+const VIEW_ICONS = { start: "🏠", containers: "🥫", shopping: "🛒", recipes: "📖", more: "⋯", areas: "📍", categories: "🏷️" };
 
 /** Recognise the QR label of a compartment (…/larder?place=<area>&compartment=<compartment>). */
 export function placeFromCode(code) {
@@ -278,8 +281,7 @@ export class LarderDashboard extends HTMLElement {
     this.attachShadow({ mode: "open" });
     this.shadowRoot.innerHTML = `
       <style>${STYLE}</style>
-      <header><button id="menu" type="button" aria-label="Menu">☰</button><h1></h1><button id="settings" type="button" hidden>⋮</button></header>
-      <div class="menu" hidden><button type="button" data-role="menu-stats"></button><button type="button" data-role="menu-shopping"></button><button type="button" data-role="menu-stock"></button><button type="button" data-role="menu-stocktake"></button><button type="button" data-role="menu-supply"></button><button type="button" data-role="menu-datacare"></button><button type="button" data-role="menu-sections"></button><button type="button" data-role="menu-putaway"></button><button type="button" data-role="menu-batch"></button><button type="button" data-role="menu-sizes"></button><button type="button" data-role="menu-labels"></button><button type="button" data-role="menu-data"></button><button type="button" data-role="menu-estimates"></button><button type="button" data-role="menu-settings"></button></div>
+      <header><button id="menu" type="button" aria-label="Menu">☰</button><h1></h1><button id="search" type="button">🔍</button><button id="scan" type="button" hidden>📷</button></header>
       <div class="notice" role="alert" hidden></div>
       <main></main>
       <nav></nav>
@@ -293,7 +295,8 @@ export class LarderDashboard extends HTMLElement {
     this._overlay = this.shadowRoot.querySelector(".overlay");
     this._form = this.shadowRoot.querySelector("form.dialog");
     this._classic = this.shadowRoot.querySelector("larder-panel-embedded");
-    this._settingsBtn = this.shadowRoot.querySelector("#settings");
+    this._searchBtn = this.shadowRoot.querySelector("#search");
+    this._scanBtn = this.shadowRoot.querySelector("#scan");
     this._photoInput = this.shadowRoot.querySelector("#photo");
     this._photoInput.addEventListener("change", () => {
       const files = [...(this._photoInput.files || [])];
@@ -303,73 +306,11 @@ export class LarderDashboard extends HTMLElement {
     this.shadowRoot.querySelector("#menu").addEventListener("click", () => {
       this.dispatchEvent(new Event("hass-toggle-menu", { bubbles: true, composed: true }));
     });
-    this._menu = this.shadowRoot.querySelector(".menu");
     this._notice = this.shadowRoot.querySelector(".notice");
     this._notice.addEventListener("click", () => (this._notice.hidden = true));
-    this._settingsBtn.addEventListener("click", (ev) => {
-      ev.stopPropagation();
-      this._menu.hidden = !this._menu.hidden;
-    });
-    this._menu.querySelector('[data-role="menu-estimates"]').addEventListener("click", () => {
-      this._menu.hidden = true;
-      this.setView("estimates");
-    });
-    this._menu.querySelector('[data-role="menu-labels"]').addEventListener("click", () => {
-      this._menu.hidden = true;
-      this.openLabelDialog();
-    });
-    this._menu.querySelector('[data-role="menu-stats"]').addEventListener("click", () => {
-      this._menu.hidden = true;
-      this.setView("stats");
-    });
-    this._menu.querySelector('[data-role="menu-stocktake"]').addEventListener("click", () => {
-      this._menu.hidden = true;
-      this.setView("stocktake");
-    });
-    this._menu.querySelector('[data-role="menu-putaway"]').addEventListener("click", () => {
-      this._menu.hidden = true;
-      this.openPutAway();
-    });
-    this._menu.querySelector('[data-role="menu-batch"]').addEventListener("click", () => {
-      this._menu.hidden = true;
-      this.openBatchDialog();
-    });
-    this._menu.querySelector('[data-role="menu-sizes"]').addEventListener("click", () => {
-      this._menu.hidden = true;
-      this.openSizesDialog();
-    });
-    this._menu.querySelector('[data-role="menu-stock"]').addEventListener("click", () => {
-      this._menu.hidden = true;
-      this.setView("stock");
-    });
-    this._menu.querySelector('[data-role="menu-shopping"]').addEventListener("click", () => {
-      this._menu.hidden = true;
-      this.setView("shopping");
-    });
-    this._menu.querySelector('[data-role="menu-supply"]').addEventListener("click", () => {
-      this._menu.hidden = true;
-      this.setView("supply");
-    });
-    this._menu.querySelector('[data-role="menu-datacare"]').addEventListener("click", () => {
-      this._menu.hidden = true;
-      this._dataGaps = null;
-      this.openDataCare();
-    });
-    this._menu.querySelector('[data-role="menu-sections"]').addEventListener("click", () => {
-      this._menu.hidden = true;
-      this.openSectionsDialog();
-    });
-    this._menu.querySelector('[data-role="menu-data"]').addEventListener("click", () => {
-      this._menu.hidden = true;
-      this.openDataDialog();
-    });
-    this._menu.querySelector('[data-role="menu-settings"]').addEventListener("click", () => {
-      this._menu.hidden = true;
-      navigate(`/config/integrations/integration/${DOMAIN}`);
-    });
-    this.shadowRoot.addEventListener("click", (ev) => {
-      if (!this._menu.hidden && !this._menu.contains(ev.target)) this._menu.hidden = true;
-    });
+    // 5.0 (#118): a search on every page and one scan button that recognises what was scanned
+    this._searchBtn.addEventListener("click", () => this.openSearch());
+    this._scanBtn.addEventListener("click", () => this.scanOne());
     // The embedded classic view sits between content and bar (for cards and estimates)
     this._nav.before(this._classic);
     this._classic.addEventListener("larder-detail-closed", () => this._closeDetail());
@@ -479,6 +420,7 @@ export class LarderDashboard extends HTMLElement {
       this.loadReplaceDue();
       this.loadDataGaps();
       this.loadSettings();
+      this.loadShopLists();
       this._handleViewParam();
       this._subscribeScans();
     }
@@ -719,32 +661,13 @@ export class LarderDashboard extends HTMLElement {
                   : this._view === "shopping"
                     ? this.shoppingTitle()
                     : t.views[this._view];
-    // ⋮: statistics and labels for everyone, export, estimates and settings for administrators only
-    const admin = isAdmin(hass);
-    this._settingsBtn.hidden = false;
-    this._settingsBtn.setAttribute("aria-label", t.moreActions);
-    this._settingsBtn.title = t.moreActions;
-    this._menu.querySelector('[data-role="menu-shopping"]').textContent = shoppingTexts(hass).menu;
-    this._menu.querySelector('[data-role="menu-datacare"]').textContent = dataCareTexts(hass).menu;
-    const st = supplyTexts(hass);
-    this._menu.querySelector('[data-role="menu-supply"]').textContent = st.menu;
-    this._menu.querySelector('[data-role="menu-supply"]').hidden = this._supplyCheck === false;
-    this._menu.querySelector('[data-role="menu-sections"]').textContent = st.sectionsMenu;
-    for (const role of ["menu-data", "menu-estimates", "menu-settings", "menu-sections"]) {
-      this._menu.querySelector(`[data-role="${role}"]`).hidden = !admin;
-    }
-    this._menu.querySelector('[data-role="menu-estimates"]').textContent = `📋 ${t.menuEstimates}`;
-    this._menu.querySelector('[data-role="menu-settings"]').textContent = `⚙ ${t.menuSettings}`;
-    this._menu.querySelector('[data-role="menu-labels"]').textContent = `🖨 ${t.menuLabels}`;
-    this._menu.querySelector('[data-role="menu-data"]').textContent = `📦 ${t.menuData}`;
-    this._menu.querySelector('[data-role="menu-stats"]').textContent = `📊 ${t.menuStats}`;
-    this._menu.querySelector('[data-role="menu-stock"]').textContent = `🗃️ ${this.stockTitle()}`;
-    this._menu.querySelector('[data-role="menu-stocktake"]').textContent = `📋 ${this.stocktakeTitle()}`;
-    this._menu.querySelector('[data-role="menu-putaway"]').textContent = `📥 ${this.putAwayTitle()}`;
-    const cookMenu = this.cookMenuTexts();
-    this._menu.querySelector('[data-role="menu-batch"]').textContent = cookMenu.batch;
-    this._menu.querySelector('[data-role="menu-batch"]').hidden = !this.canBatch();
-    this._menu.querySelector('[data-role="menu-sizes"]').textContent = cookMenu.sizes;
+    const search = searchTexts(hass);
+    this._searchBtn.setAttribute("aria-label", search.button);
+    this._searchBtn.title = search.button;
+    this._scanBtn.hidden = !this._hasQrScanner() || !!this._scan;
+    this._scanBtn.dataset.role = "scan-one";
+    this._scanBtn.setAttribute("aria-label", search.scan);
+    this._scanBtn.title = search.scan;
 
     // storage, areas and categories show either food or household items (the switch is remembered)
     const everything = this._rows();
@@ -790,6 +713,8 @@ export class LarderDashboard extends HTMLElement {
       this._view === "shopping" ? this.shoppingSig() : null,
       this._opts.scope === "voucher" ? this._voucherStats : null,
       this._supplyCheck,
+      this._shopCount(),
+      this._view === "more" ? [this.canBatch(), this.canReadReceipt(), this._dataGaps] : null,
       this._view === "stocktake" ? this.stocktakeSig() : null,
       this._view === "areas" ? this._areaSig() : null,
     ]);
@@ -829,10 +754,14 @@ export class LarderDashboard extends HTMLElement {
       case "shopping":
         this._renderShopping();
         break;
+      case "more":
+        this._renderMore();
+        break;
       default:
         this._renderStart(t, rows);
     }
     if (this._view === "estimates") this._classicShow = "estimates";
+    if (GROUP_VIEWS.includes(this._view)) this._main.prepend(this._groupBar());
     this._syncClassic();
   }
 
@@ -854,16 +783,120 @@ export class LarderDashboard extends HTMLElement {
   }
 
   _renderNav(t) {
+    // areas and categories belong to Larder, the pages reached through More to More
+    const current = GROUP_VIEWS.includes(this._view) ? "containers" : VIEWS.includes(this._view) ? this._view : "more";
+    const open = this._shopCount();
     const buttons = VIEWS.map((view) => {
       const btn = el("button");
       btn.type = "button";
       btn.dataset.view = view;
-      btn.classList.toggle("active", view === this._view);
-      btn.append(el("span", "ico", VIEW_ICONS[view]), el("span", "", t.views[view]));
+      btn.classList.toggle("active", view === current);
+      const ico = el("span", "ico", VIEW_ICONS[view]);
+      if (view === "shopping" && open > 0) {
+        const badge = el("span", "navbadge", open > 99 ? "99+" : String(open));
+        badge.dataset.role = "shop-badge";
+        ico.append(badge);
+      }
+      btn.append(ico, el("span", "", t.views[view]));
       btn.addEventListener("click", () => this.setView(view));
       return btn;
     });
     this._nav.replaceChildren(...buttons);
+  }
+
+  /** Open items on the shopping lists Larder uses (badge on "Shopping"); the to-do state is the count. */
+  _shopCount() {
+    const states = (this._hass && this._hass.states) || {};
+    return (this._shopLists || []).reduce((sum, id) => sum + (Number((states[id] || {}).state) || 0), 0);
+  }
+
+  async loadShopLists() {
+    try {
+      this._shopLists = ((await this._hass.callWS({ type: `${DOMAIN}/shopping_lists` })) || {}).lists || [];
+    } catch {
+      this._shopLists = [];
+    }
+    this._sig = "";
+    this._update();
+  }
+
+  /** Larder page: list, by area or by category (5.0: instead of two places in the bar). */
+  _groupBar() {
+    const t = texts(this._hass);
+    const bar = el("div", "groupbar");
+    bar.setAttribute("role", "tablist");
+    for (const view of GROUP_VIEWS) {
+      const btn = el("button", view === this._view ? "active" : "", `${VIEW_ICONS[view === "containers" ? "list" : view] || "☰"} ${t.groups[view]}`);
+      btn.type = "button";
+      btn.dataset.group = view;
+      btn.setAttribute("role", "tab");
+      btn.setAttribute("aria-selected", String(view === this._view));
+      btn.addEventListener("click", () => this.setView(view));
+      bar.append(btn);
+    }
+    return bar;
+  }
+
+  /** What used to be in ⋮, in three sections; "Setup" for administrators only (5.0, #117). */
+  _moreItems() {
+    const hass = this._hass;
+    const t = texts(hass);
+    const admin = isAdmin(hass);
+    const st = supplyTexts(hass);
+    const cook = this.cookMenuTexts();
+    const shop = shoppingTexts(hass);
+    return [
+      ["everyday", [
+        ["menu-putaway", `📥 ${this.putAwayTitle()}`, true, () => this.openPutAway()],
+        ["menu-receipt", shop.receipt, this.canReadReceipt(), () => this.openReceipt()],
+        ["menu-stocktake", `📋 ${this.stocktakeTitle()}`, true, () => this.setView("stocktake")],
+        ["menu-batch", cook.batch, this.canBatch(), () => this.openBatchDialog()],
+        ["menu-labels", `🖨 ${t.menuLabels}`, true, () => this.openLabelDialog()],
+      ]],
+      ["overview", [
+        ["menu-stock", `🗃️ ${this.stockTitle()}`, true, () => this.setView("stock")],
+        ["menu-stats", `📊 ${t.menuStats}`, true, () => this.setView("stats")],
+        ["menu-supply", st.menu, this._supplyCheck !== false, () => this.setView("supply")],
+        ["menu-datacare", dataCareTexts(hass).menu, true, () => {
+          this._dataGaps = null;
+          this.openDataCare();
+        }],
+      ]],
+      ["setup", [
+        ["menu-areas", `📍 ${t.menuAreas}`, admin, () => {
+          this.setView("areas");
+          this._areaEdit = true;
+          this._sig = "";
+          this._update();
+        }],
+        ["menu-sections", st.sectionsMenu, admin, () => this.openSectionsDialog()],
+        ["menu-sizes", cook.sizes, admin, () => this.openSizesDialog()],
+        ["menu-data", `📦 ${t.menuData}`, admin, () => this.openDataDialog()],
+        ["menu-estimates", `📋 ${t.menuEstimates}`, admin, () => this.setView("estimates")],
+        ["menu-settings", `⚙ ${t.menuSettings}`, admin, () => navigate(`/config/integrations/integration/${DOMAIN}`)],
+      ]],
+    ];
+  }
+
+  _renderMore() {
+    const t = texts(this._hass);
+    const frag = document.createDocumentFragment();
+    for (const [section, items] of this._moreItems()) {
+      const shown = items.filter(([, , visible]) => visible);
+      if (!shown.length) continue;
+      const box = el("section", "more");
+      box.dataset.section = section;
+      box.append(el("h3", "", t.moreSections[section]));
+      for (const [role, label, , run] of shown) {
+        const btn = el("button", "moreitem", label);
+        btn.type = "button";
+        btn.dataset.role = role;
+        btn.addEventListener("click", run);
+        box.append(btn);
+      }
+      frag.append(box);
+    }
+    this._main.replaceChildren(frag);
   }
 
   _tile(row, t, { showArea = false } = {}) {
@@ -1139,17 +1172,6 @@ export class LarderDashboard extends HTMLElement {
     const row = this._rows().find((r) => r.id === res.device_id);
     if (row) this.openContainer(row);
     return true;
-  }
-
-  _scanOneButton(t) {
-    if (!this._hasQrScanner() || this._scan) return null;
-    const btn = el("button", "icon", "📷");
-    btn.type = "button";
-    btn.dataset.role = "scan-one";
-    btn.setAttribute("aria-label", t.scanOne);
-    btn.title = t.scanOne;
-    btn.addEventListener("click", () => this.scanOne());
-    return btn;
   }
 
   stopScan(inventory = true) {
@@ -1553,8 +1575,6 @@ export class LarderDashboard extends HTMLElement {
       ),
       el("span", "grow"),
     );
-    const one = this._scanOneButton(t);
-    if (one && !this._selecting) bar.append(one);
     const add = this._addButton(t);
     if (add && !this._selecting) bar.append(add);
     if (this._selecting && isAdmin(this._hass)) {
@@ -1711,9 +1731,6 @@ export class LarderDashboard extends HTMLElement {
       done.dataset.role = "area-edit";
       done.addEventListener("click", () => this.setAreaEdit(false));
       bar.append(done);
-    } else {
-      const one = this._scanOneButton(t);
-      if (one) bar.append(one);
     }
     if (admin) {
       const add = el("button", "icon", "＋");
@@ -1978,8 +1995,6 @@ export class LarderDashboard extends HTMLElement {
     const list = [...groups.values()].sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
     const bar = el("div", "bar");
     bar.append(el("span", "grow"));
-    const one = this._scanOneButton(t);
-    if (one) bar.append(one);
     const add = this._addButton(t);
     if (add) bar.append(add);
     bar.append(this._modeButton(t));
@@ -2051,6 +2066,7 @@ export class LarderDashboard extends HTMLElement {
     const hass = this._hass;
     const frag = document.createDocumentFragment();
     frag.append(el("div", "hello", t.hello(hass.user && hass.user.name)));
+    if (rows.length) frag.append(this._quickActions(t));
     if (!rows.length) {
       // 4.7: nothing in Larder yet – three steps instead of empty boxes
       frag.append(this._startBox(t));
@@ -2109,49 +2125,37 @@ export class LarderDashboard extends HTMLElement {
     }
     const care = this._dataCareBox();
     if (care) frag.append(care);
-    frag.append(el("p", "lead", t.help));
     const help = el("div", "help");
-    if (this._canGenerate()) {
-      const recipes = el("button", "", t.helpRecipes);
-      recipes.type = "button";
-      recipes.dataset.role = "recipes";
-      recipes.addEventListener("click", () => {
-        this.setView("recipes");
-        this.generateRecipes();
-      });
-      help.append(recipes);
-    }
-    const putAway = el("button", "", `📥 ${this.putAwayTitle()}`);
-    putAway.type = "button";
-    putAway.dataset.role = "putaway";
-    putAway.addEventListener("click", () => this.openPutAway());
-    const shop = el("button", "", shoppingTexts(hass).startButton);
-    shop.type = "button";
-    shop.dataset.role = "start-shopping";
-    shop.addEventListener("click", () => this.setView("shopping"));
-    help.append(shop, putAway);
-    if (this.canReadReceipt()) {
-      // 4.11: the receipt scan right on the start page (before only in ＋ → Pack)
-      const receipt = el("button", "", shoppingTexts(hass).receipt);
-      receipt.type = "button";
-      receipt.dataset.role = "start-receipt";
-      receipt.addEventListener("click", () => this.openReceipt());
-      help.append(receipt);
-    }
     const show = el("button", "", t.helpContainers);
     show.type = "button";
     show.dataset.role = "containers";
     show.addEventListener("click", () => this.setView("containers", { soon: soon.length > 0 }));
     help.append(show);
-    if (this._hasQrScanner()) {
-      const scan = el("button", "", `📷 ${t.scanOne}`);
-      scan.type = "button";
-      scan.dataset.role = "scan-one";
-      scan.addEventListener("click", () => this.scanOne());
-      help.append(scan);
-    }
     frag.append(help);
     this._main.replaceChildren(frag);
+  }
+
+  /** 5.0 (#117): the frequent actions at the top of the start page: scan, put away, receipt, recipe idea. */
+  _quickActions(t) {
+    const hass = this._hass;
+    const box = el("div", "quick");
+    const add = (role, label, run) => {
+      const btn = el("button", "", label);
+      btn.type = "button";
+      btn.dataset.role = role;
+      btn.addEventListener("click", run);
+      box.append(btn);
+    };
+    if (this._hasQrScanner()) add("quick-scan", `📷 ${t.quickScan}`, () => this.scanOne());
+    add("putaway", `📥 ${this.putAwayTitle()}`, () => this.openPutAway());
+    if (this.canReadReceipt()) add("start-receipt", shoppingTexts(hass).receipt, () => this.openReceipt());
+    if (this._canGenerate()) {
+      add("recipes", `🍳 ${t.quickRecipe}`, () => {
+        this.setView("recipes");
+        this.generateRecipes();
+      });
+    }
+    return box;
   }
 
   // ----- Recipes -----
@@ -3243,6 +3247,7 @@ installItems(LarderDashboard, { el, isAdmin, listAreas, todoLists, scopeOfKind, 
 installCook(LarderDashboard, { el, isAdmin, DOMAIN });
 installSupply(LarderDashboard, { el, DOMAIN });
 installDataCare(LarderDashboard, { el, DOMAIN });
+installSearch(LarderDashboard, { el });
 installShopping(LarderDashboard, { el, DOMAIN, todoLists, sectionNames });
 installVouchers(LarderDashboard, { el, isAdmin, listAreas, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment });
 installCare(LarderDashboard, { el, isAdmin, listAreas, scopeOfKind, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment, CATEGORY_ICONS });

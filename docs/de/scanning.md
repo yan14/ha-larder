@@ -8,7 +8,10 @@ Es gibt vier Wege, von einer Dose zu ihrem Eintrag im Dashboard zu kommen. Sie l
 
 ## Scannen in der App
 
-In der Home Assistant App (**iOS und Android**) hat das Dashboard einen **📷**-Knopf: auf der Startseite (**📷 Dose scannen**) und neben **＋** auf den Seiten Vorrat, Bereiche und Kategorien. Er öffnet den QR-Scanner der App und liest **beide Arten von Codes**, eigene und die originalen Zwilling-Codes:
+In der Home Assistant App (**iOS und Android**) hat das Dashboard **einen 📷-Knopf** oben auf jeder Seite (seit 5.0; dazu eine Schnellaktion auf der Startseite). Er öffnet den Scanner der App und erkennt, was gescannt wurde – **beide Arten von Dosen-Codes** (eigene und die originalen Zwilling-Codes), Strichcodes gekaufter Produkte und Fach-Etiketten:
+
+- **Strichcode eines Produkts (EAN):** die Packungen dieses Produkts mit jedem Ort (−1, anbrechen, verschieben, eine Packung mehr).
+- **Fach-Etikett:** die [Fach-Ansicht](#fächer).
 
 - **Bekannte Dose:** ihre Karte öffnet sich, eine leere Dose gleich mit dem Befüllen-Dialog. Das Ereignis `larder_dose_scanned` wird wie bei jedem Scan ausgelöst.
 - **Noch nicht angelegter Zwilling-Code** (Administratoren): der Dialog **Dose hinzufügen** öffnet sich, der Code ist schon eingetragen.
@@ -30,7 +33,7 @@ Dieselben Codes funktionieren im [Serien-Scan](dashboard.md#mehrere-dosen-auswä
 
 <p align="center"><img src="../images/dashboard-labels-de.png" width="250" alt="Etiketten drucken"></p>
 
-Viele Etiketten auf einmal drucken: im Dashboard **⋮ → 🖨 Etiketten drucken** (alle Dosen) oder Dosen auswählen und **🖨 Etiketten**. Dann wählst du
+Viele Etiketten auf einmal drucken: im Dashboard **Mehr → 🖨 Etiketten drucken** (alle Dosen) oder Dosen auswählen und **🖨 Etiketten**. Dann wählst du
 
 - das **Format**: einen A4-Bogen mit 3 × 8 (70 × 36 mm), 3 × 7 (70 × 42,3 mm) oder 2 × 4 (105 × 74 mm) Etiketten, wie es sie von Avery Zweckform, Herma und anderen gibt, oder einen **Etikettendrucker** (62 × 29 mm wie Brother DK-11209, 54 × 25 mm wie Dymo 11352, 89 × 36 mm wie Dymo 99012; ein Etikett pro Seite),
 - **Schon benutzte Etiketten überspringen** (nur A4), um auf einem angebrochenen Bogen weiterzumachen,

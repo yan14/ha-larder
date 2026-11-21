@@ -26,13 +26,18 @@ MAX_ITEMS = 30
 STRUCTURE: dict[str, Any] = {
     "found": {"description": "true if the photo shows a shopping receipt", "required": True, "selector": {"boolean": {}}},
     "items": {
-        "description": "Food and drink items on the receipt, in order",
+        "description": "Food, drink and household items on the receipt, in order",
         "required": False,
         "selector": {
             "object": {
                 "multiple": True,
                 "fields": {
                     "name": {"required": True, "selector": {"text": {}}},
+                    "household": {
+                        "description": "true for household goods that are not food (cleaning products, toilet paper, cosmetics)",
+                        "required": False,
+                        "selector": {"boolean": {}},
+                    },
                     "count": {"required": False, "selector": {"number": {"min": 1, "max": 99, "mode": "box"}}},
                     "price": {
                         "description": "price of ONE pack in the receipt's currency, as printed (after discounts on that line)",
@@ -50,8 +55,9 @@ def build_instructions(language: str) -> str:
     return "\n".join(
         [
             "The photo shows a shopping receipt from a supermarket or shop.",
-            "List the food and drink items that are bought as packs for the pantry, fridge or freezer.",
-            "Leave out non-food items (cleaning products, cosmetics, bags), deposits, discounts, totals and payment lines.",
+            "List the food and drink items that are bought as packs for the pantry, fridge or freezer, and the",
+            "household goods (cleaning products, toilet paper, cosmetics) with household=true.",
+            "Leave out bags, deposits, discounts, totals and payment lines.",
             "name: a short, readable product name as a person would write it on a shelf label, without abbreviations",
             "of the till (e.g. 'Chopped tomatoes' instead of 'TOM.GEH.400G'); keep the brand only if it is clear.",
             "count: how many packs were bought (quantity on the line, default 1). Merge identical lines.",
@@ -84,7 +90,12 @@ def parse_items(answer: Any) -> list[dict[str, Any]]:
         if key in items:
             items[key]["count"] = min(items[key]["count"] + count, 99)
         else:
-            items[key] = {"name": name, "count": count, **({"price": price} if price and 0 < price < 1000 else {})}
+            items[key] = {
+                "name": name,
+                "count": count,
+                **({"price": price} if price and 0 < price < 1000 else {}),
+                **({"household": True} if raw.get("household") is True else {}),
+            }
     if not items:
         raise EstimateError("receipt_photo_none")
     return list(items.values())[:MAX_ITEMS]

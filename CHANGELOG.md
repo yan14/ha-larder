@@ -3,6 +3,35 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 5.0.0
+
+**Larder is now in the HACS default catalogue** – search for *Larder* in HACS (or the Home Assistant Marketplace), no custom repository needed any more. Existing installations keep updating as before.
+
+A big usability release: what you need often is one tap away, and every way into and out of the stock follows the same rules.
+
+**Navigation and start page**
+
+- **New bar:** Start · Larder · **Shopping** (with the number of open items) · Recipes · **More**. *Areas* and *Categories* are now groupings at the top of the Larder page (**List · Areas · Categories**); old links like `?view=areas` keep working.
+- **More** replaces the ⋮ menu, in three sections: *Everyday* (put away, receipt, stocktake, batch cooking, labels), *Overview* (stock, statistics, emergency supply, data care) and *Setup* for administrators (edit areas, store sections, container sizes, export, estimates, settings).
+- **Quick actions** at the top of the start page: 📷 Scan · 📥 Put away · 🧾 Receipt · 🍳 Recipe idea.
+
+**Scan and search**
+
+- **One 📷 Scan button** at the top of every page (Home Assistant app) that recognises what was scanned: a barcode shows the packs of that product, a container's QR code or NFC opens its card, a compartment label the compartment view.
+- **🔍 Search** at the top of every page: type a product to see every place with count and date, with −1, open, move and one pack more – no scan needed. Barcode digits are looked up like a scan.
+
+**Slimmer card**
+
+- The frequent actions as big buttons at the top: **−1**, **Open**, **Used up / Empty**, **Move**. Below only contents, amount, best-before date and place; everything else (price, store section, list, minimum stock, nutrition, NFC, replacement interval, convert …) is under **More**.
+
+**The same rules everywhere**
+
+- **Put away (📥)** now ticks off the shopping list too, and price and best-before date are entered right in the list (**Price/date**) instead of on the card.
+- **Bought – into stock?** puts known products straight at their usual place with one tap; the dialog only opens for new products.
+- **Barcode dialog → ＋ Add a new pack** joins the pack at the usual place (then price and date right away, or move it) instead of always creating a new entry.
+- **Unknown products** are split into food packs and household items everywhere (put away, shopping mode, scan, receipt). The receipt now also reads household goods (🧻) and creates new ones as household items.
+- **−1 on the card and in the compartment view** asks *Used up* or *🗑 Thrown away*, like the barcode dialog, so thrown-away packs count in the history, the statistics and the value lost.
+
 ## 4.12.0
 
 - **Data care:** once a month, while something is missing, the start page shows **🧹 Data care** (hide it until next month with ✕; **⋮ → 🧹 Data care** any time): opened packs without a date, packs without a best-before date, products without a price, entries without an area or compartment, and products used often without a minimum stock. Tapping an entry opens its card.

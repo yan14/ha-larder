@@ -1130,6 +1130,23 @@ test("take a portion: −1 subtracts, asks about emptying at the last one", asyn
   assert.equal($(none, ".card button.take").hidden, true);
 });
 
+test("5.0: slim card – big actions on top, the rest under More; −1 of a pack asks used up or thrown away", async () => {
+  const hass = adminHass([{ id: "d1", name: "Packung 1", content: "Tomaten", portions: 3, unit: "pieces", product: { kind: "pack" } }]);
+  const el = mount(hass);
+  const card = $(el, ".card");
+  assert.deepEqual([...card.querySelectorAll(".bigactions > button")].map((b) => b.className), ["take", "openpack", "empty", "move"]);
+  assert.ok(card.querySelector("details.more .minrow"));
+  assert.ok(card.querySelector("details.more details.nutrition"));
+  assert.equal(card.querySelector("details.more > summary").textContent, "Mehr");
+  card.querySelector("button.take").click();
+  assert.deepEqual(hass.calls, []);
+  assert.equal(card.querySelector(".takerow").hidden, false);
+  card.querySelector("button.tthrown").click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.filter((m) => m.type === "larder/pack_take"), [{ type: "larder/pack_take", device_id: "d1", outcome: "thrown" }]);
+  assert.equal(card.querySelector(".takerow").hidden, true);
+});
+
 test("history: expanding loads the container's latest entries", async () => {
   const hass = adminHass([{ id: "d1", name: "A", content: "Suppe" }]);
   const base = hass.callWS;
