@@ -187,6 +187,7 @@ export const TEXTS = {
     containersCount: (n) => (n === 1 ? "1 Eintrag" : `${n} Einträge`),
     expired: "abgelaufen",
     today: "heute",
+    openedSince: (d) => `🫙 offen seit ${d}`,
     daysShort: (n) => (n < 60 ? `${n} T` : n < 730 ? `${Math.floor(n / 30)} Mon.` : `${Math.floor(n / 365)} J.`),
     // 4.10.2: how long something has been expired (tiles: short, list: long)
     expiredSince: (n) => (n < 60 ? `${n} T` : n < 730 ? `${Math.floor(n / 30)} Mon.` : `${Math.floor(n / 365)} J.`),
@@ -488,6 +489,7 @@ export const TEXTS = {
     containersCount: (n) => (n === 1 ? "1 entry" : `${n} entries`),
     expired: "expired",
     today: "today",
+    openedSince: (d) => `🫙 opened ${d}`,
     daysShort: (n) => (n < 60 ? `${n} d` : n < 730 ? `${Math.floor(n / 30)} mo` : `${Math.floor(n / 365)} y`),
     expiredSince: (n) => (n < 60 ? `${n} d` : n < 730 ? `${Math.floor(n / 30)} mo` : `${Math.floor(n / 365)} y`),
     soonCount: (n) => `${n} soon`,

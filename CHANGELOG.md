@@ -3,6 +3,12 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 4.12.0
+
+- **Data care:** once a month, while something is missing, the start page shows **🧹 Data care** (hide it until next month with ✕; **⋮ → 🧹 Data care** any time): opened packs without a date, packs without a best-before date, products without a price, entries without an area or compartment, and products used often without a minimum stock. Tapping an entry opens its card.
+- **🫙 Opened since …** on tiles and in lists, so it is clear why the date of an opened pack is shorter than printed.
+- **Receipt ticks off the shopping list:** products read from a receipt also complete their open items on the shopping lists, so the shopping mode and *Bought – into stock?* do not add them twice.
+
 ## 4.11.1
 
 - **Receipt like the shopping mode:** products from a receipt that are already in stock go to their usual place and join a pack there (with the price from the receipt and, if entered, their own best-before date). Only new products are created at the area and compartment chosen in the dialog.

@@ -13,6 +13,7 @@ from homeassistant.helpers import area_registry as ar, device_registry as dr
 from .calendar_sync import async_get_calendar_sync, async_setup_calendar_service
 from .const import CONF_AREA, CONF_CC, CONF_INITIAL, CONF_SOURCE, DOMAIN, MAIN_UNIQUE_ID, PLATFORMS, SOURCE_MAIN
 from .content_photo import async_setup_content_photo
+from .datacare import async_setup_datacare_websocket
 from .disposable import async_get_retired, async_setup_disposable_websocket
 from .entity import LarderConfigEntry, LarderRuntime, is_main
 from .estimate import async_get_estimator
@@ -75,6 +76,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_household_websocket(hass)
     async_setup_week_plan_websocket(hass)
     async_setup_supply_websocket(hass)
+    async_setup_datacare_websocket(hass)
     async_setup_shopping_mode_websocket(hass)
     async_setup_voucher_websocket(hass)
     await async_get_sizes(hass)

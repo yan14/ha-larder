@@ -84,6 +84,12 @@ show_bought: true     # optional
 show_opened: true     # optional
 ```
 
+### Data care
+
+Once a month, while something is missing, the start page shows **🧹 Data care** (✕ hides it until next month; **⋮ → 🧹 Data care** shows it any time): opened packs without a date, packs without a best-before date, products without a price, entries without an area or compartment, and products used often but without a minimum stock. Tapping an entry opens its card, where you fill it in. With complete data, statistics, *lasts about …*, shopping suggestions and the stock value get more accurate. Opened packs show **🫙 opened 12 Nov** on their tile, so it is clear why the date is shorter than printed.
+
+<p align="center"><img src="../images/dashboard-datacare-en.png" width="250" alt="Data care"></p>
+
 ## Statistics
 
 <p align="center"><img src="../images/dashboard-stats-en.png" width="250" alt="Statistics"></p>

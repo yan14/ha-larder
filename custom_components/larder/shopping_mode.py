@@ -321,7 +321,43 @@ async def async_receipt_add(
         added.append(result)
         packs = pack_entries(hass)
     created = await async_create_items(hass, KIND_PACK, unknown, area_id, compartment) if unknown else []
-    return {"added": added, "created": created}
+    ticked = await async_tick_off(hass, [item["content"] for item in items])
+    return {"added": added, "created": created, "ticked": ticked}
+
+
+async def async_tick_off(hass: HomeAssistant, contents: list[str]) -> list[str]:
+    """Complete the open list items of these products (4.12: receipt), like scanning in the shopping mode.
+
+    One item per product; "bought – into stock?" does not offer them again. Returns the ticked summaries.
+    """
+    stock = await async_get_stock(hass)
+    wanted = {product_key(c) for c in contents if c}
+    ticked: list[str] = []
+    for entity_id in shopping_lists(hass, stock):
+        if not wanted:
+            break
+        try:
+            open_items = await _open_items(hass, entity_id)
+        except HomeAssistantError:
+            continue
+        for item in open_items:
+            summary = str(item.get("summary") or "").strip()
+            tracked = stock.tracked.get(summary.casefold()) or {}
+            keys = {product_key(_base_name(summary)), product_key(tracked.get("content"))} & wanted
+            if not item.get("uid") or not keys:
+                continue
+            stock.tracked.pop(summary.casefold(), None)
+            try:
+                await hass.services.async_call(
+                    "todo", "update_item", {"entity_id": entity_id, "item": item["uid"], "status": "completed"}, blocking=True
+                )
+            except HomeAssistantError:
+                continue
+            wanted -= keys
+            ticked.append(summary)
+    if ticked:
+        stock.save_now()
+    return ticked
 
 
 @websocket_api.websocket_command(

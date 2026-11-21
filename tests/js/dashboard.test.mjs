@@ -3278,3 +3278,41 @@ test("Shopping mode (4.11): scan ticks off, price and date, scanned extras, rece
   const row = $(el, "form.dialog").querySelector('[data-i="content"]');
   assert.equal(row.value, "Hafermilch");
 });
+
+test("Data care (4.12): monthly box on the start page, ⋮ dialog, opened since …", async () => {
+  const hass = makeHass([...DOSES, { id: "p1", name: "Packung 1", area: "kitchen", content: "Ketchup", days: 2, category: "condiment" }]);
+  hass.states["text.p1_inhalt"].attributes = { category: "condiment", kind: "pack", opened: "2026-11-12" };
+  hass.callWS = (base => async (msg) => {
+    if (msg.type === `${D}/data_gaps`) return {
+      counts: { opened_no_date: 0, no_date: 1, no_price: 2, no_place: 0, no_min: 0 },
+      gaps: { opened_no_date: [], no_date: [{ device_id: "p1", content: "Ketchup", place: "Küche" }], no_price: [{ device_id: "p1", content: "Ketchup", place: "" }, { device_id: "d1", content: "Lachs", place: "" }], no_place: [], no_min: [] },
+    };
+    return base(msg);
+  })(hass.callWS);
+  dom.window.localStorage.clear();
+  const el = mount(hass);
+  await flush();
+  await flush();
+  const box = $(el, '[data-role="datacare"]');
+  assert.ok(box);
+  assert.match(box.textContent, /3 Angaben fehlen/);
+  // opened since on the tile of the soon-expiring pack
+  assert.match($(el, 'main .tile[data-id="p1"]').textContent, /🫙 offen seit 12\.11\./);
+  box.querySelector('[data-role="datacare-show"]').click();
+  await flush();
+  const form = $(el, "form.dialog");
+  assert.deepEqual([...form.querySelectorAll("[data-group]")].map((g) => g.dataset.group), ["no_date", "no_price"]);
+  form.querySelector('[data-group="no_price"] [data-id="d1"]').click();
+  assert.equal(el._detail, "d1");
+  el._closeDetail && el._closeDetail();
+  // not again this month
+  const again = mount(hass);
+  await flush();
+  await flush();
+  $(again, '[data-role="datacare-later"]').click();
+  assert.equal($(again, '[data-role="datacare"]'), null);
+  const third = mount(hass);
+  await flush();
+  await flush();
+  assert.equal($(third, '[data-role="datacare"]'), null);
+});

@@ -55,7 +55,11 @@ async def test_scan_ticks_off_and_details(hass: HomeAssistant, hass_ws_client) -
 
 async def test_receipt_rows_go_to_their_usual_place(hass: HomeAssistant, hass_ws_client) -> None:
     hass.config.language = "de"
-    await _setup(hass, "AAAA")
+    todo = await _list(hass)
+    entry = await _setup(hass, "AAAA")
+    await _options(hass, entry, todo_entity="todo.einkaufen")
+    for summary in ("Senf (Develey)", "Ketchup", "Bananen"):
+        await hass.services.async_call("todo", "add_item", {"entity_id": "todo.einkaufen", "item": summary}, blocking=True)
     pantry = ar.async_get(hass).async_create("Vorrat")
     kitchen = ar.async_get(hass).async_create("Küche")
     await _packs(hass, hass_ws_client, [{"content": "Senf", "quantity": 1, "unit": "pieces", "product": {"brand": "Develey"}}], pantry.id, "Schrank")
@@ -70,3 +74,6 @@ async def test_receipt_rows_go_to_their_usual_place(hass: HomeAssistant, hass_ws
     # known mustard joined the pack in the pantry; unknown ketchup at the chosen place
     assert places == [("Ketchup", "Küche", "Tür", 1, 2.29), ("Senf", "Vorrat", "Schrank", 3, 1.49)]
     assert [p["price"] for p in (await async_get_stock(hass)).price_history["senf"]] == [1.49]
+    # 4.12: the receipt ticks off the shopping list too
+    assert sorted(res["result"]["ticked"]) == ["Ketchup", "Senf (Develey)"]
+    assert todo.open() == ["Bananen"]

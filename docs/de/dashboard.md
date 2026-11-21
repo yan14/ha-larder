@@ -84,6 +84,12 @@ show_bought: true     # optional
 show_opened: true     # optional
 ```
 
+### Datenpflege
+
+Einmal im Monat, solange etwas fehlt, zeigt die Startseite **🧹 Datenpflege** (✕ blendet es bis zum nächsten Monat aus; **⋮ → 🧹 Datenpflege** zeigt es jederzeit): angebrochene Packungen ohne Datum, Packungen ohne MHD, Produkte ohne Preis, Einträge ohne Bereich oder Fach und oft verbrauchte Produkte ohne Mindestbestand. Antippen öffnet die Karte, dort trägst du es nach. Mit vollständigen Daten werden Statistik, *reicht noch …*, Einkaufsvorschläge und der Bestandswert genauer. Angebrochene Packungen zeigen auf der Kachel **🫙 offen seit 12.11.**, damit klar ist, warum das Datum kürzer ist als aufgedruckt.
+
+<p align="center"><img src="../images/dashboard-datacare-de.png" width="250" alt="Datenpflege"></p>
+
 ## Statistik
 
 <p align="center"><img src="../images/dashboard-stats-de.png" width="250" alt="Statistik"></p>

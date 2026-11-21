@@ -270,6 +270,12 @@ const hass = {
     ]).map(([summary, section, known], i) => ({ list: "todo.einkaufen", list_name: "Einkaufen", uid: `s${i}`, summary, section, known })) };
     if (msg.type === "larder/shopping_check") return msg.uid === "s0" ? { status: "unknown", name: msg.summary } : { status: "added", area: de ? "Vorratskammer" : "Pantry", compartment: de ? "Regal" : "Shelf", added: 1 };
     if (msg.type === "larder/recurring") return { items: [{ key: "w", name: de ? "Wasserkiste" : "Crate of water", weekdays: [4] }, { key: "m", name: de ? "Milch" : "Milk", every_days: 3 }] };
+    if (msg.type === "larder/data_gaps") return { counts: { opened_no_date: 1, no_date: 2, no_price: 3, no_place: 1, no_min: 1 }, gaps: {
+      opened_no_date: [{ device_id: "demo12", content: "Ketchup", place: de ? "Küche · Tür" : "Kitchen · Door" }],
+      no_date: [{ device_id: "demo13", content: de ? "Haselnusscreme" : "Hazelnut spread", place: "" }, { device_id: "demo14", content: "Penne", place: "" }],
+      no_price: [{ device_id: "demo12", content: "Ketchup", place: "" }, { device_id: "demo13", content: de ? "Haselnusscreme" : "Hazelnut spread", place: "" }, { device_id: "demo14", content: "Penne", place: "" }],
+      no_place: [{ device_id: "demo14", content: "Penne", place: de ? "Vorratskammer" : "Pantry" }],
+      no_min: [{ device_id: "demo14", content: "Penne", place: "" }] } };
     if (msg.type === "larder/voucher_stats") return { count: 2, open_value: 55, lost_value: 15, redeemed_value: 20 };
     if (msg.type === "larder/voucher_code") return { code: "4711-0815-2026" };
     if (msg.type === "larder/sections") return { order: ["produce", "bakery", "meat", "fridge", "dry", "breakfast", "drinks", "frozen", "drugstore", "pharmacy", "other"] };
@@ -402,6 +408,7 @@ if (q.get("view") === "shopping") {
   await new Promise((r) => setTimeout(r, 50));
 }
 if (q.get("dialog") === "recurring") await el.openRecurringDialog();
+if (q.get("dialog") === "datacare") await el.openDataCare();
 if (q.get("dialog") === "place") await el.openPlace("cellar", de ? "Regal oben" : "Top shelf");
 if (q.get("take")) {
   el._take = { areaId: q.get("take"), compartment: "", started: true, status: new Map() };
