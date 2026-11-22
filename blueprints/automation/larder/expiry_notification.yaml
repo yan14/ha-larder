@@ -31,6 +31,24 @@ blueprint:
       default: true
       selector:
         boolean:
+    item_pushes:
+      name: One push per entry with buttons
+      description: >
+        Instead of one summary: a push for each expiring entry (at most the number below) with the
+        buttons Used up · Thrown away · +2 days · On the list. Tapping one does it right away, without
+        opening the app (Android shows the first three). The rest is counted in a last push.
+        Eine Push je Eintrag mit Knöpfen Verbraucht · Weggeworfen · +2 Tage · Auf die Liste.
+      default: false
+      selector:
+        boolean:
+    max_item_pushes:
+      name: At most this many pushes per entry
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 10
+          mode: box
     recipes_page:
       name: "Recipes button opens"
       description: No longer needed (Larder experimental was removed in 3.0); kept so existing automations stay valid.
@@ -132,6 +150,8 @@ variables:
   latest_time: !input latest_time
   recipes: !input recipes
   buttons: !input buttons
+  item_pushes: !input item_pushes
+  max_item_pushes: !input max_item_pushes
   recipes_page: !input recipes_page
   # Aktionen wie notify.mobile_app_iphone, getrennt durch Komma, Semikolon, Leerzeichen oder Zeilen
   push_targets: "{{ (notify_action or '') | string | lower | regex_findall('[a-z0-9_]+[.][a-z0-9_]+') }}"
@@ -202,15 +222,56 @@ actions:
         {{ presence | length == 0
            or presence | select('is_state', ['home', 'on']) | list | length > 0
            or presence | map('states') | select('is_number') | map('int') | select('>', 0) | list | length > 0 }}
-  - repeat:
-      for_each: "{{ push_targets }}"
-      sequence:
-        - action: "{{ repeat.item }}"
-          data:
-            title: !input title
-            message: "{{ message }}"
-            data: "{{ push_data }}"
-          continue_on_error: true
+  - if:
+      - condition: template
+        value_template: "{{ item_pushes and result.count > 0 }}"
+    then:
+      # 5.2: one push per entry with buttons; Larder carries out a tap (event mobile_app_notification_action)
+      - variables:
+          shown: "{{ result['items'][:max_item_pushes | int] }}"
+          rest: "{{ result.count - (shown | length) }}"
+      - repeat:
+          for_each: "{{ shown }}"
+          sequence:
+            - variables:
+                entry: "{{ repeat.item }}"
+            - repeat:
+                for_each: "{{ push_targets }}"
+                sequence:
+                  - action: "{{ repeat.item }}"
+                    data:
+                      title: !input title
+                      message: "{{ entry.line }}"
+                      data:
+                        tag: "larder-{{ entry.cc }}"
+                        group: larder
+                        url: /larder
+                        clickAction: /larder
+                        actions: "{{ entry.actions }}"
+                    continue_on_error: true
+      - if:
+          - condition: template
+            value_template: "{{ rest | int > 0 }}"
+        then:
+          - repeat:
+              for_each: "{{ push_targets }}"
+              sequence:
+                - action: "{{ repeat.item }}"
+                  data:
+                    title: !input title
+                    message: "{{ (result.labels.more | default('… +{n}')).replace('{n}', rest | string) }}"
+                    data: "{{ push_data }}"
+                  continue_on_error: true
+    else:
+      - repeat:
+          for_each: "{{ push_targets }}"
+          sequence:
+            - action: "{{ repeat.item }}"
+              data:
+                title: !input title
+                message: "{{ message }}"
+                data: "{{ push_data }}"
+              continue_on_error: true
   - if:
       - condition: template
         value_template: "{{ voice_targets | length > 0 and someone_home }}"

@@ -327,6 +327,63 @@ async def async_household_statistics(hass: HomeAssistant, months: int = 6) -> di
     return household_statistics(stock.takes, names, dt_util.now().date(), months)
 
 
+# ---------- Weekly review (5.2, #129) ----------
+
+SERVICE_GET_WEEKLY_REVIEW = "get_weekly_review"
+WEEK = 7
+
+
+def _money(value: float, de: bool) -> str:
+    return f"{value:.2f} €".replace(".", ",") if de else f"€{value:.2f}"
+
+
+def build_weekly_review(
+    records: list[dict[str, Any]], expiring: list[dict[str, Any]], today: date, language: str
+) -> dict[str, Any]:
+    """The last 7 days (eaten, thrown away and its value) and what expires in the next 7 days, with text and speech."""
+    de = language.lower().startswith("de")
+    since = today - timedelta(days=WEEK)
+    week = [r for r in records if r.get("kind") not in ("household", "medicine") and (d := _emptied_day(r)) and since < d <= today]
+    thrown = [r for r in week if _was_wasted(r)]
+    eaten = [r for r in week if r.get("outcome") == "eaten"]
+    value, _priced = record_value(thrown)
+    names = list(dict.fromkeys(r.get("content") or r.get("name") or "?" for r in thrown))
+    upcoming = [i for i in expiring if i.get("kind") not in ("voucher",)]
+    soon_names = [i.get("content") or i.get("name") for i in upcoming]
+    lines: list[str] = []
+    if de:
+        lines.append(f"✅ {len(eaten)} gegessen, 🗑 {len(thrown)} weggeworfen" + (f" (ca. {_money(value, True)})" if value else ""))
+        if names:
+            lines.append("Weggeworfen: " + ", ".join(names[:5]))
+        lines.append(("📅 Nächste Woche läuft ab: " + ", ".join(soon_names[:6])) if soon_names else "📅 Nächste Woche läuft nichts ab.")
+        speech = f"Diese Woche wurden {len(eaten)} Sachen gegessen und {len(thrown)} weggeworfen."
+        speech += f" Nächste Woche läuft {', '.join(soon_names[:3])} ab." if soon_names else " Nächste Woche läuft nichts ab."
+    else:
+        lines.append(f"✅ {len(eaten)} eaten, 🗑 {len(thrown)} thrown away" + (f" (about {_money(value, False)})" if value else ""))
+        if names:
+            lines.append("Thrown away: " + ", ".join(names[:5]))
+        lines.append(("📅 Expiring next week: " + ", ".join(soon_names[:6])) if soon_names else "📅 Nothing expires next week.")
+        speech = f"This week {len(eaten)} things were eaten and {len(thrown)} thrown away."
+        speech += f" Next week {', '.join(soon_names[:3])} expire." if soon_names else " Nothing expires next week."
+    return {
+        "eaten": len(eaten),
+        "thrown": len(thrown),
+        "thrown_value": value,
+        "thrown_items": names,
+        "expiring": upcoming,
+        "expiring_count": len(upcoming),
+        "title": "🗓 Wochenrückblick" if de else "🗓 Weekly review",
+        "summary": "\n".join(lines),
+        "speech": speech,
+    }
+
+
+async def async_weekly_review(hass: HomeAssistant) -> dict[str, Any]:
+    history = await async_get_history(hass)
+    expiring = collect_expiring(hass, WEEK, include_expired=False)
+    return build_weekly_review(history.records, expiring, dt_util.now().date(), hass.config.language or "en")
+
+
 async def async_monthly_report(hass: HomeAssistant, month: str | None = None) -> dict[str, Any]:
     if not month:
         month = _previous_month(dt_util.now().date().strftime("%Y-%m"))
@@ -382,5 +439,12 @@ def async_setup_statistics(hass: HomeAssistant) -> None:
         handle_report,
         schema=vol.Schema({vol.Optional("month"): vol.Match(r"^\d{4}-(0[1-9]|1[0-2])$")}),
         supports_response=SupportsResponse.ONLY,
+    )
+
+    async def handle_week(_call: ServiceCall) -> dict[str, Any]:
+        return await async_weekly_review(hass)
+
+    hass.services.async_register(
+        DOMAIN, SERVICE_GET_WEEKLY_REVIEW, handle_week, schema=vol.Schema({}), supports_response=SupportsResponse.ONLY
     )
     domain_data[DATA_STATS] = True

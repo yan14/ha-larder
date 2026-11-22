@@ -94,6 +94,20 @@ Die Werte bleiben über Neustarts erhalten. „Behälter leeren“ ist eine norm
 
 **Einzelnes Feld leeren:** Die Datums-Entitäten von Home Assistant lassen sich im Entitäts-Dialog selbst nicht leeren (der Button „Löschen“ im Datumsfeld bewirkt dort nichts). Nutze stattdessen eines davon: das Feld im Dashboard leeren, **Behälter leeren** für alles zusammen, oder die Services `larder.clear_best_before` bzw. `larder.clear_filled_at` (z. B. in den Entwicklerwerkzeugen oder in einer Automation).
 
+### Übersichts-Sensoren
+
+Seit 5.3 hat der Haupteintrag **Larder** fünf Sensoren für eigene Automationen und Dashboards (sie aktualisieren sich kurz nach einer Änderung und alle 10 Minuten):
+
+| Sensor | Wert |
+|---|---|
+| `sensor.larder_expired` | Lebensmittel mit abgelaufenem MHD (Attribut `items`: ihre Inhalte) |
+| `sensor.larder_expiring_soon` | Lebensmittel, die bald ablaufen (Attribut `items`) |
+| `sensor.larder_stock_value` | Wert der Packungen im Vorrat, in der Währung von Home Assistant (Attribute: wie viele Produkte einen Preis haben) |
+| `sensor.larder_shopping_open` | Offene Einträge auf den Einkaufslisten von Larder (Attribut `lists`) |
+| `sensor.larder_supply_days` | Für wie viele Tage der [Notvorrat](kitchen.md#notvorrat) reicht (wenn der Check an ist) |
+
+Beispiel: ein rotes Licht am Kühlschrank, solange `sensor.larder_expired` über 0 ist.
+
 ### Dienste und Ereignisse
 
 | Dienst | Wirkung |
@@ -105,12 +119,13 @@ Die Werte bleiben über Neustarts erhalten. „Behälter leeren“ ist eine norm
 | `larder.get_expiring_medicines` | Dasselbe für Medikamente, Haushaltsartikel mit Datum und Gutscheine, siehe [Ablaufende Medikamente](kitchen.md#ablaufende-medikamente) |
 | `larder.suggest_recipes` | [Rezeptideen](kitchen.md#rezeptideen) aus dem, was bald abläuft, aus allen oder aus gewählten Dosen |
 | `larder.get_statistics` | Gegessen / weggeworfen, häufigste Inhalte, Lagerdauer und aktueller Bestand, siehe [Statistik](dashboard.md#statistik) |
+| `larder.get_weekly_review` | Die letzten 7 Tage und was in den nächsten 7 abläuft, mit Text und Sprachtext, siehe [Wochenrückblick](kitchen.md#wochenrückblick) |
 | `larder.get_monthly_report` | Bericht eines Monats (befüllt, geleert, gegessen, weggeworfen, Vergleich zum Vormonat) mit Text und Sprachtext, siehe [Monatsbericht](kitchen.md#monatsbericht) |
 | `larder.rebuild_calendar` | [Kalender](kitchen.md#mhd-im-kalender) aufräumen |
 
 Die Einträge von `larder.get_expiring` tragen `kind` (`container`, `bag`, `pack`). Wird der Sticker eines schon geleerten Beutels gescannt, kommt `larder_dose_scanned` mit `retired: true` und einer `message` statt `cc` und `device_id`.
 
-Das Ereignis `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) wird ausgelöst, wenn ein verknüpfter [NFC-Tag](scanning.md#nfc-tags) oder einer [deiner QR-Codes](scanning.md#eigene-qr-codes) gescannt wird (dann mit `source: qr`). `larder_temperature_warning` und `larder_temperature_ok` gehören zur [Temperaturwarnung](#reparaturhinweise), `larder_compartment_scanned` zu den [Fächern](scanning.md#fächer), `larder_running_low`, `larder_recall` und `larder_replace_due` zu [Bald leer und Rückrufe](kitchen.md#bald-leer-und-rückrufe).
+Das Ereignis `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) wird ausgelöst, wenn ein verknüpfter [NFC-Tag](scanning.md#nfc-tags) oder einer [deiner QR-Codes](scanning.md#eigene-qr-codes) gescannt wird (dann mit `source: qr`). `larder_temperature_warning` und `larder_temperature_ok` gehören zur [Temperaturwarnung](#reparaturhinweise), `larder_compartment_scanned` zu den [Fächern](scanning.md#fächer), `larder_running_low`, `larder_recall` und `larder_replace_due` zu [Bald leer und Rückrufe](kitchen.md#bald-leer-und-rückrufe). `larder_auto_reorder` (`name`, `item`, `lasts_days`) wird ausgelöst, wenn ein Produkt [nach Verbrauch](containers.md#bestand) auf die Liste kommt, `larder_notification_action_done` nach einem Knopf in einer [Push](kitchen.md#tägliche-zusammenfassung).
 
 ### Webhook-Schnittstelle
 

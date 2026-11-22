@@ -301,3 +301,233 @@ if (!customElements.get("larder-card")) {
     preview: true,
   });
 }
+
+// ---------- 5.3 (#130): shopping and compartment cards ----------
+
+const MORE_TEXT = {
+  de: {
+    shopTitle: "Einkaufen",
+    shopOpen: (n) => (n === 1 ? "1 Eintrag offen" : `${n} Einträge offen`),
+    shopNone: "Nichts auf der Liste.",
+    shopGo: "🛒 Einkaufsmodus",
+    shopDescription: "Offene Einträge der Einkaufslisten von Larder, mit Knopf zum Einkaufsmodus.",
+    placeTitle: "Fach",
+    placeNone: "Leer.",
+    placeMissing: "Bitte in den Karten-Optionen einen Bereich (area) wählen.",
+    placeTake: "−1",
+    placeDescription: "Was in einem Bereich oder Fach liegt, mit −1 – z. B. für ein Tablet am Kühlschrank.",
+    noDate: "ohne MHD",
+  },
+  en: {
+    shopTitle: "Shopping",
+    shopOpen: (n) => (n === 1 ? "1 open item" : `${n} open items`),
+    shopNone: "Nothing on the list.",
+    shopGo: "🛒 Shopping mode",
+    shopDescription: "Open items on Larder's shopping lists, with a button to the shopping mode.",
+    placeTitle: "Compartment",
+    placeNone: "Empty.",
+    placeMissing: "Please choose an area in the card options.",
+    placeTake: "−1",
+    placeDescription: "What is in an area or compartment, with −1 – e.g. for a tablet at the fridge.",
+    noDate: "no date",
+  },
+};
+
+function moreTexts(hass) {
+  return String((hass && hass.language) || "en").toLowerCase().startsWith("de") ? MORE_TEXT.de : MORE_TEXT.en;
+}
+
+const escHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const goTo = (path) => {
+  window.history.pushState(null, "", path);
+  window.dispatchEvent(new Event("location-changed"));
+};
+
+/** Lovelace card "Larder: shopping" (type: custom:larder-shopping-card): open items per list. */
+export class LarderShoppingCard extends HTMLElement {
+  static getStubConfig() {
+    return {};
+  }
+
+  setConfig(config) {
+    this._config = { ...(config || {}) };
+    this._sig = "";
+    this._render();
+  }
+
+  set hass(hass) {
+    const first = !this._hass;
+    this._hass = hass;
+    if (first) this.load();
+    this._render();
+  }
+
+  getCardSize() {
+    return 2;
+  }
+
+  async load() {
+    try {
+      this._lists = ((await this._hass.callWS({ type: "larder/shopping_lists" })) || {}).lists || [];
+    } catch {
+      this._lists = [];
+    }
+    this._sig = "";
+    this._render();
+  }
+
+  /** [{entity_id, name, open}] of the lists Larder uses. */
+  rows() {
+    const states = (this._hass && this._hass.states) || {};
+    return (this._lists || [])
+      .map((id) => ({ entity_id: id, name: ((states[id] || {}).attributes || {}).friendly_name || id, open: Number((states[id] || {}).state) || 0 }))
+      .filter((r) => r.open > 0);
+  }
+
+  _render() {
+    if (!this._hass || !this._config) return;
+    if (!this.shadowRoot) this.attachShadow({ mode: "open" });
+    const t = moreTexts(this._hass);
+    const rows = this.rows();
+    const total = rows.reduce((n, r) => n + r.open, 0);
+    const sig = JSON.stringify([rows, this._config.title, t.shopTitle]);
+    if (sig === this._sig) return;
+    this._sig = sig;
+    this.shadowRoot.innerHTML = `
+      <style>
+        ha-card { padding: 12px 16px; }
+        h2 { margin: 0 0 6px; font-size: 18px; font-weight: 400; display: flex; align-items: center; gap: 8px; }
+        .count { font-size: 13px; padding: 1px 8px; border-radius: 10px; background: var(--error-color, #c62828); color: #fff; }
+        .row { display: flex; justify-content: space-between; padding: 4px 0; font-size: 14px; border-top: 1px solid var(--divider-color); }
+        .none { color: var(--secondary-text-color); font-size: 14px; }
+        button { margin-top: 8px; font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+          border: 1px solid var(--primary-color); background: none; color: var(--primary-color); }
+      </style>
+      <ha-card>
+        <h2>${escHtml(this._config.title || t.shopTitle)}${total ? `<span class="count" data-role="shop-count">${total}</span>` : ""}</h2>
+        ${rows.length ? rows.map((r) => `<div class="row"><span>${escHtml(r.name)}</span><span>${escHtml(t.shopOpen(r.open))}</span></div>`).join("") : `<div class="none">${escHtml(t.shopNone)}</div>`}
+        <button type="button" data-role="shop-go">${escHtml(t.shopGo)}</button>
+      </ha-card>`;
+    this.shadowRoot.querySelector('[data-role="shop-go"]').addEventListener("click", () => goTo("/larder?view=shopping"));
+  }
+}
+
+/** Entries of one area (and compartment) as the compartment card shows them. */
+export function placeRows(hass, config = {}, now = new Date()) {
+  const states = (hass && hass.states) || {};
+  const wanted = String(config.compartment || "").trim().toLowerCase();
+  const rows = [];
+  for (const dev of collectDevices(hass)) {
+    if (!config.area || dev.areaId !== config.area) continue;
+    const text = states[dev.entities.text];
+    if (!valid(text) || !text.state.trim()) continue;
+    const compartment = String((states[dev.entities.compartment] || {}).state || "").trim();
+    if (wanted && compartment.toLowerCase() !== wanted) continue;
+    const kind = (text.attributes && text.attributes.kind) || "container";
+    const date = states[dev.entities.date];
+    const unit = (states[dev.entities.select] || {}).state;
+    const count = Number((states[dev.entities.number] || {}).state) || 0;
+    rows.push({
+      id: dev.deviceId,
+      name: dev.name,
+      content: text.state.trim(),
+      kind,
+      icon: ICONS[(text.attributes && text.attributes.category) || "other"] || ICONS.other,
+      count: ["pack", "household", "medicine"].includes(kind) || ["pieces", "portions"].includes(unit) ? count : null,
+      days: valid(date) ? daysUntil(date.state, now) : null,
+      compartment,
+    });
+  }
+  return rows.sort((a, b) => (a.days ?? 99999) - (b.days ?? 99999) || a.content.localeCompare(b.content));
+}
+
+/** Lovelace card "Larder: compartment" (type: custom:larder-place-card, options area and compartment). */
+export class LarderPlaceCard extends HTMLElement {
+  static getStubConfig(hass) {
+    const area = Object.keys((hass && hass.areas) || {})[0] || "";
+    return { area, compartment: "" };
+  }
+
+  setConfig(config) {
+    this._config = { ...(config || {}) };
+    this._sig = "";
+    this._render();
+  }
+
+  set hass(hass) {
+    this._hass = hass;
+    this._render();
+  }
+
+  getCardSize() {
+    return 1 + Math.min((this._rows || []).length, 8);
+  }
+
+  _render() {
+    if (!this._hass || !this._config) return;
+    if (!this.shadowRoot) this.attachShadow({ mode: "open" });
+    const t = moreTexts(this._hass);
+    const tt = texts(this._hass);
+    const area = (this._hass.areas || {})[this._config.area];
+    const rows = placeRows(this._hass, this._config);
+    this._rows = rows;
+    const sig = JSON.stringify([rows, this._config, t.placeTitle]);
+    if (sig === this._sig) return;
+    this._sig = sig;
+    const title = this._config.title || [area ? area.name : null, this._config.compartment].filter(Boolean).join(" · ") || t.placeTitle;
+    const when = (d) => (d === null ? t.noDate : d < 0 ? tt.expired(d) : d === 0 ? tt.today : d === 1 ? tt.tomorrow : tt.inDays(d));
+    this.shadowRoot.innerHTML = `
+      <style>
+        ha-card { padding: 12px 16px 8px; }
+        h2 { margin: 0 0 8px; font-size: 18px; font-weight: 400; }
+        .row { display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--divider-color); cursor: pointer; }
+        .row:first-of-type { border-top: 0; }
+        .ico { font-size: 20px; width: 26px; text-align: center; }
+        .text { flex: 1; min-width: 0; }
+        .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .sub { font-size: 12px; color: var(--secondary-text-color); }
+        .sub.expired { color: var(--error-color, #c62828); }
+        button { font: inherit; font-size: 15px; padding: 6px 14px; border-radius: 10px; cursor: pointer; border: 0;
+          background: var(--primary-color); color: var(--text-primary-color, #fff); }
+        .none { color: var(--secondary-text-color); font-size: 14px; padding: 6px 0; }
+      </style>
+      <ha-card>
+        <h2>${escHtml(title)}</h2>
+        ${!this._config.area ? `<div class="none">${escHtml(t.placeMissing)}</div>` : rows.length ? "" : `<div class="none">${escHtml(t.placeNone)}</div>`}
+        ${rows
+          .map(
+            (r) => `<div class="row" data-id="${escHtml(r.id)}"><span class="ico">${r.icon}</span><span class="text"><div class="name">${escHtml(r.content)}${r.count && r.count > 1 ? ` · ${r.count}` : ""}</div><div class="sub${r.days !== null && r.days < 0 ? " expired" : ""}">${escHtml([when(r.days), this._config.compartment ? null : r.compartment].filter(Boolean).join(" · "))}</div></span>${
+              ["pack", "household", "medicine"].includes(r.kind) ? `<button type="button" data-take="${escHtml(r.id)}">${t.placeTake}</button>` : ""
+            }</div>`,
+          )
+          .join("")}
+      </ha-card>`;
+    for (const row of this.shadowRoot.querySelectorAll(".row")) {
+      row.addEventListener("click", (ev) => {
+        if (ev.target.closest("button")) return;
+        goTo(`/larder?open=${encodeURIComponent(row.dataset.id)}`);
+      });
+    }
+    for (const btn of this.shadowRoot.querySelectorAll("[data-take]")) {
+      btn.addEventListener("click", async () => {
+        btn.disabled = true;
+        try {
+          await this._hass.callWS({ type: "larder/pack_take", device_id: btn.dataset.take, outcome: "eaten" });
+        } catch {
+          btn.disabled = false;
+        }
+      });
+    }
+  }
+}
+
+for (const [type, cls, name, description] of [
+  ["larder-shopping-card", LarderShoppingCard, "Larder: Einkaufen / Shopping", (t) => t.shopDescription],
+  ["larder-place-card", LarderPlaceCard, "Larder: Fach / Compartment", (t) => t.placeDescription],
+]) {
+  if (!customElements.get(type)) {
+    customElements.define(type, cls);
+    window.customCards = window.customCards || [];
+    window.customCards.push({ type, name, description: description(moreTexts({ language: (navigator.language || "en").slice(0, 2) })), preview: true });
+  }
+}

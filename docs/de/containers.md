@@ -126,6 +126,8 @@ Ein Beutel funktioniert wie eine Dose (scannen, Portion entnehmen, **Geöffnet**
 
 **Bald leer.** Reicht ein Produkt mit Mindestbestand laut Prognose nur noch die *Tage bis zum nächsten Einkauf*, steht es auf der Startseite unter **⏳ Bald leer** – bevor der Mindestbestand unterschritten ist. **🛒 Einkaufsliste** setzt es auf die Liste, **✕** blendet es eine Woche aus. Mit der Einstellung *Bald leer: gleich auf die Einkaufsliste* kommt es sofort auf die Liste. Für eine Push-Nachricht gibt es den Blueprint [Bald leer und Rückrufe](kitchen.md#bald-leer-und-rückrufe) (Ereignis `larder_running_low`).
 
+**Nach Verbrauch nachkaufen** (5.2). **🔁 Nach Verbrauch nachkaufen** neben einem Produkt in der Bestands-Ansicht setzt es auf seine Einkaufsliste, sobald es laut Verbrauch nicht mehr bis zum nächsten Einkauf reicht – auch ohne Mindestbestand und bevor einer erreicht ist. Einmal pro Einkauf: solange es auf der Liste steht (oder innerhalb der Vorlaufzeit schon eingetragen wurde), kommt es nicht noch einmal dazu. Für eigene Benachrichtigungen gibt es das Ereignis `larder_auto_reorder`.
+
 **Von der Einkaufsliste zurück in den Vorrat.** Hakst du auf der Einkaufsliste etwas ab, das Larder dort eingetragen hat (Mindestbestand oder geleerte Dose), fragt die Startseite **🛒 Eingekauft – in den Vorrat?**. **In den Vorrat** legt ein Produkt, das schon im Vorrat ist, gleich an seinen üblichen Ort (ein Tipp, seit 5.0); nur ein neues Produkt öffnet den Packungs-Dialog mit Inhalt, Marke, Anzahl und Ort. **✕** verwirft den Hinweis.
 
 ### Rückrufwarnungen

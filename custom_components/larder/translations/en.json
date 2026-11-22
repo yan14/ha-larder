@@ -421,6 +421,10 @@
           "description": "Month as YYYY-MM. Empty: the previous month."
         }
       }
+    },
+    "get_weekly_review": {
+      "name": "Get weekly review",
+      "description": "Returns the last 7 days (eaten, thrown away and its value) and what expires in the next 7 days, with a ready-made text and speech."
     }
   },
   "selector": {

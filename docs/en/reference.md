@@ -94,6 +94,20 @@ The values survive restarts. "Empty container" is a regular button entity, so yo
 
 **Clearing a single field:** the date entities of Home Assistant itself cannot be cleared from the entity dialog (the picker's "Clear" button has no effect there). Use one of these instead: empty the field in the dashboard, press **Empty container** to reset everything, or call the services `larder.clear_best_before` / `larder.clear_filled_at` (for example in Developer tools or an automation).
 
+### Overview sensors
+
+Since 5.3 the main entry **Larder** has five sensors for your own automations and dashboards (they update shortly after a change and every 10 minutes):
+
+| Sensor | Value |
+|---|---|
+| `sensor.larder_expired` | Food entries past their best-before date (attribute `items`: their contents) |
+| `sensor.larder_expiring_soon` | Food entries expiring soon (attribute `items`) |
+| `sensor.larder_stock_value` | Value of the packs in stock, in Home Assistant's currency (attributes: how many products have a price) |
+| `sensor.larder_shopping_open` | Open items on the shopping lists Larder uses (attribute `lists`) |
+| `sensor.larder_supply_days` | Days the [emergency supply](kitchen.md#emergency-supply) lasts (when the check is on) |
+
+Example: a red light at the fridge while `sensor.larder_expired` is above 0.
+
 ### Services and events
 
 | Service | What it does |
@@ -106,11 +120,12 @@ The values survive restarts. "Empty container" is a regular button entity, so yo
 | `larder.suggest_recipes` | [Recipe ideas](kitchen.md#recipe-ideas) from what expires soon, from all or from selected containers |
 | `larder.get_statistics` | Eaten / thrown away, most frequent contents, storage time and current stock, see [Statistics](dashboard.md#statistics) |
 | `larder.get_monthly_report` | Report of a month (filled, emptied, eaten, thrown away, compared with the month before) with text and speech, see [Monthly report](kitchen.md#monthly-report) |
+| `larder.get_weekly_review` | The last 7 days and what expires in the next 7, with text and speech, see [Weekly review](kitchen.md#weekly-review) |
 | `larder.rebuild_calendar` | Clean up the [calendar](kitchen.md#best-before-dates-in-your-calendar) |
 
 Items of `larder.get_expiring` carry `kind` (`container`, `bag`, `pack`). If the sticker of a bag that was already emptied is scanned, `larder_dose_scanned` fires with `retired: true` and a `message` instead of `cc` and `device_id`.
 
-The event `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) fires when a linked [NFC tag](scanning.md#nfc-tags) or one of [your own QR codes](scanning.md#your-own-qr-codes) is scanned (then with `source: qr`). `larder_temperature_warning` and `larder_temperature_ok` belong to the [temperature warning](#repairs), `larder_compartment_scanned` to [compartments](scanning.md#compartments), `larder_running_low`, `larder_recall` and `larder_replace_due` to [running low and recalls](kitchen.md#running-low-and-recalls).
+The event `larder_dose_scanned` (`cc`, `device_id`, `name`, `scanned_by`) fires when a linked [NFC tag](scanning.md#nfc-tags) or one of [your own QR codes](scanning.md#your-own-qr-codes) is scanned (then with `source: qr`). `larder_temperature_warning` and `larder_temperature_ok` belong to the [temperature warning](#repairs), `larder_compartment_scanned` to [compartments](scanning.md#compartments), `larder_running_low`, `larder_recall` and `larder_replace_due` to [running low and recalls](kitchen.md#running-low-and-recalls). `larder_auto_reorder` (`name`, `item`, `lasts_days`) fires when a product goes onto the list [by its consumption](containers.md#stock), `larder_notification_action_done` after a button in a [push](kitchen.md#daily-summary).
 
 ### Webhook interface
 

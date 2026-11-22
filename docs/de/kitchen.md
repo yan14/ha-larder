@@ -51,6 +51,7 @@ Das mitgelieferte Blueprint schickt eine **tägliche Zusammenfassung** dessen, w
 |---|---|
 | **Push notification** | Eine oder mehrere notify-Aktionen, durch Komma getrennt (`notify.mobile_app_dein_iphone, notify.mobile_app_partner`), oder eine notify-Gruppe. Leer lassen für nur Sprache. |
 | **Buttons in the push** | **Rezepte** öffnet die Rezeptseite des Dashboards, **Dashboard** öffnet Larder. Antippen der Benachrichtigung selbst öffnet ebenfalls das Dashboard. |
+| **One push per entry with buttons** (5.2) | Statt einer Zusammenfassung eine Push je ablaufendem Eintrag (höchstens die gewählte Zahl, der Rest wird in einer letzten Push gezählt) mit den Knöpfen **Verbraucht · Weggeworfen · +2 Tage · Auf die Liste**. Antippen erledigt es sofort, ohne die App zu öffnen: eine Packung weniger, eine Dose geleert (mit der Antwort im Verlauf), das MHD zwei Tage später oder das Produkt auf seiner Einkaufsliste. Android zeigt die ersten drei Knöpfe. |
 | **Voice output** | notify-Aktionen, die die Zusammenfassung vorlesen, z. B. `notify.alexa_media_kueche` (Alexa Media Player) oder eine Gruppe von Lautsprechern. Der Sprechtext ist zum Zuhören gemacht: „Heute läuft Lachs ab. Morgen läuft Gouda ab. Pizza in Dose 3 ist abgelaufen und sollte geleert werden.“ (höchstens sechs Dosen, der Rest wird gezählt). Mit Rezeptideen kommt „Idee: …“ dazu. |
 | **Voice options** | Zusatzdaten für die Sprachausgabe. Alexa Media Player braucht den Typ, z. B. `type: announce` (mit Gong) oder `type: tts`. |
 | **Speak only when someone is home** | Personen, Gruppen oder Zonen; ist niemand zu Hause, entfällt die Sprachausgabe. Der Push kommt immer. |
@@ -69,8 +70,11 @@ data:
 response_variable: result
 # result.count, result.expired, result.summary (Text mit Aufzählung für den Push),
 # result.speech (Sätze zum Vorlesen), result.labels (Texte der Knöpfe),
-# result.items (name, content, quantity, unit, area, best_before, days_left, status)
+# result.items (name, content, quantity, unit, area, best_before, days_left, status,
+#   line: der Text eines Eintrags, actions: seine Knöpfe für eine Push)
 ```
+
+Die Knöpfe gehen auch in eigenen Automationen: `result.items[i].actions` in `data.actions` einer Push an die Home Assistant App. Larder hört auf das Ereignis `mobile_app_notification_action` mit den Aktionen `LARDER_EATEN_<ID>`, `LARDER_THROWN_<ID>`, `LARDER_PLUS2_<ID>` und `LARDER_SHOP_<ID>` und löst danach `larder_notification_action_done` aus.
 
 Auch `larder.suggest_recipes` liefert `speech` („Idee: …“). Für eigene Dashboards gibt es außerdem den Sensor **Tage bis MHD** an jeder Dose.
 
@@ -80,6 +84,12 @@ Ein zweiter Blueprint schickt am gewählten Tag einen **Monatsbericht** für den
 
 [![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fmonthly_report.yaml)
 
+### Wochenrückblick
+
+Seit 5.2 schickt ein Blueprint einen **Wochenrückblick** am gewählten Tag zur gewählten Zeit (Standard Sonntag 18:00): gegessen und weggeworfen in den letzten 7 Tagen, ungefähr wie viel das Weggeworfene wert war, was in den nächsten 7 Tagen abläuft und optional eine Rezeptidee dazu (AI Task). Als Push und optional als Sprachausgabe. Der Dienst `larder.get_weekly_review` liefert dasselbe (`eaten`, `thrown`, `thrown_value`, `thrown_items`, `expiring`, `title`, `summary`, `speech`).
+
+[![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fweekly_review.yaml)
+
 ### Ablaufende Medikamente
 
 Medikamente und Haushaltsartikel mit Datum (z. B. Sonnencreme) warnen viel früher als Lebensmittel (standardmäßig 60 Tage) und stehen deshalb nicht in der täglichen Zusammenfassung. Ein eigener Blueprint erinnert an den gewählten Wochentagen (z. B. jeden Montag um 9:00): Push an ein oder mehrere Handys und optional als Ansage auf Alexa (Alexa Media Player, z. B. `notify.alexa_media_kitchen` mit `type: announce`). Abgelaufene werden mit *entsorgen* genannt. Seit 4.8 nennt er auch [Gutscheine](containers.md#gutscheine), die bald ablaufen, mit ihrem Wert (Schalter *Include vouchers*; abgelaufene Gutscheine nie). Ist nichts fällig, kommt nichts; von Hand ausgeführt kommt die Nachricht trotzdem, als Test.
@@ -87,6 +97,12 @@ Medikamente und Haushaltsartikel mit Datum (z. B. Sonnencreme) warnen viel früh
 [![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fmedicine_reminder.yaml)
 
 Für eigene Automationen: `larder.get_expiring_medicines` (optional `days`, `include_expired`, `include_vouchers`) liefert `count`, `expired`, `items`, `summary` und `speech`.
+
+### Am Kühlschrank und an den Fächern
+
+Zwei weitere Blueprints (5.3): **Kühlschranktür-Erinnerung** – geht die Kühlschranktür auf (Kontaktsensor) und läuft heute etwas ab oder ist abgelaufen, sagt ein Lautsprecher *Bitte zuerst aufbrauchen: Lachs, Gouda* (optional nur für einen Bereich, höchstens alle paar Stunden). **Sagen, was im Fach liegt** – wird der NFC-Tag oder das QR-Etikett eines [Fachs](scanning.md#fächer) gescannt, sagt ein Lautsprecher, was darin liegt (*Gefrierschrank · Schublade 2: Lachs, Erbsen*); optional nur für bestimmte Fächer.
+
+[![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Ffridge_door.yaml) [![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fcompartment_announce.yaml)
 
 ### Bald leer und Rückrufe
 

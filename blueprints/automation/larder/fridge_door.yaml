@@ -1,0 +1,93 @@
+blueprint:
+  name: Larder – fridge door reminder
+  description: >
+    When the fridge (or freezer) door opens and something expires today or has expired, a speaker
+    says what – at most once in the chosen time. Uses larder.get_expiring; optionally only for one area.
+    Kühlschranktür offen und heute läuft etwas ab (oder ist abgelaufen): eine kurze Ansage.
+  domain: automation
+  source_url: https://github.com/yan14/ha-larder/blob/main/blueprints/automation/larder/fridge_door.yaml
+  input:
+    door:
+      name: Door sensor
+      description: Contact sensor of the fridge or freezer door.
+      selector:
+        entity:
+          filter:
+            - domain: binary_sensor
+    area:
+      name: Only this area (optional)
+      description: Only entries in this area, e.g. the fridge. Empty = everything.
+      default: ""
+      selector:
+        area:
+    voice_action:
+      name: Voice output
+      description: >
+        Notify action(s) that speak, for example notify.alexa_media_kitchen. Several are separated by commas.
+      selector:
+        text:
+    voice_data:
+      name: Voice options
+      description: Extra data for the voice action, e.g. type announce for Alexa Media Player.
+      default: {}
+      selector:
+        object:
+    include_expired:
+      name: Also expired
+      default: true
+      selector:
+        boolean:
+    cooldown:
+      name: At most once every … hours
+      default: 4
+      selector:
+        number:
+          min: 1
+          max: 24
+          mode: box
+
+mode: single
+max_exceeded: silent
+
+variables:
+  area: !input area
+  voice_action: !input voice_action
+  voice_data: !input voice_data
+  cooldown: !input cooldown
+  voice_targets: "{{ (voice_action or '') | string | lower | regex_findall('[a-z0-9_]+[.][a-z0-9_]+') }}"
+  area_name: "{{ area_name(area) if area else '' }}"
+
+triggers:
+  - trigger: state
+    entity_id: !input door
+    to: "on"
+
+conditions:
+  - condition: template
+    value_template: >-
+      {{ this.attributes.last_triggered is none
+         or now() - (this.attributes.last_triggered | as_datetime) > timedelta(hours=cooldown | int(4)) }}
+
+actions:
+  - action: larder.get_expiring
+    data:
+      days: 0
+      include_expired: !input include_expired
+    response_variable: result
+  - variables:
+      items: >-
+        {{ result['items'] | selectattr('area', 'eq', area_name) | list if area_name else result['items'] }}
+      names: "{{ items | map(attribute='content') | reject('eq', '') | list }}"
+  - condition: template
+    value_template: "{{ names | length > 0 }}"
+  - variables:
+      speech: >-
+        {{ result.labels.use_first | default('Please use up first') }}: {{ names[:3] | join(', ') }}.
+  - repeat:
+      for_each: "{{ voice_targets }}"
+      sequence:
+        - action: "{{ repeat.item }}"
+          data:
+            message: "{{ speech }}"
+            data: "{{ voice_data }}"
+          continue_on_error: true

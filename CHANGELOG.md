@@ -3,6 +3,22 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 5.2.0
+
+Notifications you can act on, and Larder in your own Home Assistant dashboards and automations (blocks 34 and 35).
+
+**Notifications**
+
+- **Buttons in the push:** the daily summary can send one push per expiring entry with **Used up · Thrown away · +2 days · On the list**. A tap does it right away, without opening the app (option *One push per entry with buttons*; re-import the blueprint). The buttons are also in the result of `larder.get_expiring` for your own automations.
+- **Buy again by consumption:** **🔁** next to a product in the stock view puts it onto the shopping list as soon as it will not last until the next shopping trip by its consumption – before the minimum stock is reached, once per purchase (event `larder_auto_reorder`).
+- **Weekly review:** a new blueprint sends on Sunday what was eaten and thrown away last week (with its value), what expires next week and optionally a recipe idea (service `larder.get_weekly_review`).
+
+**Larder in Home Assistant**
+
+- **Overview sensors** on the main entry: `sensor.larder_expired`, `sensor.larder_expiring_soon`, `sensor.larder_stock_value`, `sensor.larder_shopping_open` and `sensor.larder_supply_days`, e.g. for a red light at the fridge.
+- **Two new cards:** **Larder: Shopping** (open items per list, button to the shopping mode) and **Larder: Compartment** (what is in an area or compartment, with −1 – e.g. for a fridge tablet).
+- **Two new blueprints:** *fridge door reminder* (door opens and something expires today → announcement) and *say what is in a compartment* (compartment tag scanned → a speaker lists its contents).
+
 ## 5.1.0
 
 Faster entry and a history per product.

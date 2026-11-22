@@ -131,6 +131,9 @@ const TEXT = {
     putAwayNow: (n) => `jetzt ${n}`,
     putAwayDate: "Preis/MHD",
     putAwayPrice: "Preis",
+    autoReorder: "🔁 Nach Verbrauch nachkaufen",
+    autoReorderHint: "Kommt auf die Einkaufsliste, sobald es laut Verbrauch bis zum nächsten Einkauf nicht mehr reicht – vor dem Mindestbestand.",
+    autoAdded: (items) => `Auf die Einkaufsliste: ${items}`,
     putAwayTicked: "✓ abgehakt",
     codeAdded: (place) => `Eine Packung mehr in ${place}. Preis und MHD gleich eintragen:`,
     boughtAdded: (name, place) => `${name} → ${place}`,
@@ -298,6 +301,9 @@ const TEXT = {
     putAwayNow: (n) => `now ${n}`,
     putAwayDate: "Price/date",
     putAwayPrice: "Price",
+    autoReorder: "🔁 Buy again by consumption",
+    autoReorderHint: "Goes onto the shopping list as soon as it will not last until the next shopping trip by its consumption – before the minimum stock.",
+    autoAdded: (items) => `On the shopping list: ${items}`,
     putAwayTicked: "✓ ticked off",
     codeAdded: (place) => `One pack more in ${place}. Add price and date right away:`,
     boughtAdded: (name, place) => `${name} → ${place}`,
@@ -1186,6 +1192,27 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
         suggest.dataset.role = "stock-suggest";
         item.append(suggest);
       }
+      // 5.2 (#128): onto the list by consumption, before the minimum stock is reached
+      const auto = el("label", "check stockauto");
+      const autoBox = el("input");
+      autoBox.type = "checkbox";
+      autoBox.checked = !!p.auto;
+      autoBox.dataset.role = "stock-auto";
+      autoBox.addEventListener("change", async () => {
+        try {
+          const res = await hass.callWS({ type: `${DOMAIN}/auto_reorder`, content: p.name, enabled: autoBox.checked });
+          this._stock = { ...this._stock, products: res.products };
+          if (res.added && res.added.length) this.showNotice(t.autoAdded(res.added.join(", ")));
+          this._sig = "";
+          this._update();
+        } catch {
+          autoBox.checked = !autoBox.checked;
+          this.showNotice(t.stockFailed);
+        }
+      });
+      auto.append(autoBox, el("span", "", t.autoReorder));
+      auto.title = t.autoReorderHint;
+      item.append(auto);
       if (p.price) {
         const parts = [t.priceEach(money(p.price.price, de), p.price.source === "openprices")];
         if (p.value) parts.push(t.valueOf(money(p.value, de)));

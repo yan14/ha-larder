@@ -91,6 +91,22 @@ show_bought: true     # optional
 show_opened: true     # optional
 ```
 
+Since 5.3 two more: **Larder: Shopping** shows the open items per shopping list with a button to the shopping mode, **Larder: Compartment** what is in one area or compartment (expiring first, **−1** for packs) – for example on a tablet at the fridge.
+
+```yaml
+type: custom:larder-shopping-card
+title: Shopping       # optional
+```
+
+```yaml
+type: custom:larder-place-card
+area: freezer         # area ID
+compartment: Drawer 2 # optional
+title: Freezer        # optional
+```
+
+For automations there are also [overview sensors](reference.md#overview-sensors) (expired, expiring soon, stock value, open shopping items, emergency supply).
+
 ### Data care
 
 Once a month, while something is missing, the start page shows **🧹 Data care** (✕ hides it until next month; **More → 🧹 Data care** shows it any time): opened packs without a date, packs without a best-before date, products without a price, entries without an area or compartment, and products used often but without a minimum stock. Tapping an entry opens its card, where you fill it in. With complete data, statistics, *lasts about …*, shopping suggestions and the stock value get more accurate. Opened packs show **🫙 opened 12 Nov** on their tile, so it is clear why the date is shorter than printed.

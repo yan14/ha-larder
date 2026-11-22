@@ -126,6 +126,8 @@ A bag works like a container (scan it, take a portion, **Opened**, **Thawed**, r
 
 **Running low.** When a product with a minimum stock will only last the *days until the next shopping trip* according to the forecast, the start page lists it under **⏳ Running low** – before it drops below the minimum. **🛒 Shopping list** adds it to the list, **✕** hides it for a week. With the setting *Running low: add to the shopping list right away* it goes onto the list at once. For a push notification there is the blueprint [Running low and recalls](kitchen.md#running-low-and-recalls) (event `larder_running_low`).
 
+**Buy again by consumption** (5.2). **🔁 Buy again by consumption** next to a product in the stock view puts it onto its shopping list as soon as it will not last until the next shopping trip according to its consumption – even without a minimum stock, and before one is reached. Once per purchase: as long as it is on the list (or was added within the lead time), it is not added again. The event `larder_auto_reorder` fires for your own notifications.
+
 **From the shopping list back into the stock.** When you tick off an item on your shopping list that Larder put there (minimum stock or an emptied container), the start page asks **🛒 Bought – add to the stock?**. **Add to stock** puts a product that is already in stock straight at its usual place (one tap, since 5.0); only a new product opens the pack dialog with the contents, brand, count and place. **✕** drops the hint.
 
 ### Recall warnings

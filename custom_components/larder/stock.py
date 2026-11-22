@@ -70,6 +70,7 @@ REPLACE_AHEAD = 7  # "replace soon": due within this many days
 
 
 RECENT_MAX = 12
+EVENT_AUTO_REORDER = f"{DOMAIN}_auto_reorder"
 RECENT_PRODUCT_KEYS = ("brand", "package", "ean", "price", "pack_size", "piece", "kcal_100g", "kcal_portion", "nutri_score", "allergens")
 
 
@@ -105,6 +106,8 @@ class Stock:
         self.price_history: dict[str, list[dict[str, Any]]] = {}
         # recently added products (5.1, #125), newest first: {"content", "kind", "product", "area_id", "compartment"}
         self.recent: list[dict[str, Any]] = []
+        # buy again by consumption (5.2, #128): product → {"name", "last": ISO date put on the list}
+        self.auto_reorder: dict[str, dict[str, Any]] = {}
         self._unsub = None
         self._unsub_daily = None
 
@@ -127,6 +130,7 @@ class Stock:
         self.recurring = {k: v for k, v in (data.get("recurring") or {}).items() if isinstance(v, dict) and v.get("name")}
         self.price_history = {k: [p for p in v if isinstance(p, dict)] for k, v in (data.get("price_history") or {}).items() if isinstance(v, list)}
         self.recent = [r for r in data.get("recent") or [] if isinstance(r, dict) and r.get("content")]
+        self.auto_reorder = {str(k): v for k, v in (data.get("auto_reorder") or {}).items() if isinstance(v, dict)}
 
     def _data(self) -> dict[str, Any]:
         return {
@@ -147,7 +151,16 @@ class Stock:
             "recurring": self.recurring,
             "price_history": self.price_history,
             "recent": self.recent,
+            "auto_reorder": self.auto_reorder,
         }
+
+    def set_auto_reorder(self, content: str, enabled: bool) -> None:
+        key = product_key(content)
+        if enabled:
+            self.auto_reorder[key] = {"name": content.strip(), **{k: v for k, v in (self.auto_reorder.get(key) or {}).items() if k == "last"}}
+        else:
+            self.auto_reorder.pop(key, None)
+        self._save()
 
     def remember_recent(
         self, content: str, kind: str, product: dict[str, Any] | None, area_id: str | None, compartment: str | None
@@ -323,6 +336,8 @@ class Stock:
         from .shopping_mode import async_check_recurring  # noqa: PLC0415 - avoids an import cycle
 
         self.hass.async_create_task(async_check_recurring(self.hass), f"{DOMAIN}_recurring")
+        if self.auto_reorder:
+            self.hass.async_create_task(async_check_auto_reorder(self.hass), f"{DOMAIN}_auto_reorder")
         de = (self.hass.config.language or "en").lower().startswith("de")
         changed = False
         for item in self.replace_due(0):
@@ -571,6 +586,8 @@ def stock_overview(hass: HomeAssistant, minimums: dict[str, dict[str, Any]], sto
         )
     for key, info in minimums.items():
         products.setdefault(key, {"key": key, "name": info.get("name") or key, "count": 0, "places": [], "brand": None, "package": None})
+    for key, info in (stock.auto_reorder if stock is not None else {}).items():
+        products.setdefault(key, {"key": key, "name": info.get("name") or key, "count": 0, "places": [], "brand": None, "package": None})
     rows = []
     for product in products.values():
         known = (minimums.get(product["key"]) or {}).get("product") or {}
@@ -579,6 +596,8 @@ def stock_overview(hass: HomeAssistant, minimums: dict[str, dict[str, Any]], sto
         product["piece"] = product.get("piece") or known.get("piece")
         product["packs"] = round(product["count"] / product["pack_size"], 1)
         product["min"] = int((minimums.get(product["key"]) or {}).get("min") or 0)
+        if stock is not None:
+            product["auto"] = product["key"] in stock.auto_reorder
         if stock is not None and stock.lists.get(product["key"]):
             product["list"] = stock.lists[product["key"]]  # own shopping list of the product
         product["low"] = product["min"] > 0 and product["count"] < product["min"]
@@ -728,6 +747,37 @@ async def async_shop_product(hass: HomeAssistant, content: str) -> tuple[bool, s
             "source": "minimum",
         }, todo)
     return added, text
+
+
+async def async_check_auto_reorder(hass: HomeAssistant) -> list[str]:
+    """Buy again by consumption (5.2, #128): products switched on that run out within the lead time (forecast)
+    go onto their shopping list before the minimum stock is reached – once until they were bought."""
+    stock = await async_get_stock(hass)
+    lead = int(getattr(hass.data.get(DOMAIN, {}).get("estimator"), "stock_lead_days", 7) or 7)
+    today = dt_util.now().date()
+    on_list = {product_key(info.get("content")) for info in stock.tracked.values()}
+    added: list[str] = []
+    for product in stock_overview(hass, stock.minimums, stock):
+        info = stock.auto_reorder.get(product["key"])
+        usage = product.get("usage")
+        if info is None or not usage or usage.get("lasts_days") is None or usage["lasts_days"] > lead:
+            continue
+        if product["key"] in on_list or product["low"]:
+            continue  # already on the list, or the minimum stock takes care of it
+        last = info.get("last")
+        if last and (today - date.fromisoformat(last)).days < lead:
+            continue
+        try:
+            ok, text = await async_shop_product(hass, product["name"])
+        except HomeAssistantError:
+            continue
+        info["last"] = today.isoformat()
+        if ok:
+            added.append(text)
+            hass.bus.async_fire(EVENT_AUTO_REORDER, {"name": product["name"], "item": text, "lasts_days": usage["lasts_days"]})
+    if added:
+        stock.save_now()
+    return added
 
 
 async def async_check_stock(hass: HomeAssistant, content: str | None, exclude: set[str] | None = None) -> bool:
@@ -1225,6 +1275,22 @@ async def ws_stock_min(hass: HomeAssistant, connection: websocket_api.ActiveConn
 
 @websocket_api.websocket_command(
     {
+        vol.Required("type"): f"{DOMAIN}/auto_reorder",
+        vol.Required("content"): vol.All(str, vol.Length(min=1, max=255)),
+        vol.Required("enabled"): bool,
+    }
+)
+@websocket_api.async_response
+async def ws_auto_reorder(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Switch "buy again by consumption" for a product on or off (5.2)."""
+    stock = await async_get_stock(hass)
+    stock.set_auto_reorder(msg["content"], msg["enabled"])
+    added = await async_check_auto_reorder(hass) if msg["enabled"] else []
+    connection.send_result(msg["id"], {"products": stock_overview(hass, stock.minimums, stock), "added": added})
+
+
+@websocket_api.websocket_command(
+    {
         vol.Required("type"): f"{DOMAIN}/stock_code",
         vol.Optional("code", default=""): str,
         vol.Optional("content"): vol.All(str, vol.Length(min=1, max=255)),
@@ -1549,6 +1615,7 @@ def async_setup_stock_websocket(hass: HomeAssistant) -> None:
         return
     websocket_api.async_register_command(hass, ws_stock)
     websocket_api.async_register_command(hass, ws_stock_min)
+    websocket_api.async_register_command(hass, ws_auto_reorder)
     websocket_api.async_register_command(hass, ws_pack_move)
     websocket_api.async_register_command(hass, ws_stock_code)
     websocket_api.async_register_command(hass, ws_stock_code_link)

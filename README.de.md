@@ -31,6 +31,8 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 <img src="docs/images/dashboard-cards-de.png" width="250" alt="Karten mit allen Details">
 </p>
 
+> **Neu in 5.2:** **Knöpfe in der Push** (verbraucht, weggeworfen, +2 Tage, auf die Liste), **nach Verbrauch nachkaufen**, ein **Wochenrückblick**, [Übersichts-Sensoren](docs/de/reference.md#übersichts-sensoren), zwei neue Karten und Blueprints für Kühlschranktür und Fächer.
+>
 > **Neu in 5.1:** ein [Verlauf pro Produkt](docs/de/dashboard.md#produktverlauf) über alle Dosen und Packungen, **📷 MHD vom Foto**, **＋1** für mehrere Packungen auf einmal und **zuletzt verwendete** Produkte unter ＋.
 >
 > **Neu in 5.0:** Larder ist im **HACS-Standardkatalog**. Eine neue [Leiste](docs/de/dashboard.md#dashboard-larder) mit **Einkaufen** und **Mehr**, Schnellaktionen auf der Startseite, **ein 📷 Scan-Knopf** und eine **🔍 Suche** auf jeder Seite, eine schlankere Karte mit großen Knöpfen und überall dieselben Regeln fürs Einräumen und Entnehmen.

@@ -7,6 +7,7 @@ so the dashboard is there right away; installations from before get it automatic
 from __future__ import annotations
 
 from homeassistant.config_entries import SOURCE_IMPORT
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import area_registry as ar, device_registry as dr
 
@@ -25,6 +26,7 @@ from .household import async_setup_household_websocket
 from .labels import async_setup_labels
 from .learning import async_setup_learning_websocket
 from .nfc import async_get_nfc
+from .notify_actions import async_setup_notify_actions
 from .panel import async_setup_panel, async_teardown_panel
 from .places import async_get_places, async_setup_place_websocket
 from .plan import async_get_plan, async_setup_plan_websocket
@@ -83,6 +85,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_shopping_mode_websocket(hass)
     async_setup_product_history_websocket(hass)
     async_setup_voucher_websocket(hass)
+    async_setup_notify_actions(hass)
     await async_get_sizes(hass)
     async_setup_learning_websocket(hass)
     (await async_get_stock(hass)).async_start()
@@ -95,6 +98,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     await async_setup_webhook(hass)
     await async_setup_panel(hass)
     if is_main(entry):
+        # 5.3 (#131): overview sensors for automations
+        await hass.config_entries.async_forward_entry_setups(entry, [Platform.SENSOR])
         return True
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     _async_apply_initial_area(hass, entry)
@@ -135,7 +140,7 @@ def _async_apply_initial_area(hass: HomeAssistant, entry: LarderConfigEntry) -> 
 
 async def async_unload_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bool:
     """Unload a container; with the last one the webhook and the panel are removed."""
-    unloaded = True if is_main(entry) else await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
+    unloaded = await hass.config_entries.async_unload_platforms(entry, [Platform.SENSOR] if is_main(entry) else PLATFORMS)
     if unloaded and not any(
         other.entry_id != entry.entry_id
         for other in hass.config_entries.async_loaded_entries(DOMAIN)

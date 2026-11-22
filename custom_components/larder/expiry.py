@@ -223,8 +223,8 @@ _SPEECH = {
 }
 
 LABELS = {
-    "de": {"recipes": "Rezepte", "dashboard": "Dashboard"},
-    "en": {"recipes": "Recipes", "dashboard": "Dashboard"},
+    "de": {"recipes": "Rezepte", "dashboard": "Dashboard", "more": "… und {n} weitere im Dashboard", "use_first": "Bitte zuerst aufbrauchen"},
+    "en": {"recipes": "Recipes", "dashboard": "Dashboard", "more": "… and {n} more in the dashboard", "use_first": "Please use up first"},
 }
 
 
@@ -373,10 +373,16 @@ def async_setup_services(hass: HomeAssistant) -> None:
         return
 
     async def handle(call: ServiceCall) -> dict[str, Any]:
+        from .notify_actions import item_actions  # noqa: PLC0415
         from .plan import async_get_plan, thaw_texts  # noqa: PLC0415 - plan does not import expiry
 
         language = hass.config.language
         items = collect_expiring(hass, call.data.get("days", soon_days(hass)), call.data["include_expired"])
+        # 5.2 (#127): buttons per entry for the push (Used up · Thrown away · +2 days · On the list)
+        items = [
+            {**item, "actions": item_actions(item, language), "line": build_summary([item], language).split("\n", 1)[1].removeprefix("• ")}
+            for item in items
+        ]
         thaw = (await async_get_plan(hass)).thaw_items()
         thaw_summary, thaw_speech, thaw_button = thaw_texts(thaw, language)
         summary = build_summary(items, language)

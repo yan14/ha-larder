@@ -1771,6 +1771,11 @@ test("stock: view from the menu, change minimum stock, a place opens the pack", 
       products = products.map((p) => (p.name === msg.content ? { ...p, min: msg.min, low: p.count < msg.min } : p));
       return { products };
     }
+    if (msg.type === `${D}/auto_reorder`) {
+      hass.wsCalls.push(msg);
+      products = products.map((p) => (p.name === msg.content ? { ...p, auto: msg.enabled } : p));
+      return { products, added: ["Senf"] };
+    }
     return base(msg);
   };
   const el = mount(hass);
@@ -1793,6 +1798,15 @@ test("stock: view from the menu, change minimum stock, a place opens the pack", 
   await flush();
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/stock_min`), { type: `${D}/stock_min`, content: "Ketchup", min: 3 });
   assert.equal($$(el, ".stockitem")[0].querySelector(".badge"), null);
+  // 5.2: buy again by consumption
+  const auto = $$(el, ".stockitem")[1].querySelector('[data-role="stock-auto"]');
+  assert.equal(auto.checked, false);
+  auto.checked = true;
+  auto.dispatchEvent(new dom.window.Event("change"));
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/auto_reorder`), { type: `${D}/auto_reorder`, content: "Senf", enabled: true });
+  assert.equal($$(el, ".stockitem")[1].querySelector('[data-role="stock-auto"]').checked, true);
+  assert.match($(el, ".notice").textContent, /Auf die Einkaufsliste: Senf/);
   $$(el, ".stockitem")[0].querySelector("button.place").click();
   assert.equal(el._classic.getAttribute("only"), "d1");
 });

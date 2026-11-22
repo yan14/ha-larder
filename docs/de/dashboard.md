@@ -91,6 +91,22 @@ show_bought: true     # optional
 show_opened: true     # optional
 ```
 
+Seit 5.3 gibt es zwei weitere: **Larder: Einkaufen** zeigt die offenen Einträge je Einkaufsliste mit einem Knopf zum Einkaufsmodus, **Larder: Fach** was in einem Bereich oder Fach liegt (Ablaufendes zuerst, **−1** für Packungen) – z. B. auf einem Tablet am Kühlschrank.
+
+```yaml
+type: custom:larder-shopping-card
+title: Einkaufen      # optional
+```
+
+```yaml
+type: custom:larder-place-card
+area: gefrierschrank  # Bereichs-ID
+compartment: Schublade 2 # optional
+title: Gefrierschrank # optional
+```
+
+Für Automationen gibt es außerdem [Übersichts-Sensoren](reference.md#übersichts-sensoren) (abgelaufen, läuft bald ab, Bestandswert, offene Einkaufseinträge, Notvorrat).
+
 ### Datenpflege
 
 Einmal im Monat, solange etwas fehlt, zeigt die Startseite **🧹 Datenpflege** (✕ blendet es bis zum nächsten Monat aus; **Mehr → 🧹 Datenpflege** zeigt es jederzeit): angebrochene Packungen ohne Datum, Packungen ohne MHD, Produkte ohne Preis, Einträge ohne Bereich oder Fach und oft verbrauchte Produkte ohne Mindestbestand. Antippen öffnet die Karte, dort trägst du es nach. Mit vollständigen Daten werden Statistik, *reicht noch …*, Einkaufsvorschläge und der Bestandswert genauer. Angebrochene Packungen zeigen auf der Kachel **🫙 offen seit 12.11.**, damit klar ist, warum das Datum kürzer ist als aufgedruckt.

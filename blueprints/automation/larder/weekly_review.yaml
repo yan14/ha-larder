@@ -1,0 +1,125 @@
+blueprint:
+  name: Larder – weekly review
+  description: >
+    Once a week (Sunday by default): what was eaten and thrown away in the last 7 days (with the value
+    thrown away), what expires in the next 7 days and, optionally, a recipe idea for it. As a push
+    notification and optionally read out loud. Nothing is sent for a week without anything to say.
+    Wochenrückblick: einmal pro Woche, als Push und optional als Sprachausgabe, mit Rezeptidee.
+  domain: automation
+  source_url: https://github.com/yan14/ha-larder/blob/main/blueprints/automation/larder/weekly_review.yaml
+  input:
+    notify_action:
+      name: Push notification
+      description: >
+        Notify action(s) for the push message, for example notify.mobile_app_your_iphone or a
+        notify group. Several are separated by commas. Leave empty for voice only.
+      default: ""
+      selector:
+        text:
+    voice_action:
+      name: Voice output (optional)
+      description: >
+        Notify action(s) that read the review out loud, for example notify.alexa_media_kitchen.
+        Several are separated by commas.
+      default: ""
+      selector:
+        text:
+    voice_data:
+      name: Voice options
+      description: Extra data for the voice action, e.g. type announce for Alexa Media Player.
+      default: {}
+      selector:
+        object:
+    weekday:
+      name: Day of the week
+      default: sun
+      selector:
+        select:
+          options:
+            - label: Monday
+              value: mon
+            - label: Tuesday
+              value: tue
+            - label: Wednesday
+              value: wed
+            - label: Thursday
+              value: thu
+            - label: Friday
+              value: fri
+            - label: Saturday
+              value: sat
+            - label: Sunday
+              value: sun
+    send_time:
+      name: Time
+      default: "18:00:00"
+      selector:
+        time:
+    recipes:
+      name: Add a recipe idea
+      description: >
+        Asks the AI for a recipe that uses up what expires next week (needs the "AI Task" integration).
+        If the AI fails, the review is sent without it.
+      default: false
+      selector:
+        boolean:
+
+mode: single
+max_exceeded: silent
+
+variables:
+  notify_action: !input notify_action
+  voice_action: !input voice_action
+  voice_data: !input voice_data
+  recipes: !input recipes
+  push_targets: "{{ (notify_action or '') | string | lower | regex_findall('[a-z0-9_]+[.][a-z0-9_]+') }}"
+  voice_targets: "{{ (voice_action or '') | string | lower | regex_findall('[a-z0-9_]+[.][a-z0-9_]+') }}"
+
+triggers:
+  - trigger: time
+    at: !input send_time
+
+conditions:
+  - condition: time
+    weekday: !input weekday
+
+actions:
+  - action: larder.get_weekly_review
+    response_variable: review
+  - condition: template
+    value_template: "{{ review.eaten + review.thrown + review.expiring_count > 0 }}"
+  - if:
+      - condition: template
+        value_template: "{{ recipes and review.expiring_count > 0 }}"
+    then:
+      - action: larder.suggest_recipes
+        data:
+          days: 7
+        response_variable: ideas
+        continue_on_error: true
+  - variables:
+      message: |-
+        {{ review.summary }}{% if ideas is defined and ideas.summary %}
+
+        {{ ideas.summary }}{% endif %}
+      speech: >-
+        {{ review.speech }}{% if ideas is defined and ideas.speech %} {{ ideas.speech }}{% endif %}
+  - repeat:
+      for_each: "{{ push_targets }}"
+      sequence:
+        - action: "{{ repeat.item }}"
+          data:
+            title: "{{ review.title }}"
+            message: "{{ message }}"
+            data:
+              url: /larder?view=stats
+              clickAction: /larder?view=stats
+          continue_on_error: true
+  - repeat:
+      for_each: "{{ voice_targets }}"
+      sequence:
+        - action: "{{ repeat.item }}"
+          data:
+            message: "{{ speech }}"
+            data: "{{ voice_data }}"
+          continue_on_error: true

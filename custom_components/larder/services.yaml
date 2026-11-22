@@ -138,6 +138,7 @@ get_statistics:
           max: 3650
           mode: box
 
+get_weekly_review:
 get_monthly_report:
   fields:
     month:

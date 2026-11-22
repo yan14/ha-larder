@@ -18,7 +18,7 @@ from homeassistant.helpers.event import (
 )
 
 from .const import DOMAIN, SIGNAL_SETTINGS_CHANGED
-from .entity import LarderConfigEntry, LarderEntity
+from .entity import LarderConfigEntry, LarderEntity, is_main
 from .expiry import days_left, soon_days, status_for
 
 
@@ -27,6 +27,12 @@ async def async_setup_entry(
     entry: LarderConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
+    if is_main(entry):
+        # 5.3 (#131): overview sensors for automations, on the main entry "Larder"
+        from .summary_sensors import summary_sensors  # noqa: PLC0415
+
+        async_add_entities(summary_sensors(hass, entry))
+        return
     async_add_entities([LarderDaysLeftSensor(entry)])
 
 

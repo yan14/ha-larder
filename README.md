@@ -31,6 +31,8 @@ Home Assistant integration for reusable food storage containers: note what is in
 <img src="docs/images/dashboard-cards-en.png" width="250" alt="Cards with all details">
 </p>
 
+> **New in 5.2:** **buttons in the push** (used up, thrown away, +2 days, on the list), **buy again by consumption**, a **weekly review**, [overview sensors](docs/en/reference.md#overview-sensors), two new cards and blueprints for the fridge door and compartments.
+>
 > **New in 5.1:** a [history per product](docs/en/dashboard.md#product-history) across all containers and packs, **📷 best-before date from a photo**, **＋1** for several packs at once and **recently used** products in ＋.
 >
 > **New in 5.0:** Larder is in the **HACS default catalogue**. A new [bar](docs/en/dashboard.md#dashboard-larder) with **Shopping** and **More**, quick actions on the start page, **one 📷 scan button** and a **🔍 search** on every page, a slimmer card with big buttons, and the same rules for putting things away and taking them out everywhere.

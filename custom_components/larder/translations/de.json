@@ -421,6 +421,10 @@
           "description": "Monat als JJJJ-MM. Leer: der Vormonat."
         }
       }
+    },
+    "get_weekly_review": {
+      "name": "Wochenrückblick abrufen",
+      "description": "Liefert die letzten 7 Tage (gegessen, weggeworfen und dessen Wert) und was in den nächsten 7 Tagen abläuft, mit fertigem Text und Sprachausgabe."
     }
   },
   "selector": {

@@ -14,7 +14,7 @@ for (const key of ["window", "document", "HTMLElement", "customElements", "Event
   }
 }
 
-const { expiringRows, LarderCard } = await import("../../custom_components/larder/frontend/larder-card.js");
+const { expiringRows, LarderCard, LarderShoppingCard, LarderPlaceCard, placeRows } = await import("../../custom_components/larder/frontend/larder-card.js");
 
 const iso = (offset) => {
   const d = new Date();
@@ -122,4 +122,55 @@ test("stock card: below minimum stock with 🛒, bought and opened", async () =>
   card.shadowRoot.querySelectorAll("[data-go]")[2].click();
   assert.equal(window.location.pathname + window.location.search, "/larder?open=p1");
   assert.ok(window.customCards.some((c) => c.type === "larder-stock-card"));
+});
+
+// ---------- 5.3: shopping and compartment cards ----------
+
+test("shopping card: open items per list and the button to the shopping mode", async () => {
+  const hass = makeHass([]);
+  hass.states["todo.einkauf"] = { entity_id: "todo.einkauf", state: "3", attributes: { friendly_name: "Einkauf" } };
+  hass.states["todo.drogerie"] = { entity_id: "todo.drogerie", state: "0", attributes: {} };
+  hass.callWS = async () => ({ lists: ["todo.einkauf", "todo.drogerie"] });
+  const card = new LarderShoppingCard();
+  card.setConfig({});
+  card.hass = hass;
+  await new Promise((r) => setTimeout(r, 0));
+  const root = card.shadowRoot;
+  assert.equal(root.querySelector('[data-role="shop-count"]').textContent, "3");
+  assert.match(root.textContent, /Einkauf3 Einträge offen/);
+  root.querySelector('[data-role="shop-go"]').click();
+  assert.equal(window.location.pathname + window.location.search, "/larder?view=shopping");
+  assert.ok(window.customCards.some((c) => c.type === "larder-shopping-card"));
+});
+
+test("compartment card: entries of an area and compartment, −1 for packs", async () => {
+  const hass = makeHass([
+    { id: "p", name: "Packung 1", area: "keller", content: "Senf", mhd: iso(5) },
+    { id: "q", name: "Dose 1", area: "keller", content: "Chili", mhd: iso(-1), category: "dish" },
+    { id: "r", name: "Dose 2", content: "Reis" },
+  ]);
+  for (const [id, comp, kind, count] of [["p", "Regal", "pack", "3"], ["q", "Truhe", "container", "1"]]) {
+    hass.entities[`text.${id}_fach`] = { entity_id: `text.${id}_fach`, device_id: id, platform: "larder", translation_key: "compartment" };
+    hass.states[`text.${id}_fach`] = { state: comp };
+    hass.entities[`number.${id}_anzahl`] = { entity_id: `number.${id}_anzahl`, device_id: id, platform: "larder" };
+    hass.states[`number.${id}_anzahl`] = { state: count };
+    hass.states[`text.${id}_inhalt`].attributes.kind = kind;
+  }
+  assert.deepEqual(placeRows(hass, { area: "keller" }).map((r) => r.id), ["q", "p"]);
+  assert.deepEqual(placeRows(hass, { area: "keller", compartment: "regal" }).map((r) => [r.id, r.count]), [["p", 3]]);
+  const calls = [];
+  hass.callWS = async (msg) => calls.push(msg);
+  const card = new LarderPlaceCard();
+  card.setConfig({ area: "keller", compartment: "Regal" });
+  card.hass = hass;
+  const root = card.shadowRoot;
+  assert.equal(root.querySelector("h2").textContent, "Keller · Regal");
+  assert.match(root.querySelector(".row").textContent, /Senf · 3/);
+  root.querySelector("[data-take]").click();
+  await new Promise((r) => setTimeout(r, 0));
+  assert.deepEqual(calls, [{ type: "larder/pack_take", device_id: "p", outcome: "eaten" }]);
+  const empty = new LarderPlaceCard();
+  empty.setConfig({});
+  empty.hass = hass;
+  assert.match(empty.shadowRoot.textContent, /Bereich/);
 });

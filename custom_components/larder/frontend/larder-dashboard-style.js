@@ -345,4 +345,5 @@ export const STYLE = `
   ul.historylist li { display: flex; flex-direction: column; padding: 8px 0; border-bottom: 1px solid var(--divider-color); }
   ul.historylist li .sub { font-size: 12px; color: var(--secondary-text-color); }
   .datephoto { display: inline-flex; }
+  .stockauto { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--secondary-text-color); margin: 4px 0; }
 `;

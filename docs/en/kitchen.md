@@ -51,6 +51,7 @@ The included blueprint sends a **daily summary** of what expires soon. Nothing i
 |---|---|
 | **Push notification** | One or more notify actions, separated by commas (`notify.mobile_app_your_iphone, notify.mobile_app_partner`), or a notify group. Empty for voice only. |
 | **Buttons in the push** | **Recipes** opens the recipe page of the dashboard, **Dashboard** opens Larder. Tapping the notification itself opens the dashboard as well. |
+| **One push per entry with buttons** (5.2) | Instead of one summary, a push for each expiring entry (at most the number you choose, the rest is counted in a last push) with the buttons **Used up · Thrown away · +2 days · On the list**. Tapping one does it right away, without opening the app: a pack is one less, a container is emptied (with the answer in the history), the date moves two days, or the product goes onto its shopping list. Android shows the first three buttons. |
 | **Voice output** | Notify actions that read the summary out loud, for example `notify.alexa_media_kitchen` (Alexa Media Player) or a group of speakers. The spoken text is made for listening: "Salmon expires today. Gouda expires tomorrow. Pizza in Box 3 has expired and should be emptied." (at most six containers, the rest is counted). With recipe ideas it adds "Idea: …". |
 | **Voice options** | Extra data for the voice action. Alexa Media Player needs the type, for example `type: announce` (with chime) or `type: tts`. |
 | **Speak only when someone is home** | Persons, groups or zones; the voice output is skipped when nobody is home. The push is always sent. |
@@ -69,8 +70,11 @@ data:
 response_variable: result
 # result.count, result.expired, result.summary (text with bullets for a push),
 # result.speech (sentences to read out), result.labels (button titles),
-# result.items (name, content, quantity, unit, area, best_before, days_left, status)
+# result.items (name, content, quantity, unit, area, best_before, days_left, status,
+#   line: the text of one entry, actions: its buttons for a push)
 ```
+
+The buttons work in your own automations too: put `result.items[i].actions` into `data.actions` of a push to the Home Assistant app. Larder listens for the event `mobile_app_notification_action` with the actions `LARDER_EATEN_<id>`, `LARDER_THROWN_<id>`, `LARDER_PLUS2_<id>` and `LARDER_SHOP_<id>` and fires `larder_notification_action_done` afterwards.
 
 `larder.suggest_recipes` also returns `speech` ("Idea: …"). For your own dashboards there is the sensor **Days until best before** on every container.
 
@@ -80,6 +84,12 @@ A second blueprint sends a **monthly report** for the previous month on the day 
 
 [![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fmonthly_report.yaml)
 
+### Weekly review
+
+Since 5.2 a blueprint sends a **weekly review** on the day and time you choose (Sunday 18:00 by default): eaten and thrown away in the last 7 days, about how much the thrown-away food was worth, what expires in the next 7 days and, optionally, a recipe idea for it (AI Task). As a push and optionally read out loud. The service `larder.get_weekly_review` returns the same (`eaten`, `thrown`, `thrown_value`, `thrown_items`, `expiring`, `title`, `summary`, `speech`).
+
+[![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fweekly_review.yaml)
+
 ### Medicines expiring
 
 Medicines and household items with a date (e.g. sunscreen) warn much earlier than food (60 days by default) and are therefore not part of the daily summary. A blueprint of their own reminds you on the weekdays you choose (e.g. every Monday at 9:00): push to one or more phones and, optionally, read out on Alexa (Alexa Media Player, e.g. `notify.alexa_media_kitchen` with `type: announce`). Expired ones are named with *dispose of it*. Since 4.8 it also names [vouchers](containers.md#vouchers) that expire soon, with their value (switch *Include vouchers*; expired vouchers are never named). Nothing is sent when nothing is due; running it by hand sends it anyway, as a test.
@@ -87,6 +97,12 @@ Medicines and household items with a date (e.g. sunscreen) warn much earlier tha
 [![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fmedicine_reminder.yaml)
 
 For your own automations: `larder.get_expiring_medicines` (optional `days`, `include_expired`, `include_vouchers`) returns `count`, `expired`, `items`, `summary` and `speech`.
+
+### At the fridge and the compartments
+
+Two more blueprints (5.3): **fridge door reminder** – when the fridge door opens (a contact sensor) and something expires today or has expired, a speaker says *Please use up first: salmon, gouda* (optionally only for one area, at most once every few hours). **Say what is in a compartment** – when the NFC tag or QR label of a [compartment](scanning.md#compartments) is scanned, a speaker says what is in it (*Freezer · Drawer 2: salmon, peas*); optionally only for some compartments.
+
+[![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Ffridge_door.yaml) [![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fcompartment_announce.yaml)
 
 ### Running low and recalls
 

@@ -1,0 +1,59 @@
+blueprint:
+  name: Larder – say what is in a compartment
+  description: >
+    When the NFC tag or QR label of a compartment is scanned (event larder_compartment_scanned), a
+    speaker says what is in it, e.g. at the freezer: "Freezer · Drawer 2: salmon, peas, bread rolls".
+    Optionally only for some compartments. The phone still opens the compartment view as usual.
+    Beim Scannen eines Fach-Tags sagt ein Lautsprecher, was darin liegt.
+  domain: automation
+  source_url: https://github.com/yan14/ha-larder/blob/main/blueprints/automation/larder/compartment_announce.yaml
+  input:
+    voice_action:
+      name: Voice output
+      description: Notify action(s) that speak, e.g. notify.alexa_media_kitchen. Several are separated by commas.
+      selector:
+        text:
+    voice_data:
+      name: Voice options
+      description: Extra data for the voice action, e.g. type announce for Alexa Media Player.
+      default: {}
+      selector:
+        object:
+    only:
+      name: Only these compartments (optional)
+      description: Names as Larder shows them, e.g. "Freezer · Drawer 2", separated by commas. Empty = all.
+      default: ""
+      selector:
+        text:
+
+mode: queued
+max_exceeded: silent
+
+variables:
+  voice_action: !input voice_action
+  voice_data: !input voice_data
+  only: !input only
+  voice_targets: "{{ (voice_action or '') | string | lower | regex_findall('[a-z0-9_]+[.][a-z0-9_]+') }}"
+  wanted: "{{ ((only or '') | string | lower).split(',') | map('trim') | reject('eq', '') | list }}"
+
+triggers:
+  - trigger: event
+    event_type: larder_compartment_scanned
+
+conditions:
+  - condition: template
+    value_template: "{{ wanted | length == 0 or (trigger.event.data.name | lower) in wanted }}"
+
+actions:
+  - variables:
+      items: "{{ trigger.event.data['items'] | default([]) }}"
+      speech: >-
+        {{ trigger.event.data.name }}: {{ items[:6] | join(', ') if items else '–' }}{{ ' …' if items | length > 6 else '' }}
+  - repeat:
+      for_each: "{{ voice_targets }}"
+      sequence:
+        - action: "{{ repeat.item }}"
+          data:
+            message: "{{ speech }}"
+            data: "{{ voice_data }}"
+          continue_on_error: true
