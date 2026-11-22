@@ -48,7 +48,9 @@ To print many labels at once: **More → 🖨 Print labels** in the dashboard (a
 
 <p align="center"><img src="../images/add-dialog-nfc-en.png" width="560" alt="Add container: scan NFC tag"></p>
 
-Instead of printing a QR code you can stick an NFC tag on the container. This uses Home Assistant's own **tags**: every scan fires a `tag_scanned` event, and the integration remembers which tag belongs to which container. Other tags in your home are ignored.
+Instead of printing a QR code you can stick an NFC tag on the container. This uses Home Assistant's own **tags**: every scan fires a `tag_scanned` event, and the integration remembers which tag belongs to which container. Tags with a name in Settings → Tags (used for something else) are ignored.
+
+**New tag? Just scan it** (5.3). A tag Larder does not know yet asks **📡 New NFC tag – what is it for?**: a **compartment** (area and compartment, with the compartments in use as suggestions), a **container** (administrators) or **Ignore** (never ask again). With the dashboard open the question appears there, otherwise the scanning phone gets a notification that opens it (setting *NFC: notify the phone*). The event `larder_unknown_tag` (`tag_id`, `scanned_by`) fires as well.
 
 **Quickest way (in the Home Assistant app):** open the dashboard, press **＋** on the **Larder** page **→ Write a new NFC tag**, enter a name and press **Add**. Larder creates the container, creates a new tag in Home Assistant, links the two, and the app opens its tag writer: hold the phone to an empty NFC tag, done. The option only appears in the Companion app on a phone that can write NFC tags (not in a desktop browser).
 
@@ -65,7 +67,7 @@ For your own automations a linked scan fires the event `larder_dose_scanned` (`c
 
 A **compartment** (an area with a compartment, e.g. *Cellar · top shelf*, or a whole area) can get its own NFC tag or QR label. Scanning it opens the compartment: everything that is there, the oldest best-before date first, with **−1** for packs and **Open** for containers and bags, plus **📋 Stocktake** for exactly this compartment.
 
-- **Set up:** in the [stocktake](containers.md#stocktake) choose the area and compartment and press **🏷 Compartment tag**. There **📡 NFC tag** links a tag that is already written (hold the phone to it) or **✍ Write sticker** links right away and lets the app write a blank sticker; **🖨 Label** prints a QR label for the compartment. Everyone in the household can do this.
+- **Set up:** the easiest way is to scan a new tag at the compartment (see *New tag? Just scan it* above). Otherwise open the compartment – **More → 🏷 Compartments & tags** lists every compartment with its tag status, **🏷** next to the compartment on a card or next to each heading of the Larder page sorted by *area and compartment* opens it directly. At the top of the compartment view **📡 NFC tag** links a tag that is already written (hold the phone to it) or **✍ Write sticker** links right away and lets the app write a blank sticker; **🖨 Label** prints a QR label for the compartment; in *Compartments & tags* you can tick several compartments and print their labels at once. Everyone in the household can do this.
 - **Scan:** with the dashboard open it shows the compartment right away; otherwise the scanning phone gets a notification that opens it (setting *NFC: notify the phone*). A QR label is scanned with **📷** in the dashboard or the phone camera.
 - The event `larder_compartment_scanned` (`area_id`, `compartment`, `name`, `items`, `source`) is for your own automations.
 - The tag belongs to the compartment name: if you rename the compartment of the entries, link the tag again.

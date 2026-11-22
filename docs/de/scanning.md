@@ -48,7 +48,9 @@ Viele Etiketten auf einmal drucken: im Dashboard **Mehr → 🖨 Etiketten druck
 
 <p align="center"><img src="../images/add-dialog-nfc-de.png" width="560" alt="Dose hinzufügen: NFC-Tag scannen"></p>
 
-Statt einen QR-Code zu drucken, kannst du einen NFC-Tag auf die Dose kleben. Dafür werden die **Tags** von Home Assistant genutzt: Jeder Scan löst ein `tag_scanned`-Ereignis aus, und die Integration merkt sich, welcher Tag zu welcher Dose gehört. Andere Tags im Haus werden ignoriert.
+Statt einen QR-Code zu drucken, kannst du einen NFC-Tag auf die Dose kleben. Dafür werden die **Tags** von Home Assistant genutzt: Jeder Scan löst ein `tag_scanned`-Ereignis aus, und die Integration merkt sich, welcher Tag zu welcher Dose gehört. Tags mit einem Namen unter Einstellungen → Tags (für etwas anderes genutzt) werden ignoriert.
+
+**Neuer Tag? Einfach scannen** (5.3). Ein Tag, den Larder noch nicht kennt, fragt **📡 Neuer NFC-Tag – wofür ist er?**: für ein **Fach** (Bereich und Fach, mit den benutzten Fächern als Vorschlag), für eine **Dose** (Administratoren) oder **Ignorieren** (nie wieder fragen). Ist das Dashboard offen, erscheint die Frage dort, sonst bekommt das scannende Handy eine Benachrichtigung, die sie öffnet (Einstellung *NFC: Handy benachrichtigen*). Dazu wird das Ereignis `larder_unknown_tag` (`tag_id`, `scanned_by`) ausgelöst.
 
 **Der schnellste Weg (in der Home-Assistant-App):** Dashboard öffnen, **＋** auf der Seite **Vorrat** **→ Neuen NFC-Tag beschreiben** wählen, einen Namen eingeben und **Hinzufügen** drücken. Larder legt die Dose an, erstellt einen neuen Tag in Home Assistant und verknüpft beides. Danach öffnet die App das Beschreiben: Handy an einen leeren NFC-Tag halten, fertig. Die Option erscheint nur in der Companion-App auf einem Handy, das NFC-Tags beschreiben kann (nicht im Browser am Rechner).
 
@@ -65,7 +67,7 @@ Für eigene Automationen löst ein verknüpfter Scan das Ereignis `larder_dose_s
 
 Ein **Fach** (Bereich mit Fach, z. B. *Keller · Regal oben*, oder ein ganzer Bereich) kann einen eigenen NFC-Tag oder ein QR-Etikett bekommen. Scannen öffnet das Fach: alles, was dort liegt, das älteste MHD zuerst, mit **−1** bei Packungen und **Öffnen** bei Dosen und Beuteln, dazu **📋 Inventur** genau für dieses Fach.
 
-- **Einrichten:** In der [Inventur](containers.md#inventur) Bereich und Fach wählen und **🏷 Fach-Tag** drücken. Dort verknüpft **📡 NFC-Tag** einen schon beschriebenen Tag (Handy daran halten) oder **✍ Sticker beschreiben** verknüpft sofort und lässt die App einen leeren Sticker beschreiben; **🖨 Etikett** druckt ein QR-Etikett für das Fach. Das kann jeder im Haushalt.
+- **Einrichten:** Am einfachsten einen neuen Tag am Fach scannen (siehe *Neuer Tag? Einfach scannen* oben). Sonst das Fach öffnen – **Mehr → 🏷 Fächer & Tags** listet alle Fächer mit Tag-Status, **🏷** neben dem Fach auf einer Karte oder neben jeder Überschrift im Vorrat (sortiert nach *Bereich und Fach*) öffnet es direkt. Oben in der Fach-Ansicht verknüpft **📡 NFC-Tag** einen schon beschriebenen Tag (Handy daran halten) oder **✍ Sticker beschreiben** verknüpft sofort und lässt die App einen leeren Sticker beschreiben; **🖨 Etikett** druckt ein QR-Etikett für das Fach; in *Fächer & Tags* kannst du mehrere Fächer ankreuzen und ihre Etiketten auf einmal drucken. Das kann jeder im Haushalt.
 - **Scannen:** Ist das Dashboard offen, zeigt es das Fach sofort; sonst bekommt das scannende Handy eine Benachrichtigung, die es öffnet (Einstellung *NFC: Handy benachrichtigen*). Ein QR-Etikett scannst du mit **📷** im Dashboard oder mit der Handykamera.
 - Das Ereignis `larder_compartment_scanned` (`area_id`, `compartment`, `name`, `items`, `source`) ist für eigene Automationen.
 - Der Tag hängt am Namen des Fachs: Benennst du das Fach der Einträge um, verknüpfe den Tag neu.

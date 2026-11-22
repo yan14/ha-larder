@@ -409,7 +409,7 @@ class DoseCard {
       <div class="bigactions"></div>
       <div class="takerow" hidden><span class="ttext"></span><button class="teaten" type="button"></button><button class="tthrown" type="button"></button><button class="tcancel" type="button"></button></div>
       <div class="row arearow"><label data-l="area"></label><select data-f="area"></select></div>
-      <div class="row comprow"><label data-l="compartment"></label><input data-f="compartment" type="text" maxlength="60"></div>
+      <div class="row comprow"><label data-l="compartment"></label><input data-f="compartment" type="text" maxlength="60"><button class="placetag" type="button" hidden>🏷</button></div>
       <div class="row"><label data-l="content"></label><input data-f="content" type="text" maxlength="255"></div>
       <div class="row quantityrow"><label data-l="quantity"></label><span class="qty"><input data-f="quantity" type="number" min="0" max="9999" step="1" inputmode="numeric"><select data-f="unit"></select><button class="take" type="button">−1</button></span></div>
       <div class="lastrow" hidden><span class="lasttext"></span><button class="lastempty" type="button"></button><button class="lastkeep" type="button"></button></div>
@@ -559,6 +559,11 @@ class DoseCard {
         this._panel.showError((err && err.message) || strings(hass).takeFailed);
       }
     };
+    // 5.3 (#135): 🏷 next to the compartment opens its view in the dashboard (tag, label, stocktake)
+    this.q("button.placetag").addEventListener("click", () => {
+      const compartment = this.q('[data-f="compartment"]').value.trim();
+      this._panel.dispatchEvent(new CustomEvent("larder-open-place", { detail: { areaId: this._areaId || "", compartment }, bubbles: true, composed: true }));
+    });
     // 5.1 (#126): the history of the product across containers and packs (opened by the dashboard)
     this.q("button.producthistory").addEventListener("click", () => {
       const content = this.inputs.content.value.trim();
@@ -954,6 +959,10 @@ class DoseCard {
     this.q("button.tthrown").textContent = t.thrownOne;
     this.q("button.tcancel").textContent = t.cancel;
     this.q("details.more > summary").textContent = t.more;
+    const placeTag = this.q("button.placetag");
+    placeTag.hidden = !(this._panel.hasAttribute("embedded") && this.q('[data-f="compartment"]').value.trim());
+    placeTag.title = t.placeTag;
+    placeTag.setAttribute("aria-label", t.placeTag);
     const historyBtn = this.q("button.producthistory");
     historyBtn.hidden = !(this._panel.hasAttribute("embedded") && hasContentNow);
     historyBtn.textContent = t.productHistory(isValidState(text) ? text.state.trim() : "");

@@ -346,4 +346,16 @@ export const STYLE = `
   ul.historylist li .sub { font-size: 12px; color: var(--secondary-text-color); }
   .datephoto { display: inline-flex; }
   .stockauto { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--secondary-text-color); margin: 4px 0; }
+  /* 5.3: compartments & tags */
+  h2 .headtag { margin-left: 8px; font-size: 16px; padding: 2px 8px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--divider-color); background: none; vertical-align: middle; }
+  .placesoverview { display: flex; flex-direction: column; gap: 6px; max-height: 55vh; overflow-y: auto; margin: 8px 0; }
+  .placerow { display: flex; align-items: center; gap: 10px; }
+  .placerow .placename { flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; font: inherit; text-align: left;
+    padding: 8px 12px; border-radius: 10px; border: 1px solid var(--divider-color); background: var(--card-background-color, #fff);
+    color: var(--primary-text-color); cursor: pointer; }
+  .placerow .sub { font-size: 12px; color: var(--secondary-text-color); }
+  .dialog h3 { margin: 12px 0 4px; font-size: 14px; font-weight: 500; }
+  .dialog button.outline { font: inherit; font-size: 15px; padding: 10px 14px; border-radius: 10px; cursor: pointer;
+    background: none; color: var(--primary-color); border: 1px solid var(--primary-color); }
 `;

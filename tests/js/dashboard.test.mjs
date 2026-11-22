@@ -283,7 +283,9 @@ test("Larder: groups by area and compartment", async () => {
   select.value = "place";
   select.dispatchEvent(new dom.window.Event("change"));
   await flush();
-  assert.deepEqual($$(el, "main h2").map((h) => h.textContent), ["Keller", "Küche · Fach 1", "Küche · Fach 2", "Ohne Bereich"]);
+  assert.deepEqual($$(el, "main h2").map((h) => h.firstChild.textContent), ["Keller", "Küche · Fach 1", "Küche · Fach 2", "Ohne Bereich"]);
+  // 5.3: 🏷 next to every heading opens the compartment view
+  assert.equal($$(el, 'main h2 [data-role="group-place"]').length, 4);
 });
 
 test("Larder: switch between tiles and list", async () => {
@@ -339,7 +341,8 @@ test("non-administrator: an empty container opens the detail view, adding only f
   // 5.0: More without the section "Setup" for users
   await go(el, "more");
   assert.equal($(el, '[data-role="menu-settings"]'), null);
-  assert.equal($(el, 'section.more[data-section="setup"]'), null);
+  // the setup is for administrators, only "Compartments & tags" is for everyone
+  assert.deepEqual($$(el, 'section.more[data-section="setup"] button').map((b) => b.dataset.role), ["menu-places"]);
   await go(el, "containers");
   $$(el, "main .tile").find((t) => t.dataset.id === "d5").click();
   assert.equal(el._classic.getAttribute("only"), "d5");
@@ -3516,4 +3519,73 @@ test("5.1: product history, recently used in ＋, several packs and the date fro
   form.querySelector('[data-role="shop-details-save"]').click();
   await flush();
   assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/shopping_details`, device_id: "p1", added: 2, best_before: "2027-03-12" });
+});
+
+// ---------- 5.3: compartments and tags ----------
+
+test("5.3: new tag → compartment, container or ignore; compartments & tags; 🏷 at the groups", async () => {
+  const hass = makeHass(DOSES);
+  for (const [id, comp] of [["d1", "Fach 2"], ["d2", "Fach 1"]]) {
+    const eid = `text.${id}_fach`;
+    hass.entities[eid] = { entity_id: eid, device_id: id, platform: D, translation_key: "compartment" };
+    hass.states[eid] = { entity_id: eid, state: comp, attributes: {} };
+  }
+  const handlers = {};
+  hass.connection = { subscribeEvents: async (f, type) => ((handlers[type] = f), () => {}) };
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/place_tags`) return { links: [{ tag_id: "t9", area_id: "kitchen", compartment: "Fach 1" }] };
+    if ([`${D}/place_link`, `${D}/tag_ignore`, `${D}/nfc_link`].includes(msg.type)) {
+      hass.wsCalls.push(msg);
+      return { links: [] };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await flush();
+  // the event of an unknown tag opens the question
+  handlers.larder_unknown_tag({ data: { tag_id: "neu-1" } });
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelector("h2").textContent, "📡 Neuer NFC-Tag");
+  form.querySelector('[data-f="assign-area"]').value = "cellar";
+  form.querySelector('[data-f="assign-compartment"]').value = "Schublade 2";
+  form.querySelector('[data-role="assign-place"]').click();
+  await flush();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/place_link`), { type: `${D}/place_link`, tag_id: "neu-1", area_id: "cellar", compartment: "Schublade 2" });
+  assert.equal(form.querySelector("h2").textContent, "Keller · Schublade 2"); // the compartment view
+  // a container instead (administrators)
+  el.openAssignTag("neu-2");
+  form.querySelector('[data-f="assign-container"]').value = "d5";
+  form.querySelector('[data-role="assign-container"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/nfc_link`), { type: `${D}/nfc_link`, tag_id: "neu-2", device_id: "d5" });
+  // ignore
+  el.openAssignTag("fremd");
+  form.querySelector('[data-role="assign-ignore"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/tag_ignore`), { type: `${D}/tag_ignore`, tag_id: "fremd" });
+  // More → 🏷 Compartments & tags
+  await go(el, "more");
+  $(el, '[data-role="menu-places"]').click();
+  await flush();
+  await flush();
+  const rows = [...form.querySelectorAll('[data-role="places-open"]')].map((b) => b.textContent);
+  assert.deepEqual(rows, ["Küche · Fach 11 Eintrag · 📡 NFC-Tag ✓", "Küche · Fach 21 Eintrag · kein Tag"]);
+  const print = form.querySelector('[data-role="places-print"]');
+  assert.equal(print.disabled, true);
+  const check = form.querySelector('.placerow input[type="checkbox"]');
+  check.checked = true;
+  check.dispatchEvent(new dom.window.Event("change"));
+  assert.equal(print.textContent, "🖨 1 Etikett drucken");
+  form.querySelectorAll('[data-role="places-open"]')[1].click();
+  await flush();
+  assert.equal(form.querySelector("h2").textContent, "Küche · Fach 2");
+  // the card's 🏷 asks the dashboard for the compartment view
+  el._classic.dispatchEvent(new dom.window.CustomEvent("larder-open-place", { detail: { areaId: "kitchen", compartment: "Fach 1" } }));
+  await flush();
+  await flush();
+  assert.equal(form.querySelector("h2").textContent, "Küche · Fach 1");
+  assert.match(form.textContent, /NFC-Tag verknüpft/);
 });

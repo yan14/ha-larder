@@ -42,6 +42,7 @@ def async_setup_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_report_scan)
     websocket_api.async_register_command(hass, ws_nfc_tags)
     websocket_api.async_register_command(hass, ws_nfc_link)
+    websocket_api.async_register_command(hass, ws_tag_ignore)
     websocket_api.async_register_command(hass, ws_nfc_unlink)
     websocket_api.async_register_command(hass, ws_tag_scans)
     domain_data[DATA_WS_REGISTERED] = True
@@ -252,6 +253,15 @@ def ws_resolve_code(
             "retired": retired_text(info, hass.config.language or "en") if info else None,
         },
     )
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/tag_ignore", vol.Required("tag_id"): vol.All(str, vol.Length(min=1, max=200))})
+@websocket_api.async_response
+async def ws_tag_ignore(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """An unknown tag belongs to something else: never ask about it again (5.3)."""
+    nfc = await async_get_nfc(hass)
+    await nfc.async_ignore(msg["tag_id"])
+    connection.send_result(msg["id"], {})
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/tag_scans"})

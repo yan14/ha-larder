@@ -31,6 +31,8 @@ Home Assistant integration for reusable food storage containers: note what is in
 <img src="docs/images/dashboard-cards-en.png" width="250" alt="Cards with all details">
 </p>
 
+> **New in 5.3:** [compartments and NFC tags](docs/en/scanning.md#compartments) made easy – scan a new tag and Larder asks what it is for, **🏷 Compartments & tags** under More, and 🏷 next to every compartment.
+>
 > **New in 5.2:** **buttons in the push** (used up, thrown away, +2 days, on the list), **buy again by consumption**, a **weekly review**, [overview sensors](docs/en/reference.md#overview-sensors), two new cards and blueprints for the fridge door and compartments.
 >
 > **New in 5.1:** a [history per product](docs/en/dashboard.md#product-history) across all containers and packs, **📷 best-before date from a photo**, **＋1** for several packs at once and **recently used** products in ＋.

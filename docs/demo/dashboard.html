@@ -424,6 +424,8 @@ if (q.get("view") === "shopping") {
 }
 if (q.get("dialog") === "recurring") await el.openRecurringDialog();
 if (q.get("dialog") === "datacare") await el.openDataCare();
+if (q.get("dialog") === "places") await el.openPlacesOverview();
+if (q.get("dialog") === "assign") el.openAssignTag("04-a1-b2-c3");
 if (q.get("dialog") === "history") await el.openProductHistory(de ? "Schinken" : "Ham");
 if (q.get("dialog") === "search") {
   const input = el.openSearch();

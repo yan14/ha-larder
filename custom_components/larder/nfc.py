@@ -8,7 +8,10 @@ which container. When a linked tag is scanned, two things happen:
 * The scanning phone gets a notification, if it is the Companion app; tapping it
   opens the container in the dashboard.
 
-Unknown tags are ignored, so other NFC tags in the house stay untouched.
+Unknown tags (5.3, #133): a tag without a name in Home Assistant that Larder does not know asks *What is this?*
+(event `larder_unknown_tag`, the open dashboard shows the dialog, the scanning phone gets a notification that opens
+it). Tags with a name in Settings → Tags belong to something else and stay untouched, as do tags marked
+"ignore"; the question comes at most every few minutes per tag.
 """
 
 from __future__ import annotations
@@ -20,6 +23,7 @@ from typing import Any
 from homeassistant.core import CALLBACK_TYPE, Event, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.event import async_call_later
 from homeassistant.helpers.storage import Store
 from homeassistant.util import slugify
 
@@ -31,8 +35,12 @@ _LOGGER = logging.getLogger(__name__)
 
 STORAGE_VERSION = 1
 STORAGE_KEY = f"{DOMAIN}.nfc"
+UNKNOWN_STORAGE_KEY = f"{DOMAIN}.nfc_unknown"
 DATA_NFC = "nfc"
 EVENT_TAG_SCANNED = "tag_scanned"
+EVENT_UNKNOWN_TAG = f"{DOMAIN}_unknown_tag"
+ASK_AGAIN = 600  # seconds: the same unknown tag asks again at the earliest after this
+ASSIGN_DELAY = 3  # seconds: a tag linked right in the dashboard (capture) is no longer unknown
 
 
 class NfcError(HomeAssistantError):
@@ -56,9 +64,22 @@ class NfcTags:
         self._unsub: CALLBACK_TYPE | None = None
         # Running series scans in the dashboard: they get every scan, the phone gets no notification then
         self._sessions: list[Callable[[dict[str, Any]], None]] = []
+        self._unknown_store: Store[dict[str, Any]] = Store(hass, STORAGE_VERSION, UNKNOWN_STORAGE_KEY)
+        self.ignored: set[str] = set()
+        self._asked: dict[str, float] = {}
 
     async def async_load(self) -> None:
         self._tags = (await self._store.async_load()) or {}
+        self.ignored = set(((await self._unknown_store.async_load()) or {}).get("ignored") or [])
+
+    async def async_ignore(self, tag_id: str) -> None:
+        """"Ignore" in the question: this tag belongs to something else, never ask again."""
+        self.ignored.add(tag_id)
+        await self._unknown_store.async_save({"ignored": sorted(self.ignored)})
+
+    def is_known(self, tag_id: str) -> bool:
+        places = self.hass.data.get(DOMAIN, {}).get("places")
+        return tag_id in self._tags or (places is not None and places.by_tag(tag_id) is not None)
 
     @callback
     def async_start(self) -> None:
@@ -177,7 +198,8 @@ class NfcTags:
             if place is not None:
                 await self._place_scanned(place, event.data.get("device_id"))
                 return
-            await self._retired_scanned(tag_id, event.data.get("device_id"))
+            if not await self._retired_scanned(tag_id, event.data.get("device_id")):
+                await self._unknown_scanned(tag_id, event.data.get("name"), event.data.get("device_id"))
             return
         entry = self._entry(cc)
         device = dr.async_get(self.hass).async_get_device(identifiers={(DOMAIN, cc)})
@@ -240,29 +262,73 @@ class NfcTags:
         except HomeAssistantError:
             _LOGGER.debug("Benachrichtigung an %s fehlgeschlagen", service, exc_info=True)
 
-    async def _retired_scanned(self, tag_id: str, scanner: str | None) -> None:
-        """Sticker of a bag that was already emptied: say so instead of doing nothing."""
+    async def _unknown_scanned(self, tag_id: str, name: str | None, scanner: str | None) -> None:
+        """A tag nobody assigned yet: ask what it is (container, compartment or ignore)."""
+        import time  # noqa: PLC0415
+
+        if not tag_id or name or tag_id in self.ignored:
+            return  # named in Settings → Tags (used elsewhere) or ignored: none of our business
+        now = time.monotonic()
+        if now - self._asked.get(tag_id, -ASK_AGAIN) < ASK_AGAIN:
+            return
+        self._asked[tag_id] = now
+
+        @callback
+        def later(_now: Any) -> None:
+            self.hass.async_create_task(self._ask_unknown(tag_id, scanner), f"{DOMAIN}_unknown_tag")
+
+        async_call_later(self.hass, ASSIGN_DELAY, later)
+
+    async def _ask_unknown(self, tag_id: str, scanner: str | None) -> None:
+        if self.is_known(tag_id) or tag_id in self.ignored:
+            return  # linked in the dashboard in the meantime
+        self.hass.bus.async_fire(EVENT_UNKNOWN_TAG, {"tag_id": tag_id, "scanned_by": scanner})
+        estimator = await async_get_estimator(self.hass)
+        service = self._notify_service(scanner) if estimator.nfc_notify else None
+        if service is None:
+            return
+        de = (self.hass.config.language or "en").lower().startswith("de")
+        url = f"{panel_path()}?assign_tag={tag_id}"
+        try:
+            await self.hass.services.async_call(
+                "notify",
+                service,
+                {
+                    "title": "Larder",
+                    "message": "Neuer NFC-Tag – antippen, um ihn einem Fach oder einer Dose zuzuordnen."
+                    if de
+                    else "New NFC tag – tap to assign it to a compartment or a container.",
+                    "data": {"url": url, "clickAction": url, "tag": f"larder-tag-{tag_id}"},
+                },
+                blocking=True,
+            )
+        except HomeAssistantError:
+            _LOGGER.debug("Benachrichtigung an %s fehlgeschlagen", service, exc_info=True)
+
+    async def _retired_scanned(self, tag_id: str, scanner: str | None) -> bool:
+        """Sticker of a bag that was already emptied: say so instead of doing nothing (True if it was one)."""
         from .disposable import async_get_retired, retired_text  # noqa: PLC0415
 
         info = (await async_get_retired(self.hass)).by_tag(tag_id)
         if info is None:
-            return  # foreign tag: none of our business
+            return False
         text = retired_text(info, self.hass.config.language or "en")
         data = {"retired": True, "name": info.get("name"), "message": text, "scanned_by": scanner}
         self.hass.bus.async_fire(EVENT_DOSE_SCANNED, data)
         if self._sessions:
             for forward in list(self._sessions):
                 forward(data)
-            return
+            return True
         service = self._notify_service(scanner)
         if service is None:
-            return
+            return True
         try:
             await self.hass.services.async_call(
                 "notify", service, {"title": "Larder", "message": text}, blocking=True
             )
         except HomeAssistantError:
             _LOGGER.debug("Benachrichtigung an %s fehlgeschlagen", service, exc_info=True)
+        return True
 
     def _message(self, cc: str) -> str:
         from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN

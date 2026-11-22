@@ -2276,3 +2276,20 @@ test("5.1: 📷 reads the best-before date; 'History of …' asks the dashboard 
   btn.click();
   assert.equal(asked, "Schinken");
 });
+
+test("5.3: 🏷 next to the compartment asks the dashboard for the compartment view (embedded only)", () => {
+  const hass = adminHass([{ id: "d1", name: "Dose A", area: "kitchen", content: "Chili" }]);
+  hass.entities["text.d1_fach"] = { entity_id: "text.d1_fach", device_id: "d1", platform: "larder", translation_key: "compartment" };
+  hass.states["text.d1_fach"] = { entity_id: "text.d1_fach", state: "Fach 2", attributes: {} };
+  const embedded = document.createElement("larder-panel");
+  embedded.setAttribute("embedded", "");
+  document.body.appendChild(embedded);
+  embedded.hass = hass;
+  const card = $(embedded, ".card");
+  const btn = card.querySelector("button.placetag");
+  assert.equal(btn.hidden, false);
+  let asked = null;
+  embedded.addEventListener("larder-open-place", (ev) => (asked = ev.detail));
+  btn.click();
+  assert.deepEqual(asked, { areaId: "kitchen", compartment: "Fach 2" });
+});

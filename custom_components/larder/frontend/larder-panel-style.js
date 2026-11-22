@@ -267,4 +267,7 @@ export const STYLE = `
   details.history button.producthistory { margin-top: 6px; font: inherit; font-size: 13px; padding: 0; border: 0; background: none;
     color: var(--primary-color); cursor: pointer; }
   details.history button.producthistory[hidden] { display: none; }
+  .comprow button.placetag { flex: 0 0 auto; font-size: 18px; padding: 4px 8px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--divider-color); background: none; }
+  .comprow button.placetag[hidden] { display: none; }
 `;

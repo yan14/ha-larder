@@ -54,6 +54,24 @@ const TEXT = {
     placeTagDone: "NFC-Tag mit dem Fach verknüpft.",
     placeTagUnlink: "Tag lösen",
     placeTagFailed: "Verknüpfen fehlgeschlagen.",
+    assignTitle: "📡 Neuer NFC-Tag",
+    assignArea: "Bereich",
+    assignHint: "Diesen Tag kennt Larder noch nicht. Wofür ist er?",
+    assignPlaceTitle: "📍 Für ein Fach (z. B. Schublade, Box)",
+    assignPlace: "Mit diesem Fach verknüpfen",
+    assignContainerTitle: "🥡 Für eine Dose",
+    assignContainer: "Mit dieser Dose verknüpfen",
+    assignContainerDone: (name) => `NFC-Tag mit ${name} verknüpft.`,
+    assignIgnore: "Ignorieren",
+    assignIgnoreHint: "Der Tag gehört zu etwas anderem – nie wieder fragen.",
+    placesTitle: "🏷 Fächer & Tags",
+    placesHint: "Alle Fächer mit Inhalt und alle verknüpften. Antippen öffnet das Fach: NFC-Tag verknüpfen oder beschreiben, Etikett, Inventur. Ein neuer Tag lässt sich auch einfach scannen – Larder fragt dann, wofür er ist.",
+    placesNone: "Noch keine Fächer – trage auf einer Karte ein Fach ein (z. B. „Schublade 2“).",
+    placesCount: (n) => (n === 1 ? "1 Eintrag" : `${n} Einträge`),
+    placesLinked: "📡 NFC-Tag ✓",
+    placesNoTag: "kein Tag",
+    placesPick: "Für Etiketten auswählen",
+    placesPrint: (n) => (n ? `🖨 ${n} Etikett${n === 1 ? "" : "en"} drucken` : "🖨 Etiketten drucken"),
     placeTaken: (name) => `${name}: eine verbraucht.`,
     placeThrown: (name) => `${name}: eine weggeworfen.`,
     placeUsed: "Verbraucht",
@@ -112,6 +130,24 @@ const TEXT = {
     placeTagDone: "NFC tag linked to the compartment.",
     placeTagUnlink: "Unlink tag",
     placeTagFailed: "Linking failed.",
+    assignTitle: "📡 New NFC tag",
+    assignArea: "Area",
+    assignHint: "Larder does not know this tag yet. What is it for?",
+    assignPlaceTitle: "📍 For a compartment (e.g. drawer, box)",
+    assignPlace: "Link with this compartment",
+    assignContainerTitle: "🥡 For a container",
+    assignContainer: "Link with this container",
+    assignContainerDone: (name) => `NFC tag linked with ${name}.`,
+    assignIgnore: "Ignore",
+    assignIgnoreHint: "The tag belongs to something else – never ask again.",
+    placesTitle: "🏷 Compartments & tags",
+    placesHint: "Every compartment with something in it and every linked one. Tap to open it: link or write an NFC tag, label, stocktake. A new tag can also simply be scanned – Larder then asks what it is for.",
+    placesNone: "No compartments yet – enter a compartment on a card (e.g. \"Drawer 2\").",
+    placesCount: (n) => (n === 1 ? "1 entry" : `${n} entries`),
+    placesLinked: "📡 NFC tag ✓",
+    placesNoTag: "no tag",
+    placesPick: "Choose for labels",
+    placesPrint: (n) => (n ? `🖨 Print ${n} label${n === 1 ? "" : "s"}` : "🖨 Print labels"),
     placeTaken: (name) => `${name}: one used up.`,
     placeThrown: (name) => `${name}: one thrown away.`,
     placeUsed: "Used up",
@@ -361,13 +397,143 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, scopeOfKind, DO
     });
     this._form.replaceChildren(
       el("h2", "", this._placeName(areaId, compartment)),
-      list,
       tagRow,
       status,
+      list,
       buttonsRow(close, label, stocktake),
     );
     this._submit = null;
     this._overlay.hidden = false;
+  };
+
+
+  // ---------- 5.3: assign a new tag, compartments & tags (#133, #134) ----------
+
+  /** A tag Larder does not know yet: a compartment (everyone), a container (administrators) or ignore. */
+  proto.openAssignTag = function openAssignTag(tagId) {
+    const hass = this._hass;
+    const t = careTexts(hass);
+    const admin = isAdmin(hass);
+    const error = el("div", "error");
+    error.setAttribute("role", "alert");
+    // compartment: area + compartment, with the compartments already in use as chips
+    const area = el("select");
+    area.dataset.f = "assign-area";
+    for (const a of [{ id: "", name: t.noArea }, ...listAreas(hass, this._classic.larderLabel)]) {
+      const o = el("option", "", a.name);
+      o.value = a.id;
+      area.append(o);
+    }
+    const compartment = el("input");
+    compartment.type = "text";
+    compartment.maxLength = 60;
+    compartment.dataset.f = "assign-compartment";
+    compartment.placeholder = t.compartmentHint;
+    const toPlace = button("primary", t.assignPlace, async () => {
+      error.textContent = "";
+      try {
+        await hass.callWS({ type: `${DOMAIN}/place_link`, tag_id: tagId, area_id: area.value, compartment: compartment.value.trim() });
+      } catch (err) {
+        error.textContent = (err && err.message) || t.placeTagFailed;
+        return;
+      }
+      rememberCompartment(area.value, compartment.value);
+      this.openPlace(area.value, compartment.value.trim(), t.placeTagDone);
+    });
+    toPlace.dataset.role = "assign-place";
+    const parts = [el("h2", "", t.assignTitle), el("p", "hint", t.assignHint), el("h3", "", t.assignPlaceTitle), field(t.assignArea, area), field(t.compartment.split(" (")[0], compartment), toPlace];
+    if (admin) {
+      // container or bag without a tag yet
+      const rows = this._rows().filter((r) => ["container", "bag"].includes(r.kind) && !(this._classic._nfcLinks || {})[r.id]);
+      if (rows.length) {
+        const dose = el("select");
+        dose.dataset.f = "assign-container";
+        for (const r of rows) {
+          const o = el("option", "", [r.name, r.content].filter(Boolean).join(" · "));
+          o.value = r.id;
+          dose.append(o);
+        }
+        const toDose = button("outline", t.assignContainer, async () => {
+          error.textContent = "";
+          try {
+            await hass.callWS({ type: `${DOMAIN}/nfc_link`, tag_id: tagId, device_id: dose.value });
+          } catch (err) {
+            error.textContent = (err && err.message) || t.placeTagFailed;
+            return;
+          }
+          this._closeDialog();
+          this.showNotice(t.assignContainerDone(rows.find((r) => r.id === dose.value).name));
+        });
+        toDose.dataset.role = "assign-container";
+        parts.push(el("h3", "", t.assignContainerTitle), dose, toDose);
+      }
+    }
+    const ignore = button("", t.assignIgnore, async () => {
+      await hass.callWS({ type: `${DOMAIN}/tag_ignore`, tag_id: tagId }).catch(() => {});
+      this._closeDialog();
+    });
+    ignore.dataset.role = "assign-ignore";
+    ignore.title = t.assignIgnoreHint;
+    parts.push(error, buttonsRow(button("cancel", t.close, () => this._closeDialog()), ignore));
+    this._form.replaceChildren(...parts);
+    attachCompartmentChips(compartment, () => knownCompartments(hass, this._classic._devices, area.value), () => {});
+    this._submit = null;
+    this._overlay.hidden = false;
+  };
+
+  /** Every compartment in use (and every linked one) with its tag; tapping opens it, several get labels at once. */
+  proto.openPlacesOverview = async function openPlacesOverview() {
+    const hass = this._hass;
+    const t = careTexts(hass);
+    let links = [];
+    try {
+      links = ((await hass.callWS({ type: `${DOMAIN}/place_tags` })) || {}).links || [];
+    } catch {
+      links = [];
+    }
+    const places = new Map();
+    const add = (areaId, compartment) => {
+      const key = `${areaId || ""}|${String(compartment || "").trim().toLowerCase()}`;
+      if (!places.has(key)) places.set(key, { areaId: areaId || "", compartment: String(compartment || "").trim(), count: 0, linked: false });
+      return places.get(key);
+    };
+    for (const row of this._rows()) {
+      if (!row.content) continue;
+      if (row.compartment) add(row.areaId, row.compartment).count += 1;
+    }
+    for (const l of links) add(l.area_id, l.compartment).linked = true;
+    const list = [...places.values()].sort((a, b) => this._placeName(a.areaId, a.compartment).localeCompare(this._placeName(b.areaId, b.compartment)));
+    const box = el("div", "placesoverview");
+    box.dataset.role = "places-list";
+    const picked = new Set();
+    const print = button("", t.placesPrint(0), () => {
+      const chosen = list.filter((p) => picked.has(p)).map((p) => ({ areaId: p.areaId, compartment: p.compartment, name: this._placeName(p.areaId, p.compartment) }));
+      if (chosen.length) this.openLabelDialog(null, chosen);
+    });
+    print.dataset.role = "places-print";
+    print.disabled = true;
+    if (!list.length) box.append(el("p", "hint", t.placesNone));
+    for (const p of list) {
+      const row = el("div", "placerow");
+      const check = el("input");
+      check.type = "checkbox";
+      check.setAttribute("aria-label", t.placesPick);
+      check.addEventListener("change", () => {
+        if (check.checked) picked.add(p);
+        else picked.delete(p);
+        print.textContent = t.placesPrint(picked.size);
+        print.disabled = !picked.size;
+      });
+      const open = button("placename", "", () => this.openPlace(p.areaId, p.compartment));
+      open.dataset.role = "places-open";
+      open.append(el("span", "name", this._placeName(p.areaId, p.compartment)), el("span", "sub", [t.placesCount(p.count), p.linked ? t.placesLinked : t.placesNoTag].join(" · ")));
+      row.append(check, open);
+      box.append(row);
+    }
+    this._form.replaceChildren(el("h2", "", t.placesTitle), el("p", "hint", t.placesHint), box, buttonsRow(button("cancel", t.close, () => this._closeDialog()), print));
+    this._submit = null;
+    this._overlay.hidden = false;
+    return list;
   };
 
   // ---------- Inventur ----------

@@ -315,6 +315,11 @@ export class LarderDashboard extends HTMLElement {
     // The embedded classic view sits between content and bar (for cards and estimates)
     this._nav.before(this._classic);
     this._classic.addEventListener("larder-detail-closed", () => this._closeDetail());
+    // 5.3: the compartment view from a card (🏷 next to the compartment)
+    this._classic.addEventListener("larder-open-place", (ev) => {
+      const d = ev.detail || {};
+      this.openPlace(d.areaId || "", d.compartment || "");
+    });
     // 5.1: "History of this product" on a card
     this._classic.addEventListener("larder-product-history", (ev) => {
       if (ev.detail && ev.detail.content) this.openProductHistory(ev.detail.content);
@@ -402,6 +407,14 @@ export class LarderDashboard extends HTMLElement {
         /* connection already gone */
       }
       this._placeUnsub = null;
+    }
+    if (this._unknownUnsub) {
+      try {
+        this._unknownUnsub();
+      } catch {
+        /* connection already gone */
+      }
+      this._unknownUnsub = null;
     }
   }
 
@@ -504,6 +517,12 @@ export class LarderDashboard extends HTMLElement {
         if (!d.place || d.source !== "nfc" || this._scan || this._selecting || !this.isConnected) return;
         this.openPlace(d.area_id || "", d.compartment || "");
       }, `${DOMAIN}_compartment_scanned`);
+      // 5.3: a tag Larder does not know yet (not while a tag is being linked in a dialog)
+      this._unknownUnsub = await hass.connection.subscribeEvents((ev) => {
+        const tagId = ev && ev.data && ev.data.tag_id;
+        if (!tagId || this._scan || !this.isConnected || this._classic._capture) return;
+        this.openAssignTag(tagId);
+      }, `${DOMAIN}_unknown_tag`);
     } catch {
       this._scanUnsub = null;
     }
@@ -518,12 +537,16 @@ export class LarderDashboard extends HTMLElement {
     const cc = params.get("cc");
     const problem = params.get("problem");
     const place = params.get("place");
-    if (!view && !open && !add && !cc && !problem && !place && !params.has("recipes")) return;
+    const assignTag = params.get("assign_tag");
+    if (!view && !open && !add && !cc && !problem && !place && !assignTag && !params.has("recipes")) return;
     window.history.replaceState(null, "", window.location.pathname);
     if (params.has("recipes")) this.setView("recipes");
     else if (problem && ["noarea", "nodate", "longexpired"].includes(problem)) this.setView("containers", { problem });
     else if (view && ALL_VIEWS.includes(view)) this.setView(view);
-    if (place) {
+    if (assignTag) {
+      // 5.3 (#133): a new NFC tag was scanned – what is it?
+      this.openAssignTag(assignTag);
+    } else if (place) {
       // NFC tag or QR label of a compartment: compartment view
       this.setView("containers");
       this.openPlace(place === "-" ? "" : place, params.get("compartment") || "");
@@ -868,6 +891,7 @@ export class LarderDashboard extends HTMLElement {
         }],
       ]],
       ["setup", [
+        ["menu-places", `🏷 ${t.menuPlaces}`, true, () => this.openPlacesOverview()],
         ["menu-areas", `📍 ${t.menuAreas}`, admin, () => {
           this.setView("areas");
           this._areaEdit = true;
@@ -1658,7 +1682,20 @@ export class LarderDashboard extends HTMLElement {
           if (key !== current) {
             flush();
             current = key;
-            frag.append(el("h2", "", key));
+            const head = el("h2", "", key);
+            if (this._opts.sort === "place") {
+              // 5.3 (#135): the compartment view (tag, label, stocktake) right from its heading
+              const tag = el("button", "headtag", "🏷");
+              tag.type = "button";
+              tag.dataset.role = "group-place";
+              tag.title = texts(this._hass).placeOpen;
+              tag.setAttribute("aria-label", texts(this._hass).placeOpen);
+              const areaId = row.areaId || "";
+              const compartment = row.compartment || "";
+              tag.addEventListener("click", () => this.openPlace(areaId, compartment));
+              head.append(tag);
+            }
+            frag.append(head);
           }
           group.push(row);
         }

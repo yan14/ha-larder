@@ -3,6 +3,14 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 5.3.0
+
+Compartments and NFC tags made easy (block 36).
+
+- **New tag? Just scan it:** a tag Larder does not know yet asks *What is it for?* – a compartment (area and compartment with suggestions), a container (administrators) or *Ignore*. In the open dashboard right away, otherwise as a notification on the scanning phone. Tags with a name in Settings → Tags (used for something else) stay untouched; event `larder_unknown_tag`.
+- **More → 🏷 Compartments & tags:** every compartment with something in it and every linked one, with its tag status. Tap one to link or write a tag, print its label or start a stocktake; tick several to print their labels at once.
+- **🏷 where compartments are:** next to the compartment on a card and next to each heading of the Larder page sorted by *area and compartment*. The tag buttons are now at the top of the compartment view.
+
 ## 5.2.0
 
 Notifications you can act on, and Larder in your own Home Assistant dashboards and automations (blocks 34 and 35).
