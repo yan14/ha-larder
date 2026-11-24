@@ -40,7 +40,9 @@ def shopping_lists(hass: HomeAssistant, stock) -> list[str]:
     lists += list(stock.lists.values())
     lists += [info.get("list") for info in stock.tracked.values()]
     lists += [r.get("list") for r in stock.recurring.values()]
-    return [entity for entity in dict.fromkeys(lists) if entity and hass.states.get(entity) is not None]
+    # only real entity IDs (a broken value must not break the shopping mode), each once, in this order
+    clean = [str(e).strip() for e in lists if isinstance(e, str) and str(e).strip().startswith("todo.")]
+    return [entity for entity in dict.fromkeys(clean) if hass.states.get(entity) is not None]
 
 
 def known_for(
@@ -71,40 +73,74 @@ def known_for(
 
 
 async def _open_items(hass: HomeAssistant, entity_id: str) -> list[dict[str, Any]]:
-    response = await hass.services.async_call(
-        "todo", "get_items", {"entity_id": entity_id, "status": "needs_action"}, blocking=True, return_response=True
-    )
-    return ((response or {}).get(entity_id) or {}).get("items") or []
+    """Open items of a to-do list; if the action fails (5.3.2), straight from the list entity."""
+    try:
+        response = await hass.services.async_call(
+            "todo", "get_items", {"entity_id": entity_id, "status": "needs_action"}, blocking=True, return_response=True
+        )
+        return ((response or {}).get(entity_id) or {}).get("items") or []
+    except Exception:  # noqa: BLE001 - any list (Google Tasks, Bring!, Todoist …) may fail in its own way
+        _LOGGER.debug("todo.get_items für %s fehlgeschlagen, lese die Entität direkt", entity_id, exc_info=True)
+    from homeassistant.components.todo import DATA_COMPONENT, TodoItemStatus  # noqa: PLC0415
+
+    component = hass.data.get(DATA_COMPONENT)
+    entity = component.get_entity(entity_id) if component else None
+    if entity is None or entity.todo_items is None:
+        raise HomeAssistantError(f"{entity_id} cannot be read")
+    return [
+        {"uid": i.uid, "summary": i.summary, "status": i.status}
+        for i in entity.todo_items
+        if i.status == TodoItemStatus.NEEDS_ACTION
+    ]
 
 
 async def async_shopping_view(hass: HomeAssistant) -> dict[str, Any]:
     stock = await async_get_stock(hass)
     order = section_order(hass)
     items: list[dict[str, Any]] = []
+    # 5.3.2: which lists were read and how (the page says why it is empty instead of showing nothing)
+    lists: list[dict[str, Any]] = []
     for entity_id in shopping_lists(hass, stock):
-        try:
-            open_items = await _open_items(hass, entity_id)
-        except HomeAssistantError:
-            _LOGGER.debug("Liste %s nicht lesbar", entity_id, exc_info=True)
-            continue
         state = hass.states.get(entity_id)
         list_name = state.attributes.get("friendly_name", entity_id) if state else entity_id
+        info: dict[str, Any] = {"entity_id": entity_id, "name": list_name, "open": 0}
+        lists.append(info)
+        try:
+            open_items = await _open_items(hass, entity_id)
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Einkaufsliste %s nicht lesbar: %s", entity_id, err)
+            info["error"] = str(err) or type(err).__name__
+            continue
         for item in open_items:
             summary = str(item.get("summary") or "").strip()
             if not summary or not item.get("uid"):
                 continue
-            known, _packs = known_for(hass, stock, summary)
+            info["open"] += 1
+            try:
+                known, _packs = known_for(hass, stock, summary)
+                section = section_of(hass, known["content"] if known else summary, known["kind"] if known else None)
+            except Exception:  # noqa: BLE001 - one odd item must not hide the whole list
+                _LOGGER.debug("Eintrag %s nicht zuordenbar", summary, exc_info=True)
+                known, section = None, "other"
             items.append({
                 "list": entity_id,
                 "list_name": list_name,
                 "uid": item["uid"],
                 "summary": summary,
-                "section": section_of(hass, known["content"] if known else summary, known["kind"] if known else None),
+                "section": section,
                 "known": bool(known),
             })
     rank = {s: n for n, s in enumerate(order)}
     items.sort(key=lambda i: rank.get(i["section"], len(order)))
-    return {"order": order, "items": items}
+    chosen = default_list(hass)
+    return {
+        "order": order,
+        "items": items,
+        "lists": lists,
+        "configured": bool(chosen),
+        # chosen in the settings but not there (renamed, integration not loaded)
+        "missing": chosen if chosen and hass.states.get(str(chosen)) is None else None,
+    }
 
 
 async def async_shopping_check(hass: HomeAssistant, entity_id: str, uid: str, summary: str) -> dict[str, Any]:
@@ -270,7 +306,13 @@ def recurring_list(stock) -> list[dict[str, Any]]:
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/shopping_mode"})
 @websocket_api.async_response
 async def ws_shopping_mode(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    connection.send_result(msg["id"], await async_shopping_view(hass))
+    try:
+        result = await async_shopping_view(hass)
+    except Exception as err:  # noqa: BLE001 - say why instead of an empty page
+        _LOGGER.exception("Einkaufsmodus konnte nicht geladen werden")
+        connection.send_error(msg["id"], "shopping_failed", str(err) or type(err).__name__)
+        return
+    connection.send_result(msg["id"], result)
 
 
 @websocket_api.websocket_command(

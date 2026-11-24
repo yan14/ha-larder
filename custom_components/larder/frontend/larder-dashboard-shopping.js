@@ -16,6 +16,11 @@ const TEXT = {
     check: "Abhaken",
     added: (r) => `→ ${[r.area, r.compartment].filter(Boolean).join(" · ") || "Vorrat"}${r.added > 1 ? ` (+${r.added})` : ""}`,
     unknown: "neu – wird am Ende angelegt",
+    loading: "Einkaufslisten werden geladen …",
+    loadFailed: (msg) => `Die Einkaufslisten konnten nicht geladen werden${msg ? `: ${msg}` : "."}`,
+    listFailed: (name, msg) => `${name}: nicht lesbar (${msg})`,
+    listOpen: (name, n) => `${name}: ${n} offen`,
+    listMissing: (id) => `Die eingestellte Einkaufsliste ${id} gibt es in Home Assistant gerade nicht. Bitte in den Einstellungen der Integration neu wählen.`,
     failed: "Abhaken fehlgeschlagen.",
     addUnknown: (n) => (n === 1 ? "＋ 1 neuen Artikel anlegen" : `＋ ${n} neue Artikel anlegen`),
     reload: "🔄 Aktualisieren",
@@ -58,6 +63,11 @@ const TEXT = {
     check: "Tick off",
     added: (r) => `→ ${[r.area, r.compartment].filter(Boolean).join(" · ") || "stock"}${r.added > 1 ? ` (+${r.added})` : ""}`,
     unknown: "new – added at the end",
+    loading: "Loading the shopping lists …",
+    loadFailed: (msg) => `The shopping lists could not be loaded${msg ? `: ${msg}` : "."}`,
+    listFailed: (name, msg) => `${name}: cannot be read (${msg})`,
+    listOpen: (name, n) => `${name}: ${n} open`,
+    listMissing: (id) => `The shopping list ${id} chosen in the settings does not exist in Home Assistant right now. Please choose it again in the integration's settings.`,
     failed: "Ticking off failed.",
     addUnknown: (n) => (n === 1 ? "＋ Add 1 new item" : `＋ Add ${n} new items`),
     reload: "🔄 Refresh",
@@ -114,8 +124,8 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
     if (!hass || !hass.callWS) return;
     try {
       this._shopping = await hass.callWS({ type: `${DOMAIN}/shopping_mode` });
-    } catch {
-      this._shopping = { items: [], error: true };
+    } catch (err) {
+      this._shopping = { items: [], error: (err && err.message) || true };
     }
     this._shopDone = {};
     this._shopUnknown = [];
@@ -263,12 +273,32 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
     bar.append(recurring, reload);
     frag.append(bar);
     if (!data) {
+      frag.append(el("p", "hint", t.loading));
       this._main.replaceChildren(frag);
       return;
     }
     frag.append(el("p", "lead", t.intro));
     const items = data.items || [];
-    if (!items.length) frag.append(el("p", "note", this._listChosen === false ? t.noList : t.empty));
+    if (data.error) {
+      // 5.3.2: say why instead of an empty page
+      const error = el("p", "note warn", t.loadFailed(data.error === true ? "" : data.error));
+      error.dataset.role = "shop-error";
+      frag.append(error);
+    } else if (data.missing) {
+      const missing = el("p", "note warn", t.listMissing(data.missing));
+      missing.dataset.role = "shop-missing";
+      frag.append(missing);
+    } else if (!items.length) {
+      frag.append(el("p", "note", data.configured === false || this._listChosen === false ? t.noList : t.empty));
+    }
+    // which lists were read: open items or why one could not be read
+    const status = (data.lists || []).filter((l) => l.error || !items.length);
+    if (status.length) {
+      const box = el("div", "shoplists");
+      box.dataset.role = "shop-lists";
+      for (const l of status) box.append(el("p", `hint${l.error ? " warn" : ""}`, l.error ? t.listFailed(l.name, l.error) : t.listOpen(l.name, l.open)));
+      frag.append(box);
+    }
     const lists = new Set(items.map((i) => i.list));
     let current = null;
     let box = null;

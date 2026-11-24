@@ -3645,3 +3645,28 @@ test("5.3.1: barcode dialog opens the card and transfers; transfer into a new co
   form.querySelector('[data-role="write-done"]').click();
   assert.equal(done, 1);
 });
+
+test("5.3.2: shopping mode says why it is empty (error, missing list, lists read)", async () => {
+  const hass = makeHass(DOSES);
+  let answer = null;
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/shopping_mode`) {
+      if (answer instanceof Error) throw answer;
+      return answer;
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  answer = new Error("timeout");
+  await go(el, "shopping");
+  await flush();
+  assert.match($(el, '[data-role="shop-error"]').textContent, /konnten nicht geladen werden: timeout/);
+  answer = { items: [], lists: [], configured: true, missing: "todo.weg" };
+  await el.loadShopping();
+  assert.match($(el, '[data-role="shop-missing"]').textContent, /todo\.weg/);
+  answer = { items: [], lists: [{ entity_id: "todo.a", name: "Einkaufsliste", open: 0 }, { entity_id: "todo.b", name: "Drogerie", open: 0, error: "kaputt" }], configured: true };
+  await el.loadShopping();
+  assert.deepEqual($$(el, '[data-role="shop-lists"] p').map((p) => p.textContent), ["Einkaufsliste: 0 offen", "Drogerie: nicht lesbar (kaputt)"]);
+});

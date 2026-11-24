@@ -79,3 +79,35 @@ async def test_search_by_name_and_shopping_lists(hass: HomeAssistant, hass_ws_cl
     assert not res["success"]
     res = await _ws(hass, hass_ws_client, type="larder/shopping_lists")
     assert res["result"]["lists"] == ["todo.einkaufen"]
+
+
+async def test_shopping_mode_says_why_it_is_empty(hass: HomeAssistant, hass_ws_client) -> None:
+    """5.3.2: lists that cannot be read or are missing are reported instead of an empty page."""
+    from unittest.mock import patch
+
+    hass.config.language = "de"
+    todo = await _list(hass)
+    entry = await _setup(hass, "AAAA")
+    await _options(hass, entry, todo_entity="todo.einkaufen")
+    await hass.services.async_call("todo", "add_item", {"entity_id": "todo.einkaufen", "item": "Milch"}, blocking=True)
+    res = await _ws(hass, hass_ws_client, type="larder/shopping_mode")
+    assert [i["summary"] for i in res["result"]["items"]] == ["Milch"]
+    assert res["result"]["lists"][0]["open"] == 1 and res["result"]["missing"] is None
+    # the action fails: read straight from the entity
+    from homeassistant.core import ServiceRegistry
+
+    real = ServiceRegistry.async_call
+
+    async def broken(self, domain, service, *args, **kwargs):
+        if (domain, service) == ("todo", "get_items"):
+            raise RuntimeError("boom")
+        return await real(self, domain, service, *args, **kwargs)
+
+    with patch.object(ServiceRegistry, "async_call", broken):
+        res = await _ws(hass, hass_ws_client, type="larder/shopping_mode")
+    assert [i["summary"] for i in res["result"]["items"]] == ["Milch"]
+    # a list chosen in the settings that is gone
+    await _options(hass, entry, todo_entity="todo.weg")
+    res = await _ws(hass, hass_ws_client, type="larder/shopping_mode")
+    assert res["result"]["missing"] == "todo.weg" and res["result"]["items"] == []
+    assert todo is not None

@@ -50,6 +50,7 @@ from .const import (
     CONF_RECIPE_DAYS,
     CONF_REORDER_SHOPPING,
     CONF_REPAIR_HINTS,
+    CONF_SECTION_ORDER,
     CONF_SHOPPING_DETAILS,
     CONF_SIZE,
     CONF_SOON_DAYS,
@@ -281,8 +282,13 @@ class LarderOptionsFlow(OptionsFlow):
                 errors[CONF_CALENDAR_ENTITY] = "calendar_not_supported"
             else:
                 # empty selectors are missing in user_input: the setting was cleared on purpose
+                # only the settings of this form: the order of the store sections (set in the dashboard) stays
                 await estimator.async_update_settings(
-                    {conf: user_input.get(conf, default) for conf, (_attr, default, _n) in SETTINGS.items()}
+                    {
+                        conf: user_input.get(conf, default)
+                        for conf, (_attr, default, _n) in SETTINGS.items()
+                        if conf != CONF_SECTION_ORDER
+                    }
                 )
                 await sync.async_sync_all()
                 async_dispatcher_send(self.hass, SIGNAL_SETTINGS_CHANGED)
