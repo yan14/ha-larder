@@ -16,7 +16,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 
 from .const import DATA_STOCK, DOMAIN, KIND_HOUSEHOLD, KIND_MEDICINE
-from .sections import async_sort_into_section
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -90,7 +89,6 @@ async def async_add_to_shopping_list(hass: HomeAssistant, entity_id: str, item: 
         await hass.services.async_call(
             "todo", "add_item", {"entity_id": entity_id, "item": item}, blocking=True
         )
-        await async_sort_into_section(hass, entity_id, item)
     except HomeAssistantError:
         _LOGGER.warning("Eintrag konnte nicht auf %s gesetzt werden", entity_id, exc_info=True)
         return False

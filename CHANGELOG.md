@@ -3,6 +3,13 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 5.3.4
+
+Only Home Assistant's public ways to other integrations' lists (as with the calendar after the HACS review):
+
+- **Shopping mode** reads the lists only with the action `todo.get_items` again; a list that cannot be read is shown with the reason (no direct access to the list as in 5.3.2/5.3.3). The speed-up of 5.3.3 stays: the stock is looked at once for the whole list.
+- **New items on a to-do list** are added at the end. Moving them behind their store section needed direct access to the list and is dropped; the shopping mode still shows everything by store section in your order.
+
 ## 5.3.3
 
 - **Shopping mode loads much faster:** the open items are read straight from the list (the action *get items* only as a fallback), and the stock is looked at once for the whole list instead of once per item.

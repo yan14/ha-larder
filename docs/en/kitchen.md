@@ -159,7 +159,7 @@ Under Settings → Devices & services → **Larder** → **Configure** you can p
 
 Since 4.7 every product belongs to a **store section**: 🥦 fruit & vegetables, 🥖 bakery, 🥩 meat, sausage & fish, 🧀 chilled, 🍝 pasta, rice & cans, ☕ breakfast, coffee & sweets, 🥤 drinks, 🧊 frozen, 🧴 drugstore & household, 💊 pharmacy, 🛒 other. Larder suggests it from the kind and category (household items → drugstore, medicines → pharmacy, *TK-* → frozen, water and juice → drinks); **Store section** on the card of a product overrides it, remembered by product name, and **Automatic** goes back to the suggestion.
 
-When Larder puts something on a list, it moves the new item behind the last open item of the same or an earlier section, so the list follows your way through the store. Set the order once under **More → 🏪 Store sections** (administrators) with ↑ and ↓. Items you typed yourself are sorted in by their name as well. This needs a list that can move items, such as the built-in *Shopping list* or *Local To-do*; lists that cannot (some cloud lists) keep the order in which items were added.
+The [shopping mode](#shopping-mode) shows every list by section in your order, so it follows your way through the store; items you typed yourself are sorted in by their name as well. Set the order once under **More → 🏪 Store sections** (administrators) with ↑ and ↓. On the to-do list itself new items are simply added at the end (up to 5.3.3 Larder moved them behind their section; that needed access to the list beyond Home Assistant's public actions, so it was dropped).
 
 ### Shopping mode
 

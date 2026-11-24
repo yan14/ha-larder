@@ -159,7 +159,7 @@ Unter Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** k
 
 Seit 4.7 gehört jedes Produkt zu einer **Abteilung**: 🥦 Obst & Gemüse, 🥖 Brot & Backwaren, 🥩 Fleisch, Wurst & Fisch, 🧀 Kühlregal, 🍝 Nudeln, Reis & Konserven, ☕ Frühstück, Kaffee & Süßes, 🥤 Getränke, 🧊 Tiefkühl, 🧴 Drogerie & Haushalt, 💊 Apotheke, 🛒 Sonstiges. Larder schlägt sie nach Art und Kategorie vor (Haushaltsartikel → Drogerie, Medikamente → Apotheke, *TK-* → Tiefkühl, Wasser und Saft → Getränke); **Abteilung** auf der Karte eines Produkts überschreibt das, gemerkt nach Produktname, **Automatisch** stellt zurück.
 
-Setzt Larder etwas auf eine Liste, schiebt es den neuen Eintrag hinter den letzten offenen Eintrag derselben oder einer früheren Abteilung – die Liste folgt so deinem Weg durch den Laden. Die Reihenfolge stellst du einmal unter **Mehr → 🏪 Abteilungen** (Administratoren) mit ↑ und ↓ ein. Selbst eingetippte Einträge werden nach ihrem Namen mit einsortiert. Das braucht eine Liste, die Einträge verschieben kann, z. B. die eingebaute *Einkaufsliste* oder *Lokale To-do-Liste*; Listen, die das nicht können (manche Cloud-Listen), behalten die Reihenfolge des Hinzufügens.
+Der [Einkaufsmodus](#einkaufsmodus) zeigt alle Listen nach Abteilungen in deiner Reihenfolge – so folgt er deinem Weg durch den Laden; selbst eingetippte Einträge werden nach ihrem Namen mit einsortiert. Die Reihenfolge stellst du einmal unter **Mehr → 🏪 Abteilungen** (Administratoren) mit ↑ und ↓ ein. Auf der To-do-Liste selbst kommen neue Einträge einfach ans Ende (bis 5.3.3 hat Larder sie hinter ihre Abteilung geschoben; das brauchte einen Zugriff auf die Liste über die öffentlichen Aktionen von Home Assistant hinaus und entfällt deshalb).
 
 ### Einkaufsmodus
 

@@ -93,7 +93,7 @@ async def test_shopping_mode_says_why_it_is_empty(hass: HomeAssistant, hass_ws_c
     res = await _ws(hass, hass_ws_client, type="larder/shopping_mode")
     assert [i["summary"] for i in res["result"]["items"]] == ["Milch"]
     assert res["result"]["lists"][0]["open"] == 1 and res["result"]["missing"] is None
-    # the action fails: read straight from the entity
+    # the action fails: the page says so
     from homeassistant.core import ServiceRegistry
 
     real = ServiceRegistry.async_call
@@ -105,7 +105,9 @@ async def test_shopping_mode_says_why_it_is_empty(hass: HomeAssistant, hass_ws_c
 
     with patch.object(ServiceRegistry, "async_call", broken):
         res = await _ws(hass, hass_ws_client, type="larder/shopping_mode")
-    assert [i["summary"] for i in res["result"]["items"]] == ["Milch"]
+    # 5.3.4: only the public action – the list is reported as not readable, with the reason
+    assert res["result"]["items"] == []
+    assert "boom" in res["result"]["lists"][0]["error"]
     # a list chosen in the settings that is gone
     await _options(hass, entry, todo_entity="todo.weg")
     res = await _ws(hass, hass_ws_client, type="larder/shopping_mode")

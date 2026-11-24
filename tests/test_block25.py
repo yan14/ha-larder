@@ -62,23 +62,15 @@ def test_suggested_sections() -> None:
 
 
 async def test_items_are_sorted_into_their_section(hass: HomeAssistant, hass_ws_client) -> None:
+    """5.3.4: items are added at the end (no reaching into the list); sections and their order stay for the shopping mode."""
     await _setup(hass, "AAAA")
     todo = await _todo(hass, ["Äpfel", "Milch", "Spaghetti"])
-    # bread goes behind the apples, before the milk
     assert await async_add_to_shopping_list(hass, "todo.einkaufen", "Brot")
-    assert todo.summaries == ["Äpfel", "Brot", "Milch", "Spaghetti"]
-    # with details in brackets, too; frozen at the end of the food
-    assert await async_add_to_shopping_list(hass, "todo.einkaufen", "TK-Erbsen (Iglo, 450 g)")
-    assert todo.summaries[-1] == "TK-Erbsen (Iglo, 450 g)"
-    # vegetables first (nothing before them)
-    assert await async_add_to_shopping_list(hass, "todo.einkaufen", "Karotten")
-    assert todo.summaries[:2] in (["Äpfel", "Karotten"], ["Karotten", "Äpfel"])
-    # own section from the card: milk is bought at the bakery counter now
+    assert todo.summaries == ["Äpfel", "Milch", "Spaghetti", "Brot"]
+    # own section from the card
     client = await hass_ws_client(hass)
     await client.send_json_auto_id({"type": "larder/product_section", "content": "Kaffee", "section": "produce"})
     assert (await client.receive_json())["result"] == {"section": "produce"}
-    assert await async_add_to_shopping_list(hass, "todo.einkaufen", "Kaffee")
-    assert todo.summaries.index("Kaffee") < todo.summaries.index("Brot")
     # back to the suggestion
     await client.send_json_auto_id({"type": "larder/product_section", "content": "Kaffee"})
     assert (await client.receive_json())["result"] == {"section": "breakfast"}
@@ -87,8 +79,6 @@ async def test_items_are_sorted_into_their_section(hass: HomeAssistant, hass_ws_
     await client.send_json_auto_id({"type": "larder/section_order", "order": ["drinks", "produce"]})
     order = (await client.receive_json())["result"]["order"]
     assert order[:2] == ["drinks", "produce"] and len(order) == len(SECTIONS)
-    assert await async_add_to_shopping_list(hass, "todo.einkaufen", "Apfelsaft")
-    assert todo.summaries[0] == "Apfelsaft"
     await client.send_json_auto_id({"type": "larder/sections"})
     assert (await client.receive_json())["result"]["order"][0] == "drinks"
 

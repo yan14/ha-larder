@@ -73,24 +73,14 @@ def known_for(
 
 
 async def _open_items(hass: HomeAssistant, entity_id: str) -> list[dict[str, Any]]:
-    """Open items of a to-do list: straight from the list entity (fast, 5.3.3), else with the action get_items."""
-    from homeassistant.components.todo import DATA_COMPONENT, TodoItemStatus  # noqa: PLC0415
-
-    component = hass.data.get(DATA_COMPONENT)
-    entity = component.get_entity(entity_id) if component else None
-    if entity is not None and entity.todo_items is not None:
-        return [
-            {"uid": i.uid, "summary": i.summary, "status": i.status}
-            for i in entity.todo_items
-            if i.status == TodoItemStatus.NEEDS_ACTION
-        ]
+    """Open items of a to-do list, through the action todo.get_items (the public way, 5.3.4)."""
     try:
         response = await hass.services.async_call(
             "todo", "get_items", {"entity_id": entity_id, "status": "needs_action"}, blocking=True, return_response=True
         )
-        return ((response or {}).get(entity_id) or {}).get("items") or []
     except Exception as err:  # noqa: BLE001 - any list (Google Tasks, Bring!, Todoist …) may fail in its own way
         raise HomeAssistantError(f"{entity_id} cannot be read: {err}") from err
+    return ((response or {}).get(entity_id) or {}).get("items") or []
 
 
 async def async_shopping_view(hass: HomeAssistant) -> dict[str, Any]:
