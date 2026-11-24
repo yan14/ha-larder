@@ -315,6 +315,12 @@ export class LarderDashboard extends HTMLElement {
     // The embedded classic view sits between content and bar (for cards and estimates)
     this._nav.before(this._classic);
     this._classic.addEventListener("larder-detail-closed", () => this._closeDetail());
+    // 5.3.1 (#147): writing a new sticker as a step with a button (tap → the app's writer, "again", "done")
+    this._classic.addEventListener("larder-write-tag", (ev) => {
+      const d = ev.detail || {};
+      d.handled = true;
+      this.openWriteStep(d.tagId, d.name, d.done);
+    });
     // 5.3: the compartment view from a card (🏷 next to the compartment)
     this._classic.addEventListener("larder-open-place", (ev) => {
       const d = ev.detail || {};

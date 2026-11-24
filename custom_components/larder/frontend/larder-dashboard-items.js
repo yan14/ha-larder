@@ -149,6 +149,10 @@ const TEXT = {
     codeOpen: "Anbrechen",
     codeMove: "Umbuchen",
     codeNewPack: "Neue Packung hinzufügen",
+    codeDetail: "Karte dieser Packung öffnen",
+    codeDetailShort: "Details",
+    codeTransfer: "In Dose umfüllen",
+    transferNew: "Neue Dose anlegen",
     codeUsedDone: (place) => `Eine Packung aus ${place} verbraucht.`,
     codeUsedPieceDone: (place) => `Ein Stück aus ${place} entnommen.`,
     codeThrownDone: (place) => `Eine Packung aus ${place} entsorgt.`,
@@ -319,6 +323,10 @@ const TEXT = {
     codeOpen: "Open",
     codeMove: "Move",
     codeNewPack: "Add a new pack",
+    codeDetail: "Open the card of this pack",
+    codeDetailShort: "Details",
+    codeTransfer: "Into a container",
+    transferNew: "New container",
     codeUsedDone: (place) => `One pack from ${place} used up.`,
     codeUsedPieceDone: (place) => `Took one piece from ${place}.`,
     codeThrownDone: (place) => `One pack from ${place} thrown away.`,
@@ -460,7 +468,15 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       const hh = entry.kind === "household";
       const nonFood = hh || entry.kind === "medicine";
       const row = el("div", `coderow${i === 0 ? " oldest" : ""}`);
-      const text = el("span", "text");
+      // 5.3.1 (#145): the place itself opens the card of the pack (date, price, details)
+      const text = el("button", "text");
+      text.type = "button";
+      text.dataset.role = "code-detail";
+      text.title = t.codeDetail;
+      text.addEventListener("click", () => {
+        this._closeDialog();
+        this.openDetail(entry.device_id);
+      });
       text.append(
         el("span", "name", `${placeName(entry, t)}: ${entry.count}`),
         el("span", "sub", [entry.opened ? t.openedMark : null, entry.best_before ? t.codeDate(fmtDate(hass, entry.best_before)) : nonFood ? null : t.noDate].filter(Boolean).join(" · ")),
@@ -486,6 +502,18 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       const move = button("", t.codeMove, () => this.openMoveDialog(entry.device_id));
       move.dataset.role = "code-move";
       actions.append(move);
+      // 5.3.1 (#146): food packs can be transferred into a container right here
+      if (entry.kind === "pack") {
+        const transfer = button("", t.codeTransfer, () => this.openTransferDialog(entry.device_id));
+        transfer.dataset.role = "code-transfer";
+        actions.append(transfer);
+      }
+      const detail = button("link", t.codeDetailShort, () => {
+        this._closeDialog();
+        this.openDetail(entry.device_id);
+      });
+      detail.dataset.role = "code-detail-link";
+      actions.append(detail);
       row.append(text, actions);
       list.append(row);
     });
@@ -1702,7 +1730,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     const t = itemTexts(hass);
     const classic = this._classic;
     const ext = hass.auth && hass.auth.external;
-    const canWrite = !!(ext && typeof ext.fireMessage === "function" && ext.config && ext.config.canWriteTag);
+    const canWrite = !!(ext && typeof ext.fireMessage === "function" && (classic.canWriteTags || (ext.config && ext.config.canWriteTag)));
     const items = created.filter((c) => c.device_id);
     let index = 0;
     let linked = 0;
@@ -1756,16 +1784,11 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
           const tagId = classic._newTagId();
           try {
             await classic._linkTag({ tag_id: tagId, device_id: item.device_id });
-            await classic._writeNewTag(tagId, `${item.name} ${item.content}`.trim());
+            // 5.3.1: the write step (write now / again / done), then the next bag
+            await classic._writeNewTag(tagId, `${item.name} ${item.content}`.trim(), () => advance(""));
           } catch (err) {
             status.textContent = (err && err.message) || t.nfcFailed;
-            return;
           }
-          status.textContent = t.nfcHold;
-          write.hidden = true;
-          const next = button("submit", t.next, () => advance(""));
-          next.dataset.role = "nfc-next";
-          write.after(next);
         });
         write.dataset.role = "nfc-write";
         buttons.push(write);
@@ -1786,8 +1809,35 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     const empties = this._rows().filter((r) => r.content === "" && r.kind === "container");
     const error = el("div", "error");
     error.setAttribute("role", "alert");
+    // 5.3.1 (#148): a new container right here (administrators), the pack goes into it once it exists
+    const transferInto = async (target, name) => {
+      const res = await hass.callWS({ type: `${DOMAIN}/transfer`, device_id: deviceId, target });
+      this._closeDialog();
+      if (!res || !res.left) this._closeDetail();
+      this.showNotice(t.transferDone(name || "", res ? res.left : 0));
+    };
+    const newOne = isAdmin(hass)
+      ? button("", `＋ ${t.transferNew}`, () => {
+          this._closeDialog();
+          this._classic.openAddDialog("", {
+            onCreated: async (newId) => {
+              const row = this._rows().find((r) => r.id === newId);
+              try {
+                await transferInto(newId, row ? row.name : "");
+              } catch (err) {
+                this.showNotice((err && err.message) || t.transferFailed);
+              }
+            },
+          });
+        })
+      : null;
+    if (newOne) newOne.dataset.role = "transfer-new";
     if (!empties.length) {
-      this._form.replaceChildren(el("h2", "", t.transferTitle), el("p", "hint", t.transferNone), buttonsRow(button("cancel", t.cancel, () => this._closeDialog())));
+      this._form.replaceChildren(
+        el("h2", "", t.transferTitle),
+        el("p", "hint", t.transferNone),
+        buttonsRow(...[button("cancel", t.cancel, () => this._closeDialog()), newOne].filter(Boolean)),
+      );
       this._submit = null;
       this._overlay.hidden = false;
       return;
@@ -1803,6 +1853,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     this._form.replaceChildren(
       el("h2", "", t.transferTitle),
       field(t.transferInto, target),
+      ...(newOne ? [newOne] : []),
       el("p", "hint", t.transferHint),
       error,
       buttonsRow(button("cancel", t.cancel, () => this._closeDialog()), submit),
@@ -1811,11 +1862,8 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       submit.disabled = true;
       error.textContent = "";
       try {
-        const res = await hass.callWS({ type: `${DOMAIN}/transfer`, device_id: deviceId, target: target.value });
         const row = empties.find((r) => r.id === target.value);
-        this._closeDialog();
-        if (!res || !res.left) this._closeDetail();
-        this.showNotice(t.transferDone(row ? row.name : "", res ? res.left : 0));
+        await transferInto(target.value, row ? row.name : "");
       } catch (err) {
         error.textContent = (err && err.message) || t.transferFailed;
       } finally {

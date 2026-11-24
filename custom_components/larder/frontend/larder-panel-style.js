@@ -270,4 +270,6 @@ export const STYLE = `
   .comprow button.placetag { flex: 0 0 auto; font-size: 18px; padding: 4px 8px; border-radius: 8px; cursor: pointer;
     border: 1px solid var(--divider-color); background: none; }
   .comprow button.placetag[hidden] { display: none; }
+  .nfcrow { flex-wrap: wrap; }
+  .nfcrow button[hidden] { display: none; }
 `;

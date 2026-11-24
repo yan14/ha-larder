@@ -1906,7 +1906,7 @@ test("barcode: shows all places, oldest best-before first, −1 at the chosen pl
   assert.equal(rows[1].querySelector(".sub").textContent, "MHD 01.06.2027");
   assert.ok(rows[0].classList.contains("oldest"));
   // 4.2: per place used up, thrown away, open (not when already opened) and move
-  assert.deepEqual([...rows[1].querySelectorAll(".codeactions button")].map((b) => b.textContent), ["Verbraucht", "Entsorgen", "Anbrechen", "Umbuchen"]);
+  assert.deepEqual([...rows[1].querySelectorAll(".codeactions button")].map((b) => b.textContent), ["Verbraucht", "Entsorgen", "Anbrechen", "Umbuchen", "Details"]);
   // the newer one in hand: used up there
   rows[1].querySelector('[data-role="code-take"]').click();
   await flush();
@@ -2436,10 +2436,19 @@ test("compartment: writing a sticker links the tag right away", async () => {
   assert.equal(link.area_id, "cellar");
   assert.equal(link.compartment, "Regal oben");
   assert.equal(hass.wsCalls.find((m) => m.type === "tag/create").tag_id, link.tag_id);
-  assert.deepEqual(messages[0], { type: "tag/write", payload: { name: "Keller · Regal oben", tag: link.tag_id } });
+  // 5.3.1: a step of its own – the app's writer opens with a tap, again if it did not open
   const form = $(el, "form.dialog");
+  assert.equal(form.querySelector("h2").textContent, "✍ Sticker beschreiben");
+  assert.equal(messages.length, 0);
+  form.querySelector('[data-role="write-now"]').click();
+  assert.deepEqual(messages[0], { type: "tag/write", payload: { name: "Keller · Regal oben", tag: link.tag_id } });
+  assert.equal(form.querySelector('[data-role="write-now"]').textContent, "📡 Nochmal beschreiben");
+  form.querySelector('[data-role="write-now"]').click();
+  assert.equal(messages.length, 2);
+  form.querySelector('[data-role="write-done"]').click();
+  await flush();
+  await flush();
   assert.match(form.textContent, /NFC-Tag verknüpft/);
-  assert.match(form.querySelector('[data-role="place-status"]').textContent, /Verknüpft\. Halte das Handy/);
   assert.equal(form.querySelector('[data-role="place-write"]'), null);
 });
 
@@ -3588,4 +3597,51 @@ test("5.3: new tag → compartment, container or ignore; compartments & tags; �
   await flush();
   assert.equal(form.querySelector("h2").textContent, "Küche · Fach 1");
   assert.match(form.textContent, /NFC-Tag verknüpft/);
+});
+
+// ---------- 5.3.1: barcode dialog and writing stickers ----------
+
+test("5.3.1: barcode dialog opens the card and transfers; transfer into a new container; write step", async () => {
+  const hass = makeHass(DOSES);
+  hass.states["text.d2_inhalt"].attributes.kind = "pack";
+  const messages = [];
+  hass.auth = { external: { config: { canWriteTag: true }, fireMessage: (m) => messages.push(m) } };
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/stock_code`) {
+      return { code: "4000000000001", name: "Gouda", entries: [{ device_id: "d2", area: "Küche", compartment: "", count: 1, best_before: null, kind: "pack" }], known: null };
+    }
+    if (msg.type === `${D}/transfer`) {
+      hass.wsCalls.push(msg);
+      return { left: 0 };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await el.takeByCode("4000000000001");
+  const form = $(el, "form.dialog");
+  assert.ok(form.querySelector('[data-role="code-transfer"]'));
+  form.querySelector('[data-role="code-detail"]').click();
+  assert.equal(el._classic.getAttribute("only"), "d2");
+  // transfer into a container right from the barcode dialog (the only empty one is d5)
+  await el.takeByCode("4000000000001");
+  form.querySelector('[data-role="code-transfer"]').click();
+  assert.equal(form.querySelector("h2").textContent, "In Dose umfüllen");
+  assert.ok(form.querySelector('[data-role="transfer-new"]'));
+  // a new container: created through the add dialog, then the pack goes into it
+  let opened = null;
+  el._classic.openAddDialog = (code, opts) => (opened = opts);
+  form.querySelector('[data-role="transfer-new"]').click();
+  await opened.onCreated("d5");
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/transfer`), { type: `${D}/transfer`, device_id: "d2", target: "d5" });
+  // the card asks the dashboard for the write step
+  let done = 0;
+  const detail = { tagId: "t-1", name: "Dose 9", done: () => done++, handled: false };
+  el._classic.dispatchEvent(new dom.window.CustomEvent("larder-write-tag", { detail }));
+  assert.equal(detail.handled, true);
+  form.querySelector('[data-role="write-now"]').click();
+  assert.deepEqual(messages.at(-1), { type: "tag/write", payload: { name: "Dose 9", tag: "t-1" } });
+  form.querySelector('[data-role="write-done"]').click();
+  assert.equal(done, 1);
 });

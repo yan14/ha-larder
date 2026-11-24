@@ -358,4 +358,7 @@ export const STYLE = `
   .dialog h3 { margin: 12px 0 4px; font-size: 14px; font-weight: 500; }
   .dialog button.outline { font: inherit; font-size: 15px; padding: 10px 14px; border-radius: 10px; cursor: pointer;
     background: none; color: var(--primary-color); border: 1px solid var(--primary-color); }
+  /* 5.3.1: the place in the barcode dialog opens the card */
+  .dialog .coderow button.text { font: inherit; text-align: left; background: none; border: 0; padding: 0; color: inherit; cursor: pointer; align-items: flex-start; }
+  .dialog .coderow button.text .name { text-decoration: underline; text-decoration-color: var(--divider-color); text-underline-offset: 3px; }
 `;

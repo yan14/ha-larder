@@ -3,6 +3,16 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 5.3.1
+
+Fixes from everyday use (block 40).
+
+- **Barcode dialog:** tapping a place (or **Details**) opens the card of that pack; food packs can be **transferred into a container** right there.
+- **Transfer into a container:** **＋ New container** (administrators) creates a container and transfers the pack into it right away.
+- **Writing NFC stickers:** after *＋ → Write a new NFC tag* (and wherever Larder writes a sticker) a step of its own comes up – **📡 Write now** opens the app's writer, **Write again** if no window opened, **Done** goes on to filling. Before, the app was asked once in the background and nothing happened if it missed it.
+- **Container card:** **✍ Write a new sticker** links a blank sticker (blank stickers cannot be scanned); the NFC row is back below the date instead of under *More*. *Scan NFC tag* now says that blank stickers have to be written.
+- The check whether the app can write stickers waits for the app's settings everywhere, so *✍ Write sticker* in a compartment no longer goes missing.
+
 ## 5.3.0
 
 Compartments and NFC tags made easy (block 36).

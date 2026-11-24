@@ -2293,3 +2293,23 @@ test("5.3: 🏷 next to the compartment asks the dashboard for the compartment v
   btn.click();
   assert.deepEqual(asked, { areaId: "kitchen", compartment: "Fach 2" });
 });
+
+test("5.3.1: card of a container – write a new sticker (blank stickers cannot be read)", async () => {
+  const hass = adminHass([{ id: "d1", name: "Dose A", content: "Chili" }]);
+  const messages = [];
+  hass.auth = { external: { config: Promise.resolve({ canWriteTag: true }), fireMessage: (m) => messages.push(m) } };
+  const el = mount(hass);
+  await flush();
+  await flush();
+  el.hass = { ...hass };
+  const btn = $(el, ".card button.nfcwrite");
+  assert.equal(btn.hidden, false);
+  assert.equal(btn.textContent, "✍ Neuen Sticker beschreiben");
+  btn.click();
+  await flush();
+  await flush();
+  const link = hass.wsCalls.find((m) => m.type === "larder/nfc_link");
+  assert.equal(link.device_id, "d1");
+  // not embedded in the dashboard: the app is asked right away
+  assert.deepEqual(messages.at(-1), { type: "tag/write", payload: { name: "Chili", tag: link.tag_id } });
+});

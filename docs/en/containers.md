@@ -85,7 +85,7 @@ A bag works like a container (scan it, take a portion, **Opened**, **Thawed**, r
 - **−1** on the card takes one pack; the last one removes the entry.
 - **Move / split** brings some or all packs of an entry to another area and compartment (e.g. 2 of 5 ketchup to *Pantry · Cupboard*). If the same food with the same best-before date is already there, the packs are merged; otherwise a new entry with the same data is created.
 - **Minimum stock** on the card (e.g. at least 4 ketchup) applies to the product, i.e. to all packs with this contents in every place, and is kept when the last pack is gone. As soon as there are fewer, the product goes onto the [shopping list](kitchen.md#shopping-list) (with brand and package, not twice).
-- **Move into a container** opens a pack: choose an empty container, the contents and nutrition move into it, and the best-before date is estimated again for the opened food (at most the printed date).
+- **Move into a container** opens a pack: choose an empty container – or **＋ New container** (administrators, since 5.3.1), which is created and filled right away –, the contents and nutrition move into it, and the best-before date is estimated again for the opened food (at most the printed date).
 
 <p align="center">
 <img src="../images/dashboard-pack-en.png" width="250" alt="Card of a pack">
@@ -111,6 +111,8 @@ A bag works like a container (scan it, take a portion, **Opened**, **Thawed**, r
 - **Thrown away**: −1, recorded as thrown away in the history and [statistics](dashboard.md#statistics), with its value.
 - **Open**: opens the pack, optionally to another place (e.g. into the fridge), see [opened packs](#stock).
 - **Move**: puts it in another place without opening it.
+- **Into a container** (food packs, since 5.3.1): transfers the pack into an empty container – or **＋ New container** (administrators) creates one and transfers it right away.
+- Tapping the **place** (or **Details**) opens the card of that pack with date, price and everything else.
 
 **＋ Add a new pack** adds another pack of the same product, filled in with name, brand, barcode, price and the place where most of it already is. A product that is not in stock can be added as a pack right away. If you renamed the product, the barcode is remembered; packs added without a barcode can be linked with **🔗 Link to a product in stock**.
 

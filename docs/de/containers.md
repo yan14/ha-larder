@@ -85,7 +85,7 @@ Ein Beutel funktioniert wie eine Dose (scannen, Portion entnehmen, **Geöffnet**
 - **−1** auf der Karte entnimmt eine Packung; die letzte entfernt den Eintrag.
 - **Verschieben / aufteilen** bringt einen Teil oder alle Packungen eines Eintrags in einen anderen Bereich und ein anderes Fach (z. B. 2 von 5 Ketchup nach *Vorrat · Schrank*). Liegt dort schon dieselbe Ware mit demselben MHD, werden die Packungen zusammengelegt; sonst entsteht ein neuer Eintrag mit denselben Daten.
 - **Mindestbestand** auf der Karte (z. B. mindestens 4 Ketchup) gilt für das Produkt, also für alle Packungen mit diesem Inhalt an allen Orten, und bleibt gemerkt, auch wenn die letzte Packung weg ist. Sobald weniger da ist, kommt das Produkt auf die [Einkaufsliste](kitchen.md#einkaufsliste) (mit Marke und Packung, nicht doppelt).
-- **In Dose umfüllen** öffnet eine Packung: leere Dose wählen, Inhalt und Nährwerte wandern hinein, und das MHD wird für die geöffnete Ware neu geschätzt (höchstens das aufgedruckte Datum).
+- **In Dose umfüllen** öffnet eine Packung: leere Dose wählen – oder **＋ Neue Dose anlegen** (Administratoren, seit 5.3.1), die gleich angelegt und befüllt wird –, Inhalt und Nährwerte wandern hinein, und das MHD wird für die geöffnete Ware neu geschätzt (höchstens das aufgedruckte Datum).
 
 <p align="center">
 <img src="../images/dashboard-pack-de.png" width="250" alt="Karte einer Packung">
@@ -111,6 +111,8 @@ Ein Beutel funktioniert wie eine Dose (scannen, Portion entnehmen, **Geöffnet**
 - **Entsorgen**: −1, kommt als weggeworfen in den Verlauf und die [Statistik](dashboard.md#statistik), mit Wert.
 - **Anbrechen**: bricht die Packung an, auf Wunsch an einen anderen Ort (z. B. in den Kühlschrank), siehe [angebrochene Packungen](#bestand).
 - **Umbuchen**: stellt sie an einen anderen Ort, ohne sie anzubrechen.
+- **In Dose umfüllen** (Lebensmittel-Packungen, seit 5.3.1): füllt die Packung in eine leere Dose um – oder **＋ Neue Dose anlegen** (Administratoren) legt eine an und füllt gleich um.
+- Ein Tipp auf den **Ort** (oder **Details**) öffnet die Karte dieser Packung mit MHD, Preis und allem anderen.
 
 **＋ Neue Packung hinzufügen** legt eine weitere Packung desselben Produkts an, vorbelegt mit Name, Marke, Strichcode, Preis und dem Ort, an dem das meiste davon liegt. Ist das Produkt nicht im Vorrat, lässt es sich gleich als Packung anlegen. Hast du das Produkt umbenannt, merkt sich Larder den Strichcode; Packungen ohne Strichcode verknüpfst du mit **🔗 Mit Produkt im Vorrat verknüpfen**.
 

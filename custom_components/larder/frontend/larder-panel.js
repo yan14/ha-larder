@@ -450,7 +450,7 @@ class DoseCard {
         </div>
         <div class="source" hidden></div>
       </details>
-      <div class="nfcrow"><span class="nfcstate"></span><button class="nfcbtn" type="button"></button></div>
+      <div class="nfcrow"><span class="nfcstate"></span><button class="nfcbtn" type="button"></button><button class="nfcwrite" type="button" hidden></button></div>
       <div class="actions"><button class="fill" type="button"></button><button class="transfer" type="button" hidden></button><button class="move" type="button" hidden></button><button class="openpack" type="button" hidden></button><select class="convert" hidden></select><button class="empty" type="button"></button><span class="spacer"></span><img class="qr" alt=""></div>
       <div class="outcomerow" hidden><span class="otext"></span><button class="eaten" type="button"></button><button class="thrown" type="button"></button><button class="ocancel" type="button"></button></div>
       <details class="more"><summary></summary></details>
@@ -460,7 +460,7 @@ class DoseCard {
     // 5.0 (#119): the frequent actions as big buttons at the top, everything rarely needed under "More"
     this.q(".bigactions").append(...["button.take", "button.openpack", "button.empty", "button.move"].map((sel) => this.q(sel)));
     const more = this.q("details.more");
-    for (const sel of [".filledrow", ".estimaterow", ".vacrow", ".shoprow", ".flexrow", ".homerow", ".sizerow", ".minrow", ".replrow", ".listrow", ".sectionrow", "details.nutrition", ".nfcrow", "select.convert"]) {
+    for (const sel of [".filledrow", ".estimaterow", ".vacrow", ".shoprow", ".flexrow", ".homerow", ".sizerow", ".minrow", ".replrow", ".listrow", ".sectionrow", "details.nutrition", "select.convert"]) {
       more.append(this.q(sel));
     }
     this.inputs = {
@@ -708,6 +708,8 @@ class DoseCard {
       this._panel.dispatchEvent(new CustomEvent("larder-transfer", { detail: { deviceId: this.deviceId } }));
     });
     this.q("button.nfcbtn").addEventListener("click", () => this._panel.nfcAction(this.deviceId));
+    // 5.3.1 (#149): a blank sticker cannot be read – write a new one instead
+    this.q("button.nfcwrite").addEventListener("click", () => this._panel.nfcWriteNew(this.deviceId, this.inputs.content.value.trim()));
   }
 
   _setTip(text, isError = false) {
@@ -1160,8 +1162,12 @@ class DoseCard {
     }
     if (nfc !== null) {
       this.q(".nfcstate").textContent = { linked: t.nfcLinked, none: t.nfcNone, waiting: t.nfcWaiting }[nfc];
+      this.q(".nfcstate").title = nfc === "waiting" && this._panel.canWriteTags ? t.nfcBlankHint : "";
       this.q("button.nfcbtn").textContent = { linked: t.nfcUnlink, none: t.nfcLink, waiting: t.cancel }[nfc];
     }
+    const nfcWrite = this.q("button.nfcwrite");
+    nfcWrite.hidden = !(nfc === "none" && this._panel.canWriteTags);
+    nfcWrite.textContent = t.nfcWriteNew;
 
     const vac = states[dev.entities.switch];
     const vacInput = this.q('[data-f="vacuum"]');
@@ -1478,30 +1484,71 @@ class LarderPanel extends HTMLElement {
 
   /** Can the app (Companion) write NFC tags? Then the dialog offers "Write a new NFC tag". */
   _refreshWriteSupport() {
-    const ext = this._hass && this._hass.auth && this._hass.auth.external;
     const label = this._form.querySelector('[data-w="nfcwrite"]');
-    if (!ext || typeof ext.fireMessage !== "function") {
-      label.hidden = true;
-      return;
-    }
-    Promise.resolve(ext.config)
-      .then((cfg) => {
-        label.hidden = !(cfg && cfg.canWriteTag);
-      })
-      .catch(() => {
-        label.hidden = true;
-      });
+    label.hidden = !this.canWriteTags;
+    this.checkWriteSupport().then((can) => {
+      label.hidden = !can;
+    });
   }
 
-  /** Create a new tag in Home Assistant (so it is in the tag list) and ask the app to write it. */
-  async _writeNewTag(tagId, name) {
-    const hass = this._hass;
+  /** Can the app (Companion) write NFC tags? Its config may still be loading (a promise): wait for it once. */
+  async checkWriteSupport() {
+    const ext = this._hass && this._hass.auth && this._hass.auth.external;
+    let can = false;
+    if (ext && typeof ext.fireMessage === "function") {
+      try {
+        const cfg = await Promise.resolve(ext.config);
+        can = !!(cfg && cfg.canWriteTag);
+      } catch {
+        can = false;
+      }
+    }
+    if (can !== this.canWriteTags) {
+      this.canWriteTags = can;
+      this._update();
+    }
+    return can;
+  }
+
+  /**
+   * Write a new sticker for a tag ID (5.3.1, #147): in the dashboard as a step with a button (tap → the app's
+   * writer, "again" if it did not open, then "done"); on its own the app is asked right away.
+   */
+  requestTagWrite(tagId, name, done = null) {
+    const detail = { tagId, name, done, handled: false };
+    this.dispatchEvent(new CustomEvent("larder-write-tag", { detail, bubbles: true, composed: true }));
+    if (!detail.handled) {
+      this._hass.auth.external.fireMessage({ type: "tag/write", payload: { name, tag: tagId } });
+      if (done) done();
+    }
+  }
+
+  /** Card of a container without a tag: link a brand-new tag ID and write it onto a blank sticker. */
+  async nfcWriteNew(deviceId, name) {
+    const t = strings(this._hass);
+    const tagId = this._newTagId();
     try {
-      await hass.callWS({ type: "tag/create", tag_id: tagId, name });
+      await this._linkTag({ tag_id: tagId, device_id: deviceId });
+      await this._createTag(tagId, name || "Larder");
+    } catch (err) {
+      this.showError((err && err.message) || t.nfcFailed);
+      return;
+    }
+    this.requestTagWrite(tagId, name || "Larder");
+  }
+
+  async _createTag(tagId, name) {
+    try {
+      await this._hass.callWS({ type: "tag/create", tag_id: tagId, name });
     } catch (err) {
       /* not a problem: the tag also works without an entry in the tag list */
     }
-    hass.auth.external.fireMessage({ type: "tag/write", payload: { name, tag: tagId } });
+  }
+
+  /** Create a new tag in Home Assistant (so it is in the tag list) and ask the app to write it. */
+  async _writeNewTag(tagId, name, done = null) {
+    await this._createTag(tagId, name);
+    this.requestTagWrite(tagId, name, done);
   }
 
   _newTagId() {
@@ -1512,7 +1559,9 @@ class LarderPanel extends HTMLElement {
 
   _setNfcStatus(message) {
     const t = strings(this._hass);
-    this._form.querySelector('[data-w="nfc"]').textContent = message || (this._nfcTag ? t.nfcGot : t.nfcWaiting);
+    // 5.3.1: a blank sticker cannot be read – say so where it can be written instead
+    this._form.querySelector('[data-w="nfc"]').textContent =
+      message || (this._nfcTag ? t.nfcGot : this.canWriteTags ? `${t.nfcWaiting} ${t.nfcBlankHint}` : t.nfcWaiting);
   }
 
   _dialogTag(tag) {
@@ -1534,9 +1583,10 @@ class LarderPanel extends HTMLElement {
   }
 
   /** Open the dialog "Add container"; with `code` "Read Zwilling QR code" is preselected. */
-  openAddDialog(code = "") {
+  openAddDialog(code = "", { onCreated = null } = {}) {
     const hass = this._hass;
     if (!hass || !isAdmin(hass)) return;
+    this._onCreated = onCreated; // 5.3.1: e.g. transfer a pack into the new container
     const t = strings(hass);
     this._form.querySelector('[data-f="name"]').value = "";
     this._form.querySelector('[data-f="code"]').value = code;
@@ -1661,20 +1711,29 @@ class LarderPanel extends HTMLElement {
             this.showError(t.nfcFailed + (err && err.message ? ` ${err.message}` : ""));
           }
         }
+        const onCreated = this._onCreated;
+        this._onCreated = null;
+        // New container: as soon as its device is there, open "Fill container" right away (as after scanning an
+        // empty container) – or hand it to whoever asked for it (transfer into a new container, 5.3.1)
+        const pending = () => {
+          this._pendingFill = { known: knownDevices, until: Date.now() + 20000, onCreated };
+          this._checkPendingFill();
+        };
+        this.closeAddDialog();
         if (mode === "nfcwrite") {
           const entryId = result.result && result.result.entry_id;
           const tagId = this._newTagId();
           try {
             await this._linkTag({ tag_id: tagId, entry_id: entryId });
-            await this._writeNewTag(tagId, name || result.title || "Larder");
+            // the fill dialog only after the sticker was written
+            await this._writeNewTag(tagId, name || result.title || "Larder", pending);
           } catch (err) {
             this.showError(t.nfcFailed + (err && err.message ? ` ${err.message}` : ""));
+            pending();
           }
+          return;
         }
-        this.closeAddDialog();
-        // New container: as soon as its device is there, open "Fill container" right away (as after scanning an empty container).
-        this._pendingFill = { known: knownDevices, until: Date.now() + 20000 };
-        this._checkPendingFill();
+        pending();
         return;
       }
       if (result.type === "abort") {
@@ -1711,9 +1770,10 @@ class LarderPanel extends HTMLElement {
     const dev = this._devices.find(
       (d) => !pending.known.has(d.deviceId) && d.entities.text && states[d.entities.text],
     );
-    if (!dev || !this._cards.has(dev.deviceId)) return;
+    if (!dev || (!pending.onCreated && !this._cards.has(dev.deviceId))) return;
     this._pendingFill = null;
-    this.highlight(dev.deviceId, true);
+    if (pending.onCreated) pending.onCreated(dev.deviceId);
+    else this.highlight(dev.deviceId, true);
   }
 
   /** `?add=<ID>` (from the scan webhook): open the dialog with the code, or a note for non-administrators. */
@@ -2705,6 +2765,7 @@ class LarderPanel extends HTMLElement {
     if (!this._nfcLoaded) {
       this._nfcLoaded = true;
       this.loadNfc();
+      this.checkWriteSupport(); // 5.3.1: whether the app can write stickers (its config may still be loading)
     }
     for (const dev of this._devices) {
       const card = this._cards.get(dev.deviceId);

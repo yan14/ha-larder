@@ -54,6 +54,12 @@ const TEXT = {
     placeTagDone: "NFC-Tag mit dem Fach verknüpft.",
     placeTagUnlink: "Tag lösen",
     placeTagFailed: "Verknüpfen fehlgeschlagen.",
+    writeTitle: "✍ Sticker beschreiben",
+    writeHint: "Tippe auf „Jetzt beschreiben“ und halte das Handy an den leeren NFC-Sticker.",
+    writeNow: "📡 Jetzt beschreiben",
+    writeAgain: "📡 Nochmal beschreiben",
+    writeHold: "Halte das Handy an den Sticker. Ging kein Fenster auf? Tippe auf „Nochmal beschreiben“.",
+    writeDone: "Fertig",
     assignTitle: "📡 Neuer NFC-Tag",
     assignArea: "Bereich",
     assignHint: "Diesen Tag kennt Larder noch nicht. Wofür ist er?",
@@ -130,6 +136,12 @@ const TEXT = {
     placeTagDone: "NFC tag linked to the compartment.",
     placeTagUnlink: "Unlink tag",
     placeTagFailed: "Linking failed.",
+    writeTitle: "✍ Write the sticker",
+    writeHint: "Tap “Write now” and hold your phone to the blank NFC sticker.",
+    writeNow: "📡 Write now",
+    writeAgain: "📡 Write again",
+    writeHold: "Hold your phone to the sticker. No window opened? Tap “Write again”.",
+    writeDone: "Done",
     assignTitle: "📡 New NFC tag",
     assignArea: "Area",
     assignHint: "Larder does not know this tag yet. What is it for?",
@@ -373,8 +385,8 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, scopeOfKind, DO
       tag.dataset.role = "place-tag";
       tagRow.append(tag);
       // write an empty sticker: link right away, then the app writes the ID onto the sticker
-      const ext = hass.auth && hass.auth.external;
-      if (ext && typeof ext.fireMessage === "function" && ext.config && ext.config.canWriteTag) {
+      // 5.3.1 (#149): the same check as everywhere (the app's config may still be loading)
+      if (classic.canWriteTags || (classic.checkWriteSupport && (await classic.checkWriteSupport()))) {
         const write = button("", t.placeTagWrite, async () => {
           classic.cancelCapture("place");
           const tagId = classic._newTagId();
@@ -384,8 +396,7 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, scopeOfKind, DO
             status.textContent = (err && err.message) || t.placeTagFailed;
             return;
           }
-          await classic._writeNewTag(tagId, this._placeName(areaId, compartment));
-          this.openPlace(areaId, compartment, t.placeTagHold);
+          await classic._writeNewTag(tagId, this._placeName(areaId, compartment), () => this.openPlace(areaId, compartment, t.placeTagDone));
         });
         write.dataset.role = "place-write";
         tagRow.append(write);
@@ -406,6 +417,31 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, scopeOfKind, DO
     this._overlay.hidden = false;
   };
 
+
+  // ---------- 5.3.1: writing a sticker (#147) ----------
+
+  /** A step of its own: "Write now" opens the app's writer (again if it did not open), "Done" goes on. */
+  proto.openWriteStep = function openWriteStep(tagId, name, done = null) {
+    const hass = this._hass;
+    const t = careTexts(hass);
+    const ext = hass.auth && hass.auth.external;
+    const status = el("p", "hint", t.writeHint);
+    status.dataset.role = "write-status";
+    const write = button("primary", t.writeNow, () => {
+      if (ext && typeof ext.fireMessage === "function") ext.fireMessage({ type: "tag/write", payload: { name, tag: tagId } });
+      write.textContent = t.writeAgain;
+      status.textContent = t.writeHold;
+    });
+    write.dataset.role = "write-now";
+    const finish = button("submit", t.writeDone, () => {
+      this._closeDialog();
+      if (done) done();
+    });
+    finish.dataset.role = "write-done";
+    this._form.replaceChildren(el("h2", "", t.writeTitle), el("p", "nfcitem", name), status, write, buttonsRow(finish));
+    this._submit = null;
+    this._overlay.hidden = false;
+  };
 
   // ---------- 5.3: assign a new tag, compartments & tags (#133, #134) ----------
 
