@@ -41,6 +41,7 @@ from .const import (
     larder_id,
 )
 from .consumption import async_open_prices, forecast, price_of, suggested_minimum
+from .devices import device_of
 from .entity import kind_of
 from .estimate import async_get_estimator, storage_context
 from .sections import SECTIONS, section_of, section_order
@@ -498,7 +499,6 @@ def _state(hass: HomeAssistant, registry: er.EntityRegistry, platform: str, cc: 
 def pack_entries(hass: HomeAssistant, exclude: set[str] | None = None) -> list[dict[str, Any]]:
     """All packs with content, count and place (leave out emptied, just removed ones via `exclude`)."""
     registry = er.async_get(hass)
-    devices = dr.async_get(hass)
     out: list[dict[str, Any]] = []
     for entry in hass.config_entries.async_entries(DOMAIN):
         cc = entry.data.get(CONF_CC)
@@ -519,7 +519,7 @@ def pack_entries(hass: HomeAssistant, exclude: set[str] | None = None) -> list[d
             count = 1
         best_state = _state(hass, registry, "date", cc, "best_before")
         comp_state = _state(hass, registry, "text", cc, "compartment")
-        device = devices.async_get_device(identifiers={(DOMAIN, cc)})
+        device = device_of(hass, cc, entry)
         attrs = dict(content_state.attributes) if content_state else {}
         out.append(
             {
@@ -832,7 +832,7 @@ async def async_check_stock(hass: HomeAssistant, content: str | None, exclude: s
 async def _async_relocate(hass: HomeAssistant, cc: str, area_id: str | None, compartment: str) -> None:
     """Put an entry into another area and another compartment."""
     registry = dr.async_get(hass)
-    device = registry.async_get_device(identifiers={(DOMAIN, cc)})
+    device = device_of(hass, cc)
     if device is not None:
         registry.async_update_device(device.id, area_id=area_id or None)
     comp_id = er.async_get(hass).async_get_entity_id("text", DOMAIN, f"{cc}_compartment")
@@ -890,7 +890,7 @@ async def async_open_pack(hass: HomeAssistant, cc: str, area_id: str | None = No
             await best_entity.async_set_value(best)
         else:
             best = printed
-        device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, opened_cc)})
+        device = device_of(hass, opened_cc)
         return {"device_id": device.id if device else None, "best_before": best.isoformat() if best else None, "split": opened_cc != cc}
     if estimator.enabled:
         try:
@@ -905,7 +905,7 @@ async def async_open_pack(hass: HomeAssistant, cc: str, area_id: str | None = No
     if printed is not None and best is not None and printed < best:
         await best_entity.async_set_value(printed)
         best = printed
-    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, opened_cc)})
+    device = device_of(hass, opened_cc)
     return {"device_id": device.id if device else None, "best_before": best.isoformat() if best else None, "split": opened_cc != cc}
 
 
@@ -924,7 +924,7 @@ async def async_move_packs(
     if kind_of(entry) == KIND_BAG:
         # bags always move as a whole (stocktake: "elsewhere"), nothing is merged
         await _async_relocate(hass, cc, area_id, compartment)
-        device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, cc)})
+        device = device_of(hass, cc)
         return {"moved": 1, "merged": False, "device_id": device.id if device else None}
     source = next((p for p in pack_entries(hass) if p["cc"] == cc), None)
     if source is None:

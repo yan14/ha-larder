@@ -21,6 +21,7 @@ from homeassistant.helpers import area_registry as ar, device_registry as dr, en
 from homeassistant.helpers.storage import Store
 
 from .const import APP_URL_PREFIX, CONF_CC, DOMAIN, PANEL_URL_PATH
+from .devices import device_of
 from .singleton import async_singleton
 
 if TYPE_CHECKING:
@@ -63,12 +64,12 @@ def place_name(hass: HomeAssistant, area_id: str | None, compartment: str | None
 def items_at(hass: HomeAssistant, area_id: str | None, compartment: str | None) -> list[str]:
     """Contents of all filled entries at this place (without a compartment: the whole area)."""
     registry = er.async_get(hass)
-    devices = dr.async_get(hass)
+    dr.async_get(hass)
     wanted = norm_compartment(compartment).casefold()
     out = []
     for entry in hass.config_entries.async_entries(DOMAIN):
         cc = entry.data.get(CONF_CC)
-        device = devices.async_get_device(identifiers={(DOMAIN, cc)}) if cc else None
+        device = device_of(hass, cc) if cc else None
         if device is None or (device.area_id or None) != (area_id or None):
             continue
         content_id = registry.async_get_entity_id("text", DOMAIN, f"{cc}_content")

@@ -3,6 +3,11 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 5.3.3
+
+- **Shopping mode loads much faster:** the open items are read straight from the list (the action *get items* only as a fallback), and the stock is looked at once for the whole list instead of once per item.
+- **Ready for Home Assistant 2027.8:** devices are no longer looked up with the deprecated `device_registry.async_get_device` (and `DeviceEntry.config_entries`), which logged *Detected that custom integration 'larder' calls device_registry.async_get_device* and would stop working in 2027.8. Every Larder entry finds its device through its own config entry now.
+
 ## 5.3.2
 
 - **Shopping mode:** lists from other integrations (e.g. Google Tasks) are read straight from the list when the action *get items* fails, and one odd item no longer hides the whole page. Instead of *Nothing on the shopping lists* the page now says why: which lists were read with how many open items, a list that cannot be read (with the reason), or a list chosen in the settings that does not exist (any more). While loading it says so.

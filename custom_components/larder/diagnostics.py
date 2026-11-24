@@ -5,9 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr, entity_registry as er
+from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN
+from .devices import device_of
 from .entity import LarderConfigEntry
 from .estimate import async_get_estimator, storage_context
 
@@ -19,7 +20,7 @@ async def async_get_config_entry_diagnostics(hass: HomeAssistant, entry: LarderC
     """
     cc = entry.data.get("cc")
     estimator = await async_get_estimator(hass)
-    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, cc)}) if cc else None
+    device = device_of(hass, cc) if cc else None
     entities = []
     if device:
         for ent in er.async_entries_for_device(er.async_get(hass), device.id):

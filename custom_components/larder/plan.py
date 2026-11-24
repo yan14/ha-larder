@@ -33,6 +33,7 @@ from homeassistant.util import dt as dt_util
 
 from . import shelf_life
 from .const import DOMAIN, larder_id
+from .devices import device_of
 from .estimate import storage_context
 from .singleton import async_singleton
 
@@ -128,10 +129,10 @@ class MealPlan:
         )
 
     def _public(self, plan: dict[str, Any]) -> dict[str, Any]:
-        devices = dr.async_get(self.hass)
+        dr.async_get(self.hass)
         containers = []
         for cc in plan.get("ccs", []):
-            device = devices.async_get_device(identifiers={(DOMAIN, cc)})
+            device = device_of(self.hass, cc)
             containers.append(
                 {
                     "cc": cc,
@@ -302,7 +303,7 @@ class MealPlan:
         today = today or dt_util.now().date()
         estimator = self.hass.data.get(DOMAIN, {}).get("estimator")
         lead = int(getattr(estimator, "thaw_days", 1))
-        devices = dr.async_get(self.hass)
+        dr.async_get(self.hass)
         items: list[dict[str, Any]] = []
         seen: set[str] = set()
         for plan in self.list(today):
@@ -317,7 +318,7 @@ class MealPlan:
                 if not content or storage_kind(self.hass, cc) != shelf_life.FREEZER:
                     continue
                 seen.add(cc)
-                device = devices.async_get_device(identifiers={(DOMAIN, cc)})
+                device = device_of(self.hass, cc)
                 items.append(
                     {
                         "cc": cc,
@@ -345,7 +346,7 @@ class MealPlan:
                 except HomeAssistantError:
                     _LOGGER.debug("Aufgetaut für %s nicht möglich", cc, exc_info=True)
             if fridge and _state(self.hass, "switch", cc, "flexible") == STATE_ON:
-                device = devices.async_get_device(identifiers={(DOMAIN, cc)})
+                device = device_of(self.hass, cc)
                 if device is not None:
                     devices.async_update_device(device.id, area_id=fridge)
             for plan in self.plans:

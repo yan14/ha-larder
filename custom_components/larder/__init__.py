@@ -16,6 +16,7 @@ from .const import CONF_AREA, CONF_CC, CONF_INITIAL, CONF_SOURCE, DOMAIN, MAIN_U
 from .content_photo import async_setup_content_photo
 from .datacare import async_setup_datacare_websocket
 from .date_photo import async_setup_date_photo
+from .devices import device_of
 from .disposable import async_get_retired, async_setup_disposable_websocket
 from .entity import LarderConfigEntry, LarderRuntime, is_main
 from .estimate import async_get_estimator
@@ -129,9 +130,7 @@ def _async_apply_initial_area(hass: HomeAssistant, entry: LarderConfigEntry) -> 
     if CONF_AREA not in entry.data and CONF_INITIAL not in entry.data:
         return
     if area_id and ar.async_get(hass).async_get_area(area_id) is not None:
-        device = dr.async_get(hass).async_get_device(
-            identifiers={(DOMAIN, entry.data[CONF_CC])}
-        )
+        device = device_of(hass, entry.data[CONF_CC])
         if device is not None and device.area_id is None:
             dr.async_get(hass).async_update_device(device.id, area_id=area_id)
     data = {key: value for key, value in entry.data.items() if key not in (CONF_AREA, CONF_INITIAL)}

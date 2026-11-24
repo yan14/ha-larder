@@ -46,7 +46,7 @@ def shopping_lists(hass: HomeAssistant, stock) -> list[str]:
 
 
 def known_for(
-    hass: HomeAssistant, stock, summary: str, tracked: dict[str, Any] | None = None
+    hass: HomeAssistant, stock, summary: str, tracked: dict[str, Any] | None = None, entries: list[dict[str, Any]] | None = None
 ) -> tuple[dict[str, Any] | None, int]:
     """What a list item is in Larder (content, kind, product data, usual place) and how many packs; or None."""
     if tracked is None:
@@ -54,7 +54,7 @@ def known_for(
     content = tracked.get("content") or summary.split(" (", 1)[0].strip()
     key = product_key(content)
     packs = int(tracked.get("count") or 1)
-    found = [p for p in pack_entries(hass) if product_key(p["content"]) == key]
+    found = [p for p in (pack_entries(hass) if entries is None else entries) if product_key(p["content"]) == key]
     if found:
         return _known_product(found, ""), packs
     kind = tracked.get("kind") or ((stock.minimums.get(key) or {}).get("product") or {}).get("kind")
@@ -73,25 +73,24 @@ def known_for(
 
 
 async def _open_items(hass: HomeAssistant, entity_id: str) -> list[dict[str, Any]]:
-    """Open items of a to-do list; if the action fails (5.3.2), straight from the list entity."""
+    """Open items of a to-do list: straight from the list entity (fast, 5.3.3), else with the action get_items."""
+    from homeassistant.components.todo import DATA_COMPONENT, TodoItemStatus  # noqa: PLC0415
+
+    component = hass.data.get(DATA_COMPONENT)
+    entity = component.get_entity(entity_id) if component else None
+    if entity is not None and entity.todo_items is not None:
+        return [
+            {"uid": i.uid, "summary": i.summary, "status": i.status}
+            for i in entity.todo_items
+            if i.status == TodoItemStatus.NEEDS_ACTION
+        ]
     try:
         response = await hass.services.async_call(
             "todo", "get_items", {"entity_id": entity_id, "status": "needs_action"}, blocking=True, return_response=True
         )
         return ((response or {}).get(entity_id) or {}).get("items") or []
-    except Exception:  # noqa: BLE001 - any list (Google Tasks, Bring!, Todoist …) may fail in its own way
-        _LOGGER.debug("todo.get_items für %s fehlgeschlagen, lese die Entität direkt", entity_id, exc_info=True)
-    from homeassistant.components.todo import DATA_COMPONENT, TodoItemStatus  # noqa: PLC0415
-
-    component = hass.data.get(DATA_COMPONENT)
-    entity = component.get_entity(entity_id) if component else None
-    if entity is None or entity.todo_items is None:
-        raise HomeAssistantError(f"{entity_id} cannot be read")
-    return [
-        {"uid": i.uid, "summary": i.summary, "status": i.status}
-        for i in entity.todo_items
-        if i.status == TodoItemStatus.NEEDS_ACTION
-    ]
+    except Exception as err:  # noqa: BLE001 - any list (Google Tasks, Bring!, Todoist …) may fail in its own way
+        raise HomeAssistantError(f"{entity_id} cannot be read: {err}") from err
 
 
 async def async_shopping_view(hass: HomeAssistant) -> dict[str, Any]:
@@ -100,6 +99,7 @@ async def async_shopping_view(hass: HomeAssistant) -> dict[str, Any]:
     items: list[dict[str, Any]] = []
     # 5.3.2: which lists were read and how (the page says why it is empty instead of showing nothing)
     lists: list[dict[str, Any]] = []
+    packs = pack_entries(hass)  # once for all items (5.3.3: much faster with many entries)
     for entity_id in shopping_lists(hass, stock):
         state = hass.states.get(entity_id)
         list_name = state.attributes.get("friendly_name", entity_id) if state else entity_id
@@ -117,7 +117,7 @@ async def async_shopping_view(hass: HomeAssistant) -> dict[str, Any]:
                 continue
             info["open"] += 1
             try:
-                known, _packs = known_for(hass, stock, summary)
+                known, _packs = known_for(hass, stock, summary, entries=packs)
                 section = section_of(hass, known["content"] if known else summary, known["kind"] if known else None)
             except Exception:  # noqa: BLE001 - one odd item must not hide the whole list
                 _LOGGER.debug("Eintrag %s nicht zuordenbar", summary, exc_info=True)

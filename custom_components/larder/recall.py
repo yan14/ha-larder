@@ -34,6 +34,7 @@ from homeassistant.helpers.event import async_call_later, async_track_time_inter
 from homeassistant.util import dt as dt_util
 
 from .const import CONF_CC, DOMAIN, KIND_HOUSEHOLD, KIND_MEDICINE, SIGNAL_STOCK_CHANGED
+from .devices import device_of
 from .entity import kind_of
 from .estimate import async_get_estimator
 from .singleton import async_singleton
@@ -175,7 +176,7 @@ def match(warning: dict[str, Any], item: dict[str, Any]) -> str | None:
 def stock_items(hass: HomeAssistant) -> list[dict[str, Any]]:
     """Everything with content: containers, bags, packs (content, brand, barcode, place)."""
     registry = er.async_get(hass)
-    devices = dr.async_get(hass)
+    dr.async_get(hass)
     out = []
     for entry in hass.config_entries.async_entries(DOMAIN):
         cc = entry.data.get(CONF_CC)
@@ -187,7 +188,7 @@ def stock_items(hass: HomeAssistant) -> list[dict[str, Any]]:
             continue
         comp_id = registry.async_get_entity_id("text", DOMAIN, f"{cc}_compartment")
         comp = hass.states.get(comp_id) if comp_id else None
-        device = devices.async_get_device(identifiers={(DOMAIN, cc)})
+        device = device_of(hass, cc)
         area = None
         if device is not None and device.area_id:
             found = ar.async_get(hass).async_get_area(device.area_id)

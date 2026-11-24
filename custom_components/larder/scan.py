@@ -15,11 +15,11 @@ from aiohttp import web
 
 from homeassistant.components import webhook
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.network import NoURLAvailableError
 from homeassistant.helpers.storage import Store
 
 from .const import DOMAIN, device_app_url, device_path, panel_app_url, panel_path
+from .devices import device_of
 from .qr import parse_qr
 
 STORAGE_VERSION = 1
@@ -105,7 +105,7 @@ async def _async_handle_webhook(
     if parsed is None:
         return web.json_response({"error": "invalid_code"}, status=400)
 
-    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, parsed.cc)})
+    device = device_of(hass, parsed.cc)
     if device is None:
         from .disposable import async_get_retired, retired_text  # noqa: PLC0415 - avoids an import cycle
 

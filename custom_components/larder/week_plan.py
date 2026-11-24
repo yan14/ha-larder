@@ -24,6 +24,7 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, PLAN_SOURCES
+from .devices import device_of
 from .estimate import EstimateError, async_get_estimator
 from .expiry import collect_expiring
 from .plan import async_get_plan
@@ -138,8 +139,8 @@ async def async_suggest_week(hass: HomeAssistant, days: int | None = None, sourc
         candidates += _book_candidates((await async_get_recipe_book(hass)).as_list(), items)
 
     async def ai(for_items: list[dict[str, Any]], how_many: int) -> list[dict[str, Any]]:
-        devices = dr.async_get(hass)
-        ids = [d.id for i in for_items if (d := devices.async_get_device(identifiers={(DOMAIN, i["cc"])}))]
+        dr.async_get(hass)
+        ids = [d.id for i in for_items if (d := device_of(hass, i["cc"]))]
         try:
             res = await async_suggest_recipes(hass, containers=ids, max_recipes=max(1, min(5, how_many)))
         except EstimateError as err:
@@ -163,13 +164,13 @@ async def async_suggest_week(hass: HomeAssistant, days: int | None = None, sourc
 
 def _public(hass: HomeAssistant, result: dict[str, Any], items: list[dict[str, Any]]) -> dict[str, Any]:
     """For the dashboard: device IDs and contents instead of cc."""
-    devices = dr.async_get(hass)
+    dr.async_get(hass)
     by_cc = {i["cc"]: i for i in items}
 
     def public(entry: dict[str, Any]) -> dict[str, Any]:
         uses = []
         for cc in entry["ccs"]:
-            device = devices.async_get_device(identifiers={(DOMAIN, cc)})
+            device = device_of(hass, cc)
             item = by_cc.get(cc, {})
             uses.append({"device_id": device.id if device else None, "content": item.get("content"), "name": item.get("name"), "best_before": item.get("best_before")})
         return {k: v for k, v in entry.items() if k != "ccs"} | {"uses": uses}

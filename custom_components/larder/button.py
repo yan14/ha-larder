@@ -10,6 +10,7 @@ from homeassistant.helpers import area_registry as ar, device_registry as dr
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import DATA_STOCK, DISPOSABLE_KINDS, DOMAIN
+from .devices import device_of
 from .entity import LarderConfigEntry, LarderEntity, LarderRuntime
 from .estimate import storage_context
 from .history import async_get_history, build_record
@@ -117,7 +118,7 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
         return product or None
 
     def _entry_title(self) -> str:
-        device = dr.async_get(self.hass).async_get_device(identifiers={(DOMAIN, self._cc)})
+        device = device_of(self.hass, self._cc)
         if device is not None:
             return device.name_by_user or device.name or self._cc
         return self._cc
@@ -132,7 +133,7 @@ class LarderEmptyButton(ButtonEntity, LarderEntity):
         if not area_id or ar.async_get(self.hass).async_get_area(area_id) is None:
             return
         registry = dr.async_get(self.hass)
-        device = registry.async_get_device(identifiers={(DOMAIN, self._cc)})
+        device = device_of(self.hass, self._cc)
         if device is not None and device.area_id != area_id:
             registry.async_update_device(device.id, area_id=area_id)
             # back at its fixed place: the compartment of the previous place no longer applies

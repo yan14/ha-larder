@@ -22,7 +22,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import (
     area_registry as ar,
-    device_registry as dr,
     entity_registry as er,
     label_registry as lr,
 )
@@ -78,6 +77,7 @@ from .const import (
     RECALL_STATES,
     SOON_DAYS,
 )
+from .devices import device_of
 from .product import ALLERGEN_KEYS
 from .sections import SECTIONS, normalize_order
 
@@ -160,7 +160,7 @@ def _origin_after_change(previous: dict[str, Any]) -> str | None:
 
 def storage_context(hass: HomeAssistant, cc: str) -> StorageContext:
     """Find the container's area with its temperature sensor and label descriptions."""
-    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, cc)})
+    device = device_of(hass, cc)
     area_id = device.area_id if device else None
     if device and not area_id:
         for entity in er.async_entries_for_device(er.async_get(hass), device.id):

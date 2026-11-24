@@ -31,6 +31,7 @@ from homeassistant.helpers.event import (
 )
 
 from .const import DOMAIN, NO_CODE_KINDS, SIGNAL_SETTINGS_CHANGED, larder_id
+from .devices import device_of
 from .entity import kind_of
 from .estimate import storage_context
 from .expiry import days_left
@@ -180,7 +181,7 @@ class Repairs:
         enabled = getattr(estimator, "repair_hints", True)
         problems = find_problem_containers(hass, today) if enabled else {}
         language = hass.config.language or "en"
-        devices = dr.async_get(hass)
+        dr.async_get(hass)
         self._update_area_scopes()
         for key in ISSUES:
             items = problems.get(key) or []
@@ -196,7 +197,7 @@ class Repairs:
             # "Learn more" jumps into the dashboard: one container directly, several filtered
             url = f"/{DOMAIN}?problem={DASHBOARD_FILTER[key]}"
             if len(items) == 1:
-                device = devices.async_get_device(identifiers={(DOMAIN, items[0][1])})
+                device = device_of(hass, items[0][1])
                 if device is not None:
                     url = f"/{DOMAIN}?open={device.id}"
             ir.async_create_issue(

@@ -19,6 +19,7 @@ from homeassistant.helpers import config_validation as cv, device_registry as dr
 from homeassistant.helpers.selector import AreaSelector
 
 from .const import DOMAIN
+from .devices import device_of
 from .history import async_get_history
 from .repair_hints import (
     ISSUE_AREA_SCOPES,
@@ -83,7 +84,7 @@ class LarderFixFlow(RepairsFlow):
             devices = dr.async_get(self.hass)
             for cc, label in labels.items():
                 if area_id := user_input.get(label):
-                    device = devices.async_get_device(identifiers={(DOMAIN, cc)})
+                    device = device_of(self.hass, cc)
                     if device is not None:
                         devices.async_update_device(device.id, area_id=area_id)
             return await self._done()

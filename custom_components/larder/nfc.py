@@ -28,6 +28,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import slugify
 
 from .const import CONF_CC, DOMAIN, EVENT_DOSE_SCANNED, larder_ids, panel_path
+from .devices import device_of
 from .estimate import async_get_estimator
 from .singleton import async_singleton
 
@@ -115,10 +116,10 @@ class NfcTags:
 
     def links_by_device(self) -> dict[str, str]:
         """device_id of the container -> tag_id (the dashboard only knows containers by their device ID)."""
-        registry = dr.async_get(self.hass)
+        dr.async_get(self.hass)
         out: dict[str, str] = {}
         for tag, cc in self._tags.items():
-            device = registry.async_get_device(identifiers={(DOMAIN, cc)})
+            device = device_of(self.hass, cc)
             if device is not None:
                 out[device.id] = tag
         return out
@@ -202,7 +203,7 @@ class NfcTags:
                 await self._unknown_scanned(tag_id, event.data.get("name"), event.data.get("device_id"))
             return
         entry = self._entry(cc)
-        device = dr.async_get(self.hass).async_get_device(identifiers={(DOMAIN, cc)})
+        device = device_of(self.hass, cc)
         if entry is None or device is None:
             return
         scanner = event.data.get("device_id")

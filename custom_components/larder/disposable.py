@@ -41,6 +41,7 @@ from .const import (
     UNITS,
     larder_id,
 )
+from .devices import device_of
 from .entity import kind_of
 from .estimate import async_get_estimator
 from .nfc import async_get_nfc
@@ -135,7 +136,7 @@ async def async_dispose(hass: HomeAssistant, entry_id: str, content: str = "", r
     cc = entry.data[CONF_CC]
     tag_id = (await async_get_nfc(hass)).tag_of(cc)
     if remember and kind_of(entry) == KIND_BAG:
-        device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, cc)})
+        device = device_of(hass, cc)
         name = (device.name_by_user or device.name) if device else entry.title
         (await async_get_retired(hass)).add(
             cc,
@@ -183,7 +184,7 @@ async def async_create_items(
         raise HomeAssistantError("unsupported kind")
     estimator = await async_get_estimator(hass)
     names = next_names(hass, kind, len(items))
-    registry = dr.async_get(hass)
+    dr.async_get(hass)
     created: list[dict[str, Any]] = []
     for item, default_name in zip(items, names, strict=True):
         name = (item.get("name") or "").strip() or default_name
@@ -221,7 +222,7 @@ async def async_create_items(
                 await hass.services.async_call(
                     "text", "set_value", {"entity_id": comp_id, "value": compartment.strip()}, blocking=True
                 )
-        device = registry.async_get_device(identifiers={(DOMAIN, entry.data[CONF_CC])})
+        device = device_of(hass, entry.data[CONF_CC])
         created.append({"device_id": device.id if device else None, "cc": entry.data[CONF_CC], "name": name})
     if kind in PACK_KINDS:
         from .stock import async_get_stock  # noqa: PLC0415 - avoids an import cycle

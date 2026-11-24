@@ -26,6 +26,7 @@ from homeassistant.util import dt as dt_util
 
 from . import shelf_life
 from .const import DOMAIN
+from .devices import device_of
 from .estimate import storage_context
 from .singleton import async_singleton
 
@@ -61,12 +62,12 @@ class AreaInfo:
 
 def watched_areas(hass: HomeAssistant) -> dict[str, AreaInfo]:
     """Areas with containers, a temperature sensor and a known kind (freezer, fridge, 0 °C compartment)."""
-    devices = dr.async_get(hass)
+    dr.async_get(hass)
     registry = er.async_get(hass)
     areas: dict[str, AreaInfo] = {}
     for entry in hass.config_entries.async_entries(DOMAIN):
         cc = entry.data.get("cc")
-        device = devices.async_get_device(identifiers={(DOMAIN, cc)}) if cc else None
+        device = device_of(hass, cc) if cc else None
         if device is None or not device.area_id:
             continue
         context = storage_context(hass, cc)

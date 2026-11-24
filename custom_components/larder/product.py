@@ -19,7 +19,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .const import DOMAIN
+from .const import DOMAIN, larder_id
 from .household import household_category
 from .shelf_life import category_for
 
@@ -214,10 +214,11 @@ def _content_entity(hass: HomeAssistant, device_id: str):
     device = dr.async_get(hass).async_get(device_id)
     if device is None:
         return None
-    for entry_id in device.config_entries:
-        entry = hass.config_entries.async_get_entry(entry_id)
-        if entry is not None and entry.domain == DOMAIN and getattr(entry, "runtime_data", None) is not None:
-            return entry.runtime_data.resettable.get("content")
+    # by the container ID in the identifiers (DeviceEntry.config_entries is deprecated since 2026.9)
+    cc = larder_id(device)
+    entry = next((e for e in hass.config_entries.async_entries(DOMAIN) if cc and e.data.get("cc") == cc), None)
+    if entry is not None and getattr(entry, "runtime_data", None) is not None:
+        return entry.runtime_data.resettable.get("content")
     return None
 
 
