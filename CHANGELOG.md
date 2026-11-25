@@ -3,6 +3,15 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 5.4.0
+
+All about speed – with Home Assistant's public ways only, nothing else changes in use.
+
+- **Dashboard, cards and container cards redraw only when it matters:** Home Assistant passes on every state change of *any* entity (lights, sensors, …). Larder now checks first whether one of its own entities, a to-do list, the areas/devices, the language or the date changed, and otherwise skips the redraw. On a busy system the dashboard stays much smoother and the phone does far less work. A field you are typing in is still never overwritten and catches up as soon as you leave it.
+- **Overview sensors computed together:** the five `sensor.larder_*` share one listener and work out all values in one go (one pass over the containers for *expired* and *expires soon*) instead of five listeners each doing it on its own.
+- **Finding a container's entry** goes through a small index instead of searching all Larder entries each time (NFC scans, push buttons, products, stock, calendar). The index is rebuilt whenever an entry is set up, unloaded or removed.
+- **Stock overview:** the takes are grouped once per product instead of searching the whole take history for every product.
+
 ## 5.3.4
 
 Only Home Assistant's public ways to other integrations' lists (as with the calendar after the HACS review):

@@ -25,6 +25,7 @@ from homeassistant.helpers import area_registry as ar, device_registry as dr, la
 
 from . import shelf_life
 from .const import CONF_KIND, DOMAIN, PACK_KINDS, larder_id
+from .devices import entry_of
 from .entity import kind_of
 
 SCOPE_FOOD = "food"
@@ -257,7 +258,7 @@ async def ws_convert_kind(hass: HomeAssistant, connection: websocket_api.ActiveC
     """Turn a pack into a household item or a medicine (or back); the entry is reloaded with the other kind."""
     device = dr.async_get(hass).async_get(msg["device_id"])
     cc = larder_id(device)
-    entry = next((e for e in hass.config_entries.async_entries(DOMAIN) if e.data.get("cc") == cc), None) if cc else None
+    entry = entry_of(hass, cc)
     if entry is None or kind_of(entry) not in PACK_KINDS:
         connection.send_error(msg["id"], "not_found", "not a pack, household item or medicine")
         return

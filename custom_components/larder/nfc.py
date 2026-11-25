@@ -28,7 +28,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import slugify
 
 from .const import CONF_CC, DOMAIN, EVENT_DOSE_SCANNED, larder_ids, panel_path
-from .devices import device_of
+from .devices import device_of, entry_of
 from .estimate import async_get_estimator
 from .singleton import async_singleton
 
@@ -125,10 +125,7 @@ class NfcTags:
         return out
 
     def _entry(self, cc: str):
-        return next(
-            (e for e in self.hass.config_entries.async_entries(DOMAIN) if e.data.get(CONF_CC) == cc),
-            None,
-        )
+        return entry_of(self.hass, cc)
 
     def resolve_cc(
         self, cc: str | None = None, entry_id: str | None = None, device_id: str | None = None

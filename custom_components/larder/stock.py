@@ -41,7 +41,7 @@ from .const import (
     larder_id,
 )
 from .consumption import async_open_prices, forecast, price_of, suggested_minimum
-from .devices import device_of
+from .devices import device_of, entry_of
 from .entity import kind_of
 from .estimate import async_get_estimator, storage_context
 from .sections import SECTIONS, section_of, section_order
@@ -589,6 +589,12 @@ def stock_overview(hass: HomeAssistant, minimums: dict[str, dict[str, Any]], sto
     for key, info in (stock.auto_reorder if stock is not None else {}).items():
         products.setdefault(key, {"key": key, "name": info.get("name") or key, "count": 0, "places": [], "brand": None, "package": None})
     rows = []
+    # 5.4: the takes grouped by product once (instead of going through all takes for every product)
+    takes_by_key: dict[str, list[dict[str, Any]]] = {}
+    lead = int(getattr(hass.data.get(DOMAIN, {}).get("estimator"), "stock_lead_days", 7) or 7)
+    if stock is not None:
+        for take in stock.takes:
+            takes_by_key.setdefault(take.get("key"), []).append(take)
     for product in products.values():
         known = (minimums.get(product["key"]) or {}).get("product") or {}
         product.setdefault("kind", known.get("kind") or KIND_PACK)
@@ -608,9 +614,8 @@ def stock_overview(hass: HomeAssistant, minimums: dict[str, dict[str, Any]], sto
         if stock is not None and len(history := stock.price_history.get(product["key"]) or []) > 1:
             product["price_history"] = history[-5:]  # 4.11: e.g. 1.99 → 2.49
         if stock is not None:
-            usage = forecast([t for t in stock.takes if t.get("key") == product["key"]], product["count"])
+            usage = forecast(takes_by_key.get(product["key"], []), product["count"])
             product["usage"] = usage
-            lead = int(getattr(hass.data.get(DOMAIN, {}).get("estimator"), "stock_lead_days", 7) or 7)
             product["suggested_min"] = suggested_minimum(usage["per_week"] if usage else None, lead)
             remembered = stock.prices.get(product["key"])
             own = next((p for _, p in value_parts.get(product["key"], []) if p), None)
@@ -1125,7 +1130,7 @@ async def async_take_one(hass: HomeAssistant, cc: str, outcome: str) -> dict[str
     """
     from .history import async_get_history, build_record  # noqa: PLC0415 - avoids an import cycle
 
-    entry = next((e for e in hass.config_entries.async_entries(DOMAIN) if e.data.get(CONF_CC) == cc), None)
+    entry = entry_of(hass, cc)
     source = next((p for p in pack_entries(hass) if p["cc"] == cc), None)
     if entry is None or source is None:
         raise HomeAssistantError(translation_domain=DOMAIN, translation_key="move_invalid")
@@ -1199,7 +1204,7 @@ async def async_add_known(hass: HomeAssistant, known: dict[str, Any], packs: int
         None,
     )
     if target is not None:
-        entry = next(e for e in hass.config_entries.async_entries(DOMAIN) if e.data.get(CONF_CC) == target["cc"])
+        entry = entry_of(hass, target["cc"])
         count = target["count"] + size
         await entry.runtime_data.resettable["portions"].async_set_native_value(float(count))
         device_id = target["device_id"]

@@ -23,6 +23,7 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, PACK_KINDS
+from .devices import entry_of
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -63,7 +64,7 @@ async def async_run_action(hass: HomeAssistant, what: str, cc: str) -> dict[str,
     from .history import async_get_history  # noqa: PLC0415
     from .stock import async_shop_product, async_take_one  # noqa: PLC0415
 
-    entry = next((e for e in hass.config_entries.async_entries(DOMAIN) if e.data.get("cc") == cc), None)
+    entry = entry_of(hass, cc)
     if entry is None:
         raise HomeAssistantError(translation_domain=DOMAIN, translation_key="move_invalid")
     content_id = _entity(hass, "text", cc, "content")

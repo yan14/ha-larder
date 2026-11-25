@@ -10,7 +10,7 @@
  *   area: only containers from this area (area ID)
  * Tapping a container opens it in the Larder dashboard.
  */
-const { collectDevices, daysUntil, soonDaysOf } = await import(`./larder-panel.js${new URL(import.meta.url).search}`);
+const { collectDevices, daysUntil, hassChanged, soonDaysOf } = await import(`./larder-panel.js${new URL(import.meta.url).search}`);
 
 const TEXT = {
   de: {
@@ -85,8 +85,10 @@ export class LarderCard extends HTMLElement {
   }
 
   set hass(hass) {
+    const prev = this._hass;
     this._hass = hass;
-    this._render();
+    if (!this._hassMemo) this._hassMemo = {};
+    if (hassChanged(prev, hass, this._hassMemo)) this._render();
   }
 
   getCardSize() {
@@ -357,9 +359,11 @@ export class LarderShoppingCard extends HTMLElement {
 
   set hass(hass) {
     const first = !this._hass;
+    const prev = this._hass;
     this._hass = hass;
     if (first) this.load();
-    this._render();
+    if (!this._hassMemo) this._hassMemo = {};
+    if (hassChanged(prev, hass, this._hassMemo)) this._render();
   }
 
   getCardSize() {
@@ -455,8 +459,10 @@ export class LarderPlaceCard extends HTMLElement {
   }
 
   set hass(hass) {
+    const prev = this._hass;
     this._hass = hass;
-    this._render();
+    if (!this._hassMemo) this._hassMemo = {};
+    if (hassChanged(prev, hass, this._hassMemo)) this._render();
   }
 
   getCardSize() {

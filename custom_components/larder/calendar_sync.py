@@ -50,6 +50,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from .const import CONF_CC, DOMAIN, SERVICE_REBUILD_CALENDAR
+from .devices import entry_of
 from .estimate import async_get_estimator, storage_context
 from .singleton import async_singleton
 
@@ -215,10 +216,7 @@ class CalendarSync:
             best = date.fromisoformat(state.state)
         except ValueError:
             return None
-        entry = next(
-            (e for e in self.hass.config_entries.async_entries(DOMAIN) if e.data.get(CONF_CC) == cc),
-            None,
-        )
+        entry = entry_of(self.hass, cc)
         if entry is None:
             return None
         text_id = registry.async_get_entity_id("text", DOMAIN, f"{cc}_content")

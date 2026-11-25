@@ -11,6 +11,7 @@ They update when contents, dates, amounts or the shopping lists change (shortly 
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from datetime import timedelta
 from typing import Any
@@ -53,13 +54,16 @@ ICONS = {
 }
 
 
-def _expiring(hass: HomeAssistant, expired: bool) -> tuple[int, dict[str, Any]]:
+def _expiring_both(hass: HomeAssistant) -> tuple[tuple[int, dict[str, Any]], tuple[int, dict[str, Any]]]:
+    """Expired and expiring soon from one pass over the entries."""
     from .expiry import STATUS_EXPIRED, STATUS_SOON, collect_expiring  # noqa: PLC0415
 
-    wanted = STATUS_EXPIRED if expired else STATUS_SOON
-    items = [i for i in collect_expiring(hass, None, include_expired=True, vouchers=False) if i["status"] == wanted]
-    names = [f"{i['content'] or i['name']}" for i in items]
-    return len(items), {"items": names[:MAX_ITEMS]}
+    items = collect_expiring(hass, None, include_expired=True, vouchers=False)
+    out = []
+    for wanted in (STATUS_EXPIRED, STATUS_SOON):
+        names = [f"{i['content'] or i['name']}" for i in items if i["status"] == wanted]
+        out.append((len(names), {"items": names[:MAX_ITEMS]}))
+    return out[0], out[1]
 
 
 async def _stock_value(hass: HomeAssistant) -> tuple[float | None, dict[str, Any]]:
@@ -98,23 +102,85 @@ async def _supply_days(hass: HomeAssistant) -> tuple[int | None, dict[str, Any]]
     return report["days_covered"], {"target_days": int(estimator.supply_days), "persons": int(estimator.supply_persons)}
 
 
+class SummaryData:
+    """All overview values, computed together once per change (5.4) instead of once per sensor."""
+
+    def __init__(self, hass: HomeAssistant) -> None:
+        self.hass = hass
+        self.values: dict[str, tuple[Any, dict[str, Any]]] = {}
+        self._sensors: list[LarderSummarySensor] = []
+        self._unsub_later: Callable[[], None] | None = None
+        self._unsubs: list[Callable[[], None]] = []
+        self._lock = asyncio.Lock()
+
+    @callback
+    def add(self, sensor: LarderSummarySensor) -> None:
+        self._sensors.append(sensor)
+        if len(self._sensors) == 1:
+            self._unsubs = [
+                async_track_time_interval(self.hass, self._refresh_now, REFRESH),
+                self.hass.bus.async_listen(EVENT_STATE_CHANGED, self._state_changed),
+            ]
+
+    @callback
+    def remove(self, sensor: LarderSummarySensor) -> None:
+        if sensor in self._sensors:
+            self._sensors.remove(sensor)
+        if not self._sensors:
+            for unsub in self._unsubs:
+                unsub()
+            self._unsubs = []
+            if self._unsub_later:
+                self._unsub_later()
+                self._unsub_later = None
+
+    @callback
+    def _state_changed(self, event: Event) -> None:
+        if self._unsub_later is not None:
+            return  # a refresh is already on its way
+        entity_id = event.data.get("entity_id") or ""
+        if entity_id.startswith("sensor.larder_"):
+            return
+        if entity_id.startswith("todo."):
+            relevant = True
+        else:
+            entry = er.async_get(self.hass).async_get(entity_id)
+            relevant = entry is not None and entry.platform == DOMAIN
+        if relevant:
+            self._unsub_later = async_call_later(self.hass, DEBOUNCE, self._refresh_now)
+
+    async def _refresh_now(self, _now: Any = None) -> None:
+        self._unsub_later = None
+        await self.async_refresh()
+        for sensor in self._sensors:
+            sensor.async_write_ha_state()
+
+    async def async_refresh(self) -> None:
+        async with self._lock:
+            expired, soon = _expiring_both(self.hass)
+            self.values = {
+                "expired": expired,
+                "expiring_soon": soon,
+                "stock_value": await _stock_value(self.hass),
+                "shopping_open": await _shopping_open(self.hass),
+                "supply_days": await _supply_days(self.hass),
+            }
+
+
 class LarderSummarySensor(SensorEntity):
-    """One overview value; computed by `compute` (sync for the expiry counts, else async)."""
+    """One overview value from the shared `SummaryData`."""
 
     _attr_has_entity_name = False
     _attr_should_poll = False
 
-    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, key: str, compute: Callable, is_async: bool) -> None:
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, key: str, data: SummaryData) -> None:
         de = (hass.config.language or "en").lower().startswith("de")
         self._key = key
-        self._compute = compute
-        self._is_async = is_async
+        self._data = data
         self._attr_name = NAMES["de" if de else "en"][key]
         self._attr_unique_id = f"{entry.unique_id or entry.entry_id}_{key}"
         self._attr_icon = ICONS[key]
         self.entity_id = f"sensor.larder_{key}"
-        self._attr_extra_state_attributes: dict[str, Any] = {}
-        self._unsub_later: Callable[[], None] | None = None
         if key in ("expired", "expiring_soon", "shopping_open"):
             self._attr_state_class = SensorStateClass.MEASUREMENT
         if key == "stock_value":
@@ -124,47 +190,21 @@ class LarderSummarySensor(SensorEntity):
         if key == "supply_days":
             self._attr_native_unit_of_measurement = UnitOfTime.DAYS
 
+    @property
+    def native_value(self) -> Any:
+        return (self._data.values.get(self._key) or (None, {}))[0]
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return (self._data.values.get(self._key) or (None, {}))[1]
+
     async def async_added_to_hass(self) -> None:
-        self.async_on_remove(async_track_time_interval(self.hass, self._refresh_now, REFRESH))
-        self.async_on_remove(self.hass.bus.async_listen(EVENT_STATE_CHANGED, self._state_changed))
-        self.async_on_remove(self._cancel_later)
-        await self.async_update_value()
-
-    @callback
-    def _cancel_later(self) -> None:
-        if self._unsub_later:
-            self._unsub_later()
-            self._unsub_later = None
-
-    @callback
-    def _state_changed(self, event: Event) -> None:
-        entity_id = event.data.get("entity_id") or ""
-        if entity_id.startswith("sensor.larder_"):
-            return
-        if entity_id.startswith("todo."):
-            relevant = self._key == "shopping_open"
-        else:
-            entry = er.async_get(self.hass).async_get(entity_id)
-            relevant = entry is not None and entry.platform == DOMAIN
-        if relevant and self._unsub_later is None:
-            self._unsub_later = async_call_later(self.hass, DEBOUNCE, self._refresh_now)
-
-    async def _refresh_now(self, _now: Any = None) -> None:
-        self._unsub_later = None
-        await self.async_update_value()
-        self.async_write_ha_state()
-
-    async def async_update_value(self) -> None:
-        value, attrs = await self._compute(self.hass) if self._is_async else self._compute(self.hass)
-        self._attr_native_value = value
-        self._attr_extra_state_attributes = attrs
+        self._data.add(self)
+        self.async_on_remove(lambda: self._data.remove(self))
+        if self._key not in self._data.values:
+            await self._data.async_refresh()
 
 
 def summary_sensors(hass: HomeAssistant, entry: ConfigEntry) -> list[LarderSummarySensor]:
-    return [
-        LarderSummarySensor(hass, entry, "expired", lambda h: _expiring(h, True), False),
-        LarderSummarySensor(hass, entry, "expiring_soon", lambda h: _expiring(h, False), False),
-        LarderSummarySensor(hass, entry, "stock_value", _stock_value, True),
-        LarderSummarySensor(hass, entry, "shopping_open", _shopping_open, True),
-        LarderSummarySensor(hass, entry, "supply_days", _supply_days, True),
-    ]
+    data = SummaryData(hass)
+    return [LarderSummarySensor(hass, entry, key, data) for key in NAMES["en"]]

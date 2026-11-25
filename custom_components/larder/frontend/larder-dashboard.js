@@ -7,7 +7,7 @@
  */
 // Load with the same version query as this module, so an older copy from the cache is never used.
 const VERSION_QUERY = new URL(import.meta.url).search;
-const { areaAllows, scopeOfKind, setAreaScopes, todoLists, attachCompartmentChips, collectDevices, daysUntil, isLarderLabel, knownCompartments, listAreas, rememberCompartment, soonDaysOf, SOON_DAYS } = await import(
+const { areaAllows, hassChanged, scopeOfKind, setAreaScopes, todoLists, attachCompartmentChips, collectDevices, daysUntil, isLarderLabel, knownCompartments, listAreas, rememberCompartment, soonDaysOf, SOON_DAYS } = await import(
   `./larder-panel.js${VERSION_QUERY}`
 );
 const { installItems } = await import(`./larder-dashboard-items.js${VERSION_QUERY}`);
@@ -430,9 +430,11 @@ export class LarderDashboard extends HTMLElement {
 
   set hass(hass) {
     const first = !this._hass;
+    const prev = this._hass;
     this._hass = hass;
     this._classic.hass = hass;
-    this._update();
+    if (!this._hassMemo) this._hassMemo = {};
+    if (hassChanged(prev, hass, this._hassMemo)) this._update();
     if (first) {
       this.loadRecipes();
       this.loadPlans();

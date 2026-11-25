@@ -16,7 +16,7 @@ from .const import CONF_AREA, CONF_CC, CONF_INITIAL, CONF_SOURCE, DOMAIN, MAIN_U
 from .content_photo import async_setup_content_photo
 from .datacare import async_setup_datacare_websocket
 from .date_photo import async_setup_date_photo
-from .devices import device_of
+from .devices import async_invalidate_entries, device_of
 from .disposable import async_get_retired, async_setup_disposable_websocket
 from .entity import LarderConfigEntry, LarderRuntime, is_main
 from .estimate import async_get_estimator
@@ -55,6 +55,7 @@ from .week_plan import async_setup_week_plan_websocket
 async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bool:
     """Set up a container (the scan webhook is registered once for all containers)."""
     entry.runtime_data = LarderRuntime()
+    async_invalidate_entries(hass)  # 5.4: index ID → entry
     await async_get_estimator(hass)
     async_setup_websocket(hass)
     async_setup_services(hass)
@@ -139,6 +140,7 @@ def _async_apply_initial_area(hass: HomeAssistant, entry: LarderConfigEntry) -> 
 
 async def async_unload_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bool:
     """Unload a container; with the last one the webhook and the panel are removed."""
+    async_invalidate_entries(hass)
     unloaded = await hass.config_entries.async_unload_platforms(entry, [Platform.SENSOR] if is_main(entry) else PLATFORMS)
     if unloaded and not any(
         other.entry_id != entry.entry_id
@@ -158,6 +160,7 @@ async def async_unload_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> b
 
 async def async_remove_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> None:
     """A container was deleted: remove its calendar event."""
+    async_invalidate_entries(hass)
     if cc := entry.data.get(CONF_CC):
         await (await async_get_vouchers(hass)).async_forget(cc)
         await (await async_get_calendar_sync(hass)).async_remove_dose(cc)

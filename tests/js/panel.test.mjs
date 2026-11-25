@@ -13,7 +13,7 @@ for (const key of ["window", "document", "HTMLElement", "customElements", "Event
   globalThis[key] = dom.window[key];
 }
 
-const { STRINGS, listAreas, collectDevices, daysUntil, toLocalInputValue, sourceLabel, arrangeDevices, addDays } = await import(
+const { STRINGS, listAreas, collectDevices, daysUntil, toLocalInputValue, sourceLabel, arrangeDevices, addDays, hassChanged } = await import(
   "../../custom_components/larder/frontend/larder-panel.js"
 );
 
@@ -2312,4 +2312,41 @@ test("5.3.1: card of a container – write a new sticker (blank stickers cannot 
   assert.equal(link.device_id, "d1");
   // not embedded in the dashboard: the app is asked right away
   assert.deepEqual(messages.at(-1), { type: "tag/write", payload: { name: "Chili", tag: link.tag_id } });
+});
+
+test("5.4: redraw only when something Larder shows changed", () => {
+  const hass1 = makeHass([{ id: "d1", name: "Dose 1", content: "Suppe" }], { areas: AREAS });
+  hass1.states["light.kitchen"] = { entity_id: "light.kitchen", state: "off", attributes: {} };
+  hass1.states["todo.shop"] = { entity_id: "todo.shop", state: "0", attributes: {} };
+  const memo = {};
+  assert.equal(hassChanged(null, hass1, memo), true);
+  hassChanged({ ...hass1, entities: {} }, hass1, memo); // remembers the minute
+  // a foreign entity changes: nothing to do
+  const hass2 = { ...hass1, states: { ...hass1.states, "light.kitchen": { entity_id: "light.kitchen", state: "on", attributes: {} } } };
+  assert.equal(hassChanged(hass1, hass2, memo), false);
+  // own entity, to-do list, registry, language: redraw
+  const own = { ...hass2, states: { ...hass2.states, "text.d1_inhalt": { entity_id: "text.d1_inhalt", state: "Gulasch", attributes: {} } } };
+  assert.equal(hassChanged(hass2, own, memo), true);
+  const todo = { ...hass2, states: { ...hass2.states, "todo.shop": { entity_id: "todo.shop", state: "1", attributes: {} } } };
+  assert.equal(hassChanged(hass2, todo, memo), true);
+  assert.equal(hassChanged(hass2, { ...hass2, areas: {} }, memo), true);
+  assert.equal(hassChanged(hass2, { ...hass2, language: "en" }, memo), true);
+  // after a minute without a redraw it redraws anyway
+  memo.at = Date.now() - 61000;
+  assert.equal(hassChanged(hass1, hass2, memo), true);
+});
+
+test("5.4: the panel skips foreign state changes", () => {
+  const hass1 = makeHass([{ id: "d1", name: "Dose 1", content: "Suppe" }], { areas: AREAS });
+  const el = mount(hass1);
+  let updates = 0;
+  const real = el._update.bind(el);
+  el._update = () => {
+    updates += 1;
+    real();
+  };
+  el.hass = { ...hass1, states: { ...hass1.states, "light.x": { entity_id: "light.x", state: "on", attributes: {} } } };
+  assert.equal(updates, 0);
+  el.hass = { ...hass1, states: { ...hass1.states, "text.d1_inhalt": { entity_id: "text.d1_inhalt", state: "Gulasch", attributes: {} } } };
+  assert.equal(updates, 1);
 });

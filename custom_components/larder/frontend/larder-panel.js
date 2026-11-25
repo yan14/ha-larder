@@ -308,6 +308,44 @@ function fmtDay(iso, hass) {
   return new Date(y, m - 1, d).toLocaleDateString(lang, { day: "numeric", month: "short" });
 }
 
+/**
+ * Did anything change in `hass` that Larder shows? (5.4) Home Assistant hands over a new `hass`
+ * object on every state change of any entity; Larder only needs to redraw when its own entities,
+ * the to-do lists, the registries, the language/user/services or the date changed. Unchanged
+ * states keep their object identity, so comparing references is enough. `memo` is a plain object
+ * per element that remembers what was seen at the last redraw. After a minute without a redraw,
+ * it returns true anyway (safety net for anything time-based).
+ */
+const WATCHED_REFS = ["entities", "devices", "areas", "floors", "language", "locale", "user", "services", "themes", "config", "connected"];
+
+export function hassChanged(prev, hass, memo) {
+  if (!memo) return true;
+  if (!hass) return false;
+  const now = Date.now();
+  const today = new Date(now).toDateString();
+  if (memo.entities !== hass.entities || !memo.ids) {
+    memo.entities = hass.entities;
+    memo.ids = Object.values(hass.entities || {})
+      .filter((e) => e.platform === "larder")
+      .map((e) => e.entity_id);
+  }
+  const ns = hass.states || {};
+  const seen = new Map();
+  for (const id of memo.ids) seen.set(id, ns[id]);
+  for (const id in ns) if (id.startsWith("todo.")) seen.set(id, ns[id]);
+  const refs = WATCHED_REFS.map((k) => hass[k]);
+  let changed = !prev || !memo.seen || memo.today !== today || now - (memo.at || 0) > 60000;
+  changed = changed || refs.some((r, i) => r !== memo.refs[i]) || seen.size !== memo.seen.size;
+  if (!changed) for (const [id, st] of seen) if (memo.seen.get(id) !== st) { changed = true; break; }
+  if (changed) {
+    memo.at = now;
+    memo.today = today;
+  }
+  memo.refs = refs;
+  memo.seen = seen;
+  return changed;
+}
+
 /** All to-do lists of Home Assistant as [{id, name}], sorted by name (for choosing a shopping list). */
 export function todoLists(hass) {
   const lang = ((hass && hass.language) || "en").toLowerCase();
@@ -807,7 +845,10 @@ class DoseCard {
   }
 
   _setInput(input, value) {
-    if (this._isFocused(input)) return; // never overwrite while someone is typing
+    if (this._isFocused(input)) {
+      this._panel._resync = true; // catch up as soon as the field loses the focus (5.4)
+      return; // never overwrite while someone is typing
+    }
     if (input.value !== value) input.value = value;
   }
 
@@ -1426,9 +1467,20 @@ class LarderPanel extends HTMLElement {
 
   set hass(hass) {
     const first = !this._hass;
+    const prev = this._hass;
     this._hass = hass;
-    this._update();
-    if (first) this.loadAreaLabel();
+    if (!this._hassMemo) this._hassMemo = {};
+    if (hassChanged(prev, hass, this._hassMemo) || this._resync) {
+      this._resync = false;
+      this._update();
+    }
+    if (first) {
+      this.loadAreaLabel();
+      // a value skipped while typing is taken over after leaving the field, not only on the next change
+      this.shadowRoot.addEventListener("focusout", () => {
+        if (this._resync) setTimeout(() => this._resync && ((this._resync = false), this._update()), 0);
+      });
+    }
   }
 
   /**

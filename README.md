@@ -33,6 +33,8 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 ## What's new
 
+> **5.4:** all about **speed** – the dashboard and cards only redraw when something Larder shows changed, the overview sensors are computed together, and lookups use an index.
+>
 > **5.3:** [compartments and NFC tags](docs/en/scanning.md#compartments) made easy – scan a new tag and Larder asks what it is for, **🏷 Compartments & tags** under More, 🏷 next to every compartment. **5.3.1:** the barcode dialog opens the card of a pack and transfers into a (new) container; writing an NFC sticker is a step of its own with *Write again*.
 >
 > **5.2:** **buttons in the push** (used up, thrown away, +2 days, on the list), **buy again by consumption**, a **weekly review**, [overview sensors](docs/en/reference.md#overview-sensors), two new cards and blueprints for the fridge door and compartments.

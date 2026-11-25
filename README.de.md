@@ -33,6 +33,8 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 
 ## Was ist neu?
 
+> **5.4:** alles für die **Geschwindigkeit** – Dashboard und Karten zeichnen nur neu, wenn sich etwas für Larder geändert hat, die Übersichts-Sensoren werden zusammen berechnet und Suchen laufen über einen Index.
+>
 > **5.3:** [Fächer und NFC-Tags](docs/de/scanning.md#fächer) ganz einfach – neuen Tag scannen und Larder fragt, wofür er ist, **🏷 Fächer & Tags** unter Mehr, 🏷 neben jedem Fach. **5.3.1:** Der Strichcode-Dialog öffnet die Karte einer Packung und füllt in eine (neue) Dose um; NFC-Sticker beschreiben ist ein eigener Schritt mit *Nochmal*.
 >
 > **5.2:** **Knöpfe in der Push** (verbraucht, weggeworfen, +2 Tage, auf die Liste), **nach Verbrauch nachkaufen**, ein **Wochenrückblick**, [Übersichts-Sensoren](docs/de/reference.md#übersichts-sensoren), zwei neue Karten und Blueprints für Kühlschranktür und Fächer.
