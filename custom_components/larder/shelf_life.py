@@ -55,6 +55,7 @@ class Entry:
     days: dict[str, int | None]
     priority: int = 1
     perishable: bool = False  # vacuum does not extend the shelf life in the fridge
+    more: tuple[str, ...] = ()  # French and Dutch keywords (6.0): only used when no German/English keyword matches
 
 
 def _kw(raw: str) -> str:
@@ -135,7 +136,7 @@ TIPS: dict[str, tuple[str, str]] = {
 # "~a" is a weak keyword that only counts if nothing else matches ("filet").
 # Increase TABLE_VERSION when entries or the detection change: remembered table values
 # are then calculated anew (own corrections stay).
-TABLE_VERSION = 9  # 9: French and Dutch names, keywords and places (6.0); 8: German sources (cooked rice, eggs), game (UNL); 7: values checked against sources (SOURCES), raw sausage and bacon; 6: condiments split, values after opening (OPENED); 3: several contents (comma) estimated one by one; 4: plant-based, soup pasta, bagels; 5: condiments, game, fish
+TABLE_VERSION = 10  # 10: French/Dutch keywords only as a fallback, Preiselbeeren as jam (6.0.1); 9: French and Dutch names, keywords and places (6.0); 8: German sources (cooked rice, eggs), game (UNL); 7: values checked against sources (SOURCES), raw sausage and bacon; 6: condiments split, values after opening (OPENED); 3: several contents (comma) estimated one by one; 4: plant-based, soup pasta, bagels; 5: condiments, game, fish
 ENTRIES: tuple[Entry, ...] = (
     # --- Dishes and leftovers (priority 3) ---
     _e("dish", "Gericht / Reste", "Dish / leftovers", "dish",
@@ -320,7 +321,7 @@ ENTRIES: tuple[Entry, ...] = (
        "schokolade|chocolate|suessigkeit|bonbon|praline|gummibaer|candy|riegel",
        180, 180, 365, 180, pri=2),
     _e("jam", "Marmelade / Konfitüre (geöffnet)", "Jam (opened)", "sweet",
-       "marmelade|konfituere|jam|gelee|nutella|nussnougat|fruchtaufstrich|schwartau|zentis|bonne maman|samt erdbeer|samt marmelade",
+       "marmelade|konfituere|jam|gelee|preiselbeere|wildpreiselbeere|preiselbeerkompott|cranberrysauce|cranberry sauce|nutella|nussnougat|fruchtaufstrich|schwartau|zentis|bonne maman|samt erdbeer|samt marmelade",
        180, 180, 180, 30, pri=2),
     _e("stable", "Honig / Zucker / Salz / Essig", "Honey / sugar / salt / vinegar", "dry",
        "honig|honey|sirup|syrup|ahornsirup|essig|vinegar|zucker|sugar|salz|salt",
@@ -573,7 +574,7 @@ KEYWORDS_MORE: dict[str, str] = {
     "mayonnaise": "mayonnaise|mayonaise|remoulade",
     "soy_sauce": "sauce soja|sojasaus|ketjap",
     "bbq_sauce": "sauce barbecue|barbecuesaus",
-    "hot_sauce": "sauce piquante|hete saus|sambal",
+    "hot_sauce": "sauce piquante|hete saus",
     "dressing": "vinaigrette|saladedressing",
     "horseradish": "raifort|mierikswortel",
     "olives": "olives|olijven",
@@ -581,7 +582,7 @@ KEYWORDS_MORE: dict[str, str] = {
     "curry_paste": "pate de curry|concentre de tomate|currypasta|tomatenpuree",
     "curry_powder": "epices|poivre|paprika poudre|kruiden|specerijen|peper",
     "ground_meat": "viande hachee|steak hache|hache|gehakt|rundergehakt",
-    "poultry": "poulet|dinde|volaille|canard|kip|kalkoen|gevogelte|eend",
+    "poultry": "poulet|dinde|volaille|canard|kip|kipfilet|kippendij|kippenbout|kipgehakt|kalkoen|gevogelte|eend",
     "game": "gibier|chevreuil|sanglier|lapin|wild|hert|ree|konijn|everzwijn",
     "meat": "viande|boeuf|porc|veau|agneau|cotelette|roti|vlees|rundvlees|varkensvlees|kalfsvlees|lamsvlees|karbonade|biefstuk",
     "canned_fish": "thon en boite|sardines en boite|tonijn in blik|sardines in blik",
@@ -602,11 +603,11 @@ KEYWORDS_MORE: dict[str, str] = {
     "tofu": "tofu|tempeh|seitan",
     "juice": "jus|jus d orange|sap|sinaasappelsap",
     "leafy": "salade|laitue|epinards|roquette|mache|sla|spinazie|rucola|veldsla",
-    "root": "pommes de terre|oignons|ail|patates|aardappelen|uien|knoflook|patat",
+    "root": "pommes de terre|oignons|ail|patates|aardappelen|uien|knoflook",
     "mushroom": "champignons|cepes|girolles|paddenstoelen|champignon",
     "herbs": "herbes|persil|basilic|ciboulette|coriandre|kruiden vers|peterselie|basilicum|bieslook|koriander",
     "berries": "fraises|framboises|myrtilles|cerises|aardbeien|frambozen|blauwe bessen|kersen",
-    "apple": "pommes|poires|appels|peren",
+    "apple": "pomme golden|pommes golden|poires|appels|peren",
     "citrus": "citron|orange|mandarine|clementine|pamplemousse|citroen|sinaasappel|mandarijn|grapefruit",
     "fruit": "fruits|banane|raisin|melon|peche|ananas|fruit|banaan|druiven|meloen|perzik",
     "vegetables": "legumes|tomates|concombre|poivron|courgette|carottes|brocoli|chou|poireau|haricots verts|groente|tomaten|komkommer|paprika|courgette|wortelen|broccoli|kool|prei|sperziebonen",
@@ -635,7 +636,8 @@ KEYWORDS_MORE: dict[str, str] = {
 def _add_keywords() -> None:
     global ENTRIES  # noqa: PLW0603 - once at import
     ENTRIES = tuple(
-        Entry(e.id, e.de, e.en, e.cat, e.keywords + tuple(_kw(k) for k in KEYWORDS_MORE.get(e.id, "").split("|") if k), e.days, e.priority, e.perishable)
+        Entry(e.id, e.de, e.en, e.cat, e.keywords, e.days, e.priority, e.perishable,
+              tuple(_kw(k) for k in KEYWORDS_MORE.get(e.id, "").split("|") if k))
         for e in ENTRIES
     )
 
@@ -706,20 +708,42 @@ def find_entry(content: str) -> Entry | None:
     """Find the best table entry for the content: no weak keyword, higher priority,
     base word at the end of a word, then the longest keyword."""
     text = f" {norm(content)} "
+    # German and English first; the French and Dutch keywords only when none of them matches, and short
+    # ones only as a word of their own – otherwise "wild" (Dutch: game) would take "Wildpreiselbeeren",
+    # "sel" (French: salt) "Sellerie" and "spek" (Dutch: bacon) "Spekulatius" (6.0.1).
+    # A weak German keyword ("~filet") gives way to a real French/Dutch one ("kip" in "Kipfilet").
+    score, entry = _best_entry(text, more=False)
+    if score is None or score[0] == 0:
+        more_score, more_entry = _best_entry(text, more=True)
+        if more_score is not None and (score is None or more_score[0] == 1):
+            return more_entry
+    return entry
+
+
+def _best_entry(text: str, *, more: bool) -> tuple[tuple[int, int, int, int] | None, Entry | None]:
     best: tuple[int, int, int, int] | None = None
     best_entry: Entry | None = None
     for entry in ENTRIES:
-        for keyword in entry.keywords:
+        for keyword in entry.more if more else entry.keywords:
             if not keyword:
                 continue
-            found = _keyword_score(keyword, text)
+            found = _word_score(keyword, text) if more else _keyword_score(keyword, text)
             if found is None:
                 continue
             weak, at_end, length = found
             score = (0 if weak else 1, entry.priority, 1 if at_end else 0, length)
             if best is None or score > best:
                 best, best_entry = score, entry
-    return best_entry
+    return best, best_entry
+
+
+def _word_score(keyword: str, text: str) -> tuple[bool, bool, int] | None:
+    """French/Dutch keyword: up to 5 letters only as a whole word (plural allowed), longer ones as usual."""
+    parts = keyword.lstrip("~").split("+")
+    for part in parts:
+        if len(part) <= 5 and not re.search(rf"(?<![a-z0-9]){re.escape(part)}(?:s|en|n|x)?(?![a-z0-9])", text):
+            return None
+    return _keyword_score(keyword, text)
 
 
 # ---------- Derive the storage place from the area ----------

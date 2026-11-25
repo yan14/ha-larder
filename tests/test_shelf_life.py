@@ -789,3 +789,28 @@ def test_categories_from_a_real_larder_4_10_4() -> None:
         "Milchreis": "dish", "Milchreis roh": "dry", "Milchreis ungekocht": "dry", "Rundkornreis": "dry",
     }
     assert {name: category_for(name) for name in cases} == cases
+
+
+def test_french_dutch_keywords_do_not_take_german_words():
+    """6.0.1: "wild" (Dutch game), "sel" (French salt), "spek" (Dutch bacon) must not win over German words."""
+    from custom_components.larder.shelf_life import find_entry
+
+    cases = {
+        "Wildpreiselbeeren": "jam",
+        "Preiselbeeren": "jam",
+        "Wildlachs": "fish",
+        "Wildreis": "rice",
+        "Wildkräuterbutter": "butter",
+        "Sellerie": "vegetables",
+        "Spekulatius": "cookies",
+        "Wildschwein": "game",
+        # French and Dutch still work
+        "Sanglier": "game",
+        "Wild": "game",
+        "Kipfilet": "poultry",
+        "Pâtes": "pasta",
+    }
+    for content, expected in cases.items():
+        entry = find_entry(content)
+        assert entry is not None and entry.id == expected, (content, entry and entry.id)
+    assert find_entry("Pommes") is None or find_entry("Pommes").id != "apple"

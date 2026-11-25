@@ -33,7 +33,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 ## What's new
 
-> **6.0:** Larder speaks **French and Dutch** (translated, [corrections welcome](docs/en/good-to-know.md#languages)), [import from Grocy](docs/en/dashboard.md#import-from-grocy), a **visual editor** for all four cards and a [recipe from a link](docs/en/kitchen.md#recipe-book). Old leftovers are gone – see the [changelog](CHANGELOG.md) before updating.
+> **6.0:** Larder speaks **French and Dutch** (translated, [corrections welcome](docs/en/good-to-know.md#languages)), [import from Grocy](docs/en/dashboard.md#import-from-grocy), a **visual editor** for all four cards and a [recipe from a link](docs/en/kitchen.md#recipe-book). Old leftovers are gone – see the [changelog](CHANGELOG.md) before updating. **6.0.1:** *Wildpreiselbeeren* are jam again, not game.
 >
 > **5.9:** **shopping by store** – prices per store (cheapest first), the receipt knows the store, and *I am at Aldi* shows only what you buy there, in that store's order.
 >

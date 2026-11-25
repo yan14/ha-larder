@@ -3,6 +3,12 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 6.0.1
+
+- **Wildpreiselbeeren were estimated as game** (raw meat). The French and Dutch keywords of 6.0 (*wild* = game in Dutch) took German words starting the same way. They now only count when no German or English keyword matches, and short ones only as a word of their own. This also fixes *Sellerie* (was salt), *Spekulatius* (was bacon), *Wildlachs*, *Wildreis*, *Wildkräuter* and *Wildheidelbeeren*.
+- **Preiselbeeren and Wildpreiselbeeren count as jam** (an opened jar in the fridge), no longer as fresh berries; likewise cranberry sauce.
+- Remembered table estimates are recalculated (table version 10); your own corrections stay. Dates already set on containers are not changed – correct them once if needed.
+
 ## 6.0.0
 
 Block 45: new languages, import from Grocy, card editor, recipe from a link – and old leftovers removed. A major version because of the languages and the removals below.
