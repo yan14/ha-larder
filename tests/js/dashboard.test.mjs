@@ -3795,3 +3795,22 @@ test("5.5: month tile on the start page leads to the statistics", async () => {
   await flush();
   assert.equal($(el, '[data-role="month-tile"]'), null);
 });
+
+test("5.6: start page box 🔓 Opened – what is open, since when, shortest first", async () => {
+  const hass = makeHass(DOSES);
+  const ago = (n) => {
+    const d = new Date();
+    d.setDate(d.getDate() - n);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  };
+  hass.states["text.d2_inhalt"].attributes.opened = ago(49); // Gouda, 20 days left
+  hass.states["text.d4_inhalt"].attributes.opened = ago(2); // Reis, 3 days left
+  const el = mount(hass);
+  await flush();
+  const box = $(el, '[data-role="opened-box"]');
+  assert.match(box.querySelector("h3").textContent, /Angebrochen \(2\)/);
+  const lines = [...box.querySelectorAll("button.row")];
+  assert.deepEqual(lines.map((l) => l.querySelector(".name").textContent), ["Reis", "Gouda"]);
+  assert.match(lines[0].textContent, /seit 2 Tagen offen/);
+  assert.match(lines[1].textContent, /seit 7 Wochen offen/);
+});

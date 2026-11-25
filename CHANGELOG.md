@@ -3,6 +3,13 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 5.6.0
+
+Block 41: shelf life with sources, opened items at a glance.
+
+- **Shelf-life table checked against sources** (#151): every row now names where its values come from – the **USDA-FSIS Cold Food Storage Chart**, the **USDA FoodKeeper** or **USDA-based extension charts** – and the tip and the remembered estimates show it. Rows without a confirmed source (bread, cake, pasta, coffee, spices …) say so instead of pretending. For a range the lower value is used. Corrected values include: steaks, chops and roasts 3 days in the fridge (was 2) and 4 months frozen (was 6), poultry 9 months frozen (was 6), fish 2 months frozen (was 3), leftovers and soups 2 months frozen (was 3), cold cuts 3 days, milk 1 week (was 4 days), yogurt 1 week (was 5 days) and 1 month frozen, hard cheese 3 weeks (was 4), lettuce and mushrooms 3 days, berries 2 days, citrus 2 weeks, potatoes and onions 1 month in the pantry, jam 6 months in the fridge, raw sausage (Bratwurst) 1 day and bacon 1 week as rows of their own. Remembered table values are recalculated; your own corrections stay.
+- **🔓 Opened at a glance** (#152): a box on the start page lists everything opened – since when and how long it still keeps, the shortest first. **Opened** on any card now notes the day of opening (once), and the expiry reminder says how long an item has been open (*Mayonnaise (fridge, open for 7 weeks): in 7 days*); `larder.get_expiring` returns `opened` and `opened_days`.
+
 ## 5.5.0
 
 Block 39: hidden features brought forward, and the shelf life after opening from confirmed sources.

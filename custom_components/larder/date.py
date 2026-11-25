@@ -143,7 +143,16 @@ class LarderBestBefore(DateEntity, LarderResettable):
         info: dict[str, Any] = {}
         if days is None:
             days, info = await self.async_opened_days()
+        await self._remember_opened()
         return {**self._shorten(days), **info}
+
+    async def _remember_opened(self) -> None:
+        """5.6 (#152): note the day of opening on the contents (as opening a pack does), once."""
+        entry = self.hass.config_entries.async_get_entry(self._entry_id)
+        content = getattr(getattr(entry, "runtime_data", None), "resettable", {}).get("content") if entry else None
+        if content is None or not (content.native_value or "").strip() or content.product.get("opened"):
+            return
+        await content.async_set_product({"opened": dt_util.now().date().isoformat()}, replace=False)
 
     async def async_opened_days(self) -> tuple[int, dict[str, Any]]:
         """Days after opening for the content of this container and where they come from."""

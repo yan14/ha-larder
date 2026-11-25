@@ -33,6 +33,8 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 ## What's new
 
+> **5.6:** every value of the shelf-life table now names its **source** (USDA-FSIS, USDA FoodKeeper) – or says that it is an estimate –, several values corrected, and a **🔓 Opened** box on the start page.
+>
 > **5.5:** shelf life **after opening** from the USDA FoodKeeper (ketchup 6 months, mayonnaise 2), one **product view** for stock, places, minimum and history, a **Compartments** tab, long press to select, a month tile and a **Week** tab for the meal plan.
 >
 > **5.4:** all about **speed** – the dashboard and cards only redraw when something Larder shows changed, the overview sensors are computed together, and lookups use an index.

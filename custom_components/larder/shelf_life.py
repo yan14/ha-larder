@@ -1,7 +1,8 @@
 """Built-in shelf-life table for common foods (no AI, no internet).
 
-The values are chosen **cautiously** on purpose and follow the usual
-Lagerempfehlungen (u. a. USDA Cold Food Storage Chart, FoodKeeper, Verbraucherzentralen).
+The values are chosen **cautiously** on purpose: every row names its source in SOURCES
+(USDA-FSIS Cold Food Storage Chart, USDA FoodKeeper, USDA-based extension charts; for a range the
+lower value), rows without a confirmed source are marked as Larder's own estimate (5.6).
 They are guide values for home use, no guarantee of food safety.
 
 Structure: every entry knows four storage places (fridge, 0-degree compartment, freezer,
@@ -132,15 +133,15 @@ TIPS: dict[str, tuple[str, str]] = {
 # "~a" is a weak keyword that only counts if nothing else matches ("filet").
 # Increase TABLE_VERSION when entries or the detection change: remembered table values
 # are then calculated anew (own corrections stay).
-TABLE_VERSION = 6  # 6: condiments split, values after opening (OPENED); 3: several contents (comma) estimated one by one; 4: plant-based, soup pasta, bagels; 5: condiments, game, fish
+TABLE_VERSION = 7  # 7: values checked against sources (SOURCES), raw sausage and bacon; 6: condiments split, values after opening (OPENED); 3: several contents (comma) estimated one by one; 4: plant-based, soup pasta, bagels; 5: condiments, game, fish
 ENTRIES: tuple[Entry, ...] = (
     # --- Dishes and leftovers (priority 3) ---
     _e("dish", "Gericht / Reste", "Dish / leftovers", "dish",
        "reste|leftover|gekocht|cooked|auflauf|teriyaki|dim sum|dimsum|gyoza|dumpling|lo mai|fertiggericht|ready meal|rice bowl|frühlingsrolle|fruehlingsrolle|spring roll|lasagne|gratin|gericht|meal prep|pfanne|bratkartoffel|eintopf|quiche|pizza|dal|chili|curry|bolognese|gulasch|goulash|ragout|frikadelle|bulette|knoedel|gemuesepfanne|milchreis|griessbrei|pudding|pueree|kartoffelbrei|pfannkuchen|crepe|kaiserschmarrn|risotto|paella|gebraten|fried rice|bratreis",
-       3, 4, 90, None, pri=3, perishable=True),
+       3, 4, 60, None, pri=3, perishable=True),
     _e("soup", "Suppe / Brühe / Soße", "Soup / broth / sauce", "dish",
        "suppe|bruehe|soup|broth|sosse|sauce|stew|tomatensosse|bechamel|dressing",
-       3, 4, 90, None, pri=3, perishable=True),
+       3, 4, 60, None, pri=3, perishable=True),
     _e("salad_dish", "Fertiger Salat", "Prepared salad", "dish",
        "nudelsalat|kartoffelsalat|fleischsalat|wurstsalat|thunfischsalat|eiersalat|krautsalat|pasta salad|potato salad|coleslaw",
        3, 4, None, None, pri=3, perishable=True),
@@ -205,7 +206,7 @@ ENTRIES: tuple[Entry, ...] = (
        1, 2, 90, None, pri=2, perishable=True),
     _e("poultry", "Geflügel (roh)", "Poultry (raw)", "raw_meat",
        "haehnchen|huehnchen|huhn|pute|truthahn|gefluegel|chicken|turkey|poultry|ente|gans",
-       1, 2, 180, None, pri=2, perishable=True),
+       1, 2, 270, None, pri=2, perishable=True),
     _e("marinated_meat", "Mariniertes Fleisch / Gyros", "Marinated meat / gyros", "raw_meat",
        "pfannengyros|gyros|schaschlik|grillfleisch|marinierte|mariniertes|grillspiess",
        2, 3, 90, None, pri=4, perishable=True),
@@ -214,34 +215,40 @@ ENTRIES: tuple[Entry, ...] = (
        2, 4, 270, None, pri=3, perishable=True),
     _e("meat", "Fleisch (roh)", "Meat (raw)", "raw_meat",
        "fleisch|steak|schnitzel|rind|schwein|kalb|kalbs|lamm|kotelett|braten|beef|pork|lamb|~filet|roulade|gulaschfleisch|geschnetzeltes|~unterschale|~oberschale|~keule|~schenkel|~ruecken|nacken",
-       2, 4, 180, None, pri=2, perishable=True),
+       3, 5, 120, None, pri=2, perishable=True),
     _e("canned_fish", "Fischkonserve", "Canned fish", "fish",
        "heringsfilet|herings filet|filets vom hering|hering in|heringe in|sardinen|sardellen|anchovis|makrelenfilet|thunfisch in|thunfischfilet|fischkonserve|lachs in",
        3, 4, 90, 365, pri=4),
     _e("fish", "Fisch / Meeresfrüchte (roh)", "Fish / seafood (raw)", "fish",
        "fisch|lachs|forelle|thunfisch|garnele|shrimp|salmon|fish|cod|kabeljau|meeresfruechte|seafood|scholle|zander|lachsfilet|fischfilet|seelachs|dorsch|tilapia|pangasius|hering|makrele|tuna|prawn|calamari|tintenfisch|muschel|rotbarsch|barsch|dorade|wolfsbarsch|heilbutt|alaska|pollack|seehecht|hecht|karpfen|saibling|wildlachs|sardine",
-       1, 2, 90, None, pri=2, perishable=True),
+       1, 2, 60, None, pri=2, perishable=True),
     _e("deli", "Wurst / Aufschnitt / Schinken", "Cold cuts / sausage / ham", "deli",
-       "wurst|aufschnitt|schinken|leberkaese|fleischkaese|salami|speck|bacon|ham |sausage|cold cuts|fleischwurst|leberwurst|bratwurst|wiener",
-       4, 6, 60, None, pri=2, perishable=True),
+       "wurst|aufschnitt|schinken|leberkaese|fleischkaese|salami|ham |cold cuts|fleischwurst|leberwurst|wiener|lunch meat",
+       3, 4, 30, None, pri=2, perishable=True),
+    _e("sausage_raw", "Bratwurst (roh)", "Raw sausage", "raw_meat",
+       "bratwurst|rostbratwurst|nuernberger|salsiccia|grobe bratwurst|weisswurst|raw sausage|sausage",
+       1, 2, 30, None, pri=3, perishable=True),
+    _e("bacon", "Speck / Bacon", "Bacon", "deli",
+       "speck|bacon|bauchspeck|fruehstuecksspeck|pancetta",
+       7, 7, 30, None, pri=3),
     _e("hard_cheese", "Hartkäse", "Hard cheese", "dairy",
        "hartkaese|parmesan|parmigiano|gouda|edamer|emmentaler|cheddar|bergkaese|pecorino|hard cheese|gruyere|manchego",
-       28, 42, 180, None, pri=2),
+       21, 28, 180, None, pri=2),
     _e("soft_cheese", "Käse / Frischkäse / Weichkäse", "Cheese / cream cheese / soft cheese", "dairy",
        "kaese|frischkaese|mozzarella|camembert|brie|feta|ricotta|huettenkaese|cottage|cream cheese|cheese|halloumi|schafskaese|mascarpone",
        7, 10, 90, None, pri=2, perishable=True),
     _e("yogurt", "Joghurt / Quark / Skyr", "Yogurt / quark / skyr", "dairy",
        "joghurt|yoghurt|yogurt|quark|skyr|kefir|schmand|sauerrahm|sour cream",
-       5, 7, 60, None, pri=2, perishable=True),
+       7, 10, 30, None, pri=2, perishable=True),
     _e("milk", "Milch", "Milk", "dairy",
        "milch|milk|buttermilch|hafermilch|haferdrink|sojadrink|mandelmilch|pflanzendrink|oat drink|kokosmilch",
-       4, 6, 90, None, pri=2, perishable=True),
+       7, 8, 90, None, pri=2, perishable=True),
     _e("cream", "Sahne", "Cream", "dairy",
        "sahne|schlagsahne|cream|creme fraiche|schlagobers",
-       4, 6, 60, None, pri=2, perishable=True),
+       3, 4, 60, None, pri=2, perishable=True),
     _e("butter", "Butter / Margarine", "Butter / margarine", "dairy",
        "butter|margarine",
-       30, 45, 180, 2, pri=2),
+       30, 45, 180, 1, pri=2),
     _e("egg_boiled", "Eier (gekocht)", "Eggs (boiled)", "egg",
        "gekochte eier|hartgekochte|hard boiled|boiled egg|fruehstuecksei|gekochtes ei|eier+gekocht|ei+gekocht|eier+hart|ei+hart|egg+boiled|eggs+boiled|soleier|ostereier|eier+gefaerbt",
        7, 10, None, None, pri=3, perishable=True),
@@ -250,7 +257,7 @@ ENTRIES: tuple[Entry, ...] = (
        3, 4, None, None, pri=3, perishable=True),
     _e("egg_separated", "Eigelb / Eiweiß (roh)", "Egg yolk / white (raw)", "egg",
        "eigelb|eiweiss|egg white|egg yolk",
-       3, 4, 180, None, pri=3, perishable=True),
+       2, 3, 365, None, pri=3, perishable=True),
     _e("egg", "Eier (roh, in der Schale)", "Eggs (raw, in shell)", "egg",
        "eier|egg|eggs",
        21, 28, None, 7, pri=2),
@@ -265,29 +272,29 @@ ENTRIES: tuple[Entry, ...] = (
        3, 4, 90, 365, pri=3),
     _e("juice", "Saft / Smoothie", "Juice / smoothie", "dairy",
        "saft|juice|smoothie",
-       4, 6, 90, None, pri=2, perishable=True),
+       7, 8, 240, None, pri=2, perishable=True),
     # --- Fruit, vegetables (priority 1-2) ---
     _e("leafy", "Salat / Blattgemüse", "Salad greens", "produce",
        "salat|kopfsalat|rucola|spinat|blattspinat|feldsalat|lettuce|spinach|arugula|mangold|pak choi",
-       5, 7, None, None, pri=1),
+       3, 5, None, None, pri=1),
     _e("root", "Kartoffeln / Zwiebeln / Knoblauch", "Potatoes / onions / garlic", "produce",
        "kartoffel|zwiebel|knoblauch|potato|onion|garlic|suesskartoffel|kuerbis|pumpkin|ingwer",
-       21, 28, None, 21, pri=2),
+       21, 28, None, 30, pri=2),
     _e("mushroom", "Pilze", "Mushrooms", "produce",
        "pilz|champignon|mushroom|steinpilz|pfifferling",
-       4, 6, 60, 1, pri=2),
+       3, 4, 60, 1, pri=2),
     _e("herbs", "Kräuter", "Fresh herbs", "produce",
        "kraeuter|basilikum|petersilie|schnittlauch|koriander|herbs|basil|parsley|dill|minze",
        5, 7, 90, 1, pri=2),
     _e("berries", "Beeren", "Berries", "produce",
        "beere|erdbeere|himbeere|heidelbeere|blaubeere|berries|strawberr|raspberr|blueberr|kirsche|cherry",
-       3, 5, 180, 1, pri=2),
+       2, 3, 240, 1, pri=2),
     _e("apple", "Äpfel / Birnen", "Apples / pears", "produce",
        "apfel|aepfel|birne|apple|pear",
-       28, 42, 180, 7, pri=2),
+       28, 42, 240, 21, pri=2),
     _e("citrus", "Zitrusfrüchte", "Citrus fruit", "produce",
        "zitrone|orange|mandarine|clementine|lemon|lime|citrus|grapefruit|limette",
-       21, 28, 90, 7, pri=2),
+       14, 21, 120, 10, pri=2),
     _e("fruit", "Obst", "Fruit", "produce",
        "obst|banane|traube|melone|pfirsich|fruit|ananas|mango|kiwi|pflaume|nektarine",
        5, 7, 120, 3, pri=1),
@@ -312,7 +319,7 @@ ENTRIES: tuple[Entry, ...] = (
        180, 180, 365, 180, pri=2),
     _e("jam", "Marmelade / Konfitüre (geöffnet)", "Jam (opened)", "sweet",
        "marmelade|konfituere|jam|gelee|nutella|nussnougat|fruchtaufstrich|schwartau|zentis|bonne maman|samt erdbeer|samt marmelade",
-       60, 90, 180, 30, pri=2),
+       180, 180, 180, 30, pri=2),
     _e("stable", "Honig / Zucker / Salz / Essig", "Honey / sugar / salt / vinegar", "dry",
        "honig|honey|sirup|syrup|ahornsirup|essig|vinegar|zucker|sugar|salz|salt",
        730, 730, 730, 730, pri=2),
@@ -364,11 +371,54 @@ ENTRIES: tuple[Entry, ...] = (
        180, 180, None, 180, pri=1),
 )
 
+# Where the values of a row come from (5.6, #151). Ranges: the lower value. The 0 °C compartment has no
+# source of its own: it is the fridge value plus a little, as before.
+FSIS = "USDA-FSIS Cold Food Storage Chart"
+FOODKEEPER = "USDA FoodKeeper"
+EXTENSION = "USDA / US Extension (NDSU, UNL)"
+OWN = "own"  # no confirmed source: Larder's cautious estimate
+SOURCES: dict[str, str] = {
+    # FSIS chart: leftovers 3-4 days / 2-6 months, soups 3-4 days / 2-3 months, salads do not freeze well,
+    # ground meat 1-2 days / 3-4 months, poultry pieces 1-2 days / 9 months, steaks, chops, roasts 3-5 days /
+    # 4-12 months, fatty fish 1-3 days / 2-3 months, luncheon meat opened 3-5 days / 1-2 months, raw sausage
+    # 1-2 days / 1-2 months, bacon 1 week / 1 month, eggs in shell 3-5 weeks, hard-cooked 1 week (do not
+    # freeze), raw whites and yolks 2-4 days / 12 months, casseroles with eggs 3-4 days
+    **dict.fromkeys(("dish", "soup", "salad_dish", "ground_meat", "poultry", "meat", "fish", "deli", "sausage_raw",
+                     "bacon", "egg", "egg_boiled", "egg_cooked", "egg_separated"), FSIS),
+    # FoodKeeper (cold storage chart of foodsafety.gov): milk 7 days / 3 months, yogurt 7-14 days / 1-2 months,
+    # butter 1-3 months / 6-9 months, hard cheese opened 3-4 weeks / 6 months, soft cheese 1 week / 6 months,
+    # half-and-half 3-4 days, juice opened 7-10 days / 8-12 months, spinach 3-7 days, mushrooms 3-7 days,
+    # condiments and jam after opening (see OPENED), canned seafood opened 3-4 days
+    **dict.fromkeys(("milk", "yogurt", "butter", "hard_cheese", "soft_cheese", "cream", "juice", "leafy", "mushroom",
+                     "ketchup", "mustard", "mayonnaise", "soy_sauce", "worcester", "bbq_sauce", "hot_sauce", "dressing",
+                     "horseradish", "hoisin", "olives", "pickles", "jam"), FOODKEEPER),
+    # Extension charts based on USDA: berries 2-3 days / 8-12 months, citrus 2 weeks / 4-6 months (pantry
+    # 10 days), apples pantry 3 weeks, fridge 4-6 weeks, freezer 8 months, onions and potatoes pantry 1 month,
+    # dried beans and lentils 1-2 years
+    **dict.fromkeys(("berries", "citrus", "apple", "root", "legumes"), EXTENSION),
+}
+
+SOURCE_NOTE = {
+    "de": {"source": "Quelle: {source}.", OWN: "Ohne bestätigte Quelle: vorsichtige Schätzung von Larder."},
+    "en": {"source": "Source: {source}.", OWN: "No confirmed source: Larder's cautious estimate."},
+}
+
+
+def source_of(entry_id: str) -> str:
+    """Source of a row (OWN if none is confirmed)."""
+    return SOURCES.get(entry_id, OWN)
+
+
+def source_note(entry_id: str, lang: str) -> str:
+    source = source_of(entry_id)
+    notes = SOURCE_NOTE["de" if lang.startswith("de") else "en"]
+    return notes[OWN] if source == OWN else notes["source"].format(source=source)
+
+
 # Shelf life AFTER OPENING of bought products, from USDA FoodKeeper ("refrigerated after opening" /
 # "pantry after opening"); where FoodKeeper gives a range, the lower value. (fridge, pantry) in days;
 # pantry None = keep in the fridge once opened. Entries without a value here use the storage values above
 # (fresh food, leftovers: they already describe food out of its package).
-FOODKEEPER = "USDA FoodKeeper"
 OPENED: dict[str, tuple[int, int | None]] = {
     "ketchup": (180, 30),  # ketchup, cocktail or chili sauce: 6 months refrigerated, 1 month pantry
     "mustard": (365, None),  # 12 months refrigerated
@@ -739,14 +789,14 @@ def _lookup_one(
     days_int = max(1, round(days))
 
     tip_de, tip_en = TIPS[entry.cat]
-    tip = tip_de if lang == "de" else tip_en
+    tip = f"{tip_de if lang == 'de' else tip_en} {source_note(entry.id, lang)}"
     if vacuum and entry.perishable and cold:
         tip += (
             " Vakuum verlängert die Haltbarkeit leicht verderblicher Speisen im Kühlschrank kaum."
             if lang == "de"
             else " Vacuum hardly extends the shelf life of perishable food in the fridge."
         )
-    return TableResult(days_int, tip, f"{food} · {place}")
+    return TableResult(days_int, tip, f"{food} · {place} · {_source_label(entry.id, lang)}")
 
 
 def _opened_result(entry: Entry, storage: Storage, lang: str, place: str, food: str) -> TableResult:
@@ -757,3 +807,10 @@ def _opened_result(entry: Entry, storage: Storage, lang: str, place: str, food: 
     days_int = max(1, round(days * storage.factor))
     note = OPENED_NOTE[lang].format(days=format_duration(days_int, lang), place=place, source=FOODKEEPER)
     return TableResult(days_int, note, f"{food} · {place} · {FOODKEEPER}")
+
+
+def _source_label(entry_id: str, lang: str) -> str:
+    source = source_of(entry_id)
+    if source != OWN:
+        return source
+    return "Larder (Schätzung)" if lang == "de" else "Larder (estimate)"

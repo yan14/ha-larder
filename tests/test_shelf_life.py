@@ -119,12 +119,12 @@ def test_lookup_basic_values_and_texts() -> None:
     result = _lookup("Tomatensuppe")
     assert result.days == 3
     assert "Kühlschrank" in result.basis and "Suppe" in result.basis
-    assert _lookup("Tomatensuppe", language="en").basis == "Soup / broth / sauce · fridge"
+    assert _lookup("Tomatensuppe", language="en").basis == "Soup / broth / sauce · fridge · USDA-FSIS Cold Food Storage Chart"
 
 
 def test_vacuum_extends_non_perishables_but_not_perishables_in_fridge() -> None:
-    assert _lookup("Parmesan").days == 28
-    assert _lookup("Parmesan", vacuum=True).days == round(28 * 1.3)
+    assert _lookup("Parmesan").days == 21  # 5.6: FoodKeeper, opened 3-4 weeks
+    assert _lookup("Parmesan", vacuum=True).days == round(21 * 1.3)
     # highly perishable in the fridge: vacuum changes nothing, but the tip says so
     plain, vac = _lookup("Hackfleisch"), _lookup("Hackfleisch", vacuum=True)
     assert plain.days == vac.days == 1
@@ -190,10 +190,10 @@ async def test_default_mode_is_table_without_ai(hass: HomeAssistant) -> None:
 async def test_table_result_respects_vacuum_switch(hass: HomeAssistant) -> None:
     _, _ = await _prepare(hass, "Parmesan", "Kühlschrank", None)
     out = (await _estimate(hass, overwrite=True, apply=False))[_eid(hass, "date")]
-    assert out["days"] == round(28 * 1.3)  # vacuum is on by default
+    assert out["days"] == round(21 * 1.3)  # vacuum is on by default
     await hass.services.async_call("switch", "turn_off", {"entity_id": _eid(hass, "switch")}, blocking=True)
     out = (await _estimate(hass, overwrite=True, apply=False))[_eid(hass, "date")]
-    assert out["days"] == 28
+    assert out["days"] == 21
 
 
 async def test_table_uses_area_temperature_sensor_and_label(hass: HomeAssistant) -> None:
@@ -216,7 +216,7 @@ async def test_table_uses_area_temperature_sensor_and_label(hass: HomeAssistant)
         "text", "set_value", {"entity_id": _eid(hass, "text"), "value": "Wurst"}, blocking=True
     )
     out = (await _estimate(hass, overwrite=True, apply=False))[_eid(hass, "date")]
-    assert out["days"] == 4  # label says: fridge (sausage)
+    assert out["days"] == 3  # label says: fridge (cold cuts, FSIS 3-5 days)
 
 
 @pytest.mark.parametrize(
@@ -689,7 +689,7 @@ async def test_storage_line_of_the_label_lets_the_table_place_an_unknown_area(ha
         await _estimate(hass, overwrite=True, apply=False)
     await _label_area(hass, "Storage: fridge")
     out = (await _estimate(hass, overwrite=True, apply=False))[_eid(hass, "date")]
-    assert out["days"] == 3 and out["basis"].endswith("· fridge")
+    assert out["days"] == 3 and "· fridge ·" in out["basis"]
 
 
 async def test_max_storage_from_the_label_caps_ai_values_and_is_in_the_prompt(hass: HomeAssistant) -> None:

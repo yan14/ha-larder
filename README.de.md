@@ -33,6 +33,8 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 
 ## Was ist neu?
 
+> **5.6:** jeder Wert der Haltbarkeitstabelle nennt jetzt seine **Quelle** (USDA-FSIS, USDA FoodKeeper) – oder sagt, dass er geschätzt ist –, einige Werte korrigiert, und ein Kasten **🔓 Angebrochen** auf der Startseite.
+>
 > **5.5:** Haltbarkeit **nach dem Öffnen** nach USDA FoodKeeper (Ketchup 6 Monate, Mayonnaise 2), eine **Produktansicht** für Bestand, Orte, Mindestbestand und Verlauf, ein Reiter **Fächer**, Auswahl per langem Drücken, eine Monatskachel und ein Reiter **Woche** für den Wochenplan.
 >
 > **5.4:** alles für die **Geschwindigkeit** – Dashboard und Karten zeichnen nur neu, wenn sich etwas für Larder geändert hat, die Übersichts-Sensoren werden zusammen berechnet und Suchen laufen über einen Index.

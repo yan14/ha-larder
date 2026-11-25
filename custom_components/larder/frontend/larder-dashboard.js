@@ -2270,6 +2270,8 @@ export class LarderDashboard extends HTMLElement {
     if (bought) frag.append(bought);
     const again = this._againBox();
     if (again) frag.append(again);
+    const opened = this._openedBox(t, rows.filter((r) => !isHh(r)));
+    if (opened) frag.append(opened);
     const thaw = this._thawBox(t);
     if (thaw) frag.append(thaw);
     const planned = this._plannedBox(t, false);
@@ -2305,6 +2307,37 @@ export class LarderDashboard extends HTMLElement {
   }
 
   /** 5.0 (#117): the frequent actions at the top of the start page: scan, put away, receipt, recipe idea. */
+  /** 🔓 Opened (5.6, #152): what is open, since when and how long it keeps; the shortest first. */
+  _openedBox(t, rows) {
+    const open = rows.filter((r) => r.opened && r.content);
+    if (!open.length) return null;
+    const lang = this._lang();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const since = (iso) => {
+      const [y, m, d] = String(iso).slice(0, 10).split("-").map(Number);
+      return y ? Math.max(0, Math.round((today - new Date(y, m - 1, d)) / 86400000)) : null;
+    };
+    open.sort((a, b) => (a.days ?? 99999) - (b.days ?? 99999));
+    const box = el("section", "stat openedbox");
+    box.dataset.role = "opened-box";
+    box.append(el("h3", "", t.openedTitle(open.length)));
+    for (const row of open.slice(0, 8)) {
+      const line = el("button", "row");
+      line.type = "button";
+      line.dataset.id = row.id;
+      const text = el("span", "text");
+      const days = since(row.opened);
+      text.append(el("span", "name", row.content), el("span", "sub", [t.openedFor(days, fmtShort(row.opened, lang)), row.areaName, row.compartment].filter(Boolean).join(" · ")));
+      line.append(el("span", "ico", "🔓"), text);
+      if (row.days !== null) line.append(el("span", `badge ${dayClass(row)}`, daysLabel(t, row.days)));
+      line.addEventListener("click", () => this.openContainer(row));
+      box.append(line);
+    }
+    if (open.length > 8) box.append(el("p", "sub", t.openedMore(open.length - 8)));
+    return box;
+  }
+
   /** This month so far, for the small tile on the start page (5.5, #144). */
   async loadMonth() {
     const hass = this._hass;

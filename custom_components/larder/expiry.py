@@ -78,6 +78,7 @@ _TEXT = {
         "tomorrow": "morgen",
         "in_days": lambda d: f"in {d} Tagen",
         "unnamed": "Dose",
+        "opened_for": lambda d: "seit heute offen" if d == 0 else f"seit {d} {'Tag' if d == 1 else 'Tagen'} offen" if d < 14 else f"seit {round(d / 7)} Wochen offen",
         "units": {
             "portions": lambda n: "1 Portion" if n == 1 else f"{n} Portionen",
             "pieces": lambda n: f"{n} Stück",
@@ -107,6 +108,7 @@ _TEXT = {
         "tomorrow": "tomorrow",
         "in_days": lambda d: f"in {d} days",
         "unnamed": "Container",
+        "opened_for": lambda d: "opened today" if d == 0 else f"open for {d} {'day' if d == 1 else 'days'}" if d < 14 else f"open for {round(d / 7)} weeks",
         "units": {
             "portions": lambda n: "1 portion" if n == 1 else f"{n} portions",
             "pieces": lambda n: "1 piece" if n == 1 else f"{n} pieces",
@@ -177,6 +179,8 @@ def build_summary(items: list[dict[str, Any]], language: str, medicines: bool = 
             extras.append(item["name"])  # which container has to be emptied
         if item.get("quantity"):
             extras.append(quantity_text(text, item))
+        if item.get("opened_days") is not None:
+            extras.append(text["opened_for"](item["opened_days"]))  # 5.6 (#152)
         if item["area"]:
             extras.append(item["area"])
         place = f" ({', '.join(extras)})" if extras else ""
@@ -283,6 +287,18 @@ def build_speech(items: list[dict[str, Any]], language: str, limit: int = MAX_SP
     return " ".join(s[0].upper() + s[1:] for s in sentences)
 
 
+def _opened_info(content_state: Any) -> dict[str, Any]:
+    """5.6 (#152): day of opening and days since, for opened packs and containers."""
+    opened = (content_state.attributes.get("opened") if content_state is not None else None) or None
+    if not opened:
+        return {}
+    try:
+        since = (dt_util.now().date() - date.fromisoformat(str(opened)[:10])).days
+    except ValueError:
+        return {}
+    return {"opened": str(opened)[:10], "opened_days": max(0, since)}
+
+
 def collect_expiring(
     hass: HomeAssistant,
     days: int | None = SOON_DAYS,
@@ -357,6 +373,7 @@ def collect_expiring(
                 "days_left": left,
                 "status": status_for(left, soon),
                 "entity_id": date_id,
+                **_opened_info(content_state),
                 **({"value": _voucher_value(content_state)} if voucher else {}),
             }
         )

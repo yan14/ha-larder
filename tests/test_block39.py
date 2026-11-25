@@ -107,3 +107,49 @@ async def test_product_view_brings_stock_and_history_together(hass: HomeAssistan
     # unknown product: history only
     res = await _ws(hass, hass_ws_client, type="larder/product_history", content="Senf")
     assert res["result"]["product"] is None
+
+
+def test_every_row_names_its_source() -> None:
+    """5.6 (#151): every row either has a confirmed source or says it is Larder's own estimate."""
+    allowed = {shelf_life.FSIS, shelf_life.FOODKEEPER, shelf_life.EXTENSION, shelf_life.OWN}
+    for entry in shelf_life.ENTRIES:
+        assert shelf_life.source_of(entry.id) in allowed
+    assert set(shelf_life.SOURCES) <= {e.id for e in shelf_life.ENTRIES}
+    result = shelf_life.lookup("Hackfleisch", area_name="Kühlschrank", temperature_c=None, label_texts=(), vacuum=False, language="de")
+    assert result.days == 1 and result.tip.endswith("Quelle: USDA-FSIS Cold Food Storage Chart.")
+    result = shelf_life.lookup("Kuchen", area_name="Kühlschrank", temperature_c=None, label_texts=(), vacuum=False, language="de")
+    assert "vorsichtige Schätzung von Larder" in result.tip and result.basis.endswith("Larder (Schätzung)")
+
+
+@pytest.mark.parametrize(
+    ("content", "area", "days"),
+    [("Steak", "Kühlschrank", 3), ("Steak", "Gefrierschrank", 120), ("Hähnchenbrust", "Gefrierschrank", 270),
+     ("Lachs", "Gefrierschrank", 60), ("Bratwurst", "Kühlschrank", 1), ("Bacon", "Kühlschrank", 7),
+     ("Aufschnitt", "Kühlschrank", 3), ("Milch", "Kühlschrank", 7), ("Joghurt", "Gefrierschrank", 30),
+     ("Gouda", "Kühlschrank", 21), ("Reste", "Gefrierschrank", 60), ("Erdbeeren", "Kühlschrank", 2),
+     ("Äpfel", "Vorrat", 21), ("Zitronen", "Kühlschrank", 14), ("Kartoffeln", "Vorrat", 30)],
+)
+def test_checked_values(content: str, area: str, days: int) -> None:
+    result = shelf_life.lookup(content, area_name=area, temperature_c=None, label_texts=(), vacuum=False, language="de")
+    assert result.days == days
+
+
+async def test_opened_is_remembered_and_named_in_the_reminder(hass: HomeAssistant, hass_ws_client, freezer) -> None:
+    """5.6 (#152): Opened notes the day; the expiry summary says how long it has been open."""
+    hass.config.language = "de"
+    await _setup(hass, "AAAA")
+    fridge = ar.async_get(hass).async_create("Kühlschrank")
+    today = dt_util.now().date()
+    mayo = (await _packs(hass, hass_ws_client, [{"content": "Mayonnaise", "quantity": 1, "unit": "pieces", "best_before": (today + timedelta(days=200)).isoformat()}], fridge.id, ""))[0]
+    date_id = _eid(hass, "date", mayo["cc"])
+    await hass.services.async_call(DOMAIN, "mark_opened", {"entity_id": date_id}, blocking=True, return_response=True)
+    text_id = _eid(hass, "text", mayo["cc"])
+    assert hass.states.get(text_id).attributes["opened"] == today.isoformat()
+    # seven weeks later: one week left, the reminder says how long it has been open
+    freezer.tick(timedelta(days=49))
+    res = await hass.services.async_call(DOMAIN, "get_expiring", {"days": 14}, blocking=True, return_response=True)
+    item = next(i for i in res["items"] if i["content"] == "Mayonnaise")
+    assert item["opened_days"] == 49 and "seit 7 Wochen offen" in item["line"]
+    # pressing Opened again keeps the first day
+    await hass.services.async_call(DOMAIN, "mark_opened", {"entity_id": date_id}, blocking=True, return_response=True)
+    assert hass.states.get(text_id).attributes["opened"] == today.isoformat()
