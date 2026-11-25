@@ -111,7 +111,7 @@ async def test_product_view_brings_stock_and_history_together(hass: HomeAssistan
 
 def test_every_row_names_its_source() -> None:
     """5.6 (#151): every row either has a confirmed source or says it is Larder's own estimate."""
-    allowed = {shelf_life.FSIS, shelf_life.FOODKEEPER, shelf_life.EXTENSION, shelf_life.OWN}
+    allowed = {shelf_life.FSIS, shelf_life.FOODKEEPER, shelf_life.EXTENSION, shelf_life.CONSUMER_DE, shelf_life.OWN, f"{shelf_life.FSIS}, Verbraucherzentrale"}
     for entry in shelf_life.ENTRIES:
         assert shelf_life.source_of(entry.id) in allowed
     assert set(shelf_life.SOURCES) <= {e.id for e in shelf_life.ENTRIES}
@@ -153,3 +153,90 @@ async def test_opened_is_remembered_and_named_in_the_reminder(hass: HomeAssistan
     # pressing Opened again keeps the first day
     await hass.services.async_call(DOMAIN, "mark_opened", {"entity_id": date_id}, blocking=True, return_response=True)
     assert hass.states.get(text_id).attributes["opened"] == today.isoformat()
+
+
+@pytest.mark.parametrize(
+    ("content", "area", "days", "source"),
+    [("Reis", "Kühlschrank", 1, "Verbraucherzentrale / DGE"), ("Basmatireis", "Vorrat", 365, "Verbraucherzentrale / DGE"),
+     ("Rehkeule", "Gefrierschrank", 180, "US Extension"), ("Eier", "Kühlschrank", 21, "Verbraucherzentrale")],
+)
+def test_german_and_more_sources(content: str, area: str, days: int, source: str) -> None:
+    """5.7 (#153)."""
+    result = shelf_life.lookup(content, area_name=area, temperature_c=None, label_texts=(), vacuum=False, language="de")
+    assert result.days == days and source in result.tip
+
+
+async def test_after_opening_per_product_comes_first(hass: HomeAssistant, hass_ws_client) -> None:
+    """5.7 (#154): the value from the pack applies to exactly this product, before the table."""
+    hass.config.language = "de"
+    await _setup(hass, "AAAA")
+    fridge = ar.async_get(hass).async_create("Kühlschrank")
+    today = dt_util.now().date()
+    later = (today + timedelta(days=300)).isoformat()
+    zero, plain = await _packs(hass, hass_ws_client, [
+        {"content": "Heinz Ketchup Zero", "quantity": 1, "unit": "pieces", "best_before": later},
+        {"content": "Heinz Ketchup", "quantity": 1, "unit": "pieces", "best_before": later},
+    ], fridge.id, "")
+    res = await _ws(hass, hass_ws_client, type="larder/opened_after", content="Heinz Ketchup Zero", days=56, source="label")
+    assert res["success"], res
+    assert next(p for p in res["result"]["products"] if p["name"] == "Heinz Ketchup Zero")["opened_after"] == 56
+    assert "opened_after" not in next(p for p in res["result"]["products"] if p["name"] == "Heinz Ketchup")
+    date_id = _eid(hass, "date", zero["cc"])
+    out = (await hass.services.async_call(DOMAIN, "mark_opened", {"entity_id": date_id}, blocking=True, return_response=True))[date_id]
+    assert out["best_before"] == (today + timedelta(days=56)).isoformat()
+    assert out["source"] == "product" and "8 Wochen (laut Packung)" in out["tip"]
+    # the similar product keeps the table value (never mixed)
+    date_id = _eid(hass, "date", plain["cc"])
+    out = (await hass.services.async_call(DOMAIN, "mark_opened", {"entity_id": date_id}, blocking=True, return_response=True))[date_id]
+    assert out["best_before"] == (today + timedelta(days=180)).isoformat() and out["source"] == "table"
+    # clearing it
+    res = await _ws(hass, hass_ws_client, type="larder/opened_after", content="Heinz Ketchup Zero", days=0)
+    assert "opened_after" not in next(p for p in res["result"]["products"] if p["name"] == "Heinz Ketchup Zero")
+
+
+def test_after_opening_read_from_the_pack() -> None:
+    from custom_components.larder.date_photo import parse_opened
+    from custom_components.larder.estimate import EstimateError
+
+    assert parse_opened({"found": True, "amount": 4, "unit": "weeks"}) == 28
+    assert parse_opened({"found": True, "amount": 12, "unit": "months"}) == 360
+    assert parse_opened({"found": True, "amount": 3, "unit": "days"}) == 3
+    for bad in ({"found": False}, {"found": True, "amount": 0, "unit": "days"}, {"found": True, "amount": 2, "unit": "years"}, None):
+        with pytest.raises(EstimateError):
+            parse_opened(bad)
+
+
+async def test_blueprint_opened_reminder(hass: HomeAssistant, hass_ws_client, freezer) -> None:
+    """5.7 (#155): weekly push with the opened items that run out soon – and nothing else."""
+    from pathlib import Path
+    import shutil
+
+    from homeassistant.setup import async_setup_component
+
+    from .test_daily_summary import _at, _notify
+
+    hass.config.language = "de"
+    path = Path(__file__).parents[1] / "blueprints/automation/larder/opened_reminder.yaml"
+    target = Path(hass.config.path("blueprints/automation/larder"))
+    target.mkdir(parents=True, exist_ok=True)
+    shutil.copy(path, target / path.name)
+    await _setup(hass, "AAAA")
+    fridge = ar.async_get(hass).async_create("Kühlschrank")
+    calls = _notify(hass, "mobile_app_yan")
+    today = dt_util.now().date()
+    mayo, senf = await _packs(hass, hass_ws_client, [
+        {"content": "Mayonnaise", "quantity": 1, "unit": "pieces", "best_before": (today + timedelta(days=300)).isoformat()},
+        {"content": "Senf", "quantity": 1, "unit": "pieces", "best_before": (today + timedelta(days=3)).isoformat()},
+    ], fridge.id, "")
+    date_id = _eid(hass, "date", mayo["cc"])
+    await hass.services.async_call(DOMAIN, "mark_opened", {"entity_id": date_id}, blocking=True, return_response=True)
+    weekday = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"][(dt_util.now() + timedelta(days=55)).weekday()]
+    assert await async_setup_component(hass, "automation", {"automation": {"id": "opened", "alias": "opened", "use_blueprint": {
+        "path": f"larder/{path.name}", "input": {"notify_action": "notify.mobile_app_yan", "weekday": weekday, "send_time": "10:00:00"}}}})
+    await hass.async_block_till_done()
+    # 55 days later the opened mayonnaise has 5 days left; the unopened mustard (expired) is not in it
+    await _at(hass, freezer, "10:00:00", days=55)
+    assert len(calls["mobile_app_yan"]) == 1
+    message = calls["mobile_app_yan"][0]["message"]
+    assert "Mayonnaise" in message and "seit 8 Wochen offen" in message and "Senf" not in message
+    shutil.rmtree(Path(hass.config.path("blueprints")), ignore_errors=True)

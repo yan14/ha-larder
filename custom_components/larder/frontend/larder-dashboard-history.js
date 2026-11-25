@@ -205,7 +205,7 @@ export function installHistory(Dashboard, { el, DOMAIN, money }) {
   };
 
   /** 📷 next to a date field: the AI reads the printed date, the field is filled in (a "change" follows). */
-  proto._datePhotoButton = function _datePhotoButton(input, status = null) {
+  proto._datePhotoButton = function _datePhotoButton(input, status = null, read = "date") {
     if (!this.canReadDate()) return null;
     const hass = this._hass;
     const t = historyTexts(hass);
@@ -232,10 +232,12 @@ export function installHistory(Dashboard, { el, DOMAIN, money }) {
       try {
         const body = new FormData();
         body.append("file", photo, photo.name || "date.jpg");
-        const res = await hass.fetchWithAuth(`/api/${DOMAIN}/date_photo`, { method: "POST", body });
+        const opened = read === "opened"; // 5.7 (#154): "use within … after opening"
+        const res = await hass.fetchWithAuth(`/api/${DOMAIN}/date_photo${opened ? "?read=opened" : ""}`, { method: "POST", body });
         const data = await res.json();
-        if (!res.ok || !data.date) throw new Error(data.message || t.dateFailed);
-        input.value = data.date;
+        const value = opened ? data.opened_days : data.date;
+        if (!res.ok || !value) throw new Error(data.message || t.dateFailed);
+        input.value = String(value);
         input.dispatchEvent(new Event("change", { bubbles: true }));
         say("");
       } catch (err) {

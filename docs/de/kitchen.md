@@ -90,6 +90,12 @@ Seit 5.2 schickt ein Blueprint einen **Wochenrückblick** am gewählten Tag zur 
 
 [![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fweekly_review.yaml)
 
+### Angebrochenes
+
+Seit 5.7 schickt der Blueprint **Larder – opened items** einmal pro Woche (Standard Samstag 10:00) eine Push mit allem **Angebrochenen**, das in den nächsten Tagen (Standard 7) verbraucht werden muss: wie lange es schon offen ist und wann es abläuft, z. B. *Mayonnaise (1 Stück, seit 8 Wochen offen, Kühlschrank): in 5 Tagen*. Ungeöffnetes bleibt draußen (dafür gibt es die tägliche Zusammenfassung); läuft nichts Angebrochenes ab, kommt nichts.
+
+[![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fopened_reminder.yaml)
+
 ### Ablaufende Medikamente
 
 Medikamente und Haushaltsartikel mit Datum (z. B. Sonnencreme) warnen viel früher als Lebensmittel (standardmäßig 60 Tage) und stehen deshalb nicht in der täglichen Zusammenfassung. Ein eigener Blueprint erinnert an den gewählten Wochentagen (z. B. jeden Montag um 9:00): Push an ein oder mehrere Handys und optional als Ansage auf Alexa (Alexa Media Player, z. B. `notify.alexa_media_kitchen` mit `type: announce`). Abgelaufene werden mit *entsorgen* genannt. Seit 4.8 nennt er auch [Gutscheine](containers.md#gutscheine), die bald ablaufen, mit ihrem Wert (Schalter *Include vouchers*; abgelaufene Gutscheine nie). Ist nichts fällig, kommt nichts; von Hand ausgeführt kommt die Nachricht trotzdem, als Test.

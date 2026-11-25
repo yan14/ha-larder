@@ -96,6 +96,7 @@ The switch at the top of the **Larder** page shows one side at a time. Areas bel
 |---|---|
 | [Daily summary](kitchen.md#daily-summary) | what expires soon, optionally one push per entry with the buttons **Used up · Thrown away · +2 days · On the list**, recipe ideas, voice output |
 | [Weekly review](kitchen.md#weekly-review) | last week eaten / thrown away (value), next week's expiring food, a recipe idea |
+| [Opened items](kitchen.md#opened-items) | once a week everything opened that runs out soon, with how long it has been open |
 | [Monthly report](kitchen.md#monthly-report) | the previous month compared with the month before |
 | [Medicines expiring](kitchen.md#medicines-expiring) | medicines, dated household items and vouchers on chosen weekdays |
 | [Running low and recalls](kitchen.md#running-low-and-recalls) | running low, recall warnings, replacement due |

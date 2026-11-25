@@ -3814,3 +3814,34 @@ test("5.6: start page box 🔓 Opened – what is open, since when, shortest fir
   assert.match(lines[0].textContent, /seit 2 Tagen offen/);
   assert.match(lines[1].textContent, /seit 7 Wochen offen/);
 });
+
+test("5.7: product view – 'use within … after opening' of exactly this product", async () => {
+  const hass = makeHass(DOSES);
+  const base = hass.callWS;
+  let after = null;
+  const product = () => ({
+    key: "heinz ketchup zero", name: "Heinz Ketchup Zero", count: 1, packs: 1, kind: "pack", pack_size: 1, min: 0, auto: false, low: false,
+    brand: null, package: null, places: [], price: null, value: null, usage: null, ...(after ? { opened_after: after } : {}),
+  });
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/product_history`) return { name: "Heinz Ketchup Zero", summary: { count: 0 }, records: [], price_history: [], product: product() };
+    if (msg.type === `${D}/opened_after`) {
+      hass.wsCalls.push(msg);
+      after = msg.days;
+      return { products: [product()] };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await el.openProduct("Heinz Ketchup Zero");
+  const input = $(el, '[data-role="opened-after"]');
+  assert.equal(input.value, "");
+  input.value = "56";
+  input.dispatchEvent(new dom.window.Event("input"));
+  input.dispatchEvent(new dom.window.Event("change"));
+  await flush();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/opened_after`), { type: `${D}/opened_after`, content: "Heinz Ketchup Zero", days: 56, source: "manual" });
+  assert.equal($(el, '[data-role="opened-after"]').value, "56");
+});

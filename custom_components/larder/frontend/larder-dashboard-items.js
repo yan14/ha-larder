@@ -166,6 +166,9 @@ const TEXT = {
     stockNoList: "Für den Mindestbestand fehlt noch eine Einkaufsliste in den Einstellungen.",
     stockEmpty: "Noch keine Packungen. Lege sie über ＋ → Packung an.",
     stockMin: "Mindestens",
+    openedAfter: "🔓 Nach dem Öffnen verbrauchen innerhalb von",
+    openedAfterUnit: "Tagen",
+    openedAfterHint: "Steht auf der Packung (📷 liest es). Gilt nur für genau dieses Produkt und vor der Tabelle.",
     stockLow: "zu wenig",
     stockNone: "keine mehr da",
     stockFailed: "Speichern fehlgeschlagen.",
@@ -340,6 +343,9 @@ const TEXT = {
     stockNoList: "For the minimum stock, choose a shopping list in the settings first.",
     stockEmpty: "No packs yet. Add them with ＋ → Pack.",
     stockMin: "At least",
+    openedAfter: "🔓 Once opened, use within",
+    openedAfterUnit: "days",
+    openedAfterHint: "Printed on the pack (📷 reads it). Applies to exactly this product only, before the table.",
     stockLow: "too few",
     stockNone: "none left",
     stockFailed: "Saving failed.",
@@ -1203,6 +1209,37 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       const line = el("div", "sub pricehistory", `${t.priceHistory}: ${p.price_history.map((h) => money(h.price, de)).join(" → ")}`);
       line.dataset.role = "stock-price-history";
       item.append(line);
+    }
+    if (inProduct && scopeOfKind(p.kind) === "food") {
+      // 5.7 (#154): "use within … after opening" of exactly this product (by hand or 📷 from the pack)
+      const after = el("input");
+      after.type = "number";
+      after.min = "0";
+      after.max = "1095";
+      after.inputMode = "numeric";
+      after.placeholder = "–";
+      after.dataset.role = "opened-after";
+      after.value = p.opened_after ? String(p.opened_after) : "";
+      let fromLabel = false;
+      after.addEventListener("input", () => (fromLabel = false)); // typed by hand
+      after.addEventListener("change", async () => {
+        const days = Math.max(0, Math.min(1095, parseInt(after.value, 10) || 0));
+        try {
+          const res = await hass.callWS({ type: `${DOMAIN}/opened_after`, content: p.name, days: days || null, source: fromLabel ? "label" : "manual" });
+          fromLabel = false;
+          onChanged(res);
+        } catch {
+          this.showNotice(t.stockFailed);
+        }
+      });
+      const wrap = el("label", "stockmin openedafter", t.openedAfter);
+      wrap.append(after, el("span", "", t.openedAfterUnit));
+      const photo = this._datePhotoButton ? this._datePhotoButton(after, null, "opened") : null;
+      if (photo) {
+        photo.querySelector("button").addEventListener("click", () => (fromLabel = true));
+        wrap.append(photo);
+      }
+      item.append(wrap, el("p", "hint", t.openedAfterHint));
     }
     if (!inProduct) item.append(this._historyLink(p.name, "stock-history"));
     const places = el("div", "places");

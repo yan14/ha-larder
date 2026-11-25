@@ -37,6 +37,7 @@ from .estimate import (
     storage_context,
 )
 from .expiry import soon_days
+from .shelf_life import format_duration
 
 
 async def async_setup_entry(
@@ -163,6 +164,17 @@ class LarderBestBefore(DateEntity, LarderResettable):
             if content_state is not None and content_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE)
             else ""
         )
+        # 5.7 (#154): what the pack itself says comes first – for exactly this product
+        from .stock import async_get_stock, product_key  # noqa: PLC0415
+
+        stock = await async_get_stock(self.hass)
+        if content.strip() and (own := stock.opened_after.get(product_key(content))):
+            de = (self.hass.config.language or "en").lower().startswith("de")
+            days = int(own["days"])
+            when = format_duration(days, "de" if de else "en")
+            origin = ("laut Packung" if de else "from the pack") if own.get("source") == "label" else ("eigene Angabe" if de else "your own value")
+            tip = f"Nach dem Öffnen: {when} ({origin})." if de else f"After opening: {when} ({origin})."
+            return days, {"source": "product", "tip": tip, "basis": own.get("name", content)}
         try:
             estimate = await estimator.async_estimate_opened(
                 content=content, context=storage_context(self.hass, self._cc)

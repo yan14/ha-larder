@@ -1,0 +1,97 @@
+blueprint:
+  name: Larder – opened items
+  description: >
+    Once a week (Saturday by default): a push with everything opened that has to be used up within the
+    next days – how long it has been open and until when it keeps (after-opening values from the pack,
+    the USDA FoodKeeper table or the AI). Nothing is sent when nothing opened runs out.
+    Angebrochenes: einmal pro Woche eine Push mit allem Angebrochenen, das bald verbraucht werden muss.
+  domain: automation
+  source_url: https://github.com/yan14/ha-larder/blob/main/blueprints/automation/larder/opened_reminder.yaml
+  input:
+    notify_action:
+      name: Push notification
+      description: >
+        Notify action(s), for example notify.mobile_app_your_iphone or a notify group.
+        Several are separated by commas.
+      selector:
+        text:
+    weekday:
+      name: Day of the week
+      default: sat
+      selector:
+        select:
+          options:
+            - label: Monday
+              value: mon
+            - label: Tuesday
+              value: tue
+            - label: Wednesday
+              value: wed
+            - label: Thursday
+              value: thu
+            - label: Friday
+              value: fri
+            - label: Saturday
+              value: sat
+            - label: Sunday
+              value: sun
+    send_time:
+      name: Time
+      default: "10:00:00"
+      selector:
+        time:
+    days:
+      name: Runs out within (days)
+      description: Opened items that keep at most this many more days (expired ones included).
+      default: 7
+      selector:
+        number:
+          min: 1
+          max: 60
+          mode: box
+    title:
+      name: Title
+      default: "🔓 Larder"
+      selector:
+        text:
+
+mode: single
+max_exceeded: silent
+
+variables:
+  notify_action: !input notify_action
+  title: !input title
+  push_targets: "{{ (notify_action or '') | string | lower | regex_findall('[a-z0-9_]+[.][a-z0-9_]+') }}"
+
+triggers:
+  - trigger: time
+    at: !input send_time
+
+conditions:
+  - condition: time
+    weekday: !input weekday
+
+actions:
+  - action: larder.get_expiring
+    data:
+      days: !input days
+      include_expired: true
+    response_variable: result
+  - variables:
+      opened: "{{ result['items'] | selectattr('opened_days', 'defined') | list }}"
+  - condition: template
+    value_template: "{{ opened | length > 0 }}"
+  - variables:
+      message: >-
+        {{ opened | map(attribute='line') | map('regex_replace', '^', '• ') | join('\n') }}
+  - repeat:
+      for_each: "{{ push_targets }}"
+      sequence:
+        - action: "{{ repeat.item }}"
+          data:
+            title: "{{ title }}"
+            message: "{{ message }}"
+            data:
+              url: /larder
+              clickAction: /larder
+          continue_on_error: true

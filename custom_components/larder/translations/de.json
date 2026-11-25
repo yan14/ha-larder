@@ -198,6 +198,9 @@
     "date_photo_none": {
       "message": "Auf dem Foto wurde kein lesbares MHD gefunden."
     },
+    "opened_photo_none": {
+      "message": "Auf dem Foto wurde kein „nach dem Öffnen … verbrauchen“ gefunden."
+    },
     "receipt_photo_none": {
       "message": "Auf dem Foto wurde kein Kassenbon mit Lebensmitteln erkannt."
     },

@@ -109,6 +109,7 @@ class Stock:
         self.recent: list[dict[str, Any]] = []
         # buy again by consumption (5.2, #128): product → {"name", "last": ISO date put on the list}
         self.auto_reorder: dict[str, dict[str, Any]] = {}
+        self.opened_after: dict[str, dict[str, Any]] = {}  # 5.7: product → days after opening (from the pack)
         self._unsub = None
         self._unsub_daily = None
 
@@ -132,6 +133,7 @@ class Stock:
         self.price_history = {k: [p for p in v if isinstance(p, dict)] for k, v in (data.get("price_history") or {}).items() if isinstance(v, list)}
         self.recent = [r for r in data.get("recent") or [] if isinstance(r, dict) and r.get("content")]
         self.auto_reorder = {str(k): v for k, v in (data.get("auto_reorder") or {}).items() if isinstance(v, dict)}
+        self.opened_after = {str(k): v for k, v in (data.get("opened_after") or {}).items() if isinstance(v, dict) and v.get("days")}
 
     def _data(self) -> dict[str, Any]:
         return {
@@ -153,7 +155,17 @@ class Stock:
             "price_history": self.price_history,
             "recent": self.recent,
             "auto_reorder": self.auto_reorder,
+            "opened_after": self.opened_after,
         }
+
+    def set_opened_after(self, content: str, days: int | None, source: str = "manual") -> None:
+        """5.7 (#154): "use within … after opening" of exactly this product (never shared with similar ones)."""
+        key = product_key(content)
+        if days:
+            self.opened_after[key] = {"name": content.strip(), "days": int(days), "source": source}
+        else:
+            self.opened_after.pop(key, None)
+        self._save()
 
     def set_auto_reorder(self, content: str, enabled: bool) -> None:
         key = product_key(content)
@@ -604,6 +616,8 @@ def stock_overview(hass: HomeAssistant, minimums: dict[str, dict[str, Any]], sto
         product["min"] = int((minimums.get(product["key"]) or {}).get("min") or 0)
         if stock is not None:
             product["auto"] = product["key"] in stock.auto_reorder
+            if (after := stock.opened_after.get(product["key"])) is not None:
+                product["opened_after"] = int(after["days"])
         if stock is not None and stock.lists.get(product["key"]):
             product["list"] = stock.lists[product["key"]]  # own shopping list of the product
         product["low"] = product["min"] > 0 and product["count"] < product["min"]
@@ -1288,6 +1302,22 @@ async def ws_auto_reorder(hass: HomeAssistant, connection: websocket_api.ActiveC
 
 @websocket_api.websocket_command(
     {
+        vol.Required("type"): f"{DOMAIN}/opened_after",
+        vol.Required("content"): vol.All(str, vol.Length(min=1, max=255)),
+        vol.Required("days"): vol.Any(None, vol.All(int, vol.Range(min=0, max=1095))),
+        vol.Optional("source", default="manual"): vol.In(("manual", "label")),
+    }
+)
+@websocket_api.async_response
+async def ws_opened_after(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Set or clear "use within … after opening" of one product (5.7, #154); 0/None clears it."""
+    stock = await async_get_stock(hass)
+    stock.set_opened_after(msg["content"], msg["days"] or None, msg["source"])
+    connection.send_result(msg["id"], {"products": stock_overview(hass, stock.minimums, stock)})
+
+
+@websocket_api.websocket_command(
+    {
         vol.Required("type"): f"{DOMAIN}/stock_code",
         vol.Optional("code", default=""): str,
         vol.Optional("content"): vol.All(str, vol.Length(min=1, max=255)),
@@ -1613,6 +1643,7 @@ def async_setup_stock_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_stock)
     websocket_api.async_register_command(hass, ws_stock_min)
     websocket_api.async_register_command(hass, ws_auto_reorder)
+    websocket_api.async_register_command(hass, ws_opened_after)
     websocket_api.async_register_command(hass, ws_pack_move)
     websocket_api.async_register_command(hass, ws_stock_code)
     websocket_api.async_register_command(hass, ws_stock_code_link)

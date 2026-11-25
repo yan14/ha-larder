@@ -3,6 +3,14 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 5.7.0
+
+Block 42: shelf life per product, German sources, a reminder of opened items.
+
+- **"Use within … after opening" per product** (#154): in the product view **🔓 Once opened, use within … days** stores what the pack says – typed in or read by the AI from a photo of the label (**📷**). It belongs to exactly this product (only *Heinz Ketchup Zero*, never *Heinz Ketchup* as well). **Opened** and **Open** use it before the table; the tip says *from the pack*. WebSocket `larder/opened_after`, `opened_after` in the stock view; `POST /api/larder/date_photo?read=opened`.
+- **German sources** (#153): cooked rice 1 day in the fridge (Verbraucherzentrale / DGE, *Bacillus cereus*; was 2), eggs also after the Verbraucherzentrale, game after the USDA-based chart of the University of Nebraska (6 months frozen, was 9). Rows without a confirmed source keep saying so.
+- **Blueprint "Larder – opened items"** (#155): once a week a push with everything opened that runs out within the next days, with how long it has been open. Unopened food stays out.
+
 ## 5.6.0
 
 Block 41: shelf life with sources, opened items at a glance.

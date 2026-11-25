@@ -133,7 +133,7 @@ TIPS: dict[str, tuple[str, str]] = {
 # "~a" is a weak keyword that only counts if nothing else matches ("filet").
 # Increase TABLE_VERSION when entries or the detection change: remembered table values
 # are then calculated anew (own corrections stay).
-TABLE_VERSION = 7  # 7: values checked against sources (SOURCES), raw sausage and bacon; 6: condiments split, values after opening (OPENED); 3: several contents (comma) estimated one by one; 4: plant-based, soup pasta, bagels; 5: condiments, game, fish
+TABLE_VERSION = 8  # 8: German sources (cooked rice, eggs), game (UNL); 7: values checked against sources (SOURCES), raw sausage and bacon; 6: condiments split, values after opening (OPENED); 3: several contents (comma) estimated one by one; 4: plant-based, soup pasta, bagels; 5: condiments, game, fish
 ENTRIES: tuple[Entry, ...] = (
     # --- Dishes and leftovers (priority 3) ---
     _e("dish", "Gericht / Reste", "Dish / leftovers", "dish",
@@ -212,7 +212,7 @@ ENTRIES: tuple[Entry, ...] = (
        2, 3, 90, None, pri=4, perishable=True),
     _e("game", "Wild (roh)", "Game (raw)", "raw_meat",
        "reh|hirsch|wildschwein|damwild|gams|hasen|feldhase|kaninchen|wildfleisch|venison|rabbit|rehruecken|rehkeule|rehfilet",
-       2, 4, 270, None, pri=3, perishable=True),
+       2, 3, 180, None, pri=3, perishable=True),
     _e("meat", "Fleisch (roh)", "Meat (raw)", "raw_meat",
        "fleisch|steak|schnitzel|rind|schwein|kalb|kalbs|lamm|kotelett|braten|beef|pork|lamb|~filet|roulade|gulaschfleisch|geschnetzeltes|~unterschale|~oberschale|~keule|~schenkel|~ruecken|nacken",
        3, 5, 120, None, pri=2, perishable=True),
@@ -332,13 +332,13 @@ ENTRIES: tuple[Entry, ...] = (
        3, 4, 90, 365, pri=1),
     _e("rice_raw", "Milchreis / Rundkornreis (roh)", "Pudding rice (raw)", "dry",
        "milchreis+roh|milchreis+ungekocht|milchreis+trocken|rundkornreis|milchreisreis|pudding rice",
-       2, 3, 30, 365, pri=4),
+       1, 2, 30, 365, pri=4),
     _e("brown_rice", "Vollkornreis (trocken) / gekocht", "Brown rice (dry) / cooked", "dry",
        "vollkornreis|brown rice|naturreis",
-       2, 3, 30, 180, pri=2),
+       1, 2, 30, 180, pri=2),
     _e("rice", "Reis & Getreide (trocken) / gekocht", "Rice & grains (dry) / cooked", "dry",
        "reis|rice|couscous|bulgur|quinoa|hirse|polenta|griess|risotto|basmati|jasmin",
-       2, 3, 30, 365, pri=1),
+       1, 2, 30, 365, pri=1),
     _e("flour", "Mehl / Stärke / Backzutaten", "Flour / starch / baking", "dry",
        "mehl|flour|staerke|backpulver|speisestaerke|paniermehl|semolina|dinkelmehl|weizenmehl|roggenmehl|vollkornmehl|type 405|type 550|typ 405|typ 550|typ 630|typ 1050",
        180, 180, 365, 180, pri=1),
@@ -376,6 +376,7 @@ ENTRIES: tuple[Entry, ...] = (
 FSIS = "USDA-FSIS Cold Food Storage Chart"
 FOODKEEPER = "USDA FoodKeeper"
 EXTENSION = "USDA / US Extension (NDSU, UNL)"
+CONSUMER_DE = "Verbraucherzentrale / DGE"
 OWN = "own"  # no confirmed source: Larder's cautious estimate
 SOURCES: dict[str, str] = {
     # FSIS chart: leftovers 3-4 days / 2-6 months, soups 3-4 days / 2-3 months, salads do not freeze well,
@@ -395,7 +396,14 @@ SOURCES: dict[str, str] = {
     # Extension charts based on USDA: berries 2-3 days / 8-12 months, citrus 2 weeks / 4-6 months (pantry
     # 10 days), apples pantry 3 weeks, fridge 4-6 weeks, freezer 8 months, onions and potatoes pantry 1 month,
     # dried beans and lentils 1-2 years
-    **dict.fromkeys(("berries", "citrus", "apple", "root", "legumes"), EXTENSION),
+    # + venison (UNL): fridge 2-3 days, freezer 6-9 months (roasts, steaks)
+    **dict.fromkeys(("berries", "citrus", "apple", "root", "legumes", "game"), EXTENSION),
+    # 5.7 (#153), German consumer advice: cooked rice within one to two days in the fridge (Bacillus cereus;
+    # DGE, Verbraucherzentrale), the dry rice in the pantry as before. Raw eggs: best before 28 days after laying,
+    # keep cold from day 18 and keep them cold once they were (Verbraucherzentrale) – the fridge value stays at
+    # the lower FSIS value of 3 weeks.
+    **dict.fromkeys(("rice", "brown_rice", "rice_raw"), CONSUMER_DE),
+    "egg": f"{FSIS}, Verbraucherzentrale",
 }
 
 SOURCE_NOTE = {
