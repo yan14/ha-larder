@@ -5,6 +5,18 @@
  * `installShopping` attaches the methods to the dashboard class (like larder-dashboard-items.js).
  */
 
+
+/** 6.0: texts in the user's language; French and Dutch fall back to English for anything missing. */
+const LANG_CACHE = new WeakMap();
+function pickLang(table, hass) {
+  const lang = String((hass && hass.language) || "en").toLowerCase().slice(0, 2);
+  if (lang === "en" || !table[lang]) return table.en;
+  if (lang === "de") return table.de;
+  let byLang = LANG_CACHE.get(table);
+  if (!byLang) LANG_CACHE.set(table, (byLang = {}));
+  return byLang[lang] || (byLang[lang] = { ...table.en, ...table[lang] });
+}
+
 const TEXT = {
   de: {
     title: "Einkaufen",
@@ -112,10 +124,116 @@ const TEXT = {
     needWhen: "Please choose weekdays or “every … days”.",
     when: (e, days) => (e.weekdays && e.weekdays.length ? e.weekdays.map((d) => days[d]).join(", ") : `every ${e.every_days} days`),
   },
+  fr: {
+    title: "Courses",
+    menu: "🛒 Mode courses",
+    startButton: "🛒 Faire les courses",
+    intro: "Trié par rayon. Cocher un article le termine sur la liste et le met aussitôt en stock, à sa place habituelle.",
+    empty: "Rien sur les listes de courses.",
+    noList: "Choisissez d'abord une liste de courses dans les paramètres.",
+    check: "Cocher",
+    added: (r) => `→ ${[r.area, r.compartment].filter(Boolean).join(" · ") || "stock"}${r.added > 1 ? ` (+${r.added})` : ""}`,
+    unknown: "nouveau – ajouté à la fin",
+    loading: "Chargement des listes de courses …",
+    loadFailed: (msg) => `Les listes de courses n'ont pas pu être chargées${msg ? ` : ${msg}` : "."}`,
+    listFailed: (name, msg) => `${name} : illisible (${msg})`,
+    listOpen: (name, n) => `${name} : ${n} ouverts`,
+    listMissing: (id) => `La liste de courses ${id} choisie dans les paramètres n'existe pas dans Home Assistant pour le moment. Choisissez-la à nouveau dans les paramètres de l'intégration.`,
+    failed: "Le cochage a échoué.",
+    addUnknown: (n) => (n === 1 ? "＋ Ajouter 1 nouvel article" : `＋ Ajouter ${n} nouveaux articles`),
+    reload: "🔄 Actualiser",
+    storeWhere: "📍 Où êtes-vous ?",
+    storeAll: "Partout",
+    storeNew: "Magasin, par ex. Carrefour",
+    storeOrder: (name) => `🏪 Rayons chez ${name}`,
+    elsewhere: (n, store) => `Acheté ailleurs (${n}) – jamais chez ${store} jusqu'ici`,
+    boughtAt: (stores) => `jusqu'ici chez ${stores}`,
+    scan: "📷 Scanner",
+    receipt: "🧾 Ticket",
+    details: "€ / date",
+    detailsLabel: "Saisir prix et date de péremption",
+    price: "Prix (€)",
+    bestBefore: "À consommer avant",
+    save: "Enregistrer",
+    detailsDone: (price, date) => [price ? `${price.toFixed(2).replace(".", ",")} €` : null, date ? `à consommer avant le ${date}` : null].filter(Boolean).join(" · "),
+    extraTitle: "Scanné, pas sur la liste",
+    scanAdded: (name, place) => `${name} → ${place}`,
+    scanUnknown: (name) => `${name || "Inconnu"} : nouveau, ajouté à la fin`,
+    scanFailed: "Le scan a échoué.",
+    recurring: "🔁 Récurrent",
+    recurringTitle: "Achats récurrents",
+    recurringIntro: "Arrive automatiquement sur la liste – les jours choisis ou tous les quelques jours, le matin à 8 h ; jamais deux fois tant qu'il est encore ouvert.",
+    recurringNone: "Rien pour l'instant.",
+    name: "Quoi",
+    namePlaceholder: "par ex. pack d'eau",
+    days: ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"],
+    every: "ou tous les … jours",
+    list: "Liste",
+    listDefault: "Liste par défaut",
+    add: "Ajouter",
+    remove: "Retirer",
+    close: "Fermer",
+    needName: "Veuillez saisir un nom.",
+    needWhen: "Choisissez des jours de la semaine ou « tous les … jours ».",
+    when: (e, days) => (e.weekdays && e.weekdays.length ? e.weekdays.map((d) => days[d]).join(", ") : `tous les ${e.every_days} jours`),
+  },
+  nl: {
+    title: "Boodschappen",
+    menu: "🛒 Winkelmodus",
+    startButton: "🛒 Boodschappen doen",
+    intro: "Gesorteerd op winkelafdeling. Afvinken rondt het artikel af op de lijst en zet het meteen in de voorraad, op de gebruikelijke plek.",
+    empty: "Niets op de boodschappenlijsten.",
+    noList: "Kies eerst een boodschappenlijst in de instellingen.",
+    check: "Afvinken",
+    added: (r) => `→ ${[r.area, r.compartment].filter(Boolean).join(" · ") || "voorraad"}${r.added > 1 ? ` (+${r.added})` : ""}`,
+    unknown: "nieuw – achteraan toegevoegd",
+    loading: "Boodschappenlijsten worden geladen …",
+    loadFailed: (msg) => `De boodschappenlijsten konden niet worden geladen${msg ? `: ${msg}` : "."}`,
+    listFailed: (name, msg) => `${name}: niet leesbaar (${msg})`,
+    listOpen: (name, n) => `${name}: ${n} open`,
+    listMissing: (id) => `De in de instellingen gekozen boodschappenlijst ${id} bestaat nu niet in Home Assistant. Kies hem opnieuw in de instellingen van de integratie.`,
+    failed: "Afvinken mislukt.",
+    addUnknown: (n) => (n === 1 ? "＋ 1 nieuw artikel toevoegen" : `＋ ${n} nieuwe artikelen toevoegen`),
+    reload: "🔄 Vernieuwen",
+    storeWhere: "📍 Waar ben je?",
+    storeAll: "Overal",
+    storeNew: "Winkel, bijv. Albert Heijn",
+    storeOrder: (name) => `🏪 Afdelingen bij ${name}`,
+    elsewhere: (n, store) => `Elders gekocht (${n}) – tot nu toe niet bij ${store}`,
+    boughtAt: (stores) => `tot nu toe bij ${stores}`,
+    scan: "📷 Scannen",
+    receipt: "🧾 Kassabon",
+    details: "€ / datum",
+    detailsLabel: "Prijs en houdbaarheidsdatum invoeren",
+    price: "Prijs (€)",
+    bestBefore: "Houdbaar tot",
+    save: "Opslaan",
+    detailsDone: (price, date) => [price ? `€ ${price.toFixed(2).replace(".", ",")}` : null, date ? `houdbaar tot ${date}` : null].filter(Boolean).join(" · "),
+    extraTitle: "Gescand, niet op de lijst",
+    scanAdded: (name, place) => `${name} → ${place}`,
+    scanUnknown: (name) => `${name || "Onbekend"}: nieuw, achteraan toegevoegd`,
+    scanFailed: "Scannen mislukt.",
+    recurring: "🔁 Terugkerend",
+    recurringTitle: "Terugkerende aankopen",
+    recurringIntro: "Komt vanzelf op de lijst – op de gekozen dagen of om de paar dagen, 's ochtends om 8 uur; nooit twee keer zolang het nog open staat.",
+    recurringNone: "Nog niets.",
+    name: "Wat",
+    namePlaceholder: "bijv. krat water",
+    days: ["Ma", "Di", "Wo", "Do", "Vr", "Za", "Zo"],
+    every: "of elke … dagen",
+    list: "Lijst",
+    listDefault: "Standaardlijst",
+    add: "Toevoegen",
+    remove: "Verwijderen",
+    close: "Sluiten",
+    needName: "Vul een naam in.",
+    needWhen: "Kies weekdagen of „elke … dagen”.",
+    when: (e, days) => (e.weekdays && e.weekdays.length ? e.weekdays.map((d) => days[d]).join(", ") : `elke ${e.every_days} dagen`),
+  },
 };
 
 export function shoppingTexts(hass) {
-  return String((hass && hass.language) || "en").toLowerCase().startsWith("de") ? TEXT.de : TEXT.en;
+  return pickLang(TEXT, hass);
 }
 
 export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames }) {

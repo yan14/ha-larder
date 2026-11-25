@@ -5,6 +5,18 @@
  * methods to the dashboard class: choice "Add what?", creating bags/packs, writing NFC stickers one after
  * another and "Transfer pack into a container".
  */
+
+/** 6.0: texts in the user's language; French and Dutch fall back to English for anything missing. */
+const LANG_CACHE = new WeakMap();
+function pickLang(table, hass) {
+  const lang = String((hass && hass.language) || "en").toLowerCase().slice(0, 2);
+  if (lang === "en" || !table[lang]) return table.en;
+  if (lang === "de") return table.de;
+  let byLang = LANG_CACHE.get(table);
+  if (!byLang) LANG_CACHE.set(table, (byLang = {}));
+  return byLang[lang] || (byLang[lang] = { ...table.en, ...table[lang] });
+}
+
 const MAX_ITEMS = 30;
 const UNITS = ["portions", "pieces", "slices", "grams", "milliliters"];
 
@@ -375,11 +387,389 @@ const TEXT = {
     moveFailed: "Moving failed.",
     units: { portions: "portions", pieces: "pieces", slices: "slices", grams: "grams", milliliters: "milliliters" },
   },
+  fr: {
+    addTitle: "Que voulez-vous ajouter ?",
+    kindContainer: "Boîte",
+    kindContainerHint: "Réutilisable, avec code QR ou tag NFC",
+    kindBag: "Sachet",
+    kindBagHint: "À usage unique, par ex. sachets sous vide : disparaît une fois vidé",
+    kindPack: "Paquet",
+    kindPackHint: "Stock sans boîte, par ex. conserves : sans code",
+    titleBag: "Ajouter des sachets",
+    titlePack: "Ajouter des paquets",
+    kindHousehold: "Article d'entretien",
+    kindHouseholdHint: "Sans date de péremption, par ex. papier toilette, lessive, piles",
+    titleHousehold: "Ajouter des articles d'entretien",
+    kindVoucher: "Bon d'achat",
+    kindVoucherHint: "Avec valeur et date d'expiration – pour qu'aucun ne se perde",
+    kindMedicine: "Médicament",
+    kindMedicineHint: "Avec date d'expiration, par ex. ibuprofène, spray nasal, pansements",
+    titleMedicine: "Ajouter des médicaments",
+    expiry: "Date d'expiration",
+    expiryOptional: "Date d'expiration (facultatif)",
+    createdMedicine: (n) => (n === 1 ? "1 médicament ajouté." : `${n} médicaments ajoutés.`),
+    shopList: "Liste de courses",
+    shopListDefault: "Liste par défaut",
+    packSize: "Pièces par paquet",
+    piece: "Unité, par ex. rouleaux",
+    createdHousehold: (n) => (n === 1 ? "1 article d'entretien ajouté." : `${n} articles d'entretien ajoutés.`),
+    stockPacks: (packs) => `${packs} ${packs === "1" ? "paquet" : "paquets"}`,
+    area: "Pièce",
+    compartment: "Compartiment (facultatif)",
+    compartmentHint: "par ex. tiroir 2",
+    noArea: "Sans pièce",
+    content: "Contenu",
+    count: "Nombre de sachets",
+    quantity: "Qté",
+    packs: "Nombre",
+    bestBefore: "À consommer avant",
+    bestBeforeBag: "À consommer avant (vide = estimer)",
+    vacuum: "Sous vide",
+    more: "＋ Une ligne de plus",
+    remove: "Retirer la ligne",
+    scan: "Scanner le code-barres",
+    scanFound: (name) => `Trouvé : ${name} (Open Food Facts)`,
+    scanNotFound: (code) => `Rien trouvé pour ${code}. Saisissez-le à la main.`,
+    create: "Ajouter",
+    cancel: "Annuler",
+    done: "Terminé",
+    needContent: "Saisissez au moins un contenu.",
+    tooMany: `Au plus ${MAX_ITEMS} à la fois.`,
+    failed: "L'ajout a échoué.",
+    createdBag: (n) => (n === 1 ? "1 sachet ajouté." : `${n} sachets ajoutés.`),
+    createdPack: (n) => (n === 1 ? "1 paquet ajouté." : `${n} paquets ajoutés.`),
+    createdHint: "Marquez maintenant chaque sachet : avec un autocollant NFC ou une étiquette imprimée.",
+    nfc: "📡 Autocollants NFC",
+    labels: "🖨 Étiquettes",
+    nfcTitle: (i, n) => `Autocollant NFC ${i} sur ${n}`,
+    nfcWrite: "✍ Écrire l'autocollant",
+    nfcScanHint: "Approchez un autocollant du téléphone : écrivez les nouveaux avec le bouton, ceux déjà écrits sont simplement scannés.",
+    nfcHold: "Approchez maintenant l'autocollant du téléphone, puis touchez Suivant.",
+    nfcLinked: "Autocollant lié.",
+    nfcInUse: "Cet autocollant appartient déjà à une autre boîte.",
+    nfcFailed: "La liaison a échoué.",
+    next: "Suivant ›",
+    skip: "Passer",
+    nfcDone: (n) => `${n} autocollant${n === 1 ? "" : "s"} lié${n === 1 ? "" : "s"}.`,
+    transferTitle: "Transvaser dans une boîte",
+    transferInto: "Boîte vide",
+    transferNone: "Aucune boîte vide pour le moment.",
+    transferHint: "Contenu et valeurs nutritives passent dans la boîte, la date est réestimée pour l'aliment ouvert (au plus celle imprimée). Le nombre de paquets baisse d'un.",
+    transfer: "Transvaser",
+    transferDone: (name, left) => `Transvasé dans ${name}.${left ? ` Encore ${left} en stock.` : ""}`,
+    transferFailed: "Le transvasement a échoué.",
+    stockTitle: "Stock",
+    usageLasts: (weeks, takes, months) => `tient environ ${weeks} · d'après ${takes} prélèvements en ${months}`,
+    suggestMin: (n) => `Suggestion : au moins ${n}`,
+    priceEach: (p, est) => `${est ? "env. " : ""}${p} € par paquet${est ? " (Open Prices)" : ""}`,
+    priceHistory: "Historique des prix",
+    valueOf: (v) => `valeur env. ${v} €`,
+    stockValue: (v, n) => `Stock d'une valeur d'env. ${v} € (${n} produits avec prix)`,
+    price: "€",
+    againTitle: "💡 Encore envie de … ?",
+    againItem: (n) => `mangé ${n}× ces 90 derniers jours, plus rien`,
+    againShop: "🛒 Liste de courses",
+    againShopped: (c) => `${c} est sur la liste de courses.`,
+    againDismiss: "Pas maintenant",
+    lowTitle: "⏳ Bientôt épuisé",
+    lowItem: (n, days) => `encore ${n}, tient environ ${days} ${days === 1 ? "jour" : "jours"}`,
+    lowShopped: (c) => `${c} est sur la liste de courses.`,
+    lowDismiss: "Masquer une semaine",
+    recallTitle: "⚠️ Rappel de produit",
+    recallIn: (list) => `En stock : ${list}`,
+    recallVia: { barcode: "code-barres", brand: "marque et nom", name: "nom" },
+    recallMatched: (via) => `Correspondance par ${via} – vérifiez l'emballage`,
+    recallOpen: "Ouvrir l'alerte",
+    recallRead: "Lu",
+    reportTitle: (label) => `📅 ${label}`,
+    codeTitle: "Code-barres",
+    openedMark: "🔓 ouvert",
+    codeScan: "📷 Code-barres",
+    codeOldest: (place) => `Le plus ancien d'abord : ${place}`,
+    codeNone: (name) => `${name || "Ce produit"} n'est pas en stock.`,
+    codeAdd: "Ajouter comme paquet",
+    codeLink: "🔗 Lier à un produit en stock",
+    codeLinkTitle: "Attribuer le code-barres",
+    codeLinkHint: (code) => `À quel produit en stock appartient ${code} ? Larder retient le code-barres, le prochain scan le trouvera.`,
+    codeLinkNone: "Aucun produit en stock pour le moment.",
+    codeLinkSave: "Lier",
+    codeLinkFailed: "La liaison a échoué.",
+    codeLinked: (name) => `Code-barres lié à ${name}.`,
+    codeUnknown: (code) => `Rien trouvé pour ${code}.`,
+    replaceTitle: "🔁 À remplacer bientôt",
+    replaceWhen: (days, date) => (days < 0 ? `en retard depuis le ${date}` : days === 0 ? "à faire aujourd'hui" : `à faire le ${date}`),
+    replaced: "Remplacé",
+    replacedDone: (name) => `${name} : remplacé, une pièce prélevée.`,
+    putAway: "Ranger",
+    putAwayHint: "Scannez les produits achetés l'un après l'autre : les connus vont à leur place habituelle comme paquet, les inconnus s'ajoutent ensemble à la fin.",
+    putAwayScan: "Scanner",
+    putAwayCode: "Saisir le code-barres",
+    putAwayAddCode: "Ranger",
+    putAwayAdded: "Rangé",
+    putAwayNow: (n) => `maintenant ${n}`,
+    putAwayDate: "Prix/date",
+    putAwayPrice: "Prix",
+    autoReorder: "🔁 Racheter selon la consommation",
+    autoReorderHint: "Arrive sur la liste de courses dès qu'il ne tiendra plus jusqu'aux prochaines courses selon la consommation – avant le stock minimum.",
+    autoAdded: (items) => `Sur la liste de courses : ${items}`,
+    putAwayTicked: "✓ coché",
+    codeAdded: (place) => `Un paquet de plus dans ${place}. Ajoutez tout de suite prix et date :`,
+    boughtAdded: (name, place) => `${name} → ${place}`,
+    putAwayUnknown: (n) => (n === 1 ? "1 produit inconnu" : `${n} produits inconnus`),
+    putAwayAddPacks: (n) => (n === 1 ? "Ajouter comme paquet" : `Ajouter ${n} comme paquets`),
+    putAwayAddHousehold: (n) => (n === 1 ? "Ajouter comme article d'entretien" : `Ajouter ${n} comme articles d'entretien`),
+    putAwayEmpty: "Rien scanné pour l'instant.",
+    putAwayDoneOne: (name, place) => `${name} → ${place}`,
+    putAwayUnknownOne: (name) => `${name} : inconnu, à ajouter à la fin`,
+    codeUsed: "Consommé",
+    codeUsedPiece: "−1 pièce",
+    codeThrown: "Jeté",
+    codeOpen: "Entamer",
+    codeMove: "Déplacer",
+    codeNewPack: "Ajouter un nouveau paquet",
+    codeDetail: "Ouvrir la fiche de ce paquet",
+    codeDetailShort: "Détails",
+    codeTransfer: "Dans une boîte",
+    transferNew: "Nouvelle boîte",
+    codeUsedDone: (place) => `Un paquet de ${place} consommé.`,
+    codeUsedPieceDone: (place) => `Une pièce prise dans ${place}.`,
+    codeThrownDone: (place) => `Un paquet de ${place} jeté.`,
+    codeDate: (d) => `à consommer avant le ${d}`,
+    noDate: "sans date de péremption",
+    stockEarliest: (d) => `au plus tôt le ${d}`,
+    boughtTitle: "🛒 Acheté – ajouter au stock ?",
+    boughtAdd: "Ajouter au stock",
+    boughtDismiss: "Ne pas ajouter",
+    stockIntro: "Paquets par produit, additionnés sur tous les endroits. Avec un stock minimum, un produit arrive sur la liste de courses dès qu'il y en a moins.",
+    stockNoList: "Pour le stock minimum, choisissez d'abord une liste de courses dans les paramètres.",
+    stockEmpty: "Pas encore de paquets. Ajoutez-les avec ＋ → Paquet.",
+    stockMin: "Au moins",
+    receiptStore: "Magasin (d'après le ticket)",
+    storePrices: "Prix par magasin",
+    storeCheapest: "le moins cher",
+    openedAfter: "🔓 Une fois ouvert, à consommer dans les",
+    openedAfterUnit: "jours",
+    openedAfterHint: "Imprimé sur l'emballage (📷 le lit). Vaut uniquement pour ce produit précis, avant le tableau.",
+    storageDays: "📦 Durée de conservation propre (jours)",
+    storagePlaces: { fridge: "Réfrigérateur", freezer: "Congélateur", pantry: "Garde-manger" },
+    storageDaysHint: "Par ex. pour une confiture maison. Vaut uniquement pour ce produit précis, avant le tableau ; le compartiment 0 °C utilise la valeur du réfrigérateur.",
+    stockLow: "trop peu",
+    stockNone: "plus rien",
+    stockFailed: "L'enregistrement a échoué.",
+    receipt: "Ticket de caisse",
+    receiptJoined: (n) => (n === 1 ? "1 produit connu rangé à sa place habituelle." : `${n} produits connus rangés à leur place habituelle.`),
+    receiptBusy: "Lecture du ticket …",
+    receiptDone: (n) => `${n} produit(s) repris du ticket. Vérifiez-les et ajoutez les dates de péremption.`,
+    receiptFailed: "Aucun ticket reconnu sur la photo.",
+    moveTitle: "Déplacer / partager",
+    moveCount: (n) => `Combien ? (sur ${n})`,
+    moveTo: "Vers",
+    moveHint: "Si le même aliment avec la même date s'y trouve déjà, les paquets sont regroupés.",
+    move: "Déplacer",
+    moveDone: (n, place) => `${n} déplacé(s) vers ${place}.`,
+    moveFailed: "Le déplacement a échoué.",
+    units: { portions: "portions", pieces: "pièces", slices: "tranches", grams: "grammes", milliliters: "millilitres" },
+  },
+  nl: {
+    addTitle: "Wat wil je toevoegen?",
+    kindContainer: "Doos",
+    kindContainerHint: "Herbruikbaar, met QR-code of NFC-tag",
+    kindBag: "Zakje",
+    kindBagHint: "Eenmalig, bijv. vacuümzakjes: weg na het legen",
+    kindPack: "Verpakking",
+    kindPackHint: "Voorraad zonder doos, bijv. blikken: geen code",
+    titleBag: "Zakjes toevoegen",
+    titlePack: "Verpakkingen toevoegen",
+    kindHousehold: "Huishoudartikel",
+    kindHouseholdHint: "Zonder houdbaarheidsdatum, bijv. toiletpapier, wasmiddel, batterijen",
+    titleHousehold: "Huishoudartikelen toevoegen",
+    kindVoucher: "Tegoedbon",
+    kindVoucherHint: "Met waarde en vervaldatum – zodat er geen ongebruikt verloopt",
+    kindMedicine: "Medicijn",
+    kindMedicineHint: "Met vervaldatum, bijv. ibuprofen, neusspray, pleisters",
+    titleMedicine: "Medicijnen toevoegen",
+    expiry: "Vervaldatum",
+    expiryOptional: "Vervaldatum (optioneel)",
+    createdMedicine: (n) => (n === 1 ? "1 medicijn toegevoegd." : `${n} medicijnen toegevoegd.`),
+    shopList: "Boodschappenlijst",
+    shopListDefault: "Standaardlijst",
+    packSize: "Stuks per verpakking",
+    piece: "Eenheid, bijv. rollen",
+    createdHousehold: (n) => (n === 1 ? "1 huishoudartikel toegevoegd." : `${n} huishoudartikelen toegevoegd.`),
+    stockPacks: (packs) => `${packs} ${packs === "1" ? "verpakking" : "verpakkingen"}`,
+    area: "Ruimte",
+    compartment: "Vak (optioneel)",
+    compartmentHint: "bijv. lade 2",
+    noArea: "Geen ruimte",
+    content: "Inhoud",
+    count: "Aantal zakjes",
+    quantity: "Hvh",
+    packs: "Aantal",
+    bestBefore: "Houdbaar tot",
+    bestBeforeBag: "Houdbaar tot (leeg = schatten)",
+    vacuum: "Vacuüm verpakt",
+    more: "＋ Nog een regel",
+    remove: "Regel verwijderen",
+    scan: "Barcode scannen",
+    scanFound: (name) => `Gevonden: ${name} (Open Food Facts)`,
+    scanNotFound: (code) => `Niets gevonden voor ${code}. Vul het met de hand in.`,
+    create: "Toevoegen",
+    cancel: "Annuleren",
+    done: "Klaar",
+    needContent: "Vul minstens één inhoud in.",
+    tooMany: `Hoogstens ${MAX_ITEMS} tegelijk.`,
+    failed: "Toevoegen mislukt.",
+    createdBag: (n) => (n === 1 ? "1 zakje toegevoegd." : `${n} zakjes toegevoegd.`),
+    createdPack: (n) => (n === 1 ? "1 verpakking toegevoegd." : `${n} verpakkingen toegevoegd.`),
+    createdHint: "Markeer nu elk zakje: met een NFC-sticker of een afgedrukt etiket.",
+    nfc: "📡 NFC-stickers",
+    labels: "🖨 Etiketten",
+    nfcTitle: (i, n) => `NFC-sticker ${i} van ${n}`,
+    nfcWrite: "✍ Sticker schrijven",
+    nfcScanHint: "Houd een sticker bij de telefoon: nieuwe stickers schrijf je met de knop, al beschreven stickers worden gewoon gescand.",
+    nfcHold: "Houd de sticker nu bij de telefoon en tik dan op Volgende.",
+    nfcLinked: "Sticker gekoppeld.",
+    nfcInUse: "Deze sticker hoort al bij een andere doos.",
+    nfcFailed: "Koppelen mislukt.",
+    next: "Volgende ›",
+    skip: "Overslaan",
+    nfcDone: (n) => `${n} ${n === 1 ? "sticker" : "stickers"} gekoppeld.`,
+    transferTitle: "Overdoen in een doos",
+    transferInto: "Lege doos",
+    transferNone: "Er is nu geen lege doos.",
+    transferHint: "Inhoud en voedingswaarden gaan naar de doos, de houdbaarheid wordt opnieuw geschat voor geopend voedsel (hoogstens zoals gedrukt). Het aantal verpakkingen gaat één omlaag.",
+    transfer: "Overdoen",
+    transferDone: (name, left) => `Overgedaan in ${name}.${left ? ` Nog ${left} in voorraad.` : ""}`,
+    transferFailed: "Overdoen mislukt.",
+    stockTitle: "Voorraad",
+    usageLasts: (weeks, takes, months) => `gaat ongeveer ${weeks} mee · uit ${takes} keer pakken in ${months}`,
+    suggestMin: (n) => `Voorstel: minstens ${n}`,
+    priceEach: (p, est) => `${est ? "ca. " : ""}€ ${p} per verpakking${est ? " (Open Prices)" : ""}`,
+    priceHistory: "Prijsverloop",
+    valueOf: (v) => `waarde ca. € ${v}`,
+    stockValue: (v, n) => `Voorraad ter waarde van ca. € ${v} (${n} producten met prijs)`,
+    price: "€",
+    againTitle: "💡 Weer eens …?",
+    againItem: (n) => `${n}× gegeten in de afgelopen 90 dagen, niets meer over`,
+    againShop: "🛒 Boodschappenlijst",
+    againShopped: (c) => `${c} staat op de boodschappenlijst.`,
+    againDismiss: "Niet nu",
+    lowTitle: "⏳ Bijna op",
+    lowItem: (n, days) => `nog ${n}, gaat ongeveer ${days} ${days === 1 ? "dag" : "dagen"} mee`,
+    lowShopped: (c) => `${c} staat op de boodschappenlijst.`,
+    lowDismiss: "Een week verbergen",
+    recallTitle: "⚠️ Terugroepactie",
+    recallIn: (list) => `In voorraad: ${list}`,
+    recallVia: { barcode: "barcode", brand: "merk en naam", name: "naam" },
+    recallMatched: (via) => `Gevonden via ${via} – controleer de verpakking`,
+    recallOpen: "Waarschuwing openen",
+    recallRead: "Gelezen",
+    reportTitle: (label) => `📅 ${label}`,
+    codeTitle: "Barcode",
+    openedMark: "🔓 geopend",
+    codeScan: "📷 Barcode",
+    codeOldest: (place) => `Oudste eerst: ${place}`,
+    codeNone: (name) => `${name || "Dit product"} is niet in voorraad.`,
+    codeAdd: "Als verpakking toevoegen",
+    codeLink: "🔗 Aan een product in voorraad koppelen",
+    codeLinkTitle: "Barcode toewijzen",
+    codeLinkHint: (code) => `Bij welk product in voorraad hoort ${code}? Larder onthoudt de barcode, de volgende scan vindt het.`,
+    codeLinkNone: "Er is nu geen product in voorraad.",
+    codeLinkSave: "Koppelen",
+    codeLinkFailed: "Koppelen mislukt.",
+    codeLinked: (name) => `Barcode gekoppeld aan ${name}.`,
+    codeUnknown: (code) => `Niets gevonden voor ${code}.`,
+    replaceTitle: "🔁 Binnenkort vervangen",
+    replaceWhen: (days, date) => (days < 0 ? `te laat sinds ${date}` : days === 0 ? "vandaag aan de beurt" : `aan de beurt op ${date}`),
+    replaced: "Vervangen",
+    replacedDone: (name) => `${name}: vervangen, één stuk gepakt.`,
+    putAway: "Opbergen",
+    putAwayHint: "Scan de gekochte producten na elkaar: bekende gaan als verpakking naar hun vaste plek, onbekende voeg je aan het eind samen toe.",
+    putAwayScan: "Scannen",
+    putAwayCode: "Barcode invoeren",
+    putAwayAddCode: "Opbergen",
+    putAwayAdded: "Opgeborgen",
+    putAwayNow: (n) => `nu ${n}`,
+    putAwayDate: "Prijs/datum",
+    putAwayPrice: "Prijs",
+    autoReorder: "🔁 Opnieuw kopen naar verbruik",
+    autoReorderHint: "Komt op de boodschappenlijst zodra het naar verbruik niet meer tot de volgende boodschappen genoeg is – vóór de minimumvoorraad.",
+    autoAdded: (items) => `Op de boodschappenlijst: ${items}`,
+    putAwayTicked: "✓ afgevinkt",
+    codeAdded: (place) => `Eén verpakking meer in ${place}. Vul meteen prijs en datum in:`,
+    boughtAdded: (name, place) => `${name} → ${place}`,
+    putAwayUnknown: (n) => (n === 1 ? "1 onbekend product" : `${n} onbekende producten`),
+    putAwayAddPacks: (n) => (n === 1 ? "Als verpakking toevoegen" : `${n} als verpakkingen toevoegen`),
+    putAwayAddHousehold: (n) => (n === 1 ? "Als huishoudartikel toevoegen" : `${n} als huishoudartikelen toevoegen`),
+    putAwayEmpty: "Nog niets gescand.",
+    putAwayDoneOne: (name, place) => `${name} → ${place}`,
+    putAwayUnknownOne: (name) => `${name}: onbekend, voeg het aan het eind toe`,
+    codeUsed: "Op",
+    codeUsedPiece: "−1 stuk",
+    codeThrown: "Weggegooid",
+    codeOpen: "Openen",
+    codeMove: "Verplaatsen",
+    codeNewPack: "Nieuwe verpakking toevoegen",
+    codeDetail: "De kaart van deze verpakking openen",
+    codeDetailShort: "Details",
+    codeTransfer: "In een doos",
+    transferNew: "Nieuwe doos",
+    codeUsedDone: (place) => `Eén verpakking uit ${place} opgemaakt.`,
+    codeUsedPieceDone: (place) => `Eén stuk uit ${place} gepakt.`,
+    codeThrownDone: (place) => `Eén verpakking uit ${place} weggegooid.`,
+    codeDate: (d) => `houdbaar tot ${d}`,
+    noDate: "geen houdbaarheidsdatum",
+    stockEarliest: (d) => `vroegst houdbaar tot ${d}`,
+    boughtTitle: "🛒 Gekocht – aan de voorraad toevoegen?",
+    boughtAdd: "Aan voorraad toevoegen",
+    boughtDismiss: "Niet toevoegen",
+    stockIntro: "Verpakkingen per product, opgeteld over alle plekken. Met een minimumvoorraad komt een product op de boodschappenlijst zodra er minder is.",
+    stockNoList: "Kies voor de minimumvoorraad eerst een boodschappenlijst in de instellingen.",
+    stockEmpty: "Nog geen verpakkingen. Voeg ze toe met ＋ → Verpakking.",
+    stockMin: "Minstens",
+    receiptStore: "Winkel (van de kassabon)",
+    storePrices: "Prijzen per winkel",
+    storeCheapest: "goedkoopst",
+    openedAfter: "🔓 Na openen opmaken binnen",
+    openedAfterUnit: "dagen",
+    openedAfterHint: "Staat op de verpakking (📷 leest het). Geldt alleen voor precies dit product, vóór de tabel.",
+    storageDays: "📦 Eigen bewaartijd (dagen)",
+    storagePlaces: { fridge: "Koelkast", freezer: "Vriezer", pantry: "Voorraadkast" },
+    storageDaysHint: "Bijv. voor zelfgemaakte jam. Geldt alleen voor precies dit product, vóór de tabel; het 0 °C-vak gebruikt de koelkastwaarde.",
+    stockLow: "te weinig",
+    stockNone: "niets meer",
+    stockFailed: "Opslaan mislukt.",
+    receipt: "Kassabon",
+    receiptJoined: (n) => (n === 1 ? "1 bekend product op de vaste plek gezet." : `${n} bekende producten op hun vaste plek gezet.`),
+    receiptBusy: "Kassabon wordt gelezen …",
+    receiptDone: (n) => `${n} product(en) van de kassabon overgenomen. Controleer ze en vul de houdbaarheidsdata aan.`,
+    receiptFailed: "Geen kassabon herkend op de foto.",
+    moveTitle: "Verplaatsen / splitsen",
+    moveCount: (n) => `Hoeveel? (van ${n})`,
+    moveTo: "Naar",
+    moveHint: "Als hetzelfde voedsel met dezelfde datum er al ligt, worden de verpakkingen samengevoegd.",
+    move: "Verplaatsen",
+    moveDone: (n, place) => `${n} verplaatst naar ${place}.`,
+    moveFailed: "Verplaatsen mislukt.",
+    units: { portions: "porties", pieces: "stuks", slices: "plakken", grams: "gram", milliliters: "milliliter" },
+  },
 };
 
-/** Duration in words: "3 Tage", "2 Wochen", "4 Monate" (or English). */
-export function spanText(days, de, dative = false) {
+/** Duration in words: "3 Tage", "2 Wochen", "4 Monate" (or English, French, Dutch). */
+const SPAN_WORDS = {
+  fr: { day: ["jour", "jours"], week: "semaines", month: ["mois", "mois"] },
+  nl: { day: ["dag", "dagen"], week: "weken", month: ["maand", "maanden"] },
+};
+
+export function spanText(days, de, dative = false, lang = "") {
   const d = Math.max(0, Math.round(days));
+  const words = SPAN_WORDS[String(lang || "").toLowerCase().slice(0, 2)];
+  if (words && !de) {
+    if (d < 14) return `${d} ${words.day[d === 1 ? 0 : 1]}`;
+    if (d < 60) return `${Math.round(d / 7)} ${words.week}`;
+    const mm = Math.round(d / 30);
+    return `${mm} ${words.month[mm === 1 ? 0 : 1]}`;
+  }
   if (d < 14) return de ? `${d} ${d === 1 ? "Tag" : dative ? "Tagen" : "Tage"}` : `${d} day${d === 1 ? "" : "s"}`;
   if (d < 60) {
     const w = Math.round(d / 7);
@@ -397,7 +787,7 @@ export function money(value, de) {
 }
 
 export function itemTexts(hass) {
-  return String((hass && hass.language) || "en").toLowerCase().startsWith("de") ? TEXT.de : TEXT.en;
+  return pickLang(TEXT, hass);
 }
 
 /** Convert the rows of the dialog into the entries for `larder/create_items` (one bag per "count"). */
@@ -1242,12 +1632,13 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     head.append(minWrap);
     item.append(head);
     const de = String(hass.language || "").toLowerCase().startsWith("de");
+    const comma = /^(de|fr|nl)/.test(String(hass.language || "").toLowerCase());
     const own = p.list && (hass.states || {})[p.list];
     const listName = own ? `🛒 ${(own.attributes && own.attributes.friendly_name) || p.list}` : null;
     const sub = [hh && p.pack_size > 1 ? t.stockPacks(packs) : null, p.brand, p.package, listName, p.earliest ? t.stockEarliest(fmtDate(hass, p.earliest)) : null].filter(Boolean).join(" · ");
     if (sub) item.append(el("div", "sub", sub));
     if (p.usage) {
-      const line = el("div", "usage", t.usageLasts(spanText(p.usage.lasts_days, de), p.usage.takes, spanText(p.usage.days, de, true)));
+      const line = el("div", "usage", t.usageLasts(spanText(p.usage.lasts_days, de, false, hass.language), p.usage.takes, spanText(p.usage.days, de, true, hass.language)));
       line.dataset.role = "stock-usage";
       item.append(line);
     }
@@ -1279,21 +1670,22 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     auto.title = t.autoReorderHint;
     item.append(auto);
     if (p.price) {
-      const parts = [t.priceEach(money(p.price.price, de), p.price.source === "openprices")];
-      if (p.value) parts.push(t.valueOf(money(p.value, de)));
+      const parts = [t.priceEach(money(p.price.price, comma), p.price.source === "openprices")];
+      if (p.value) parts.push(t.valueOf(money(p.value, comma)));
       item.append(el("div", "sub price", parts.join(" · ")));
     }
     if (p.store_prices && p.store_prices.length) {
       // 5.9 (#139): last price per store, cheapest first
       const de = String(hass.language || "").toLowerCase().startsWith("de");
-      const parts = p.store_prices.map((r, i) => `${r.store} ${money(r.price, de)}${i === 0 && p.store_prices.length > 1 ? ` (${t.storeCheapest})` : ""}`);
+    const comma = /^(de|fr|nl)/.test(String(hass.language || "").toLowerCase());
+      const parts = p.store_prices.map((r, i) => `${r.store} ${money(r.price, comma)}${i === 0 && p.store_prices.length > 1 ? ` (${t.storeCheapest})` : ""}`);
       const line = el("div", "sub storeprices", `🏪 ${t.storePrices}: ${parts.join(" · ")}`);
       line.dataset.role = "stock-store-prices";
       item.append(line);
     }
     if (p.price_history && p.price_history.length > 1) {
       // 4.11: own prices over time, e.g. 1,79 € → 1,99 € → 2,49 €
-      const line = el("div", "sub pricehistory", `${t.priceHistory}: ${p.price_history.map((h) => `${money(h.price, de)}${h.store ? ` (${h.store})` : ""}`).join(" → ")}`);
+      const line = el("div", "sub pricehistory", `${t.priceHistory}: ${p.price_history.map((h) => `${money(h.price, comma)}${h.store ? ` (${h.store})` : ""}`).join(" → ")}`);
       line.dataset.role = "stock-price-history";
       item.append(line);
     }
@@ -1374,7 +1766,8 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     frag.append(el("p", "note", t.stockIntro));
     if (value) {
       const de = String(hass.language || "").toLowerCase().startsWith("de");
-      const total = el("p", "note", t.stockValue(money(value, de), valued.length));
+    const comma = /^(de|fr|nl)/.test(String(hass.language || "").toLowerCase());
+      const total = el("p", "note", t.stockValue(money(value, comma), valued.length));
       total.dataset.role = "stock-value";
       frag.append(total);
     }

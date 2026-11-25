@@ -23,7 +23,7 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 - 🛒 **[Einkaufen](docs/de/kitchen.md#einkaufsliste)**: mehrere Listen, ein [Einkaufsmodus](docs/de/kitchen.md#einkaufsmodus) nach Abteilungen, in dem Abhaken einlagert, [wiederkehrende Einkäufe](docs/de/kitchen.md#wiederkehrende-einkäufe) und ein [Notvorrat-Check](docs/de/kitchen.md#notvorrat)
 - 🔔 **[Benachrichtigungen](docs/de/gut-zu-wissen.md#benachrichtigungen-welcher-blueprint-wofür)**: tägliche Zusammenfassung mit Knöpfen (verbraucht, weggeworfen, +2 Tage, auf die Liste) an mehrere Handys und Lautsprecher, Wochenrückblick, Monatsbericht, Erinnerungen für Medikamente und Rückrufe
 - 📊 **[Statistik](docs/de/dashboard.md#statistik)** über Gegessenes und Weggeworfenes (mit Wert), [Datenpflege](docs/de/dashboard.md#datenpflege), [Übersichts-Sensoren](docs/de/reference.md#übersichts-sensoren) und [Karten](docs/de/dashboard.md#karte-für-deine-dashboards) für eigene Dashboards, [Kalendereinträge](docs/de/kitchen.md#mhd-im-kalender)
-- 🌍 In Deutsch und Englisch verfügbar
+- 🌍 In Deutsch, Englisch, [Französisch und Niederländisch](docs/de/gut-zu-wissen.md#sprachen) verfügbar (Französisch und Niederländisch sind Übersetzungen ohne Muttersprachler – Korrekturen willkommen)
 
 <p align="center">
 <img src="docs/images/dashboard-start-de.png" width="250" alt="Startseite (Demo-Daten)">
@@ -33,6 +33,8 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 
 ## Was ist neu?
 
+> **6.0:** Larder spricht **Französisch und Niederländisch** (übersetzt, [Korrekturen willkommen](docs/de/gut-zu-wissen.md#sprachen)), [Übernahme aus Grocy](docs/de/dashboard.md#aus-grocy-übernehmen), ein **visueller Editor** für alle vier Karten und ein [Rezept aus einem Link](docs/de/kitchen.md#rezeptbuch). Alte Altlasten sind entfernt – vor dem Update bitte das [Changelog](CHANGELOG.md) lesen.
+>
 > **5.9:** **Einkaufen nach Laden** – Preise je Laden (günstigster zuerst), der Kassenbon kennt den Laden, und *Ich bin bei Aldi* zeigt nur, was du dort kaufst, in der Reihenfolge des Ladens.
 >
 > **5.8:** der **Gefrierschrank** im Blick (Qualität statt *abgelaufen*), eine **Kurzfassung** für jede Push und eine **eigene Lagerdauer** pro Produkt (selbstgemachte Marmelade).

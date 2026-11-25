@@ -3,6 +3,28 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 6.0.0
+
+Block 45: new languages, import from Grocy, card editor, recipe from a link – and old leftovers removed. A major version because of the languages and the removals below.
+
+**Before updating**
+
+- The blueprint **Larder – expiry notification** no longer has the input *Recipes button opens* (`recipes_page`); it had no effect since 3.0. Automations that still list it keep running, the leftover value is simply ignored; opening and saving the automation once drops it.
+- Settings from version 0.5 and older (`ai_enabled`) are no longer migrated. If you update directly from 0.5, choose the *best-before estimate* once in the integration's settings.
+- The dashboard's saved view options moved from the browser key `larder.experimental` to `larder.dashboard`; they are taken over automatically on first start.
+
+**New**
+
+- **French and Dutch** (#110): the dashboard, the four cards, the settings and repairs, notifications and speech, the daily summary, weekly review, monthly report and statistics, the meal plan's thaw reminders and the shelf-life table (food names, tips and area names like *réfrigérateur*, *congélateur*, *koelkast*, *vriezer* are recognised). Other languages fall back to English.
+- **Translations are marked as such** (#162): French and Dutch were made without a native speaker; the README and the docs say so and ask for corrections ([Languages](docs/en/good-to-know.md#languages)).
+- **Import from Grocy** (#163): **More → 📥 Import from Grocy** reads Grocy's REST API once with an API key (not stored) and turns every stock entry into a pack – name, amount, best-before date, barcodes, *opened*, Grocy's *days after opening* as the product's own value. A preview first; Grocy places are matched to areas by name or chosen. Nothing is merged with similar products. WebSocket `larder/grocy_preview`, `larder/grocy_import` (administrators).
+- **Visual card editor** (#164): all four cards (`larder-card`, `larder-stock-card`, `larder-shopping-card`, `larder-place-card`) have a form editor in the card picker; YAML keeps working.
+- **Recipe from a link** (#165): **🔗** on the recipes page reads a recipe page's schema.org data (title, servings, time, ingredients, steps) without AI and opens it to check; the source link is kept, ingredients in stock get a ✓. WebSocket `larder/recipe_from_url` (administrators).
+
+**Removed** (#161)
+
+- Blueprint input `recipes_page`, the `ai_enabled` migration, the storage key `larder.experimental` (see above).
+
 ## 5.9.0
 
 Block 38: shopping by store.

@@ -23,7 +23,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 - 🛒 **[Shopping](docs/en/kitchen.md#shopping-list)**: several lists, a [shopping mode](docs/en/kitchen.md#shopping-mode) by store section where ticking off puts things into stock, [recurring purchases](docs/en/kitchen.md#recurring-purchases) and an [emergency supply check](docs/en/kitchen.md#emergency-supply)
 - 🔔 **[Notifications](docs/en/good-to-know.md#notifications-which-blueprint-for-what)**: a daily summary with buttons (used up, thrown away, +2 days, on the list) to several phones and speakers, a weekly review, a monthly report, reminders for medicines and recalls
 - 📊 **[Statistics](docs/en/dashboard.md#statistics)** of what was eaten and thrown away (with its value), [data care](docs/en/dashboard.md#data-care), [overview sensors](docs/en/reference.md#overview-sensors) and [cards](docs/en/dashboard.md#card-for-your-dashboards) for your own dashboards, [calendar entries](docs/en/kitchen.md#best-before-dates-in-your-calendar)
-- 🌍 Available in English and German
+- 🌍 Available in English, German, [French and Dutch](docs/en/good-to-know.md#languages) (French and Dutch are translations without a native speaker – corrections welcome)
 
 <p align="center">
 <img src="docs/images/dashboard-start-en.png" width="250" alt="Start page (demo data)">
@@ -33,6 +33,8 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 ## What's new
 
+> **6.0:** Larder speaks **French and Dutch** (translated, [corrections welcome](docs/en/good-to-know.md#languages)), [import from Grocy](docs/en/dashboard.md#import-from-grocy), a **visual editor** for all four cards and a [recipe from a link](docs/en/kitchen.md#recipe-book). Old leftovers are gone – see the [changelog](CHANGELOG.md) before updating.
+>
 > **5.9:** **shopping by store** – prices per store (cheapest first), the receipt knows the store, and *I am at Aldi* shows only what you buy there, in that store's order.
 >
 > **5.8:** the **freezer** at a glance (quality instead of *expired*), a **short version** for every push and an **own storage time** per product (homemade jam).

@@ -80,9 +80,12 @@ export function placeFromCode(code) {
   return { areaId: area === "-" ? "" : area, compartment: params.get("compartment") || "" };
 }
 
+const TEXT_CACHE = {};
 export function texts(hass) {
   const lang = String((hass && hass.language) || "en").toLowerCase().split("-")[0];
-  return TEXTS[lang] || TEXTS.en;
+  if (lang === "en" || lang === "de" || !TEXTS[lang]) return TEXTS[lang] || TEXTS.en;
+  // 6.0: French and Dutch, anything missing in English
+  return TEXT_CACHE[lang] || (TEXT_CACHE[lang] = { ...TEXTS.en, ...TEXTS[lang] });
 }
 
 function isAdmin(hass) {

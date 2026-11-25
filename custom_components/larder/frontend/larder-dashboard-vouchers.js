@@ -5,6 +5,18 @@
  * `installVouchers` attaches the methods to the dashboard class (like larder-dashboard-items.js).
  */
 
+
+/** 6.0: texts in the user's language; French and Dutch fall back to English for anything missing. */
+const LANG_CACHE = new WeakMap();
+function pickLang(table, hass) {
+  const lang = String((hass && hass.language) || "en").toLowerCase().slice(0, 2);
+  if (lang === "en" || !table[lang]) return table.en;
+  if (lang === "de") return table.de;
+  let byLang = LANG_CACHE.get(table);
+  if (!byLang) LANG_CACHE.set(table, (byLang = {}));
+  return byLang[lang] || (byLang[lang] = { ...table.en, ...table[lang] });
+}
+
 const TEXT = {
   de: {
     titleNew: "Gutschein hinzufügen",
@@ -90,6 +102,90 @@ const TEXT = {
     statsLost: (v) => `Expired (12 months): ${money(v)}`,
     statsRedeemed: (v) => `redeemed (12 months): ${money(v)}`,
   },
+  fr: {
+    titleNew: "Ajouter un bon d'achat",
+    titleEdit: "Bon d'achat",
+    name: "Magasin ou nom",
+    namePlaceholder: "par ex. Fnac",
+    value: "Valeur (€)",
+    validUntil: "Valable jusqu'au",
+    area: "Pièce",
+    noArea: "Sans pièce",
+    compartment: "Compartiment",
+    compartmentHint: "par ex. tiroir",
+    code: "Code (visible uniquement par les administrateurs)",
+    codeHint: "facultatif",
+    photo: "📷 Lire sur une photo",
+    photoBusy: "L'IA lit le bon …",
+    photoDone: "Rempli – veuillez vérifier.",
+    photoFailed: "Le bon n'a pas pu être lu.",
+    save: "Enregistrer",
+    create: "Ajouter",
+    cancel: "Annuler",
+    close: "Fermer",
+    needName: "Veuillez saisir un nom.",
+    failed: "L'enregistrement a échoué.",
+    created: (name) => `Bon ${name} ajouté.`,
+    left: (value, initial) => (initial && initial > value ? `${money(value, true)} restants sur ${money(initial, true)}` : `Valeur ${money(value, true)}`),
+    noValue: "Sans valeur",
+    until: (date, days) => `Valable jusqu'au ${date}${days === null ? "" : days < 0 ? " · expiré" : days === 0 ? " · expire aujourd'hui" : ` · encore ${days} ${days === 1 ? "jour" : "jours"}`}`,
+    noDate: "Sans date d'expiration",
+    place: "Rangé dans",
+    showCode: "Afficher le code",
+    redeem: "Utiliser",
+    redeemAll: "Entièrement utilisé",
+    redeemPart: "Utiliser une partie",
+    amount: "Montant utilisé (€)",
+    expired: "Expiré",
+    edit: "Modifier",
+    redeemed: (name, rest) => (rest ? `${name} : ${money(rest, true)} restants.` : `${name} : utilisé.`),
+    lost: (name) => `${name} : enregistré comme expiré.`,
+    stats: (s) => `${s.count} ${s.count === 1 ? "bon" : "bons"} · ${money(s.open_value, true)} disponibles`,
+    statsLost: (v) => `Expirés (12 mois) : ${money(v, true)}`,
+    statsRedeemed: (v) => `utilisés (12 mois) : ${money(v, true)}`,
+  },
+  nl: {
+    titleNew: "Tegoedbon toevoegen",
+    titleEdit: "Tegoedbon",
+    name: "Winkel of naam",
+    namePlaceholder: "bijv. Bol",
+    value: "Waarde (€)",
+    validUntil: "Geldig tot",
+    area: "Ruimte",
+    noArea: "Geen ruimte",
+    compartment: "Vak",
+    compartmentHint: "bijv. lade",
+    code: "Code (alleen zichtbaar voor beheerders)",
+    codeHint: "optioneel",
+    photo: "📷 Van een foto lezen",
+    photoBusy: "De AI leest de bon …",
+    photoDone: "Ingevuld – controleer het even.",
+    photoFailed: "De bon kon niet worden gelezen.",
+    save: "Opslaan",
+    create: "Toevoegen",
+    cancel: "Annuleren",
+    close: "Sluiten",
+    needName: "Vul een naam in.",
+    failed: "Opslaan mislukt.",
+    created: (name) => `Tegoedbon ${name} toegevoegd.`,
+    left: (value, initial) => (initial && initial > value ? `${money(value)} van ${money(initial)} over` : `Waarde ${money(value)}`),
+    noValue: "Geen waarde",
+    until: (date, days) => `Geldig tot ${date}${days === null ? "" : days < 0 ? " · verlopen" : days === 0 ? " · verloopt vandaag" : ` · nog ${days} ${days === 1 ? "dag" : "dagen"}`}`,
+    noDate: "Geen vervaldatum",
+    place: "Bewaard in",
+    showCode: "Code tonen",
+    redeem: "Inwisselen",
+    redeemAll: "Volledig ingewisseld",
+    redeemPart: "Deel inwisselen",
+    amount: "Ingewisseld bedrag (€)",
+    expired: "Verlopen",
+    edit: "Bewerken",
+    redeemed: (name, rest) => (rest ? `${name}: ${money(rest)} over.` : `${name}: ingewisseld.`),
+    lost: (name) => `${name}: als verlopen geregistreerd.`,
+    stats: (s) => `${s.count} ${s.count === 1 ? "tegoedbon" : "tegoedbonnen"} · ${money(s.open_value)} open`,
+    statsLost: (v) => `Verlopen (12 maanden): ${money(v)}`,
+    statsRedeemed: (v) => `ingewisseld (12 maanden): ${money(v)}`,
+  },
 };
 
 export function money(value, de = false) {
@@ -99,7 +195,7 @@ export function money(value, de = false) {
 }
 
 export function voucherTexts(hass) {
-  return String((hass && hass.language) || "en").toLowerCase().startsWith("de") ? TEXT.de : TEXT.en;
+  return pickLang(TEXT, hass);
 }
 
 function parseMoney(text) {

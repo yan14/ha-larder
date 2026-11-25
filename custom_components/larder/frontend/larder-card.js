@@ -10,6 +10,18 @@
  *   area: only containers from this area (area ID)
  * Tapping a container opens it in the Larder dashboard.
  */
+
+/** 6.0: texts in the user's language; French and Dutch fall back to English for anything missing. */
+const LANG_CACHE = new WeakMap();
+function pickLang(table, hass) {
+  const lang = String((hass && hass.language) || "en").toLowerCase().slice(0, 2);
+  if (lang === "en" || !table[lang]) return table.en;
+  if (lang === "de") return table.de;
+  let byLang = LANG_CACHE.get(table);
+  if (!byLang) LANG_CACHE.set(table, (byLang = {}));
+  return byLang[lang] || (byLang[lang] = { ...table.en, ...table[lang] });
+}
+
 const { collectDevices, daysUntil, hassChanged, soonDaysOf } = await import(`./larder-panel.js${new URL(import.meta.url).search}`);
 
 const TEXT = {
@@ -35,6 +47,28 @@ const TEXT = {
     more: (n) => `and ${n} more`,
     description: "Containers from Larder that expire soon.",
   },
+  fr: {
+    title: "Bientôt périmé",
+    none: "Rien ne périme bientôt.",
+    today: "aujourd'hui",
+    tomorrow: "demain",
+    inDays: (n) => `dans ${n} jours`,
+    expired: (n) => (n === -1 ? "périmé depuis hier" : `périmé depuis ${-n} jours`),
+    qualityPast: "qualité ↓ – à consommer bientôt",
+    more: (n) => `et ${n} de plus`,
+    description: "Boîtes de Larder qui périment bientôt.",
+  },
+  nl: {
+    title: "Verloopt binnenkort",
+    none: "Er verloopt binnenkort niets.",
+    today: "vandaag",
+    tomorrow: "morgen",
+    inDays: (n) => `over ${n} dagen`,
+    expired: (n) => (n === -1 ? "sinds gisteren verlopen" : `${-n} dagen geleden verlopen`),
+    qualityPast: "kwaliteit ↓ – snel opmaken",
+    more: (n) => `en nog ${n}`,
+    description: "Dozen uit Larder die binnenkort verlopen.",
+  },
 };
 
 const ICONS = {
@@ -43,7 +77,7 @@ const ICONS = {
 };
 
 function texts(hass) {
-  return String((hass && hass.language) || "en").toLowerCase().startsWith("de") ? TEXT.de : TEXT.en;
+  return pickLang(TEXT, hass);
 }
 
 const valid = (st) => !!st && !["unknown", "unavailable", ""].includes(st.state);
@@ -53,6 +87,8 @@ const valid = (st) => !!st && !["unknown", "unavailable", ""].includes(st.state)
 const EDITOR_LABELS = {
   de: { title: "Überschrift", days: "Nur was in so vielen Tagen abläuft", show_expired: "Abgelaufenes zeigen", limit: "Höchstens so viele Einträge", area: "Bereich", compartment: "Fach (leer = ganzer Bereich)", show_bought: "Eingekauftes zeigen", show_opened: "Angebrochenes zeigen" },
   en: { title: "Title", days: "Only what expires within so many days", show_expired: "Show expired ones", limit: "At most so many entries", area: "Area", compartment: "Compartment (empty = whole area)", show_bought: "Show bought items", show_opened: "Show opened items" },
+  fr: { title: "Titre", days: "Seulement ce qui périme dans ce nombre de jours", show_expired: "Afficher les périmés", limit: "Au plus ce nombre d'entrées", area: "Pièce", compartment: "Compartiment (vide = toute la pièce)", show_bought: "Afficher les achats", show_opened: "Afficher les entamés" },
+  nl: { title: "Titel", days: "Alleen wat binnen zoveel dagen verloopt", show_expired: "Verlopen tonen", limit: "Hoogstens zoveel items", area: "Ruimte", compartment: "Vak (leeg = hele ruimte)", show_bought: "Gekochte artikelen tonen", show_opened: "Geopende tonen" },
 };
 
 const EDITOR_SCHEMAS = {
@@ -290,10 +326,32 @@ const STOCK_TEXT = {
     of: (n, min) => `${n} of ${min}`,
     description: "Stock from Larder: below minimum stock, bought items and opened packs.",
   },
+  fr: {
+    title: "Stock",
+    low: "Sous le stock minimum",
+    bought: "Acheté, pas encore en stock",
+    opened: "Ouvert",
+    none: "Tout est là.",
+    shop: "🛒",
+    shopped: "sur la liste",
+    of: (n, min) => `${n} sur ${min}`,
+    description: "Stock de Larder : sous le minimum, achats et paquets entamés.",
+  },
+  nl: {
+    title: "Voorraad",
+    low: "Onder de minimumvoorraad",
+    bought: "Gekocht, nog niet in voorraad",
+    opened: "Geopend",
+    none: "Alles is er.",
+    shop: "🛒",
+    shopped: "op de lijst",
+    of: (n, min) => `${n} van ${min}`,
+    description: "Voorraad uit Larder: onder het minimum, gekochte artikelen en geopende verpakkingen.",
+  },
 };
 
 function stockTexts(hass) {
-  return String((hass && hass.language) || "en").toLowerCase().startsWith("de") ? STOCK_TEXT.de : STOCK_TEXT.en;
+  return pickLang(STOCK_TEXT, hass);
 }
 
 const REFRESH_MS = 5 * 60 * 1000;
@@ -461,10 +519,36 @@ const MORE_TEXT = {
     placeDescription: "What is in an area or compartment, with −1 – e.g. for a tablet at the fridge.",
     noDate: "no date",
   },
+  fr: {
+    shopTitle: "Courses",
+    shopOpen: (n) => (n === 1 ? "1 article ouvert" : `${n} articles ouverts`),
+    shopNone: "Rien sur la liste.",
+    shopGo: "🛒 Mode courses",
+    shopDescription: "Articles ouverts des listes de courses de Larder, avec un bouton vers le mode courses.",
+    placeTitle: "Compartiment",
+    placeNone: "Vide.",
+    placeMissing: "Choisissez une pièce dans les options de la carte.",
+    placeTake: "−1",
+    placeDescription: "Ce qu'il y a dans une pièce ou un compartiment, avec −1 – par ex. pour une tablette près du frigo.",
+    noDate: "sans date",
+  },
+  nl: {
+    shopTitle: "Boodschappen",
+    shopOpen: (n) => (n === 1 ? "1 open artikel" : `${n} open artikelen`),
+    shopNone: "Niets op de lijst.",
+    shopGo: "🛒 Winkelmodus",
+    shopDescription: "Open artikelen op de boodschappenlijsten van Larder, met een knop naar de winkelmodus.",
+    placeTitle: "Vak",
+    placeNone: "Leeg.",
+    placeMissing: "Kies een ruimte in de kaartopties.",
+    placeTake: "−1",
+    placeDescription: "Wat er in een ruimte of vak ligt, met −1 – bijv. voor een tablet bij de koelkast.",
+    noDate: "geen datum",
+  },
 };
 
 function moreTexts(hass) {
-  return String((hass && hass.language) || "en").toLowerCase().startsWith("de") ? MORE_TEXT.de : MORE_TEXT.en;
+  return pickLang(MORE_TEXT, hass);
 }
 
 const escHtml = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);

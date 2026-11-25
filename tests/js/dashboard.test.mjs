@@ -3999,3 +3999,36 @@ test("6.0: recipe from a link – read, check in the dialog, save with its link;
   const items = $$(el, '.recipe[data-id="r9"] li');
   assert.deepEqual(items.map((li) => li.textContent), ["400 g Kidneybohnen", "✓ Reis"]);
 });
+
+// ---------- Block 45: French and Dutch (#110) ----------
+
+test("fr and nl texts are picked and complete in every text table", async () => {
+  const dir = "../../custom_components/larder/frontend/";
+  const tables = [
+    ["larder-dashboard-items.js", "itemTexts"],
+    ["larder-dashboard-care.js", "careTexts"],
+    ["larder-dashboard-shopping.js", "shoppingTexts"],
+    ["larder-dashboard-supply.js", "supplyTexts"],
+    ["larder-dashboard-vouchers.js", "voucherTexts"],
+    ["larder-dashboard-cook.js", "cookTexts"],
+    ["larder-dashboard-history.js", "historyTexts"],
+    ["larder-dashboard-search.js", "searchTexts"],
+    ["larder-dashboard-datacare.js", "dataCareTexts"],
+  ];
+  const shape = (o) => JSON.stringify(Object.keys(o).sort());
+  for (const [file, fn] of tables) {
+    const mod = await import(dir + file);
+    const en = mod[fn]({ language: "en" });
+    for (const lang of ["fr", "nl-BE"]) {
+      const t = mod[fn]({ language: lang });
+      assert.equal(shape(t), shape(en), `${file} ${lang}`);
+      assert.notEqual(t, en, `${file} ${lang} falls back to English`);
+    }
+  }
+  const { careTexts } = await import(dir + "larder-dashboard-care.js");
+  assert.equal(careTexts({ language: "fr" }).cancel, "Annuler");
+  assert.equal(careTexts({ language: "nl" }).cancel, "Annuleren");
+  const { spanText } = await import(dir + "larder-dashboard-items.js");
+  assert.equal(spanText(21, false, false, "fr"), "3 semaines");
+  assert.equal(spanText(1, false, false, "nl"), "1 dag");
+});

@@ -7,6 +7,18 @@
  * `installSearch` attaches the methods to the dashboard class (like larder-dashboard-items.js).
  */
 
+
+/** 6.0: texts in the user's language; French and Dutch fall back to English for anything missing. */
+const LANG_CACHE = new WeakMap();
+function pickLang(table, hass) {
+  const lang = String((hass && hass.language) || "en").toLowerCase().slice(0, 2);
+  if (lang === "en" || !table[lang]) return table.en;
+  if (lang === "de") return table.de;
+  let byLang = LANG_CACHE.get(table);
+  if (!byLang) LANG_CACHE.set(table, (byLang = {}));
+  return byLang[lang] || (byLang[lang] = { ...table.en, ...table[lang] });
+}
+
 const TEXT = {
   de: {
     button: "Suchen",
@@ -36,10 +48,38 @@ const TEXT = {
     close: "Close",
     noArea: "no area",
   },
+  fr: {
+    button: "Rechercher",
+    scan: "Scanner",
+    title: "Rechercher",
+    placeholder: "Produit ou code-barres …",
+    hint: "Tapez au moins deux lettres.",
+    none: (q) => `Rien trouvé pour « ${q} ».`,
+    barcode: (code) => `Chercher le code-barres ${code}`,
+    count: (n) => `${n}×`,
+    places: (n) => (n === 1 ? "1 endroit" : `${n} endroits`),
+    until: (date) => `à consommer avant le ${date}`,
+    close: "Fermer",
+    noArea: "sans pièce",
+  },
+  nl: {
+    button: "Zoeken",
+    scan: "Scannen",
+    title: "Zoeken",
+    placeholder: "Product of barcode …",
+    hint: "Typ minstens twee letters.",
+    none: (q) => `Niets gevonden voor „${q}”.`,
+    barcode: (code) => `Barcode ${code} opzoeken`,
+    count: (n) => `${n}×`,
+    places: (n) => (n === 1 ? "1 plek" : `${n} plekken`),
+    until: (date) => `houdbaar tot ${date}`,
+    close: "Sluiten",
+    noArea: "geen ruimte",
+  },
 };
 
 export function searchTexts(hass) {
-  return String((hass && hass.language) || "en").toLowerCase().startsWith("de") ? TEXT.de : TEXT.en;
+  return pickLang(TEXT, hass);
 }
 
 const PACK_KINDS = ["pack", "household", "medicine"];

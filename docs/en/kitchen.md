@@ -41,6 +41,8 @@ The **Recipes** page is your own recipe book (stored in Home Assistant, `.storag
 
 **Recipe from a photo or file** (📷, administrators): take a photo of a recipe from a cookbook or a card, pick up to four photos (for example two pages) or a PDF. The AI reads the recipe, translates it into your language if needed and opens it for you to **check**; nothing is saved until you tap *Save*. The selected AI task must support attachments (for example Anthropic, OpenAI, Google). Photos are shrunk before uploading, are kept in Home Assistant's media folder (`media/larder/recipe_photos`) only while they are read and are deleted afterwards. Only the photo or file is sent, to the AI service you chose.
 
+**Recipe from a link** (🔗, administrators, since 6.0): paste the address of a recipe page. Most recipe sites embed the recipe in a machine-readable form (schema.org *Recipe*); Larder reads title, servings, time, ingredients and steps from it – no AI needed – and opens it to check, with the source link kept. Ingredients you have in stock get a ✓. Pages without that data are not guessed; use 📷 with a screenshot instead.
+
 ## Daily summary
 
 The included blueprint sends a **daily summary** of what expires soon. Nothing is sent when nothing expires. Expired containers are named with their container and the note **should be emptied**, so you know which one to clear out. Containers to [thaw for a planned dish](#meal-plan) come first, with a **Thawed** button. Re-import the blueprint to get that button.

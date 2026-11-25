@@ -347,7 +347,7 @@ const opts = {};
 if (q.get("mode")) opts.mode = q.get("mode");
 if (q.get("sort")) opts.sort = q.get("sort");
 if (q.get("scope")) opts.scope = q.get("scope");
-if (Object.keys(opts).length) localStorage.setItem("larder.experimental", JSON.stringify(opts));
+if (Object.keys(opts).length) localStorage.setItem("larder.dashboard", JSON.stringify(opts));
 const el = document.createElement("larder-dashboard");
 document.body.appendChild(el);
 el.narrow = true;

@@ -5,6 +5,18 @@
  * `installDataCare` attaches the methods to the dashboard class (like larder-dashboard-items.js).
  */
 
+
+/** 6.0: texts in the user's language; French and Dutch fall back to English for anything missing. */
+const LANG_CACHE = new WeakMap();
+function pickLang(table, hass) {
+  const lang = String((hass && hass.language) || "en").toLowerCase().slice(0, 2);
+  if (lang === "en" || !table[lang]) return table.en;
+  if (lang === "de") return table.de;
+  let byLang = LANG_CACHE.get(table);
+  if (!byLang) LANG_CACHE.set(table, (byLang = {}));
+  return byLang[lang] || (byLang[lang] = { ...table.en, ...table[lang] });
+}
+
 const GROUPS = ["opened_no_date", "no_date", "no_price", "no_place", "no_min"];
 
 const TEXT = {
@@ -46,10 +58,48 @@ const TEXT = {
     },
     more: (n) => `… and ${n} more`,
   },
+  fr: {
+    menu: "🧹 Entretien des données",
+    title: "Entretien des données",
+    boxTitle: "🧹 Entretien des données",
+    intro: "Ces informations manquent encore. Avec elles, les statistiques, « tient encore environ … », les suggestions d'achat et la valeur du stock deviennent plus précises. Touchez pour ouvrir la fiche.",
+    summary: (n) => (n === 1 ? "1 information manquante" : `${n} informations manquantes`),
+    show: "Afficher",
+    later: "Plus ce mois-ci",
+    none: "Tout est complet – rien à faire.",
+    close: "Fermer",
+    groups: {
+      opened_no_date: "Ouvert, mais sans date",
+      no_date: "Paquets sans date de péremption",
+      no_price: "Sans prix",
+      no_place: "Sans pièce ni compartiment",
+      no_min: "Souvent utilisé, mais sans stock minimum",
+    },
+    more: (n) => `… et ${n} de plus`,
+  },
+  nl: {
+    menu: "🧹 Gegevensonderhoud",
+    title: "Gegevensonderhoud",
+    boxTitle: "🧹 Gegevensonderhoud",
+    intro: "Deze gegevens ontbreken nog. Daarmee worden statistieken, „gaat nog ongeveer …”, boodschappenvoorstellen en de voorraadwaarde nauwkeuriger. Tik om de kaart te openen.",
+    summary: (n) => (n === 1 ? "1 gegeven ontbreekt" : `${n} gegevens ontbreken`),
+    show: "Tonen",
+    later: "Deze maand niet meer",
+    none: "Alles compleet – niets te doen.",
+    close: "Sluiten",
+    groups: {
+      opened_no_date: "Geopend, maar zonder datum",
+      no_date: "Verpakkingen zonder houdbaarheidsdatum",
+      no_price: "Zonder prijs",
+      no_place: "Zonder ruimte of vak",
+      no_min: "Vaak gebruikt, maar zonder minimumvoorraad",
+    },
+    more: (n) => `… en nog ${n}`,
+  },
 };
 
 export function dataCareTexts(hass) {
-  return String((hass && hass.language) || "en").toLowerCase().startsWith("de") ? TEXT.de : TEXT.en;
+  return pickLang(TEXT, hass);
 }
 
 function month(now = new Date()) {

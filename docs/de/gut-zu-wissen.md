@@ -104,6 +104,12 @@ Der Umschalter oben auf der Seite **Vorrat** zeigt jeweils eine Seite. Bereiche 
 
 Daneben bekommt das scannende Handy nach einem NFC-Scan eine Benachrichtigung (Einstellung *NFC: Handy benachrichtigen*), und die [Übersichts-Sensoren](reference.md#übersichts-sensoren) gehen in eigenen Automationen.
 
+## Sprachen
+
+Larder richtet sich nach der Sprache deines Home-Assistant-Benutzers: **Deutsch**, **Englisch**, **Französisch** und **Niederländisch** (seit 6.0) – Dashboard, Karten, Einstellungen, Benachrichtigungen und Sprachausgabe, Berichte und die Haltbarkeitstabelle (Lebensmittel und Bereichsnamen wie *réfrigérateur* oder *koelkast* werden erkannt). Andere Sprachen fallen auf Englisch zurück.
+
+Französisch und Niederländisch sind **Übersetzungen ohne Muttersprachler** (mit Hilfe einer KI erstellt und mit den Begriffen von Home Assistant abgeglichen). Manches klingt vielleicht hölzern. Korrekturen sind sehr willkommen – als [Issue](https://github.com/yan14/ha-larder/issues) oder Pull Request auf `translations/fr.json` / `nl.json` und die Texttabellen in `frontend/`.
+
 ## Deine Daten
 
 Alles liegt lokal in Home Assistant (`.storage/larder.*` und die Entitäten). Online geht Larder nur für: Strichcodes (Open Food Facts und seine Schwester-Datenbanken), Preisschätzungen ([Open Prices](https://prices.openfoodfacts.org)) und Rückrufwarnungen (lebensmittelwarnung.de). Die **KI** ist optional und läuft über die Integration *AI Task* von Home Assistant mit dem Anbieter, den du gewählt hast: Rezeptideen bekommen Inhalte, Mengen, Resttage und Lagerorte; Fotos (Rezept, Kassenbon, MHD, Gutschein) werden einmal geschickt und gleich wieder gelöscht. **Mehr → 📦 Export und Import** exportiert Bestand und Verlauf als CSV und sichert die gemerkten Schätzungen.

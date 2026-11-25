@@ -41,6 +41,8 @@ Die Seite **Rezepte** ist dein eigenes Rezeptbuch (liegt in Home Assistant unter
 
 **Rezept aus Foto oder Datei** (📷, Administratoren): Fotografiere ein Rezept aus einem Kochbuch oder von einer Karte, wähle bis zu vier Fotos (z. B. zwei Seiten) oder ein PDF. Die KI liest das Rezept, übersetzt es bei Bedarf in deine Sprache und öffnet es zum **Prüfen**; gespeichert wird erst, wenn du auf *Speichern* tippst. Dafür muss die gewählte KI-Aufgabe Anhänge unterstützen (z. B. Anthropic, OpenAI, Google). Fotos werden vor dem Hochladen verkleinert, liegen nur während des Lesens kurz im Medienordner von Home Assistant (`media/larder/recipe_photos`) und werden danach gelöscht. Gesendet wird nur das Foto bzw. die Datei, an den KI-Dienst, den du gewählt hast.
 
+**Rezept aus einem Link** (🔗, Administratoren, seit 6.0): Füge die Adresse einer Rezeptseite ein. Die meisten Rezeptseiten enthalten das Rezept maschinenlesbar (schema.org *Recipe*); Larder liest daraus Titel, Portionen, Zeit, Zutaten und Schritte – ganz ohne KI – und öffnet es zum Prüfen, der Link zur Quelle bleibt erhalten. Zutaten, die du im Bestand hast, bekommen ein ✓. Seiten ohne diese Daten werden nicht erraten; dann 📷 mit einem Screenshot nutzen.
+
 ## Tägliche Zusammenfassung
 
 Das mitgelieferte Blueprint schickt eine **tägliche Zusammenfassung** dessen, was bald abläuft. Läuft nichts ab, kommt nichts. Abgelaufene Dosen werden mit ihrem Dosennamen und dem Hinweis **sollte geleert werden** genannt, damit du weißt, welche du ausräumen musst. Dosen, die für ein [geplantes Gericht](#wochenplan) aufgetaut werden müssen, kommen zuerst, mit dem Knopf **Aufgetaut**. Für diesen Knopf das Blueprint neu importieren.

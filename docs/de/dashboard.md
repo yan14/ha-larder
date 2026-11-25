@@ -6,7 +6,7 @@
 
 ## Dashboard „Larder“
 
-Gleich nach dem Hinzufügen der Integration erscheint in der Seitenleiste der Eintrag **Larder**; solange noch nichts in Larder ist, zeigt die Startseite **🚀 Los geht's** mit drei Schritten (Bereiche zuordnen, Einkaufsliste wählen, das Erste hinzufügen), erledigte abgehakt. Er braucht keine Konfiguration, passt sich an Theme und Sprache von Home Assistant an (Deutsch und Englisch) und aktualisiert sich selbst. *Die Screenshots zeigen Demo-Daten.*
+Gleich nach dem Hinzufügen der Integration erscheint in der Seitenleiste der Eintrag **Larder**; solange noch nichts in Larder ist, zeigt die Startseite **🚀 Los geht's** mit drei Schritten (Bereiche zuordnen, Einkaufsliste wählen, das Erste hinzufügen), erledigte abgehakt. Er braucht keine Konfiguration, passt sich an Theme und Sprache von Home Assistant an (Deutsch, Englisch, Französisch und Niederländisch) und aktualisiert sich selbst. *Die Screenshots zeigen Demo-Daten.*
 
 <p align="center"><img src="../images/dashboard-getstarted-de.png" width="250" alt="Los geht's"></p>
 
@@ -106,6 +106,8 @@ compartment: Schublade 2 # optional
 title: Gefrierschrank # optional
 ```
 
+Seit 6.0 hat jede Karte einen **visuellen Editor**: in der Kartenauswahl oder mit *Bearbeiten* erscheinen die Optionen als Formular (Überschrift, Tage, Bereich, Fach …); YAML geht weiterhin.
+
 Für Automationen gibt es außerdem [Übersichts-Sensoren](reference.md#übersichts-sensoren) (abgelaufen, läuft bald ab, Bestandswert, offene Einkaufseinträge, Notvorrat).
 
 ### Datenpflege
@@ -172,5 +174,9 @@ Im Dashboard **Mehr → 📦 Export und Import** (Administratoren):
 - **Schätzungen einlesen**: liest so eine Datei wieder ein, z. B. nach einer Neuinstallation oder auf einem zweiten Home Assistant. Eigene Korrekturen bleiben, wenn die Datei für dieselbe Kombination nur einen Tabellen- oder KI-Wert hat; mit **Vorhandene Schätzungen vorher löschen** ersetzt die Datei alles. Ungültige Einträge werden übersprungen und gezählt.
 
 Die Downloads öffnen sich über einen Link, der fünf Minuten gilt, auch in der Home Assistant App.
+
+### Aus Grocy übernehmen
+
+Du kommst von [Grocy](https://grocy.info)? **Mehr → 📥 Aus Grocy übernehmen** (Administratoren) übernimmt den Bestand einmalig: Jeder Bestandseintrag wird eine [Packung](containers.md#beutel-und-packungen) mit Produktname, Menge, MHD, Strichcodes und *angebrochen*; Grocys *Tage nach dem Öffnen* werden zum [eigenen Wert](best-before.md#mhd-schätzung) des Produkts. Grocy hat keine Exportdatei, deshalb liest Larder Grocys eigene REST-API: Adresse (z. B. `http://192.168.1.20:9283`) und einen API-Schlüssel aus Grocy (*Einstellungen → API-Schlüssel verwalten*) eingeben. Der Schlüssel wird nur für die Abfrage verwendet und nicht gespeichert. Eine **Vorschau** zeigt, was gefunden wurde; Grocy-Orte mit dem Namen eines Home-Assistant-Bereichs werden zugeordnet, die übrigen wählst du. Produkte behalten ihre eigenen Namen – nichts wird mit ähnlichen Larder-Produkten zusammengelegt. Zweimal ausführen legt die Packungen doppelt an.
 
 Für Fehlerberichte sammelt **Diagnose herunterladen** (⋮ am Eintrag einer Dose unter Einstellungen → Geräte & Dienste → Larder) die Einstellungen, die Dose und ihre Entitäten. Die geheime Webhook-ID und die gemerkten Schätzungen selbst sind nicht enthalten.

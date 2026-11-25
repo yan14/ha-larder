@@ -120,11 +120,14 @@ export function sourceLabel(t, source, origin) {
   return { table: t.sourceTable, ai: t.sourceAi }[source] || "";
 }
 
+const STRING_CACHE = {};
 function strings(hass) {
   const lang = ((hass && (hass.language || (hass.locale && hass.locale.language))) || "en")
     .toLowerCase()
     .split("-")[0];
-  return STRINGS[lang] || STRINGS.en;
+  if (lang === "en" || lang === "de" || !STRINGS[lang]) return STRINGS[lang] || STRINGS.en;
+  // 6.0: French and Dutch, anything missing in English
+  return STRING_CACHE[lang] || (STRING_CACHE[lang] = { ...STRINGS.en, ...STRINGS[lang] });
 }
 
 /** The switch "Shopping list" only makes sense if a to-do list is chosen in the settings. */
@@ -1206,7 +1209,8 @@ class DoseCard {
     sectionRow.hidden = listRow.hidden || !sAttrs.section;
     this.q('[data-l="section"]').textContent = t.section;
     if (!sectionRow.hidden) {
-      const names = String(hass.language || "en").toLowerCase().startsWith("de") ? SECTION_NAMES.de : SECTION_NAMES.en;
+      const lang = String(hass.language || "en").toLowerCase().slice(0, 2);
+      const names = { ...SECTION_NAMES.en, ...(SECTION_NAMES[lang] || {}) };
       const select = this.q('[data-f="section"]');
       const suggested = sAttrs.section_own ? "" : sAttrs.section;
       const sig = JSON.stringify([names, suggested, t.sectionAuto]);

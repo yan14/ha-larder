@@ -5,6 +5,18 @@
  * `installCook` attaches the methods to the dashboard class (like larder-dashboard-items.js).
  */
 
+
+/** 6.0: texts in the user's language; French and Dutch fall back to English for anything missing. */
+const LANG_CACHE = new WeakMap();
+function pickLang(table, hass) {
+  const lang = String((hass && hass.language) || "en").toLowerCase().slice(0, 2);
+  if (lang === "en" || !table[lang]) return table.en;
+  if (lang === "de") return table.de;
+  let byLang = LANG_CACHE.get(table);
+  if (!byLang) LANG_CACHE.set(table, (byLang = {}));
+  return byLang[lang] || (byLang[lang] = { ...table.en, ...table[lang] });
+}
+
 const TEXT = {
   de: {
     free: (list) => `Frei: ${list}`,
@@ -98,10 +110,102 @@ const TEXT = {
       return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" });
     },
   },
+  fr: {
+    free: (list) => `Libres : ${list}`,
+    freeNone: "Libres : aucune boîte",
+    sizesTitle: "Tailles des boîtes",
+    sizesIntro: "Les tailles fixes se règlent sur la fiche d'une boîte. Ici, vous saisissez les boîtes en vrac sur lesquelles s'adaptent les couvercles de taille variable.",
+    sizesLoose: "Boîtes en vrac",
+    sizesSize: "Taille",
+    sizesCount: "Nombre",
+    sizesAdd: "＋ Taille",
+    sizesOverview: "Aperçu",
+    sizesRow: (r) => `${r.size} : ${r.free} libres sur ${r.total}`,
+    sizesNone: "Pas encore de tailles.",
+    save: "Enregistrer",
+    cancel: "Annuler",
+    close: "Fermer",
+    menuSizes: "Tailles des boîtes",
+    menuBatch: "Cuisiner en quantité",
+    batchTitle: "Cuisiner en quantité",
+    batchIntro: "Répartissez un plat dans plusieurs boîtes vides. Le dialogue de remplissage s'ouvre ensuite pour toutes les boîtes choisies, avec la quantité par boîte.",
+    batchDish: "Plat",
+    batchTotal: "Quantité totale",
+    batchContainers: "Boîtes vides",
+    batchNone: "Aucune boîte vide.",
+    batchVariable: "variable",
+    batchSuggest: "Proposer des boîtes adaptées",
+    batchSplit: (n, list) => (n ? `${n} ${n === 1 ? "boîte" : "boîtes"} : ${list}` : "Aucune boîte choisie."),
+    batchOver: (rest) => ` – ${rest} ml ne rentrent pas, choisissez une autre boîte.`,
+    batchNext: "Continuer vers le remplissage",
+    batchNeed: "Saisissez un plat et choisissez au moins une boîte.",
+    units: { portions: "portions", milliliters: "ml", grams: "g", pieces: "pièces" },
+    weekButton: "🪄 Proposer la semaine",
+    weekTitle: "Suggestion pour les prochains jours",
+    weekBusy: "Larder cherche des plats …",
+    weekNone: "Pas de suggestion : aucune recette ne convient aux boîtes bientôt périmées (ou rien ne périme).",
+    weekError: (e) => `IA : ${e}`,
+    weekUses: (list) => `Utilise : ${list}`,
+    weekSource: { book: "📖 Livre de recettes", ai: "🤖 IA" },
+    weekRemove: "Retirer",
+    weekOther: "↻ Autre",
+    weekAccept: "Accepter",
+    weekAccepted: (n) => `${n} ${n === 1 ? "plat" : "plats"} dans le planning des repas.`,
+    weekDay: (iso) => {
+      const d = new Date(`${iso}T00:00:00`);
+      return d.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
+    },
+  },
+  nl: {
+    free: (list) => `Vrij: ${list}`,
+    freeNone: "Vrij: geen dozen",
+    sizesTitle: "Doosgroottes",
+    sizesIntro: "Vaste groottes stel je in op de kaart van een doos. Hier voer je de losse dozen in waar deksels met wisselende grootte op passen.",
+    sizesLoose: "Losse dozen",
+    sizesSize: "Grootte",
+    sizesCount: "Aantal",
+    sizesAdd: "＋ Grootte",
+    sizesOverview: "Overzicht",
+    sizesRow: (r) => `${r.size}: ${r.free} van ${r.total} vrij`,
+    sizesNone: "Nog geen groottes.",
+    save: "Opslaan",
+    cancel: "Annuleren",
+    close: "Sluiten",
+    menuSizes: "Doosgroottes",
+    menuBatch: "Voorkoken",
+    batchTitle: "Voorkoken",
+    batchIntro: "Verdeel één gerecht over meerdere lege dozen. Daarna opent het vuldialoog voor alle gekozen dozen, met de hoeveelheid per doos.",
+    batchDish: "Gerecht",
+    batchTotal: "Totale hoeveelheid",
+    batchContainers: "Lege dozen",
+    batchNone: "Geen lege doos.",
+    batchVariable: "wisselend",
+    batchSuggest: "Passende voorstellen",
+    batchSplit: (n, list) => (n ? `${n} ${n === 1 ? "doos" : "dozen"}: ${list}` : "Nog geen doos gekozen."),
+    batchOver: (rest) => ` – ${rest} ml past niet, kies nog een doos.`,
+    batchNext: "Verder naar vullen",
+    batchNeed: "Vul een gerecht in en kies minstens één doos.",
+    units: { portions: "porties", milliliters: "ml", grams: "g", pieces: "stuks" },
+    weekButton: "🪄 Week voorstellen",
+    weekTitle: "Voorstel voor de komende dagen",
+    weekBusy: "Larder zoekt gerechten …",
+    weekNone: "Geen voorstel: geen recept past bij de dozen die binnenkort verlopen (of er verloopt niets).",
+    weekError: (e) => `AI: ${e}`,
+    weekUses: (list) => `Gebruikt: ${list}`,
+    weekSource: { book: "📖 Receptenboek", ai: "🤖 AI" },
+    weekRemove: "Verwijderen",
+    weekOther: "↻ Ander",
+    weekAccept: "Overnemen",
+    weekAccepted: (n) => `${n} ${n === 1 ? "gerecht" : "gerechten"} in het maaltijdplan.`,
+    weekDay: (iso) => {
+      const d = new Date(`${iso}T00:00:00`);
+      return d.toLocaleDateString("nl-NL", { weekday: "short", day: "numeric", month: "short" });
+    },
+  },
 };
 
 export function cookTexts(hass) {
-  return String((hass && hass.language) || "en").toLowerCase().startsWith("de") ? TEXT.de : TEXT.en;
+  return pickLang(TEXT, hass);
 }
 
 /** Size in litres ("500 ml" → 0.5, "1,5 l" → 1.5); null if not recognisable. */

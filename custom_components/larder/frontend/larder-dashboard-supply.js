@@ -4,6 +4,18 @@
  * `installSupply` attaches the methods to the dashboard class (like larder-dashboard-items.js).
  */
 
+
+/** 6.0: texts in the user's language; French and Dutch fall back to English for anything missing. */
+const LANG_CACHE = new WeakMap();
+function pickLang(table, hass) {
+  const lang = String((hass && hass.language) || "en").toLowerCase().slice(0, 2);
+  if (lang === "en" || !table[lang]) return table.en;
+  if (lang === "de") return table.de;
+  let byLang = LANG_CACHE.get(table);
+  if (!byLang) LANG_CACHE.set(table, (byLang = {}));
+  return byLang[lang] || (byLang[lang] = { ...table.en, ...table[lang] });
+}
+
 export const SECTION_NAMES = {
   de: {
     produce: "🥦 Obst & Gemüse",
@@ -30,6 +42,32 @@ export const SECTION_NAMES = {
     drugstore: "🧴 Drugstore & household",
     pharmacy: "💊 Pharmacy",
     other: "🛒 Other",
+  },
+  fr: {
+    produce: "🥦 Fruits et légumes",
+    bakery: "🥖 Boulangerie",
+    meat: "🥩 Viande, charcuterie et poisson",
+    fridge: "🧀 Rayon frais",
+    dry: "🍝 Pâtes, riz et conserves",
+    breakfast: "☕ Petit-déjeuner, café et sucreries",
+    drinks: "🥤 Boissons",
+    frozen: "🧊 Surgelés",
+    drugstore: "🧴 Droguerie et entretien",
+    pharmacy: "💊 Pharmacie",
+    other: "🛒 Divers",
+  },
+  nl: {
+    produce: "🥦 Groente en fruit",
+    bakery: "🥖 Brood en banket",
+    meat: "🥩 Vlees, vleeswaren en vis",
+    fridge: "🧀 Koelvak",
+    dry: "🍝 Pasta, rijst en conserven",
+    breakfast: "☕ Ontbijt, koffie en snoep",
+    drinks: "🥤 Dranken",
+    frozen: "🧊 Diepvries",
+    drugstore: "🧴 Drogisterij en huishouden",
+    pharmacy: "💊 Apotheek",
+    other: "🛒 Overig",
   },
 };
 
@@ -126,6 +164,98 @@ const TEXT = {
     save: "Save",
     cancel: "Cancel",
   },
+  fr: {
+    title: "Réserve d'urgence",
+    intro: (p, d) => `Pour ${p} ${p === 1 ? "personne" : "personnes"} et ${d} jours, d'après la réserve type de l'Office fédéral allemand de protection civile (BBK). Personnes et jours se règlent dans les paramètres.`,
+    covered: (n, d) => (n >= d ? `✅ La réserve tient ${d} jours.` : n > 0 ? `La réserve tient environ ${n} jours sur ${d}.` : `La réserve ne tient pas encore une journée (objectif : ${d} jours).`),
+    food: "Boissons et aliments",
+    other: "Éclairage, hygiène et premiers secours",
+    groups: {
+      drinks: "Boissons",
+      grain: "Céréales, pain, pommes de terre, pâtes, riz",
+      vegetables: "Légumes et légumineuses",
+      fruit: "Fruits et fruits à coque",
+      dairy: "Lait et produits laitiers",
+      protein: "Poisson, viande, œufs",
+      fats: "Matières grasses et huiles",
+    },
+    items: {
+      light: "Bougies ou lampe de poche",
+      batteries: "Piles",
+      radio: "Radio (à piles ou à manivelle)",
+      toilet_paper: "Papier toilette",
+      soap: "Savon",
+      first_aid: "Trousse de secours / pansements",
+      pain: "Antidouleurs",
+      thermometer: "Thermomètre",
+      disinfectant: "Désinfectant",
+    },
+    amount: (have, need, unit) => `${fmt(have)} sur ${fmt(need)} ${unit}`,
+    unknown: (n) => `+ ${n} sans quantité`,
+    shop: "🛒",
+    shopLabel: "Sur la liste de courses",
+    shopped: (item) => `${item} est sur la liste de courses.`,
+    noList: "Choisissez d'abord une liste de courses dans les paramètres.",
+    off: "Le contrôle de la réserve d'urgence est désactivé dans les paramètres.",
+    hint: "Seul ce qui a une quantité compte (taille du paquet comme « 500 g », grammes ou millilitres, portions comptées 300 g). Plus d'infos sur bbk.bund.de.",
+    menu: "🛟 Réserve d'urgence",
+    sectionsMenu: "🏪 Rayons du magasin",
+    sectionsTitle: "Rayons du magasin",
+    sectionsIntro: "Le mode courses affiche les listes dans cet ordre – comme vous parcourez votre magasin.",
+    sectionsStoreTitle: (name) => `Rayons chez ${name}`,
+    sectionsStoreIntro: (name) => `Votre parcours dans ${name}. S'applique en mode courses quand « Je suis chez ${name} » est choisi.`,
+    sectionsGeneral: "Ordre général",
+    up: "Monter",
+    down: "Descendre",
+    save: "Enregistrer",
+    cancel: "Annuler",
+  },
+  nl: {
+    title: "Noodvoorraad",
+    intro: (p, d) => `Voor ${p} ${p === 1 ? "persoon" : "personen"} en ${d} dagen, volgens de voorbeeldvoorraad van het Duitse Bundesamt für Bevölkerungsschutz (BBK). Personen en dagen stel je in bij de instellingen.`,
+    covered: (n, d) => (n >= d ? `✅ De voorraad is genoeg voor ${d} dagen.` : n > 0 ? `De voorraad is genoeg voor ongeveer ${n} van ${d} dagen.` : `De voorraad is nog geen dag genoeg (doel: ${d} dagen).`),
+    food: "Dranken en voedsel",
+    other: "Licht, hygiëne en EHBO",
+    groups: {
+      drinks: "Dranken",
+      grain: "Graan, brood, aardappelen, pasta, rijst",
+      vegetables: "Groente en peulvruchten",
+      fruit: "Fruit en noten",
+      dairy: "Melk en zuivel",
+      protein: "Vis, vlees, eieren",
+      fats: "Vetten en oliën",
+    },
+    items: {
+      light: "Kaarsen of zaklamp",
+      batteries: "Batterijen",
+      radio: "Radio (batterij of slinger)",
+      toilet_paper: "Toiletpapier",
+      soap: "Zeep",
+      first_aid: "EHBO-doos / pleisters",
+      pain: "Pijnstillers",
+      thermometer: "Thermometer",
+      disinfectant: "Desinfectiemiddel",
+    },
+    amount: (have, need, unit) => `${fmt(have)} van ${fmt(need)} ${unit}`,
+    unknown: (n) => `+ ${n} zonder hoeveelheid`,
+    shop: "🛒",
+    shopLabel: "Op de boodschappenlijst",
+    shopped: (item) => `${item} staat op de boodschappenlijst.`,
+    noList: "Kies eerst een boodschappenlijst in de instellingen.",
+    off: "De controle van de noodvoorraad staat uit in de instellingen.",
+    hint: "Alleen wat een hoeveelheid heeft telt mee (verpakkingsgrootte zoals „500 g”, gram of milliliter, porties als 300 g). Meer op bbk.bund.de.",
+    menu: "🛟 Noodvoorraad",
+    sectionsMenu: "🏪 Winkelafdelingen",
+    sectionsTitle: "Winkelafdelingen",
+    sectionsIntro: "De winkelmodus toont de boodschappenlijsten in deze volgorde – zoals je door je winkel loopt.",
+    sectionsStoreTitle: (name) => `Afdelingen bij ${name}`,
+    sectionsStoreIntro: (name) => `Zo loop je door ${name}. Geldt in de winkelmodus als „Ik ben bij ${name}” gekozen is.`,
+    sectionsGeneral: "Algemene volgorde",
+    up: "Omhoog",
+    down: "Omlaag",
+    save: "Opslaan",
+    cancel: "Annuleren",
+  },
 };
 
 function fmt(n) {
@@ -133,11 +263,11 @@ function fmt(n) {
 }
 
 export function supplyTexts(hass) {
-  return String((hass && hass.language) || "en").toLowerCase().startsWith("de") ? TEXT.de : TEXT.en;
+  return pickLang(TEXT, hass);
 }
 
 export function sectionNames(hass) {
-  return String((hass && hass.language) || "en").toLowerCase().startsWith("de") ? SECTION_NAMES.de : SECTION_NAMES.en;
+  return pickLang(SECTION_NAMES, hass);
 }
 
 export function installSupply(Dashboard, { el, DOMAIN }) {

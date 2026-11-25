@@ -8,6 +8,18 @@
  * `installHistory` attaches the methods to the dashboard class (like larder-dashboard-items.js).
  */
 
+
+/** 6.0: texts in the user's language; French and Dutch fall back to English for anything missing. */
+const LANG_CACHE = new WeakMap();
+function pickLang(table, hass) {
+  const lang = String((hass && hass.language) || "en").toLowerCase().slice(0, 2);
+  if (lang === "en" || !table[lang]) return table.en;
+  if (lang === "de") return table.de;
+  let byLang = LANG_CACHE.get(table);
+  if (!byLang) LANG_CACHE.set(table, (byLang = {}));
+  return byLang[lang] || (byLang[lang] = { ...table.en, ...table[lang] });
+}
+
 const TEXT = {
   de: {
     title: (name) => `Verlauf: ${name}`,
@@ -61,10 +73,62 @@ const TEXT = {
     dateBusy: "Reading the date …",
     dateFailed: "No best-before date recognised in the photo.",
   },
+  fr: {
+    title: (name) => `Historique : ${name}`,
+    none: "Pas encore d'historique – il commence dès que quelque chose est vidé, consommé ou jeté.",
+    perYear: (n) => `${n}× l'an dernier`,
+    avgDays: (n) => `tient ${n} ${n === 1 ? "jour" : "jours"} en moyenne`,
+    thrown: (n, of) => `${n} sur ${of} jetés`,
+    thrownValue: (v) => `environ ${v} jetés`,
+    since: (d) => `depuis le ${d}`,
+    prices: "Prix",
+    hints: {
+      thrown_often: (h) => `💡 Jeté ${h.thrown} fois sur ${h.of} – acheter moins ou en congeler une partie ?`,
+      usually_days: (h) => `💡 Généralement consommé en environ ${h.days} jours.`,
+    },
+    outcome: { eaten: "😋 mangé", thrown: "🗑 jeté" },
+    emptied: "vidé",
+    stored: (n) => `conservé ${n} ${n === 1 ? "jour" : "jours"}`,
+    close: "Fermer",
+    link: "📦 Stock et historique",
+    historyHead: "📜 Historique",
+    recent: "Utilisé récemment",
+    recentAdded: (name, place) => `${name} → ${place}`,
+    noArea: "sans pièce",
+    datePhoto: "Lire la date sur une photo",
+    dateBusy: "Lecture de la date …",
+    dateFailed: "Aucune date reconnue sur la photo.",
+  },
+  nl: {
+    title: (name) => `Geschiedenis: ${name}`,
+    none: "Nog geen geschiedenis – die begint zodra iets geleegd, opgemaakt of weggegooid wordt.",
+    perYear: (n) => `${n}× in het afgelopen jaar`,
+    avgDays: (n) => `gaat gemiddeld ${n} ${n === 1 ? "dag" : "dagen"} mee`,
+    thrown: (n, of) => `${n} van ${of} weggegooid`,
+    thrownValue: (v) => `ongeveer ${v} weggegooid`,
+    since: (d) => `sinds ${d}`,
+    prices: "Prijzen",
+    hints: {
+      thrown_often: (h) => `💡 ${h.thrown} van de ${h.of} keer weggegooid – kleinere hoeveelheden kopen of een deel invriezen?`,
+      usually_days: (h) => `💡 Meestal na ongeveer ${h.days} dagen op.`,
+    },
+    outcome: { eaten: "😋 opgegeten", thrown: "🗑 weggegooid" },
+    emptied: "geleegd",
+    stored: (n) => `${n} ${n === 1 ? "dag" : "dagen"} bewaard`,
+    close: "Sluiten",
+    link: "📦 Voorraad en geschiedenis",
+    historyHead: "📜 Geschiedenis",
+    recent: "Onlangs gebruikt",
+    recentAdded: (name, place) => `${name} → ${place}`,
+    noArea: "geen ruimte",
+    datePhoto: "Datum van een foto lezen",
+    dateBusy: "Datum wordt gelezen …",
+    dateFailed: "Geen houdbaarheidsdatum op de foto herkend.",
+  },
 };
 
 export function historyTexts(hass) {
-  return String((hass && hass.language) || "en").toLowerCase().startsWith("de") ? TEXT.de : TEXT.en;
+  return pickLang(TEXT, hass);
 }
 
 export function installHistory(Dashboard, { el, DOMAIN, money }) {

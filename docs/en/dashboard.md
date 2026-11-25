@@ -6,7 +6,7 @@
 
 ## Dashboard "Larder"
 
-Right after adding the integration a sidebar entry **Larder** appears; as long as nothing is in Larder, its start page shows **🚀 Get started** with three steps (assign areas, choose a shopping list, add the first item), done ones ticked. It needs no configuration, adapts to your Home Assistant theme and language (English and German) and updates itself. *The screenshots show demo data.*
+Right after adding the integration a sidebar entry **Larder** appears; as long as nothing is in Larder, its start page shows **🚀 Get started** with three steps (assign areas, choose a shopping list, add the first item), done ones ticked. It needs no configuration, adapts to your Home Assistant theme and language (English, German, French and Dutch) and updates itself. *The screenshots show demo data.*
 
 <p align="center"><img src="../images/dashboard-getstarted-en.png" width="250" alt="Get started"></p>
 
@@ -106,6 +106,8 @@ compartment: Drawer 2 # optional
 title: Freezer        # optional
 ```
 
+Since 6.0 every card has a **visual editor**: in the card picker or with *Edit* the options appear as a form (title, days, area, compartment …); YAML still works.
+
 For automations there are also [overview sensors](reference.md#overview-sensors) (expired, expiring soon, stock value, open shopping items, emergency supply).
 
 ### Data care
@@ -172,5 +174,9 @@ In the dashboard **More → 📦 Export and import** (administrators):
 - **Import estimates**: reads such a file back, for example after a reinstall or on a second Home Assistant. Your own corrections are kept when the file only has a table or AI value for the same combination; with **Delete existing estimates first** the file replaces everything. Invalid entries are skipped and counted.
 
 The downloads open via a link that is valid for five minutes, also in the Home Assistant app.
+
+### Import from Grocy
+
+Coming from [Grocy](https://grocy.info)? **More → 📥 Import from Grocy** (administrators) takes over its stock once: every stock entry becomes a [pack](containers.md#bags-and-packs) with its product name, amount, best-before date, barcodes and *opened*; Grocy's *days after opening* become the product's [own value](best-before.md#best-before-estimate). Grocy has no export file, so Larder reads Grocy's own REST API: enter the address (e.g. `http://192.168.1.20:9283`) and an API key from Grocy (*Settings → Manage API keys*). The key is only used for the request and is not stored. A **preview** shows what was found; Grocy places with the name of a Home Assistant area are matched, the others you choose. Products keep their own names – nothing is merged with similar Larder products. Running it twice adds the packs twice.
 
 For bug reports, **Download diagnostics** (⋮ on a container's entry under Settings → Devices & services → Larder) collects the settings, the container and its entities. The secret webhook ID and the remembered estimates themselves are not included.
