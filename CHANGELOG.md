@@ -3,6 +3,14 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 5.8.0
+
+Block 43: freezer at a glance, short pushes, own storage time per product.
+
+- **Freezer** (#156): frozen food stays safe, so the date of a container in the freezer is the end of its best quality. Past it, Larder says *quality ↓* (orange, not red) and the summary *past its best quality for 10 days, use it soon* instead of *expired, should be emptied*; speech likewise. **More → 🧊 Freezer** lists everything frozen, longest first, with *frozen since* and *best quality until*. The date entity has the attribute `storage: freezer`, which follows moving a container; entries of `get_expiring` carry `frozen`.
+- **Short version for pushes** (#157): the option **Short version** in the blueprints daily summary, weekly review, monthly report, opened items and medicines expiring – one short line per entry, only what and when. Services return `summary_short`, entries of `get_expiring` `line_short`.
+- **Own storage time per product** (#158): in the product view **📦 Own storage time (days)** for fridge, freezer and pantry, e.g. for homemade jam – for exactly this product, before the table, also for things only kept in containers. WebSocket `larder/storage_days`.
+
 ## 5.7.0
 
 Block 42: shelf life per product, German sources, a reminder of opened items.

@@ -54,11 +54,20 @@ blueprint:
       default: "🔓 Larder"
       selector:
         text:
+    short:
+      name: Short version
+      description: >
+        One short line per entry (only what and when), without container, amount and place – quick to read
+        on a phone. Kurzfassung: eine kurze Zeile pro Eintrag.
+      default: false
+      selector:
+        boolean:
 
 mode: single
 max_exceeded: silent
 
 variables:
+  short: !input short
   notify_action: !input notify_action
   title: !input title
   push_targets: "{{ (notify_action or '') | string | lower | regex_findall('[a-z0-9_]+[.][a-z0-9_]+') }}"
@@ -83,7 +92,7 @@ actions:
     value_template: "{{ opened | length > 0 }}"
   - variables:
       message: >-
-        {{ opened | map(attribute='line') | map('regex_replace', '^', '• ') | join('\n') }}
+        {{ opened | map(attribute='line_short' if short else 'line') | map('regex_replace', '^', '• ') | join('\n') }}
   - repeat:
       for_each: "{{ push_targets }}"
       sequence:

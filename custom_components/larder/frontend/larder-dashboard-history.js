@@ -110,6 +110,13 @@ export function installHistory(Dashboard, { el, DOMAIN, money }) {
       const item = this._stockItem(res.product, () => this.openProduct(name), true);
       item.dataset.role = "product-stock";
       parts.push(item);
+    } else if (this._ownValues) {
+      // 5.8: nothing in stock as packs (e.g. homemade jam in containers) – the own values anyway
+      const own = res.own || {};
+      const box = el("section", "stockitem");
+      box.dataset.role = "product-own";
+      box.append(...this._ownValues({ name, kind: "pack", opened_after: own.opened_after, storage_days: own.storage_days }, () => this.openProduct(name)));
+      parts.push(box);
     }
     parts.push(el("h3", "", t.historyHead));
     const s = res.summary || {};

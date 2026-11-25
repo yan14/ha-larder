@@ -70,6 +70,8 @@ _TEXT = {
         ),
         "expired": lambda d: "abgelaufen" if d == -1 else f"seit {-d} Tagen abgelaufen",
         "empty_it": "sollte geleert werden",
+        "quality_past": lambda d: "beste Qualität seit gestern vorbei" if d == -1 else f"beste Qualität seit {-d} Tagen vorbei",
+        "use_soon": "bald verbrauchen",
         "dispose_it": "entsorgen",
         "head_medicine": lambda soon, expired: "💊 " + ", ".join(
             p for p in (f"{soon} {'läuft' if soon == 1 else 'laufen'} bald ab" if soon else "", f"{expired} abgelaufen" if expired else "") if p
@@ -100,6 +102,8 @@ _TEXT = {
         ),
         "expired": lambda d: "expired yesterday" if d == -1 else f"expired {-d} days ago",
         "empty_it": "should be emptied",
+        "quality_past": lambda d: "past its best quality since yesterday" if d == -1 else f"past its best quality for {-d} days",
+        "use_soon": "use it soon",
         "dispose_it": "dispose of it",
         "head_medicine": lambda soon, expired: "💊 " + ", ".join(
             p for p in (f"{soon} expiring soon" if soon else "", f"{expired} expired" if expired else "") if p
@@ -163,8 +167,12 @@ def _voucher_label(item: dict[str, Any], language: str, spoken: bool = False) ->
     return (f"Gutschein {name}" if de else f"{name} voucher") + (f" ({money})" if money else "")
 
 
-def build_summary(items: list[dict[str, Any]], language: str, medicines: bool = False) -> str:
-    """Short text for notifications, in Home Assistant's language (`medicines`: wording for medicines)."""
+def build_summary(items: list[dict[str, Any]], language: str, medicines: bool = False, short: bool = False) -> str:
+    """Short text for notifications, in Home Assistant's language (`medicines`: wording for medicines).
+
+    `short` (5.8, #157): one line per entry with only what and when – no container, amount, place.
+    Frozen food past its date (5.8, #156) is "past its best quality – use it soon", not "expired".
+    """
     text = _TEXT["de" if language.lower().startswith("de") else "en"]
     if not items:
         return text["none"]
@@ -174,8 +182,14 @@ def build_summary(items: list[dict[str, Any]], language: str, medicines: bool = 
     for item in items:
         label = _voucher_label(item, language) if item.get("kind") == KIND_VOUCHER else item["content"] or item["name"] or text["unnamed"]
         expired_item = item["days_left"] is not None and item["days_left"] < 0
+        frozen_past = expired_item and item.get("frozen") and not medicines
+        if short:
+            when = text["quality_past"](item["days_left"]) if frozen_past else _when(text, item["days_left"])
+            opened = f" ({text['opened_for'](item['opened_days'])})" if item.get("opened_days") is not None else ""
+            lines.append(f"• {label}{opened}: {when}")
+            continue
         extras = []
-        if expired_item and item["content"] and item["name"] and not medicines:
+        if expired_item and item["content"] and item["name"] and not medicines and not frozen_past:
             extras.append(item["name"])  # which container has to be emptied
         if item.get("quantity"):
             extras.append(quantity_text(text, item))
@@ -185,7 +199,9 @@ def build_summary(items: list[dict[str, Any]], language: str, medicines: bool = 
             extras.append(item["area"])
         place = f" ({', '.join(extras)})" if extras else ""
         when = _when(text, item["days_left"])
-        if expired_item:
+        if frozen_past:
+            when = f"{text['quality_past'](item['days_left'])}, {text['use_soon']}"
+        elif expired_item:
             when = f"{when}, {text['dispose_it' if medicines else 'empty_it']}"
         lines.append(f"• {label}{place}: {when}")
     return "\n".join(lines)
@@ -206,6 +222,7 @@ _SPEECH = {
             if n == 1
             else f"{names} sind abgelaufen und sollten geleert werden."
         ),
+        "frozen_past": lambda names, n: f"{names} {'ist' if n == 1 else 'sind'} im Gefrierschrank über die beste Qualität hinaus und {'sollte' if n == 1 else 'sollten'} bald verbraucht werden.",
         "expired_dispose": lambda names, n: (
             f"{names} ist abgelaufen und sollte entsorgt werden."
             if n == 1
@@ -222,6 +239,7 @@ _SPEECH = {
         "in_days": lambda d, names, n: f"{names} {'expires' if n == 1 else 'expire'} in {d} days.",
         "expired": lambda names, n: f"{names} {'has' if n == 1 else 'have'} expired and should be emptied.",
         "expired_dispose": lambda names, n: f"{names} {'has' if n == 1 else 'have'} expired and should be disposed of.",
+        "frozen_past": lambda names, n: f"{names} in the freezer {'is' if n == 1 else 'are'} past {'its' if n == 1 else 'their'} best quality and should be used soon.",
         "in": "in",
     },
 }
@@ -249,17 +267,20 @@ def build_speech(items: list[dict[str, Any]], language: str, limit: int = MAX_SP
     unnamed = _TEXT["de" if language.lower().startswith("de") else "en"]["unnamed"]
     groups: dict[int, list[str]] = {}
     expired: list[str] = []
+    frozen: list[str] = []  # 5.8 (#156): past the best quality in the freezer, not "expired"
     for item in items:
         name = _voucher_label(item, language, spoken=True) if item.get("kind") == KIND_VOUCHER else (item["content"] or item["name"] or unnamed).strip()
         if item["days_left"] is None:
             continue
-        if item["days_left"] < 0:
+        if item["days_left"] < 0 and item.get("frozen") and not medicines:
+            frozen.append(name)
+        elif item["days_left"] < 0:
             # name the container for expired food too, so it is clear which one to empty
             box = (item.get("name") or "").strip()
             expired.append(f"{name} {text['in']} {box}" if item["content"] and box and box != name and not medicines else name)
         else:
             groups.setdefault(item["days_left"], []).append(name)
-    ordered = [(d, groups[d]) for d in sorted(groups)] + ([(-1, expired)] if expired else [])
+    ordered = [(d, groups[d]) for d in sorted(groups)] + ([(-2, frozen)] if frozen else []) + ([(-1, expired)] if expired else [])
     sentences: list[str] = []
     spoken = 0
     skipped = 0
@@ -273,7 +294,9 @@ def build_speech(items: list[dict[str, Any]], language: str, limit: int = MAX_SP
         skipped += len(names) - len(shown)
         joined = _join(shown, text["and"])
         count = len(shown)
-        if days < 0:
+        if days == -2:
+            sentences.append(text["frozen_past"](joined, count))
+        elif days < 0:
             sentences.append(text["expired_dispose" if medicines else "expired"](joined, count))
         elif days == 0:
             sentences.append(text["today"](joined, count))
@@ -374,6 +397,7 @@ def collect_expiring(
                 "status": status_for(left, soon),
                 "entity_id": date_id,
                 **_opened_info(content_state),
+                **({"frozen": True} if state is not None and state.attributes.get("storage") == "freezer" else {}),
                 **({"value": _voucher_value(content_state)} if voucher else {}),
             }
         )
@@ -397,7 +421,12 @@ def async_setup_services(hass: HomeAssistant) -> None:
         items = collect_expiring(hass, call.data.get("days", soon_days(hass)), call.data["include_expired"])
         # 5.2 (#127): buttons per entry for the push (Used up · Thrown away · +2 days · On the list)
         items = [
-            {**item, "actions": item_actions(item, language), "line": build_summary([item], language).split("\n", 1)[1].removeprefix("• ")}
+            {
+                **item,
+                "actions": item_actions(item, language),
+                "line": build_summary([item], language).split("\n", 1)[1].removeprefix("• "),
+                "line_short": build_summary([item], language, short=True).split("\n", 1)[1].removeprefix("• "),
+            }
             for item in items
         ]
         thaw = (await async_get_plan(hass)).thaw_items()
@@ -414,6 +443,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
             "items": items,
             "thaw": thaw,
             "summary": summary,
+            "summary_short": f"{thaw_summary}\n\n{build_summary(items, language, short=True)}" if thaw and items else (thaw_summary if thaw else build_summary(items, language, short=True)),
             "speech": speech,
             "labels": {**LABELS["de" if language.lower().startswith("de") else "en"], "thawed": thaw_button},
         }
@@ -429,6 +459,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
             "expired": sum(1 for i in items if i["status"] == STATUS_EXPIRED),
             "items": items,
             "summary": build_summary(items, language, medicines=True),
+            "summary_short": build_summary(items, language, medicines=True, short=True),
             "speech": build_speech(items, language, medicines=True),
             "days": call.data.get("days") or soon_days(hass, "medicine"),
         }

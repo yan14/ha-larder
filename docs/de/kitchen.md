@@ -78,6 +78,10 @@ Die Knöpfe gehen auch in eigenen Automationen: `result.items[i].actions` in `da
 
 Auch `larder.suggest_recipes` liefert `speech` („Idee: …“). Für eigene Dashboards gibt es außerdem den Sensor **Tage bis MHD** an jeder Dose.
 
+**Kurzfassung (seit 5.8).** Die Blueprints *tägliche Zusammenfassung*, *Wochenrückblick*, *Monatsbericht*, *Angebrochenes* und *ablaufende Medikamente* haben die Option **Short version**: eine kurze Zeile pro Eintrag, nur was und wann (*• Lachs: morgen*), ohne Dose, Menge und Ort. Die Dienste liefern sie als `summary_short` (Einträge von `get_expiring` als `line_short`).
+
+**Gefrierschrank (seit 5.8).** Eingefroren bleibt Essen sicher; das Datum einer Dose im Gefrierschrank ist das Ende der **besten Qualität**. Danach schreibt die Zusammenfassung *beste Qualität seit 10 Tagen vorbei, bald verbrauchen* statt *abgelaufen, sollte geleert werden* (Einträge tragen `frozen: true`), und das Dashboard zeigt *Qualität ↓* in Orange statt Rot.
+
 ### Monatsbericht
 
 Ein zweiter Blueprint schickt am gewählten Tag einen **Monatsbericht** für den Vormonat: befüllte und geleerte Dosen, gegessen und weggeworfen, der Anteil Weggeworfenes im Vergleich zum Vormonat was am häufigsten weggeworfen wurde und – bei Packungen mit Preis – ca. wie viel Euro. Als Push (Antippen öffnet die Statistik) und optional als Sprachausgabe. Für einen Monat ohne Bewegung wird nichts geschickt. Derselbe Bericht steht oben in der [Statistik](dashboard.md#statistik) und kommt vom Dienst `larder.get_monthly_report` (`month`: `JJJJ-MM`, Standard: Vormonat).

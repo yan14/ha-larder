@@ -78,6 +78,10 @@ The buttons work in your own automations too: put `result.items[i].actions` into
 
 `larder.suggest_recipes` also returns `speech` ("Idea: …"). For your own dashboards there is the sensor **Days until best before** on every container.
 
+**Short version (since 5.8).** The blueprints *daily summary*, *weekly review*, *monthly report*, *opened items* and *medicines expiring* have the option **Short version**: one short line per entry, only what and when (*• Salmon: tomorrow*), without container, amount and place. The services return it as `summary_short` (entries of `get_expiring` as `line_short`).
+
+**Freezer (since 5.8).** Frozen food stays safe; the date of a container in the freezer is the end of its **best quality**. Past it, the summary says *past its best quality for 10 days, use it soon* instead of *expired, should be emptied* (entries carry `frozen: true`), and the dashboard shows *quality ↓* in orange instead of red.
+
 ### Monthly report
 
 A second blueprint sends a **monthly report** for the previous month on the day you choose: containers filled and emptied, eaten and thrown away, the share thrown away compared with the month before, what was thrown away most and – for packs with a price – about how many euros. As a push (tapping it opens the statistics) and optionally read out loud. Nothing is sent for a month without activity. The same report is at the top of the [statistics](dashboard.md#statistics) and comes from the service `larder.get_monthly_report` (`month`: `YYYY-MM`, default the previous month).

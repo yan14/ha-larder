@@ -243,6 +243,8 @@ def build_monthly_report(
         "top_thrown": top,
         "thrown_value": thrown_value,
         "summary": "\n".join(lines),
+        # 5.8 (#157): one line – eaten, thrown away and its value
+        "summary_short": " · ".join([lines[1], *[line for line in lines if line.startswith("💶")]]),
         "speech": speech,
         "empty": not filled and not items,
     }
@@ -374,6 +376,8 @@ def build_weekly_review(
         "expiring_count": len(upcoming),
         "title": "🗓 Wochenrückblick" if de else "🗓 Weekly review",
         "summary": "\n".join(lines),
+        # 5.8 (#157): two short lines – the figures and what expires next week
+        "summary_short": "\n".join([lines[0], lines[-1]]),
         "speech": speech,
     }
 

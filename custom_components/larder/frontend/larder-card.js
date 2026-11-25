@@ -20,6 +20,7 @@ const TEXT = {
     tomorrow: "morgen",
     inDays: (n) => `in ${n} Tagen`,
     expired: (n) => (n === -1 ? "seit gestern abgelaufen" : `seit ${-n} Tagen abgelaufen`),
+    qualityPast: "Qualität ↓ – bald verbrauchen",
     more: (n) => `und ${n} weitere`,
     description: "Dosen aus Larder, die bald ablaufen.",
   },
@@ -30,6 +31,7 @@ const TEXT = {
     tomorrow: "tomorrow",
     inDays: (n) => `in ${n} days`,
     expired: (n) => (n === -1 ? "expired yesterday" : `expired ${-n} days ago`),
+    qualityPast: "quality ↓ – use it soon",
     more: (n) => `and ${n} more`,
     description: "Containers from Larder that expire soon.",
   },
@@ -67,6 +69,7 @@ export function expiringRows(hass, config = {}, now = new Date()) {
       content: text.state.trim(),
       icon: ICONS[(text.attributes && text.attributes.category) || "other"] || ICONS.other,
       days,
+      frozen: !!(date.attributes && date.attributes.storage === "freezer"),
       allergens: Array.isArray(text.attributes && text.attributes.allergen_warning) ? text.attributes.allergen_warning : [],
     });
   }
@@ -106,7 +109,7 @@ export class LarderCard extends HTMLElement {
     if (sig === this._sig) return;
     this._sig = sig;
     const shown = rows.slice(0, limit);
-    const when = (d) => (d < 0 ? t.expired(d) : d === 0 ? t.today : d === 1 ? t.tomorrow : t.inDays(d));
+    const when = (d, frozen = false) => (d < 0 && frozen ? t.qualityPast : d < 0 ? t.expired(d) : d === 0 ? t.today : d === 1 ? t.tomorrow : t.inDays(d));
     const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
     this.shadowRoot.innerHTML = `
       <style>
@@ -128,7 +131,7 @@ export class LarderCard extends HTMLElement {
         ${shown.length ? "" : `<div class="none">${esc(t.none)}</div>`}
         ${shown
           .map(
-            (r) => `<div class="row" data-id="${esc(r.id)}"><span class="ico">${r.icon}</span><span class="text"><div class="name">${esc(r.content)}</div><div class="sub">${esc([r.name, r.area, r.allergens.length ? `⚠ ${r.allergens.join(", ")}` : ""].filter(Boolean).join(" · "))}</div></span><span class="badge${r.days < 0 ? " expired" : ""}">${esc(when(r.days))}</span></div>`,
+            (r) => `<div class="row" data-id="${esc(r.id)}"><span class="ico">${r.icon}</span><span class="text"><div class="name">${esc(r.content)}</div><div class="sub">${esc([r.name, r.area, r.allergens.length ? `⚠ ${r.allergens.join(", ")}` : ""].filter(Boolean).join(" · "))}</div></span><span class="badge${r.days < 0 && !r.frozen ? " expired" : ""}">${esc(when(r.days, r.frozen))}</span></div>`,
           )
           .join("")}
         ${rows.length > shown.length ? `<div class="more">${esc(t.more(rows.length - shown.length))}</div>` : ""}

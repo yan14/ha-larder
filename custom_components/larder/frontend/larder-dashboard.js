@@ -105,8 +105,12 @@ export function describeDevices(hass, devices, now = new Date()) {
     const compartment = isValid(comp) ? comp.state.trim() : "";
     const attrs = (content && text.attributes) || {};
     const kind = (text && text.attributes && text.attributes.kind) || "container"; // container, bag, pack or household item
+    // 5.8 (#156): in the freezer the date is the end of the best quality; when it went in
+    const frozen = !!(date && date.attributes && date.attributes.storage === "freezer");
+    const filled = states[dev.entities.datetime];
+    const filledAt = isValid(filled) ? String(filled.state).slice(0, 10) : null;
     const kcal = attrs.kcal_portion !== undefined ? { value: attrs.kcal_portion, per: "portion" } : attrs.kcal_100g !== undefined ? { value: attrs.kcal_100g, per: "100g" } : null;
-    return { dev, id: dev.deviceId, name: dev.name, content, days, value: kind === "voucher" && attrs.value !== undefined ? Number(attrs.value) : null, soon: soonDaysOf(date), category, areaId: dev.areaId, areaName: dev.areaName, compartment, kcal, nutriScore: attrs.nutri_score || null, allergens: Array.isArray(attrs.allergen_warning) ? attrs.allergen_warning : [], kind, opened: attrs.opened || null, size: (text && text.attributes && (content ? text.attributes.size : text.attributes.size_fixed)) || null };
+    return { dev, id: dev.deviceId, name: dev.name, content, days, value: kind === "voucher" && attrs.value !== undefined ? Number(attrs.value) : null, soon: soonDaysOf(date), category, areaId: dev.areaId, areaName: dev.areaName, compartment, kcal, nutriScore: attrs.nutri_score || null, allergens: Array.isArray(attrs.allergen_warning) ? attrs.allergen_warning : [], kind, opened: attrs.opened || null, frozen, filledAt, size: (text && text.attributes && (content ? text.attributes.size : text.attributes.size_fixed)) || null };
   });
 }
 
@@ -141,8 +145,9 @@ function el(tag, cls = "", text = "") {
   return node;
 }
 
-function daysLabel(t, days) {
+function daysLabel(t, days, frozen = false) {
   if (days === null) return "";
+  if (days < 0 && frozen) return `${t.qualityPast} (${t.expiredSince(-days)})`; // 5.8: frozen – quality, not safety
   if (days < 0) return `${t.expired} (${t.expiredSince(-days)})`;
   if (days === 0) return t.today;
   return t.daysShort(days);
@@ -150,7 +155,7 @@ function daysLabel(t, days) {
 
 function dayClass(row) {
   if (row.content === "" || row.days === null) return "";
-  if (row.days < 0) return "expired";
+  if (row.days < 0) return row.frozen ? "soon" : "expired";
   if (row.days <= (row.soon ?? SOON_DAYS)) return "soon";
   return "";
 }
@@ -903,6 +908,7 @@ export class LarderDashboard extends HTMLElement {
       ["overview", [
         ["menu-stock", `🗃️ ${this.stockTitle()}`, true, () => this.setView("stock")],
         ["menu-stats", `📊 ${t.menuStats}`, true, () => this.setView("stats")],
+        ["menu-freezer", t.menuFreezer, this._rows().some((r) => r.frozen && r.content), () => this.openFreezer()],
         ["menu-supply", st.menu, this._supplyCheck !== false, () => this.setView("supply")],
         ["menu-datacare", dataCareTexts(hass).menu, true, () => {
           this._dataGaps = null;
@@ -956,7 +962,7 @@ export class LarderDashboard extends HTMLElement {
     if (row.kind === "bag" || row.kind === "pack") tile.append(el("span", "kindmark", row.kind === "bag" ? "🛍" : row.opened ? "📦🔓" : "📦"));
     tile.append(el("span", "name", empty ? t.empty : row.content));
     tile.append(el("span", "sub", [row.name, showArea ? row.areaName : null, row.compartment, row.size].filter(Boolean).join(" · ")));
-    if (!empty && row.days !== null) tile.append(el("span", `badge ${dayClass(row)}`, daysLabel(t, row.days)));
+    if (!empty && row.days !== null) tile.append(el("span", `badge ${dayClass(row)}`, daysLabel(t, row.days, row.frozen)));
     if (!empty && row.kcal) tile.append(el("span", "kcal", t.kcal(row.kcal, this._lang())));
     if (row.value) tile.append(el("span", "kcal", money(row.value, this._lang().startsWith("de"))));
     if (!empty && row.opened) tile.append(el("span", "kcal opened", t.openedSince(fmtShort(row.opened, this._lang()))));
@@ -976,7 +982,7 @@ export class LarderDashboard extends HTMLElement {
     text.append(el("span", "name", empty ? t.empty : row.content));
     text.append(el("span", "sub", [row.name, row.opened ? t.openedSince(fmtShort(row.opened, this._lang())) : null, row.value ? money(row.value, this._lang().startsWith("de")) : null, row.areaName, row.compartment, row.size, !empty && row.kcal ? t.kcal(row.kcal, this._lang()) : null, !empty && row.allergens.length ? `⚠ ${row.allergens.join(", ")}` : null].filter(Boolean).join(" · ")));
     btn.append(el("span", "ico", CATEGORY_ICONS[row.category] || CATEGORY_ICONS.other), text);
-    if (!empty && row.days !== null) btn.append(el("span", `badge ${dayClass(row)}`, daysLabel(t, row.days)));
+    if (!empty && row.days !== null) btn.append(el("span", `badge ${dayClass(row)}`, daysLabel(t, row.days, row.frozen)));
     this._markSelected(btn, row);
     this._longPress(btn, row);
     btn.addEventListener("click", () => this._pressed(btn) || this.openContainer(row));
@@ -2307,6 +2313,57 @@ export class LarderDashboard extends HTMLElement {
   }
 
   /** 5.0 (#117): the frequent actions at the top of the start page: scan, put away, receipt, recipe idea. */
+  /** 🧊 Freezer (5.8, #156): what is frozen, longest first, with since when and until when the quality lasts. */
+  openFreezer() {
+    const t = texts(this._hass);
+    const lang = this._lang();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const daysSince = (iso) => {
+      const [y, m, d] = String(iso || "").split("-").map(Number);
+      return y ? Math.max(0, Math.round((today - new Date(y, m - 1, d)) / 86400000)) : null;
+    };
+    const rows = this._rows()
+      .filter((r) => r.frozen && r.content)
+      .sort((a, b) => (a.filledAt || "9999").localeCompare(b.filledAt || "9999") || (a.days ?? 99999) - (b.days ?? 99999));
+    const parts = [el("h2", "", t.freezerTitle), el("p", "hint", t.freezerIntro)];
+    if (!rows.length) parts.push(el("p", "note", t.freezerNone));
+    const list = el("div", "list");
+    list.dataset.role = "freezer-list";
+    for (const row of rows) {
+      const line = el("button", "row");
+      line.type = "button";
+      line.dataset.id = row.id;
+      const text = el("span", "text");
+      const date = (states) => states[row.dev.entities.date];
+      const best = date(this._hass.states || {});
+      const sub = [
+        row.filledAt ? t.freezerSince(fmtShort(row.filledAt, lang), daysSince(row.filledAt)) : null,
+        best && /^\d{4}-/.test(best.state) && row.days >= 0 ? t.freezerQualityUntil(fmtShort(best.state, lang)) : null,
+        row.areaName,
+        row.compartment,
+      ].filter(Boolean).join(" · ");
+      text.append(el("span", "name", row.content), el("span", "sub", sub));
+      line.append(el("span", "ico", "🧊"), text);
+      if (row.days !== null) line.append(el("span", `badge ${dayClass(row)}`, daysLabel(t, row.days, true)));
+      line.addEventListener("click", () => {
+        this._closeDialog();
+        this.openContainer(row);
+      });
+      list.append(line);
+    }
+    if (rows.length) parts.push(list);
+    const close = el("button", "cancel", t.close || "OK");
+    close.type = "button";
+    close.addEventListener("click", () => this._closeDialog());
+    const buttons = el("div", "buttons");
+    buttons.append(close);
+    parts.push(buttons);
+    this._form.replaceChildren(...parts);
+    this._submit = null;
+    this._overlay.hidden = false;
+  }
+
   /** 🔓 Opened (5.6, #152): what is open, since when and how long it keeps; the shortest first. */
   _openedBox(t, rows) {
     const open = rows.filter((r) => r.opened && r.content);
@@ -2330,7 +2387,7 @@ export class LarderDashboard extends HTMLElement {
       const days = since(row.opened);
       text.append(el("span", "name", row.content), el("span", "sub", [t.openedFor(days, fmtShort(row.opened, lang)), row.areaName, row.compartment].filter(Boolean).join(" · ")));
       line.append(el("span", "ico", "🔓"), text);
-      if (row.days !== null) line.append(el("span", `badge ${dayClass(row)}`, daysLabel(t, row.days)));
+      if (row.days !== null) line.append(el("span", `badge ${dayClass(row)}`, daysLabel(t, row.days, row.frozen)));
       line.addEventListener("click", () => this.openContainer(row));
       box.append(line);
     }

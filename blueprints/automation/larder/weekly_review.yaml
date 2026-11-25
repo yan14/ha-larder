@@ -63,11 +63,20 @@ blueprint:
       default: false
       selector:
         boolean:
+    short:
+      name: Short version
+      description: >
+        One short line per entry (only what and when), without container, amount and place – quick to read
+        on a phone. Kurzfassung: eine kurze Zeile pro Eintrag.
+      default: false
+      selector:
+        boolean:
 
 mode: single
 max_exceeded: silent
 
 variables:
+  short: !input short
   notify_action: !input notify_action
   voice_action: !input voice_action
   voice_data: !input voice_data
@@ -99,9 +108,9 @@ actions:
         continue_on_error: true
   - variables:
       message: |-
-        {{ review.summary }}{% if ideas is defined and ideas.summary %}
+        {% if short %}{{ review.summary_short | default(review.summary) }}{% else %}{{ review.summary }}{% if ideas is defined and ideas.summary %}
 
-        {{ ideas.summary }}{% endif %}
+        {{ ideas.summary }}{% endif %}{% endif %}
       speech: >-
         {{ review.speech }}{% if ideas is defined and ideas.speech %} {{ ideas.speech }}{% endif %}
   - repeat:

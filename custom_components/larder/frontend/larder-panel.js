@@ -1287,7 +1287,10 @@ class DoseCard {
     badge.textContent = "";
     const days = isValidState(date) ? daysUntil(date.state) : null;
     if (days !== null) {
-      if (days < 0) {
+      if (days < 0 && date.attributes && date.attributes.storage === "freezer") {
+        badge.className = "badge soon"; // 5.8: frozen – past the best quality, still safe
+        badge.textContent = t.qualityPastSince(-days);
+      } else if (days < 0) {
         badge.className = "badge expired";
         badge.textContent = t.expiredSince(-days);
       } else if (days <= soonDaysOf(date)) {

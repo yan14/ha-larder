@@ -121,6 +121,12 @@ async def ws_product_history(hass: HomeAssistant, connection: websocket_api.Acti
     from .stock import stock_overview  # noqa: PLC0415
 
     minimums = {k: v for k, v in stock.minimums.items() if k == key}
+    # 5.8: own values of exactly this product, also for things only kept in containers
+    own_storage = stock.storage_days.get(key) or {}
+    result["own"] = {
+        "opened_after": int((stock.opened_after.get(key) or {}).get("days") or 0) or None,
+        "storage_days": {k: v for k, v in own_storage.items() if k in ("fridge", "freezer", "pantry") and v},
+    }
     result["product"] = next(
         (p for p in stock_overview(hass, minimums, stock) if p["key"] == key and (p["count"] or p["min"] or p.get("auto"))),
         None,

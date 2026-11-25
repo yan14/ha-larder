@@ -75,6 +75,9 @@ EVENT_AUTO_REORDER = f"{DOMAIN}_auto_reorder"
 RECENT_PRODUCT_KEYS = ("brand", "package", "ean", "price", "pack_size", "piece", "kcal_100g", "kcal_portion", "nutri_score", "allergens")
 
 
+STORAGE_PLACES = ("fridge", "freezer", "pantry")
+
+
 def product_key(content: str | None) -> str:
     return " ".join((content or "").split()).casefold()
 
@@ -110,6 +113,7 @@ class Stock:
         # buy again by consumption (5.2, #128): product → {"name", "last": ISO date put on the list}
         self.auto_reorder: dict[str, dict[str, Any]] = {}
         self.opened_after: dict[str, dict[str, Any]] = {}  # 5.7: product → days after opening (from the pack)
+        self.storage_days: dict[str, dict[str, Any]] = {}  # 5.8: product → own storage time per place kind
         self._unsub = None
         self._unsub_daily = None
 
@@ -134,6 +138,7 @@ class Stock:
         self.recent = [r for r in data.get("recent") or [] if isinstance(r, dict) and r.get("content")]
         self.auto_reorder = {str(k): v for k, v in (data.get("auto_reorder") or {}).items() if isinstance(v, dict)}
         self.opened_after = {str(k): v for k, v in (data.get("opened_after") or {}).items() if isinstance(v, dict) and v.get("days")}
+        self.storage_days = {str(k): v for k, v in (data.get("storage_days") or {}).items() if isinstance(v, dict)}
 
     def _data(self) -> dict[str, Any]:
         return {
@@ -156,6 +161,7 @@ class Stock:
             "recent": self.recent,
             "auto_reorder": self.auto_reorder,
             "opened_after": self.opened_after,
+            "storage_days": self.storage_days,
         }
 
     def set_opened_after(self, content: str, days: int | None, source: str = "manual") -> None:
@@ -166,6 +172,22 @@ class Stock:
         else:
             self.opened_after.pop(key, None)
         self._save()
+
+    def set_storage_days(self, content: str, days: dict[str, int | None]) -> None:
+        """5.8 (#158): own storage time of exactly this product per place kind (fridge, freezer, pantry)."""
+        key = product_key(content)
+        values = {place: int(n) for place, n in days.items() if place in STORAGE_PLACES and n}
+        if values:
+            self.storage_days[key] = {"name": content.strip(), **values}
+        else:
+            self.storage_days.pop(key, None)
+        self._save()
+
+    def own_storage_days(self, content: str, place: str) -> int | None:
+        """Own storage time for a place kind; the 0 °C compartment uses the fridge value."""
+        own = self.storage_days.get(product_key(content)) or {}
+        value = own.get("fridge" if place == "zero" else place)
+        return int(value) if value else None
 
     def set_auto_reorder(self, content: str, enabled: bool) -> None:
         key = product_key(content)
@@ -618,6 +640,8 @@ def stock_overview(hass: HomeAssistant, minimums: dict[str, dict[str, Any]], sto
             product["auto"] = product["key"] in stock.auto_reorder
             if (after := stock.opened_after.get(product["key"])) is not None:
                 product["opened_after"] = int(after["days"])
+            if own := stock.storage_days.get(product["key"]):
+                product["storage_days"] = {k: own[k] for k in STORAGE_PLACES if own.get(k)}
         if stock is not None and stock.lists.get(product["key"]):
             product["list"] = stock.lists[product["key"]]  # own shopping list of the product
         product["low"] = product["min"] > 0 and product["count"] < product["min"]
@@ -1318,6 +1342,23 @@ async def ws_opened_after(hass: HomeAssistant, connection: websocket_api.ActiveC
 
 @websocket_api.websocket_command(
     {
+        vol.Required("type"): f"{DOMAIN}/storage_days",
+        vol.Required("content"): vol.All(str, vol.Length(min=1, max=255)),
+        **{vol.Optional(place): vol.Any(None, vol.All(int, vol.Range(min=0, max=3650))) for place in STORAGE_PLACES},
+    }
+)
+@websocket_api.async_response
+async def ws_storage_days(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Own storage time of one product per place kind (5.8, #158); 0/None clears a place."""
+    stock = await async_get_stock(hass)
+    current = dict(stock.storage_days.get(product_key(msg["content"])) or {})
+    current.update({place: msg[place] for place in STORAGE_PLACES if place in msg})
+    stock.set_storage_days(msg["content"], {place: current.get(place) for place in STORAGE_PLACES})
+    connection.send_result(msg["id"], {"products": stock_overview(hass, stock.minimums, stock)})
+
+
+@websocket_api.websocket_command(
+    {
         vol.Required("type"): f"{DOMAIN}/stock_code",
         vol.Optional("code", default=""): str,
         vol.Optional("content"): vol.All(str, vol.Length(min=1, max=255)),
@@ -1644,6 +1685,7 @@ def async_setup_stock_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_stock_min)
     websocket_api.async_register_command(hass, ws_auto_reorder)
     websocket_api.async_register_command(hass, ws_opened_after)
+    websocket_api.async_register_command(hass, ws_storage_days)
     websocket_api.async_register_command(hass, ws_pack_move)
     websocket_api.async_register_command(hass, ws_stock_code)
     websocket_api.async_register_command(hass, ws_stock_code_link)

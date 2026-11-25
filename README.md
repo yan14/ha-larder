@@ -33,6 +33,8 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 ## What's new
 
+> **5.8:** the **freezer** at a glance (quality instead of *expired*), a **short version** for every push and an **own storage time** per product (homemade jam).
+>
 > **5.7:** **"use within … after opening"** per product, read from the pack with 📷, German sources (cooked rice, eggs) and a weekly reminder of **opened items**.
 >
 > **5.6:** every value of the shelf-life table now names its **source** (USDA-FSIS, USDA FoodKeeper) – or says that it is an estimate –, several values corrected, and a **🔓 Opened** box on the start page.

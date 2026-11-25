@@ -44,11 +44,20 @@ blueprint:
       default: "09:00:00"
       selector:
         time:
+    short:
+      name: Short version
+      description: >
+        One short line per entry (only what and when), without container, amount and place – quick to read
+        on a phone. Kurzfassung: eine kurze Zeile pro Eintrag.
+      default: false
+      selector:
+        boolean:
 
 mode: single
 max_exceeded: silent
 
 variables:
+  short: !input short
   notify_action: !input notify_action
   voice_action: !input voice_action
   voice_data: !input voice_data
@@ -75,7 +84,7 @@ actions:
         - action: "{{ repeat.item }}"
           data:
             title: "{{ report.title }}"
-            message: "{{ report.summary }}"
+            message: "{{ report.summary_short | default(report.summary) if short else report.summary }}"
             data:
               url: /larder?view=stats
               clickAction: /larder?view=stats

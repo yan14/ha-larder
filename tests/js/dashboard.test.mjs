@@ -3845,3 +3845,37 @@ test("5.7: product view – 'use within … after opening' of exactly this produ
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/opened_after`), { type: `${D}/opened_after`, content: "Heinz Ketchup Zero", days: 56, source: "manual" });
   assert.equal($(el, '[data-role="opened-after"]').value, "56");
 });
+
+test("5.8: frozen – 'quality ↓' instead of expired, the freezer list, own storage time without packs", async () => {
+  const hass = makeHass(DOSES);
+  hass.states["date.d3_mhd"].attributes.storage = "freezer"; // Chili, expired 1 day
+  hass.entities["datetime.d3_eingelagert"] = { entity_id: "datetime.d3_eingelagert", device_id: "d3", platform: D, translation_key: "filled_at" };
+  hass.states["datetime.d3_eingelagert"] = { entity_id: "datetime.d3_eingelagert", state: "2026-03-01T10:00:00+00:00", attributes: {} };
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/product_history`) return { name: "Chili", summary: { count: 0 }, records: [], price_history: [], product: null, own: { opened_after: null, storage_days: { freezer: 120 } } };
+    if (msg.type === `${D}/storage_days`) {
+      hass.wsCalls.push(msg);
+      return { products: [] };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await go(el, "containers");
+  const badge = $(el, 'main .tile[data-id="d3"] .badge');
+  assert.match(badge.textContent, /Qualität ↓/);
+  assert.equal(badge.classList.contains("expired"), false);
+  await go(el, "more");
+  $(el, '[data-role="menu-freezer"]').click();
+  const list = $(el, '[data-role="freezer-list"]');
+  assert.match(list.textContent, /Chili.*eingefroren seit/);
+  el._closeDialog();
+  await el.openProduct("Chili");
+  const own = $(el, '[data-role="product-own"]');
+  assert.equal(own.querySelector('[data-place="freezer"]').value, "120");
+  const pantry = own.querySelector('[data-place="pantry"]');
+  pantry.value = "30";
+  pantry.dispatchEvent(new dom.window.Event("change"));
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/storage_days`), { type: `${D}/storage_days`, content: "Chili", pantry: 30 });
+});

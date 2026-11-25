@@ -169,6 +169,9 @@ const TEXT = {
     openedAfter: "🔓 Nach dem Öffnen verbrauchen innerhalb von",
     openedAfterUnit: "Tagen",
     openedAfterHint: "Steht auf der Packung (📷 liest es). Gilt nur für genau dieses Produkt und vor der Tabelle.",
+    storageDays: "📦 Eigene Lagerdauer (Tage)",
+    storagePlaces: { fridge: "Kühlschrank", freezer: "Gefrierschrank", pantry: "Vorrat" },
+    storageDaysHint: "Z. B. für selbstgemachte Marmelade. Gilt nur für genau dieses Produkt, vor der Tabelle; das 0-Grad-Fach nimmt den Kühlschrank-Wert.",
     stockLow: "zu wenig",
     stockNone: "keine mehr da",
     stockFailed: "Speichern fehlgeschlagen.",
@@ -346,6 +349,9 @@ const TEXT = {
     openedAfter: "🔓 Once opened, use within",
     openedAfterUnit: "days",
     openedAfterHint: "Printed on the pack (📷 reads it). Applies to exactly this product only, before the table.",
+    storageDays: "📦 Own storage time (days)",
+    storagePlaces: { fridge: "Fridge", freezer: "Freezer", pantry: "Pantry" },
+    storageDaysHint: "E.g. for homemade jam. Applies to exactly this product only, before the table; the 0 °C compartment uses the fridge value.",
     stockLow: "too few",
     stockNone: "none left",
     stockFailed: "Saving failed.",
@@ -1127,6 +1133,73 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     return box;
   };
 
+  /**
+   * The own values of exactly one product (5.7/5.8): "use within … after opening" and the own storage time.
+   * In the product view – also for things only in containers (e.g. homemade jam).
+   */
+  proto._ownValues = function _ownValues(p, onChanged) {
+    const hass = this._hass;
+    const t = itemTexts(hass);
+    const out = [];
+    // 5.7 (#154): "use within … after opening" of exactly this product (by hand or 📷 from the pack)
+    const after = el("input");
+    after.type = "number";
+    after.min = "0";
+    after.max = "1095";
+    after.inputMode = "numeric";
+    after.placeholder = "–";
+    after.dataset.role = "opened-after";
+    after.value = p.opened_after ? String(p.opened_after) : "";
+    let fromLabel = false;
+    after.addEventListener("input", () => (fromLabel = false)); // typed by hand
+    after.addEventListener("change", async () => {
+      const days = Math.max(0, Math.min(1095, parseInt(after.value, 10) || 0));
+      try {
+        const res = await hass.callWS({ type: `${DOMAIN}/opened_after`, content: p.name, days: days || null, source: fromLabel ? "label" : "manual" });
+        fromLabel = false;
+        onChanged(res);
+      } catch {
+        this.showNotice(t.stockFailed);
+      }
+    });
+    const wrap = el("label", "stockmin openedafter", t.openedAfter);
+    wrap.append(after, el("span", "", t.openedAfterUnit));
+    const photo = this._datePhotoButton ? this._datePhotoButton(after, null, "opened") : null;
+    if (photo) {
+      photo.querySelector("button").addEventListener("click", () => (fromLabel = true));
+      wrap.append(photo);
+    }
+    out.push(wrap, el("p", "hint", t.openedAfterHint));
+    // 5.8 (#158): own storage time of exactly this product per place kind (e.g. homemade jam)
+    const own = el("div", "ownstorage");
+    own.dataset.role = "storage-days";
+    own.append(el("span", "", t.storageDays));
+    for (const place of ["fridge", "freezer", "pantry"]) {
+      const field = el("input");
+      field.type = "number";
+      field.min = "0";
+      field.max = "3650";
+      field.inputMode = "numeric";
+      field.placeholder = "–";
+      field.dataset.place = place;
+      field.value = p.storage_days && p.storage_days[place] ? String(p.storage_days[place]) : "";
+      field.addEventListener("change", async () => {
+        const days = Math.max(0, Math.min(3650, parseInt(field.value, 10) || 0));
+        try {
+          const res = await hass.callWS({ type: `${DOMAIN}/storage_days`, content: p.name, [place]: days || null });
+          onChanged(res);
+        } catch {
+          this.showNotice(t.stockFailed);
+        }
+      });
+      const label = el("label", "stockmin", t.storagePlaces[place]);
+      label.append(field);
+      own.append(label);
+    }
+    out.push(own, el("p", "hint", t.storageDaysHint));
+    return out;
+  };
+
   /** One product of the stock (stock view and, since 5.5, the product view). `onChanged(res)` after a change. */
   proto._stockItem = function _stockItem(p, onChanged, inProduct = false) {
     const hass = this._hass;
@@ -1210,37 +1283,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       line.dataset.role = "stock-price-history";
       item.append(line);
     }
-    if (inProduct && scopeOfKind(p.kind) === "food") {
-      // 5.7 (#154): "use within … after opening" of exactly this product (by hand or 📷 from the pack)
-      const after = el("input");
-      after.type = "number";
-      after.min = "0";
-      after.max = "1095";
-      after.inputMode = "numeric";
-      after.placeholder = "–";
-      after.dataset.role = "opened-after";
-      after.value = p.opened_after ? String(p.opened_after) : "";
-      let fromLabel = false;
-      after.addEventListener("input", () => (fromLabel = false)); // typed by hand
-      after.addEventListener("change", async () => {
-        const days = Math.max(0, Math.min(1095, parseInt(after.value, 10) || 0));
-        try {
-          const res = await hass.callWS({ type: `${DOMAIN}/opened_after`, content: p.name, days: days || null, source: fromLabel ? "label" : "manual" });
-          fromLabel = false;
-          onChanged(res);
-        } catch {
-          this.showNotice(t.stockFailed);
-        }
-      });
-      const wrap = el("label", "stockmin openedafter", t.openedAfter);
-      wrap.append(after, el("span", "", t.openedAfterUnit));
-      const photo = this._datePhotoButton ? this._datePhotoButton(after, null, "opened") : null;
-      if (photo) {
-        photo.querySelector("button").addEventListener("click", () => (fromLabel = true));
-        wrap.append(photo);
-      }
-      item.append(wrap, el("p", "hint", t.openedAfterHint));
-    }
+    if (inProduct && scopeOfKind(p.kind) === "food") item.append(...this._ownValues(p, onChanged));
     if (!inProduct) item.append(this._historyLink(p.name, "stock-history"));
     const places = el("div", "places");
     for (const place of p.places) {

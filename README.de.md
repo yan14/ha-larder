@@ -33,6 +33,8 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 
 ## Was ist neu?
 
+> **5.8:** der **Gefrierschrank** im Blick (Qualität statt *abgelaufen*), eine **Kurzfassung** für jede Push und eine **eigene Lagerdauer** pro Produkt (selbstgemachte Marmelade).
+>
 > **5.7:** **„nach dem Öffnen … verbrauchen“** pro Produkt, mit 📷 von der Packung gelesen, deutsche Quellen (gekochter Reis, Eier) und eine wöchentliche Erinnerung an **Angebrochenes**.
 >
 > **5.6:** jeder Wert der Haltbarkeitstabelle nennt jetzt seine **Quelle** (USDA-FSIS, USDA FoodKeeper) – oder sagt, dass er geschätzt ist –, einige Werte korrigiert, und ein Kasten **🔓 Angebrochen** auf der Startseite.

@@ -10,8 +10,12 @@ import voluptuous as vol
 
 from homeassistant.components.date import DateEntity
 from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
-from homeassistant.core import HomeAssistant, SupportsResponse
-from homeassistant.helpers import config_validation as cv
+from homeassistant.core import Event, HomeAssistant, SupportsResponse, callback
+from homeassistant.helpers import (
+    area_registry as ar,
+    config_validation as cv,
+    device_registry as dr,
+)
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
 from homeassistant.helpers.entity_platform import (
     AddEntitiesCallback,
@@ -19,6 +23,7 @@ from homeassistant.helpers.entity_platform import (
 )
 from homeassistant.util import dt as dt_util
 
+from . import shelf_life
 from .const import (
     DOMAIN,
     SERVICE_CLEAR_BEST_BEFORE,
@@ -95,6 +100,16 @@ class LarderBestBefore(DateEntity, LarderResettable):
                 self.hass, SIGNAL_SETTINGS_CHANGED, self.async_write_ha_state
             )
         )
+
+        @callback
+        def _place_changed(event: Event) -> None:
+            # moved into or out of the freezer, or an area renamed/relabelled: the attribute `storage` follows
+            if event.event_type == dr.EVENT_DEVICE_REGISTRY_UPDATED and event.data.get("device_id") != self.device_entry_id():
+                return
+            self.async_write_ha_state()
+
+        self.async_on_remove(self.hass.bus.async_listen(dr.EVENT_DEVICE_REGISTRY_UPDATED, _place_changed))
+        self.async_on_remove(self.hass.bus.async_listen(ar.EVENT_AREA_REGISTRY_UPDATED, _place_changed))
         if (last := await self._async_last_state()) is None:
             return
         try:
@@ -105,11 +120,26 @@ class LarderBestBefore(DateEntity, LarderResettable):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         estimator = self.hass.data.get(DOMAIN, {}).get(DATA_ESTIMATOR)
-        return {
+        attrs = {
             "estimates": bool(estimator and estimator.enabled),
             # for the dashboards: medicines and household items warn earlier
             "soon_days": soon_days(self.hass, self._kind) if estimator else SOON_DAYS,
         }
+        # 5.8 (#156): in the freezer the date is the end of the best quality, not of safety
+        if self._storage_kind() == shelf_life.FREEZER:
+            attrs["storage"] = shelf_life.FREEZER
+        return attrs
+
+    def device_entry_id(self) -> str | None:
+        return self.registry_entry.device_id if self.registry_entry else None
+
+    def _storage_kind(self) -> str | None:
+        try:
+            context = storage_context(self.hass, self._cc)
+        except Exception:  # noqa: BLE001 - never break the state because of the area
+            return None
+        storage = shelf_life.classify_storage(context.area_name, None, context.label_texts, context.storage_hint)
+        return storage.key if storage else None
 
     async def async_set_value(self, value: date) -> None:
         if self._pending is not None:
@@ -154,6 +184,42 @@ class LarderBestBefore(DateEntity, LarderResettable):
         if content is None or not (content.native_value or "").strip() or content.product.get("opened"):
             return
         await content.async_set_product({"opened": dt_util.now().date().isoformat()}, replace=False)
+
+    async def _own_storage(self, content_state: Any, filled: date, apply: bool) -> dict[str, Any] | None:
+        """5.8 (#158): the own storage time of exactly this product at this place kind comes first."""
+        from .stock import async_get_stock  # noqa: PLC0415
+
+        content = (
+            content_state.state
+            if content_state is not None and content_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE)
+            else ""
+        ).strip()
+        place = self._storage_kind() if content else None
+        if not place:
+            return None
+        days = (await async_get_stock(self.hass)).own_storage_days(content, place)
+        if not days:
+            return None
+        de = (self.hass.config.language or "en").lower().startswith("de")
+        where = shelf_life.STORAGE_LABELS["de" if de else "en"][place]
+        when = format_duration(days, "de" if de else "en")
+        tip = f"Eigene Lagerdauer für {content}: {when} ({where})." if de else f"Own storage time for {content}: {when} ({where})."
+        best = estimate_best_before(filled, days)
+        if apply:
+            self._pending = None  # an own value is not learned again
+            self._attr_native_value = best
+            self.async_write_ha_state()
+        return {
+            "status": "estimated",
+            "best_before": best.isoformat(),
+            "days": days,
+            "tip": tip,
+            "cached": False,
+            "source": "product",
+            "origin": None,
+            "basis": f"{content} · {where}",
+            "applied": apply,
+        }
 
     async def async_opened_days(self) -> tuple[int, dict[str, Any]]:
         """Days after opening for the content of this container and where they come from."""
@@ -215,6 +281,9 @@ class LarderBestBefore(DateEntity, LarderResettable):
             content_state = self._sibling_state("text", "content")
             vacuum_state = self._sibling_state("switch", "vacuum")
             filled = self._filled_date()
+            own = await self._own_storage(content_state, filled, apply)
+            if own is not None:
+                return own
             estimate = await estimator.async_estimate(
                 content=content_state.state
                 if content_state is not None
