@@ -33,6 +33,8 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 
 ## Was ist neu?
 
+> **5.5:** Haltbarkeit **nach dem Öffnen** nach USDA FoodKeeper (Ketchup 6 Monate, Mayonnaise 2), eine **Produktansicht** für Bestand, Orte, Mindestbestand und Verlauf, ein Reiter **Fächer**, Auswahl per langem Drücken, eine Monatskachel und ein Reiter **Woche** für den Wochenplan.
+>
 > **5.4:** alles für die **Geschwindigkeit** – Dashboard und Karten zeichnen nur neu, wenn sich etwas für Larder geändert hat, die Übersichts-Sensoren werden zusammen berechnet und Suchen laufen über einen Index.
 >
 > **5.3:** [Fächer und NFC-Tags](docs/de/scanning.md#fächer) ganz einfach – neuen Tag scannen und Larder fragt, wofür er ist, **🏷 Fächer & Tags** unter Mehr, 🏷 neben jedem Fach. **5.3.1:** Der Strichcode-Dialog öffnet die Karte einer Packung und füllt in eine (neue) Dose um; NFC-Sticker beschreiben ist ein eigener Schritt mit *Nochmal*.

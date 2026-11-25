@@ -884,7 +884,6 @@ async def async_open_pack(hass: HomeAssistant, cc: str, area_id: str | None = No
     best_entity = target.runtime_data.resettable["best_before"]
     printed: date | None = best_entity.native_value
     best: date | None = None
-    estimator = await async_get_estimator(hass)
     if kind in NON_FOOD_KINDS:
         # cosmetics and medicines: the period after opening of the product (PAO, months), else the printed date
         months = float(product.get("pao") or 0)
@@ -897,19 +896,12 @@ async def async_open_pack(hass: HomeAssistant, cc: str, area_id: str | None = No
             best = printed
         device = device_of(hass, opened_cc)
         return {"device_id": device.id if device else None, "best_before": best.isoformat() if best else None, "split": opened_cc != cc}
-    if estimator.enabled:
-        try:
-            await best_entity.async_estimate_best_before(overwrite=True)
-            best = best_entity.native_value
-        except HomeAssistantError:
-            _LOGGER.debug("MHD nach dem Öffnen nicht geschätzt", exc_info=True)
-    if best is None or best == printed:
-        # nothing better known: shelf life after opening from the settings
-        await best_entity.async_set_value(dt_util.now().date() + timedelta(days=estimator.opened_days))
-        best = best_entity.native_value
-    if printed is not None and best is not None and printed < best:
-        await best_entity.async_set_value(printed)
+    # 5.5: shelf life after opening of the product (table from USDA FoodKeeper → AI → setting)
+    days, _info = await best_entity.async_opened_days()
+    best = dt_util.now().date() + timedelta(days=days)
+    if printed is not None and printed < best:
         best = printed
+    await best_entity.async_set_value(best)
     device = device_of(hass, opened_cc)
     return {"device_id": device.id if device else None, "best_before": best.isoformat() if best else None, "split": opened_cc != cc}
 

@@ -12,7 +12,7 @@ Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** (bei ei
 |---|---|---|
 | MHD-Schätzung | Nur Tabelle | Aus, nur Tabelle, Tabelle sonst KI, nur KI, siehe [MHD-Schätzung](best-before.md#mhd-schätzung) |
 | KI-Aufgabe | Standard von HA | Welche *AI-Task*-Entität genutzt wird, nur nötig bei mehreren |
-| Haltbarkeit nach dem Öffnen | 3 Tage | Der Button **Geöffnet** kürzt das MHD auf so viele Tage |
+| Haltbarkeit nach dem Öffnen | 3 Tage | Gilt für **Geöffnet** / **Anbrechen** nur, wenn weder die Tabelle (Werte nach dem Öffnen von USDA FoodKeeper) noch die KI den Inhalt an diesem Ort kennt |
 | Haltbarkeit nach dem Auftauen | 2 Tage | Dasselbe für den Button **Aufgetaut** |
 | Zeitraum für Rezeptideen | 3 Tage | Dosen, die in so vielen Tagen ablaufen, gehen in die [Rezeptideen](kitchen.md#rezeptideen) (0 = nur heute) |
 | „Läuft bald ab“ ab | 3 Tage | Ab wann eine Dose als „läuft bald ab“ gilt: Hinweis und Filter in den Dashboards, `status` des Sensors, Vorgabe von `larder.get_expiring` |

@@ -259,7 +259,7 @@
           "vacuum_default": "Neue Dosen starten mit eingeschaltetem oder ausgeschaltetem Schalter „Vakuum“. Bestehende Dosen behalten ihren Wert. Schalte es aus, wenn die meisten deiner Boxen nicht vakuumiert sind.",
           "estimate_mode": "Zeigt im Dashboard den Button „MHD schätzen“, außer bei „Aus“.",
           "ai_task_entity": "Nur nötig, wenn du mehrere KI-Dienste eingerichtet hast und eine KI-Stufe gewählt ist.",
-          "opened_days": "Der Button „Geöffnet“ im Dashboard kürzt das MHD auf höchstens so viele Tage ab heute.",
+          "opened_days": "Nur wenn weder die Tabelle (Werte nach dem Öffnen von USDA FoodKeeper) noch die KI den Inhalt am Lagerort kennt: „Geöffnet“ und „Anbrechen“ kürzen das MHD auf höchstens so viele Tage ab heute.",
           "thawed_days": "Der Button „Aufgetaut“ im Dashboard kürzt das MHD auf höchstens so viele Tage ab heute. Aufgetautes nicht wieder einfrieren.",
           "calendar_entity": "Schreibt das MHD jeder Dose als Ganztags-Termin in diesen Kalender (anlegen, verschieben, löschen). Der Kalender muss Termine anlegen und löschen können, z. B. Google oder „Lokaler Kalender“ (nicht CalDAV, das nicht löschen kann). Leer lassen = aus.",
           "nfc_notify": "Scannt jemand einen verknüpften Tag, bekommt sein Handy (Companion-App) eine Benachrichtigung. Antippen öffnet die Dose im Dashboard.",
@@ -348,11 +348,11 @@
     },
     "mark_opened": {
       "name": "Als geöffnet markieren",
-      "description": "Kürzt das MHD auf höchstens die angegebene Zahl Tage ab heute. Ohne MHD wird es gesetzt. Standard ist die Einstellung „Haltbarkeit nach dem Öffnen“.",
+      "description": "Kürzt das MHD auf höchstens die angegebene Zahl Tage ab heute. Ohne MHD wird es gesetzt. Ohne Angabe: die Haltbarkeit des Inhalts nach dem Öffnen (Tabelle nach USDA FoodKeeper, sonst KI, sonst die Einstellung „Haltbarkeit nach dem Öffnen“).",
       "fields": {
         "days": {
           "name": "Tage",
-          "description": "Tage ab heute (leer = Wert aus den Einstellungen)."
+          "description": "Tage ab heute (leer = Haltbarkeit des Inhalts nach dem Öffnen)."
         }
       }
     },

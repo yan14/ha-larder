@@ -29,7 +29,9 @@ export const STYLE = `
   .quick button { font: inherit; font-size: 15px; padding: 12px 10px; border-radius: 12px; cursor: pointer; text-align: center;
     background: var(--card-background-color, #fff); color: var(--primary-text-color); border: 1px solid var(--divider-color); }
   .groupbar { display: flex; gap: 0; margin: 0 0 12px; border: 1px solid var(--divider-color, #ddd); border-radius: 18px; overflow: hidden; }
-  .groupbar button { flex: 1; border: 0; background: none; padding: 8px 4px; font: inherit; font-size: 14px; color: inherit; cursor: pointer; }
+  .groupbar button { flex: 1; border: 0; background: none; padding: 8px 2px; font: inherit; font-size: 13px; white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: inherit; cursor: pointer; }
+  .monthtile { display: block; width: 100%; text-align: left; margin: 12px 0; padding: 10px 12px; border-radius: 12px; border: 1px solid var(--divider-color, #ddd); background: var(--card-background-color, #fff); color: inherit; font: inherit; cursor: pointer; }
+  .monthtile.warn { border-color: var(--warning-color, #ffa600); }
   .groupbar button.active { background: var(--primary-color); color: var(--text-primary-color, #fff); }
   nav button .ico { position: relative; }
   .navbadge { position: absolute; top: -4px; right: -12px; min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box;

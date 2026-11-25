@@ -62,10 +62,11 @@ export const CATEGORY_ICONS = {
 
 // 5.0 (#117): the bar – Start · Larder · Shopping · Recipes · More; areas and categories are groupings of Larder
 const VIEWS = ["start", "containers", "shopping", "recipes", "more"];
-const GROUP_VIEWS = ["containers", "areas", "categories"];
-const ALL_VIEWS = [...VIEWS, "areas", "categories", "estimates", "stats", "stock", "stocktake", "supply"];
+const LONG_PRESS_MS = 500;
+const GROUP_VIEWS = ["containers", "areas", "compartments", "categories"];
+const ALL_VIEWS = [...VIEWS, "areas", "compartments", "categories", "estimates", "stats", "stock", "stocktake", "supply"];
 const MODES = ["grid", "list", "cards"];
-const VIEW_ICONS = { start: "🏠", containers: "🥫", shopping: "🛒", recipes: "📖", more: "⋯", areas: "📍", categories: "🏷️" };
+const VIEW_ICONS = { start: "🏠", containers: "🥫", shopping: "🛒", recipes: "📖", more: "⋯", areas: "📍", compartments: "🗄️", categories: "🏷️" };
 
 /** Recognise the QR label of a compartment (…/larder?place=<area>&compartment=<compartment>). */
 export function placeFromCode(code) {
@@ -247,7 +248,7 @@ function saveOptions(opts) {
 const { STYLE } = await import(`./larder-dashboard-style.js${VERSION_QUERY}`);
 
 /** Views that show either food or household items. */
-const SCOPED_VIEWS = ["containers", "areas", "categories"];
+const SCOPED_VIEWS = ["containers", "areas", "compartments", "categories"];
 const SCOPE_LABELS = ["haushalt", "household", "lebensmittel", "food", "apotheke", "pharmacy", "hausapotheke", "medicine"];
 
 /** "Larder: Household" / "Larder: Food" (and the German names): extra labels that only set the scope. */
@@ -276,6 +277,7 @@ export class LarderDashboard extends HTMLElement {
     this._openRecipe = null;
     this._photo = null; // null, "busy" or { error }
     this._selecting = false; // selection mode in the storage view
+    this._recipeTab = "recipes"; // 5.5: Recipes · Week
     this._selected = new Set(); // device IDs
     this._scan = null; // running series scan
     this._chosenFor = null; // device IDs the current suggestions come from
@@ -447,6 +449,7 @@ export class LarderDashboard extends HTMLElement {
       this.loadDataGaps();
       this.loadSettings();
       this.loadShopLists();
+      this.loadMonth();
       this._handleViewParam();
       this._subscribeScans();
     }
@@ -595,6 +598,7 @@ export class LarderDashboard extends HTMLElement {
     this._view = view;
     if (view === "stats") this.loadStats();
     if (view === "stock") this.loadStock();
+    if (view === "compartments") this.loadPlaceLinks();
     if (view === "supply") this.loadSupply();
     if (view === "shopping") this.loadShopping();
     if (view === "containers" && this._opts.scope === "voucher") this.loadVoucherStats();
@@ -607,6 +611,7 @@ export class LarderDashboard extends HTMLElement {
       this.loadRecalls();
       this.loadReplaceDue();
       this.loadDataGaps();
+      this.loadMonth();
     }
     if (view === "stats") this.loadReport();
     const { soon, ...rest } = filter || {};
@@ -753,6 +758,9 @@ export class LarderDashboard extends HTMLElement {
       this._view === "more" ? [this.canBatch(), this.canReadReceipt(), this._dataGaps] : null,
       this._view === "stocktake" ? this.stocktakeSig() : null,
       this._view === "areas" ? this._areaSig() : null,
+      this._view === "compartments" ? this._placeLinks : null,
+      this._view === "start" ? this._month : null,
+      this._view === "recipes" ? this._recipeTab : null,
     ]);
     if (sig === this._sig) return;
     this._sig = sig;
@@ -765,6 +773,9 @@ export class LarderDashboard extends HTMLElement {
         break;
       case "areas":
         this._renderAreas(t, rows);
+        break;
+      case "compartments":
+        this._renderCompartments(t, rows);
         break;
       case "categories":
         this._renderCategories(t, rows);
@@ -951,7 +962,8 @@ export class LarderDashboard extends HTMLElement {
     if (!empty && row.opened) tile.append(el("span", "kcal opened", t.openedSince(fmtShort(row.opened, this._lang()))));
     if (!empty && row.allergens.length) tile.append(el("span", "allergen", `⚠ ${row.allergens.join(", ")}`));
     this._markSelected(tile, row);
-    tile.addEventListener("click", () => this.openContainer(row));
+    this._longPress(tile, row);
+    tile.addEventListener("click", () => this._pressed(tile) || this.openContainer(row));
     return tile;
   }
 
@@ -966,8 +978,41 @@ export class LarderDashboard extends HTMLElement {
     btn.append(el("span", "ico", CATEGORY_ICONS[row.category] || CATEGORY_ICONS.other), text);
     if (!empty && row.days !== null) btn.append(el("span", `badge ${dayClass(row)}`, daysLabel(t, row.days)));
     this._markSelected(btn, row);
-    btn.addEventListener("click", () => this.openContainer(row));
+    this._longPress(btn, row);
+    btn.addEventListener("click", () => this._pressed(btn) || this.openContainer(row));
     return btn;
+  }
+
+  /** Long press on a tile in the Larder list starts the selection with it (5.5, #143; before only ☑). */
+  _longPress(node, row) {
+    if (this._view !== "containers" || this._selecting) return;
+    let timer = null;
+    const cancel = () => {
+      clearTimeout(timer);
+      timer = null;
+    };
+    const fire = () => {
+      cancel();
+      node._longPressed = true;
+      this.startSelecting([row.id]);
+    };
+    node.addEventListener("pointerdown", (ev) => {
+      if (ev.button !== undefined && ev.button !== 0) return;
+      cancel();
+      timer = setTimeout(fire, LONG_PRESS_MS);
+    });
+    for (const type of ["pointerup", "pointerleave", "pointercancel"]) node.addEventListener(type, cancel);
+    node.addEventListener("contextmenu", (ev) => {
+      ev.preventDefault(); // long press on phones, right click on computers
+      fire();
+    });
+  }
+
+  /** True once after a long press, so that the following click does not open the container. */
+  _pressed(node) {
+    const pressed = !!node._longPressed;
+    node._longPressed = false;
+    return pressed;
   }
 
   _markSelected(node, row) {
@@ -1733,6 +1778,78 @@ export class LarderDashboard extends HTMLElement {
     return [areas, this._larderLabelIds(), this._labelNames || null];
   }
 
+  /** Which compartments have an NFC tag (for 🏷 in the compartments tab). */
+  async loadPlaceLinks() {
+    try {
+      this._placeLinks = ((await this._hass.callWS({ type: `${DOMAIN}/place_tags` })) || {}).links || [];
+    } catch {
+      this._placeLinks = [];
+    }
+    this._sig = "";
+    this._update();
+  }
+
+  /** Compartments tab (5.5, #143): every compartment with its containers, 🏷 if it has an NFC tag. */
+  _renderCompartments(t, rows) {
+    const groups = new Map();
+    let loose = 0;
+    const keyOf = (areaId, comp) => `${areaId || ""}|${String(comp || "").trim().toLowerCase()}`;
+    for (const row of rows) {
+      if (!row.compartment) {
+        loose += 1;
+        continue;
+      }
+      const key = keyOf(row.areaId, row.compartment);
+      const g = groups.get(key) || { areaId: row.areaId || "", compartment: row.compartment, name: [row.areaName || t.noArea, row.compartment].join(" · "), count: 0, soon: 0, tag: false };
+      g.count += 1;
+      if (isSoon(row)) g.soon += 1;
+      groups.set(key, g);
+    }
+    for (const link of this._placeLinks || []) {
+      const g = groups.get(keyOf(link.area_id, link.compartment));
+      if (g) g.tag = true;
+    }
+    const lang = this._lang();
+    const list = [...groups.values()].sort((a, b) => a.name.localeCompare(b.name, lang, { numeric: true, sensitivity: "base" }));
+    const frag = document.createDocumentFragment();
+    frag.append(this._scopeSwitch(t));
+    const bar = el("div", "bar");
+    const manage = el("button", "", `🏷 ${t.menuPlaces}`);
+    manage.type = "button";
+    manage.dataset.role = "compartments-manage";
+    manage.addEventListener("click", () => this.openPlacesOverview());
+    bar.append(el("span", "grow"), manage, this._modeButton(t));
+    frag.append(bar);
+    if (!list.length) frag.append(el("p", "note", t.compartmentsNone));
+    else {
+      const box = el("div", this._opts.mode === "grid" ? "tiles" : "list");
+      box.dataset.role = "compartments";
+      for (const g of list) {
+        const open = () => this.openPlace(g.areaId, g.compartment);
+        const sub = (this._opts.scope === "food" ? t.containersCount : t.itemsCount)(g.count);
+        const icon = g.tag ? "🏷" : "🗄️";
+        let node;
+        if (this._opts.mode === "grid") {
+          node = this._groupTile(icon, g.name, sub, g.soon ? t.soonCount(g.soon) : "", open);
+        } else {
+          node = el("button", "row");
+          node.type = "button";
+          const text = el("span", "text");
+          text.append(el("span", "name", g.name), el("span", "sub", sub));
+          node.append(el("span", "ico", icon), text);
+          if (g.soon) node.append(el("span", "badge soon", t.soonCount(g.soon)));
+          node.addEventListener("click", open);
+        }
+        node.dataset.compartment = g.compartment;
+        node.dataset.tag = g.tag ? "1" : "0";
+        box.append(node);
+      }
+      frag.append(box);
+    }
+    if (loose) frag.append(el("p", "note", t.compartmentsLoose(loose)));
+    this._main.replaceChildren(frag);
+  }
+
   _renderAreas(t, rows) {
     const groups = new Map();
     for (const row of rows) {
@@ -2173,6 +2290,8 @@ export class LarderDashboard extends HTMLElement {
       if (other.bought) frag.append(other.bought);
       if (!other.soon.length && !other.low && !other.bought && !other.replace) frag.append(el("p", "lead", { pharmacy: t.pharmacyFine, voucher: t.voucherFine }[other.scope] || t.householdFine));
     }
+    const month = this._monthTile(t);
+    if (month) frag.append(month);
     const care = this._dataCareBox();
     if (care) frag.append(care);
     const help = el("div", "help");
@@ -2186,6 +2305,38 @@ export class LarderDashboard extends HTMLElement {
   }
 
   /** 5.0 (#117): the frequent actions at the top of the start page: scan, put away, receipt, recipe idea. */
+  /** This month so far, for the small tile on the start page (5.5, #144). */
+  async loadMonth() {
+    const hass = this._hass;
+    if (!hass || !hass.callWS) return;
+    const now = new Date();
+    const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    try {
+      const res = await hass.callWS({ type: "call_service", domain: DOMAIN, service: "get_monthly_report", service_data: { month }, return_response: true });
+      this._month = (res && res.response) || null;
+    } catch {
+      this._month = null;
+    }
+    this._sig = "";
+    this._update();
+  }
+
+  /** "November: 2 thrown away, about €4" → statistics. Only once something happened this month. */
+  _monthTile(t) {
+    const r = this._month;
+    if (!r || r.empty || !r.label || !(r.eaten || r.thrown)) return null;
+    const de = this._lang().startsWith("de");
+    const name = String(r.label).split(" ")[0];
+    const text = r.thrown
+      ? t.monthThrown(name, r.thrown, r.thrown_value ? money(r.thrown_value, de) : null)
+      : t.monthNoWaste(name, r.eaten);
+    const tile = el("button", `monthtile${r.thrown ? " warn" : ""}`, `📊 ${text}`);
+    tile.type = "button";
+    tile.dataset.role = "month-tile";
+    tile.addEventListener("click", () => this.setView("stats"));
+    return tile;
+  }
+
   _quickActions(t) {
     const hass = this._hass;
     const box = el("div", "quick");
@@ -2433,8 +2584,47 @@ export class LarderDashboard extends HTMLElement {
     return node;
   }
 
-  _renderRecipes(t) {
+  /** Recipes · Week (5.5, #144): the meal plan and the week suggestion get a tab of their own. */
+  _recipeTabs(t) {
+    const bar = el("div", "groupbar");
+    bar.setAttribute("role", "tablist");
+    bar.dataset.role = "recipe-tabs";
+    for (const [tab, label] of [["recipes", `📖 ${t.views.recipes}`], ["week", `📅 ${t.weekTab}`]]) {
+      const btn = el("button", tab === this._recipeTab ? "active" : "", label);
+      btn.type = "button";
+      btn.dataset.tab = tab;
+      btn.setAttribute("role", "tab");
+      btn.setAttribute("aria-selected", String(tab === this._recipeTab));
+      btn.addEventListener("click", () => {
+        this._recipeTab = tab;
+        if (tab === "week") this.loadPlans();
+        this._sig = "";
+        this._update();
+      });
+      bar.append(btn);
+    }
+    return bar;
+  }
+
+  _renderWeek(t) {
     const frag = document.createDocumentFragment();
+    frag.append(this._recipeTabs(t));
+    const planned = this._plannedBox(t, true);
+    if (planned) frag.append(planned);
+    else frag.append(el("p", "note", t.weekNone));
+    const week = el("div", "bar week");
+    week.append(this._weekButton());
+    frag.append(week);
+    this._main.replaceChildren(frag);
+  }
+
+  _renderRecipes(t) {
+    if (this._recipeTab === "week") {
+      this._renderWeek(t);
+      return;
+    }
+    const frag = document.createDocumentFragment();
+    frag.append(this._recipeTabs(t));
     const bar = el("div", "bar");
     bar.append(
       this._select(
@@ -2478,11 +2668,12 @@ export class LarderDashboard extends HTMLElement {
       bar.append(add);
     }
     frag.append(bar);
-    const planned = this._plannedBox(t, true);
-    if (planned) frag.append(planned);
-    const week = el("div", "bar week");
-    week.append(this._weekButton());
-    frag.append(week);
+    const planned = this._plannedBox(t, false);
+    if (planned) {
+      // the next days stay visible here, everything else is under Week
+      planned.dataset.role = "planned-next";
+      frag.append(planned);
+    }
     const ai = el("div", "bar ai");
     if (this._canGenerate()) {
       const period = this._select(

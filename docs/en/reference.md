@@ -12,7 +12,7 @@ Settings → Devices & services → **Larder** → **Configure** (on any contain
 |---|---|---|
 | Best-before estimate | Table only | Off, table only, table otherwise AI, AI only, see [Best-before estimate](best-before.md#best-before-estimate) |
 | AI task | HA default | Which *AI Task* entity to use, only needed if you have several |
-| Shelf life after opening | 3 days | The **Opened** button shortens the best-before date to this many days |
+| Shelf life after opening | 3 days | Used by **Opened** / **Open** only when neither the table (USDA FoodKeeper values after opening) nor the AI knows the content at that place |
 | Time after thawing | 2 days | The same for the **Thawed** button |
 | Period for recipe ideas | 3 days | Containers that expire within this many days are used for [recipe ideas](kitchen.md#recipe-ideas) (0 = today only) |
 | "Expiring soon" from | 3 days | When a container counts as expiring soon: hint and filter in the dashboards, sensor `status`, default of `larder.get_expiring` |

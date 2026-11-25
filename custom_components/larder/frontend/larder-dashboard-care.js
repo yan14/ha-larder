@@ -39,6 +39,9 @@ const TEXT = {
     open: "Anbrechen",
     opened: (date) => `Angebrochen, MHD jetzt ${date}.`,
     openFailed: "Anbrechen fehlgeschlagen.",
+    openTransferAsk: "In eine Dose umfüllen? Inhalt, MHD und Nährwerte gehen mit.",
+    openTransfer: "🥫 In Dose umfüllen",
+    openKeep: "In der Packung lassen",
     relocateTitle: "Dose woanders",
     placeEmpty: "Hier liegt laut Larder nichts.",
     placeTake: "−1",
@@ -121,6 +124,9 @@ const TEXT = {
     open: "Open",
     opened: (date) => `Opened, best before now ${date}.`,
     openFailed: "Opening failed.",
+    openTransferAsk: "Transfer into a container? Contents, date and nutrition go along.",
+    openTransfer: "🥫 Transfer into a container",
+    openKeep: "Keep it in the pack",
     relocateTitle: "Container elsewhere",
     placeEmpty: "According to Larder there is nothing here.",
     placeTake: "−1",
@@ -252,9 +258,24 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, scopeOfKind, DO
       try {
         const res = await hass.callWS({ type: `${DOMAIN}/pack_open`, device_id: deviceId, area_id: area.value || null, compartment: compartment.value.trim() });
         rememberCompartment(area.value, compartment.value);
+        const openedId = (res && res.device_id) || deviceId;
+        const done = t.opened(fmt(hass, res && res.best_before));
+        if (row.kind === "pack" && this.openTransferDialog) {
+          // 5.5 (#144): transferring into a container is offered right away
+          const keep = button("cancel", t.openKeep, () => {
+            this._closeDialog();
+            if (openedId !== deviceId) this.openDetail(openedId);
+          });
+          keep.dataset.role = "open-keep";
+          const transfer = button("submit", t.openTransfer, () => this.openTransferDialog(openedId));
+          transfer.dataset.role = "open-transfer";
+          this._form.replaceChildren(el("h2", "", row.content), el("p", "lead", done), el("p", "hint", t.openTransferAsk), buttonsRow(keep, transfer));
+          this._submit = null;
+          return;
+        }
         this._closeDialog();
-        this.showNotice(t.opened(fmt(hass, res && res.best_before)));
-        if (res && res.device_id && res.device_id !== deviceId) this.openDetail(res.device_id);
+        this.showNotice(done);
+        if (openedId !== deviceId) this.openDetail(openedId);
       } catch (err) {
         error.textContent = (err && err.message) || t.openFailed;
       } finally {

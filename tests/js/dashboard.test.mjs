@@ -76,6 +76,7 @@ function makeHass(doses, { admin = true, language = "de", ai = true, recipes = [
   hass.callWS = async (msg) => {
     if (msg.type === "config/label_registry/list") return [];
     if (msg.type === `${D}/nfc_tags`) return { by_device: {} };
+    if (msg.type === "call_service" && msg.service === "get_monthly_report") return { response: hass.month || null }; // background fetch, do not count
     hass.wsCalls.push(msg);
     if (msg.type === `${D}/recipes`) return { recipes: hass.recipes };
     if (msg.type === `${D}/recipe_save`) {
@@ -179,7 +180,7 @@ test("Start: greeting, only containers expiring soon, help buttons", async () =>
   // areas and categories are groupings of the Larder page
   await go(el, "areas");
   assert.equal($(el, 'nav button[data-view="containers"]').classList.contains("active"), true);
-  assert.deepEqual($$(el, ".groupbar button").map((b) => b.dataset.group), ["containers", "areas", "categories"]);
+  assert.deepEqual($$(el, ".groupbar button").map((b) => b.dataset.group), ["containers", "areas", "compartments", "categories"]);
   assert.equal($(el, '.groupbar button[data-group="areas"]').classList.contains("active"), true);
 });
 
@@ -1082,6 +1083,12 @@ test("weekly plan: schedule a recipe, start page shows the plan and thawing", as
   await flush();
   assert.deepEqual(sent[1], { type: `${D}/thawed`, device_ids: ["d1"] });
   await go(el, "recipes");
+  await flush();
+  await flush();
+  // 5.5: the next days stay in Recipes, the whole plan (with ✕) is under Week
+  assert.ok($(el, '[data-role="planned-next"]'));
+  assert.equal($(el, '[data-role="plan-delete"]'), null);
+  $(el, '[data-role="recipe-tabs"] [data-tab="week"]').click();
   await flush();
   await flush();
   $(el, '[data-role="plan-shopping"]').click();
@@ -2111,7 +2118,17 @@ test("open a pack: dialog with place, pack_open, then the opened pack", async ()
   form.querySelector("button.submit").click();
   await flush();
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/pack_open`), { type: `${D}/pack_open`, device_id: "d4", area_id: "kitchen", compartment: "Tür" });
-  assert.match($(el, ".notice").textContent, /Angebrochen, MHD jetzt 24\.12\.2026/);
+  // 5.5 (#144): transferring into a container is offered right away
+  assert.match(form.textContent, /Angebrochen, MHD jetzt 24\.12\.2026.*In eine Dose umfüllen/);
+  let transfer = null;
+  el.openTransferDialog = (id) => (transfer = id);
+  form.querySelector('[data-role="open-transfer"]').click();
+  assert.equal(transfer, "d2");
+  // or keep it in the pack: then the opened pack
+  el._classic.dispatchEvent(new dom.window.CustomEvent("larder-open-pack", { detail: { deviceId: "d4" } }));
+  form.querySelector("button.submit").click();
+  await flush();
+  form.querySelector('[data-role="open-keep"]').click();
   assert.equal(el._classic.getAttribute("only"), "d2");
 });
 
@@ -2561,6 +2578,9 @@ test("suggest a weekly plan: show days, remove, apply", async () => {
   const el = mount(hass);
   await flush();
   await go(el, "recipes");
+  $(el, '[data-role="recipe-tabs"] [data-tab="week"]').click();
+  await flush();
+  assert.match($(el, "main").textContent, /noch nichts geplant/);
   $(el, '[data-role="week-suggest"]').click();
   await flush();
   await flush();
@@ -3496,7 +3516,8 @@ test("5.1: product history, recently used in ＋, several packs and the date fro
   // product history
   await el.openProductHistory("schinken");
   const form = $(el, "form.dialog");
-  assert.equal(form.querySelector("h2").textContent, "Verlauf: Schinken");
+  assert.equal(form.querySelector("h2").textContent, "Schinken");
+  assert.equal(form.querySelector('[data-role="product-stock"]'), null); // nothing in stock: history only
   assert.match(form.querySelector('[data-role="history-facts"]').textContent, /3× im letzten Jahr.*hält im Schnitt 6 Tage.*2 von 4 weggeworfen.*4,98/);
   assert.match(form.querySelector('[data-role="history-hint"]').textContent, /kleinere Mengen/);
   assert.match(form.querySelector('[data-role="history-prices"]').textContent, /2,29 € → 2,49 €/);
@@ -3669,4 +3690,108 @@ test("5.3.2: shopping mode says why it is empty (error, missing list, lists read
   answer = { items: [], lists: [{ entity_id: "todo.a", name: "Einkaufsliste", open: 0 }, { entity_id: "todo.b", name: "Drogerie", open: 0, error: "kaputt" }], configured: true };
   await el.loadShopping();
   assert.deepEqual($$(el, '[data-role="shop-lists"] p').map((p) => p.textContent), ["Einkaufsliste: 0 offen", "Drogerie: nicht lesbar (kaputt)"]);
+});
+
+test("5.5: product view – places with −1, minimum stock, buy again and history in one place", async () => {
+  const hass = makeHass(DOSES);
+  const base = hass.callWS;
+  let count = 3;
+  const product = () => ({
+    key: "ketchup", name: "Ketchup", count, packs: count, kind: "pack", pack_size: 1, min: 2, auto: false, low: false,
+    brand: "Heinz", package: null, places: [{ device_id: "p1", area: "Keller", compartment: "Regal", count, best_before: "2027-05-01", opened: 0 }],
+    price: { price: 2.49, source: "own" }, value: 7.47, usage: null,
+  });
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/product_history`) {
+      hass.wsCalls.push(msg);
+      return { name: "Ketchup", summary: { count: 0 }, records: [], price_history: [], product: product() };
+    }
+    if (msg.type === `${D}/pack_take` || msg.type === `${D}/stock_min` || msg.type === `${D}/auto_reorder`) {
+      hass.wsCalls.push(msg);
+      if (msg.type === `${D}/pack_take`) count -= 1;
+      return { products: [product()] };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await el.openProduct("ketchup");
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelector("h2").textContent, "Ketchup");
+  const box = form.querySelector('[data-role="product-stock"]');
+  assert.match(box.textContent, /Heinz/);
+  assert.equal(box.querySelector('[data-role="stock-min"]').value, "2");
+  assert.ok(box.querySelector('[data-role="stock-auto"]'));
+  assert.equal(box.querySelector('[data-role="stock-history"]'), null);
+  form.querySelector('[data-role="product-take"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/pack_take`), { type: `${D}/pack_take`, device_id: "p1", outcome: "eaten" });
+  assert.match(form.querySelector('[data-role="product-stock"] .count').textContent, /^2$/);
+  // the stock view: tapping the name opens the product view
+  el._stock = { products: [product()], shopping_list: true };
+  await go(el, "more");
+  el._view = "stock";
+  el._sig = "";
+  el._update();
+  el._closeDialog();
+  $(el, '[data-role="stock-product"]').click();
+  await flush();
+  assert.equal($(el, "form.dialog h2").textContent, "Ketchup");
+});
+
+test("5.5: compartments tab – every compartment, 🏷 with a tag, opens the compartment view", async () => {
+  const hass = makeHass(DOSES);
+  for (const [id, comp] of [["d1", "Fach 2"], ["d2", "Fach 1"], ["d4", "Regal"]]) {
+    const eid = `text.${id}_fach`;
+    hass.entities[eid] = { entity_id: eid, device_id: id, platform: D, translation_key: "compartment" };
+    hass.states[eid] = { entity_id: eid, state: comp, attributes: {} };
+  }
+  const base = hass.callWS;
+  hass.callWS = async (msg) => (msg.type === `${D}/place_tags` ? { links: [{ area_id: "kitchen", compartment: "Fach 1", tag_id: "t1" }] } : base(msg));
+  const el = mount(hass);
+  await go(el, "compartments");
+  await flush();
+  const nodes = $$(el, '[data-role="compartments"] [data-compartment]');
+  assert.deepEqual(nodes.map((n) => n.querySelector(".name").textContent), ["Keller · Regal", "Küche · Fach 1", "Küche · Fach 2"]);
+  assert.deepEqual(nodes.map((n) => n.dataset.tag), ["0", "1", "0"]);
+  assert.match($(el, "main").textContent, /2 Einträge ohne Fach/);
+  let opened = null;
+  el.openPlace = (areaId, comp) => (opened = [areaId, comp]);
+  nodes[1].click();
+  assert.deepEqual(opened, ["kitchen", "Fach 1"]);
+});
+
+test("5.5: long press on a tile starts the selection", async () => {
+  const el = mount(makeHass(DOSES));
+  await go(el, "containers");
+  const tile = $(el, 'main .tile[data-id="d2"]');
+  tile.dispatchEvent(new dom.window.MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
+  await flush();
+  assert.equal(el._selecting, true);
+  assert.deepEqual([...el._selected], ["d2"]);
+  assert.equal($(el, 'main .tile[data-id="d2"]').classList.contains("selected"), true);
+});
+
+test("5.5: month tile on the start page leads to the statistics", async () => {
+  const hass = makeHass(DOSES);
+  hass.month = { label: "November 2026", empty: false, eaten: 5, thrown: 2, thrown_value: 4.2 };
+  const el = mount(hass);
+  await flush();
+  await flush();
+  const tile = $(el, '[data-role="month-tile"]');
+  assert.equal(tile.textContent, "📊 November: 2 weggeworfen, ca. 4,20 €");
+  const views = [];
+  const real = el.setView.bind(el);
+  el.setView = (v, f) => (v === "stats" ? views.push(v) : real(v, f));
+  tile.click();
+  assert.deepEqual(views, ["stats"]);
+  // nothing thrown away: says so; nothing happened: no tile
+  hass.month = { label: "November 2026", empty: false, eaten: 3, thrown: 0 };
+  await go(el, "start");
+  await flush();
+  assert.match($(el, '[data-role="month-tile"]').textContent, /3 gegessen, nichts weggeworfen/);
+  hass.month = { label: "November 2026", empty: true, eaten: 0, thrown: 0 };
+  await go(el, "start");
+  await flush();
+  assert.equal($(el, '[data-role="month-tile"]'), null);
 });

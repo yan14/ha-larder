@@ -31,6 +31,7 @@ from .const import (
 from .entity import LarderConfigEntry, LarderResettable
 from .estimate import (
     DATA_ESTIMATOR,
+    EstimateError,
     async_get_estimator,
     estimate_best_before,
     storage_context,
@@ -134,10 +135,32 @@ class LarderBestBefore(DateEntity, LarderResettable):
         return dt_util.now().date()
 
     async def async_mark_opened(self, days: int | None = None) -> dict[str, Any]:
-        """The container was opened: the date is shortened to at most `days` days from today."""
+        """The container was opened: the date is shortened to at most `days` days from today.
+
+        Without `days` (5.5): the shelf life after opening of what is inside (table from USDA FoodKeeper,
+        else AI), only then the setting "shelf life after opening". Never longer than the date so far.
+        """
+        info: dict[str, Any] = {}
         if days is None:
-            days = (await async_get_estimator(self.hass)).opened_days
-        return self._shorten(days)
+            days, info = await self.async_opened_days()
+        return {**self._shorten(days), **info}
+
+    async def async_opened_days(self) -> tuple[int, dict[str, Any]]:
+        """Days after opening for the content of this container and where they come from."""
+        estimator = await async_get_estimator(self.hass)
+        content_state = self._sibling_state("text", "content")
+        content = (
+            content_state.state
+            if content_state is not None and content_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE)
+            else ""
+        )
+        try:
+            estimate = await estimator.async_estimate_opened(
+                content=content, context=storage_context(self.hass, self._cc)
+            )
+        except EstimateError as err:
+            return estimator.opened_days, {"source": "setting", "reason": err.translation_key}
+        return estimate.days, {"source": estimate.source, "tip": estimate.tip, "basis": estimate.basis}
 
     async def async_mark_thawed(self, days: int | None = None) -> dict[str, Any]:
         """The content was thawed: the date is shortened to at most `days` days from today."""

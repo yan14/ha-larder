@@ -1048,17 +1048,33 @@ test("toolbar is hidden without containers and in the 'Estimates' tab", async ()
   assert.equal($(el, ".toolbar").hidden, true);
 });
 
-test("quick actions: +1 day sets the best-before date, Opened calls the service", () => {
-  const hass = adminHass([{ id: "d1", name: "A", content: "Käse", mhd: "2026-12-31" }]);
+test("quick actions: +1 day sets the best-before date, Opened calls the service", async () => {
+  const hass = adminHass([{ id: "d1", name: "A", content: "Ketchup", mhd: "2026-12-31" }]);
   const el = mount(hass);
   const dateId = "date.d1_mhd";
   assert.equal($(el, ".quickrow").classList.contains("visible"), true);
   $(el, "button.plus1").click();
+  assert.deepEqual(hass.calls, [{ domain: "date", service: "set_value", data: { entity_id: dateId, date: "2027-01-01" } }]);
+  // 5.5: Opened asks for the response and shows where the value comes from
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === "call_service") {
+      hass.wsCalls.push(msg);
+      return { response: { [dateId]: { days: 180, source: "table", tip: "Nach dem Öffnen: 6 Monate (Kühlschrank, Quelle: USDA FoodKeeper)." } } };
+    }
+    return base(msg);
+  };
   $(el, "button.opened").click();
-  assert.deepEqual(hass.calls, [
-    { domain: "date", service: "set_value", data: { entity_id: dateId, date: "2027-01-01" } },
-    { domain: D, service: "mark_opened", data: { entity_id: dateId } },
-  ]);
+  await flush();
+  const call = hass.wsCalls.find((m) => m.type === "call_service");
+  assert.equal(call.service, "mark_opened");
+  assert.deepEqual(call.target, { entity_id: dateId });
+  assert.match($(el, ".card .tip").textContent, /6 Monate.*FoodKeeper/);
+  // without a known value: says that the setting was used
+  hass.callWS = async (msg) => (msg.type === "call_service" ? { response: { [dateId]: { days: 14, source: "setting" } } } : base(msg));
+  $(el, "button.opened").click();
+  await flush();
+  assert.match($(el, ".card .tip").textContent, /14 Tage laut Einstellung/);
 });
 
 test("quick actions: Thawed calls the service mark_thawed", () => {
@@ -2270,7 +2286,7 @@ test("5.1: 📷 reads the best-before date; 'History of …' asks the dashboard 
   embedded.hass = hass;
   const btn = $(embedded, ".card button.producthistory");
   assert.equal(btn.hidden, false);
-  assert.equal(btn.textContent, "📜 Verlauf von Schinken");
+  assert.equal(btn.textContent, "📦 Schinken: Bestand & Verlauf");
   let asked = null;
   embedded.addEventListener("larder-product-history", (ev) => (asked = ev.detail.content));
   btn.click();

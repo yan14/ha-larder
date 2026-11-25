@@ -215,11 +215,20 @@ def build_instructions(
     vacuum: bool,
     filled: date,
     language: str,
+    opened: bool = False,
 ) -> str:
     place = context.area_name or "unknown"
     lines = [
         "You estimate how long a food item stays good in a household.",
         "Be conservative and food-safety minded. Assume the item is stored right away.",
+    ]
+    if opened:
+        lines.append(
+            "The item is a bought product that was opened just now: answer how long it stays good "
+            "AFTER OPENING at this place, following official guidance such as USDA FoodKeeper "
+            "(e.g. ketchup 6 months refrigerated, mayonnaise 2 months)."
+        )
+    lines += [
         f"Item (may be a dish or an ingredient): {content}",
         "If several items are listed (separated by commas), they share one container: "
         "answer for the item that spoils first and name it in the storage tip.",
@@ -347,6 +356,7 @@ class Estimator:
             setattr(self, attr, default)
         self._cache: dict[str, dict[str, Any]] = {}
         self._recent: list[str] = []
+        self._opened: dict[str, dict[str, Any]] = {}  # AI values after opening (5.5), key as cache_key
 
     async def async_load(self) -> None:
         data = await self._store.async_load() or {}
@@ -361,6 +371,7 @@ class Estimator:
             if entry.get("source") == "ai":
                 entry.setdefault("created", today)  # older entries age from now on
         self._recent = [str(x) for x in data.get("recent", []) if str(x).strip()][:MAX_RECENT]
+        self._opened = dict(data.get("opened", {}))
 
     def _apply(self, settings: dict[str, Any]) -> None:
         """Apply settings; missing keys stay unchanged, broken values become the default."""
@@ -380,7 +391,7 @@ class Estimator:
         return {conf: getattr(self, attr) for conf, (attr, _default, _normalize) in SETTINGS.items()}
 
     def _data(self) -> dict[str, Any]:
-        return {"settings": self.settings(), "cache": self._cache, "recent": self._recent}
+        return {"settings": self.settings(), "cache": self._cache, "recent": self._recent, "opened": self._opened}
 
     def _schedule_save(self) -> None:
         self._store.async_delay_save(self._data, 1)
@@ -549,6 +560,46 @@ class Estimator:
             )
         return await self._async_estimate_fresh(key, content, context, vacuum, filled)
 
+    async def async_estimate_opened(self, *, content: str, context: StorageContext) -> Estimate:
+        """Shelf life after opening a bought product, counted from today (5.5).
+
+        Table (USDA FoodKeeper values after opening) → AI asked explicitly for "after opening" (mode
+        table + AI or AI) → EstimateError, then the caller uses the setting "shelf life after opening".
+        """
+        if not self.enabled:
+            raise EstimateError("estimates_disabled")
+        if not content.strip():
+            raise EstimateError("no_content")
+        language = self.hass.config.language or "en"
+        if self.mode in (ESTIMATE_TABLE, ESTIMATE_TABLE_AI):
+            try:
+                result = shelf_life.lookup(
+                    content,
+                    area_name=context.area_name,
+                    temperature_c=context.temperature_c,
+                    label_texts=context.label_texts,
+                    vacuum=False,
+                    language=language,
+                    storage_hint=context.storage_hint,
+                    opened=True,
+                )
+            except shelf_life.TableUnsuitable as err:
+                raise EstimateError("table_unsuitable", food=err.food, place=err.place) from err
+            except (shelf_life.TableNoMatch, shelf_life.TableUnknownStorage) as err:
+                if self.mode == ESTIMATE_TABLE:
+                    raise EstimateError("table_no_match") from err
+            else:
+                result = _cap_table(result, context.max_days, language)
+                return Estimate(result.days, result.tip, False, "", "table", result.basis)
+        key = cache_key(content, context.area_name, False)
+        hit = self._opened.get(key)
+        if hit is not None and not self._is_stale(hit):
+            return Estimate(int(hit["days"]), str(hit.get("tip", "")), True, key, "ai")
+        estimate = await self._async_estimate_ai(
+            key, content, context, False, dt_util.now().date(), language, opened=True
+        )
+        return estimate
+
     @staticmethod
     def _is_stale(entry: dict[str, Any]) -> bool:
         """AI estimate the user never corrected and that is older than a year."""
@@ -609,6 +660,7 @@ class Estimator:
         vacuum: bool,
         filled: date,
         language: str,
+        opened: bool = False,
     ) -> Estimate:
         if not self.hass.services.has_service("ai_task", "generate_data"):
             raise EstimateError("ai_unavailable")
@@ -621,6 +673,7 @@ class Estimator:
                 vacuum=vacuum,
                 filled=filled,
                 language=language,
+                opened=opened,
             ),
             "structure": STRUCTURE,
         }
@@ -662,7 +715,7 @@ class Estimator:
             days = limit
             tip = f"{tip} {_cap_note(limit, language, own_limit)}".strip()
 
-        self._cache[key] = {
+        (self._opened if opened else self._cache)[key] = {
             "days": days,
             "tip": tip,
             "source": "ai",

@@ -1121,6 +1121,123 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     return box;
   };
 
+  /** One product of the stock (stock view and, since 5.5, the product view). `onChanged(res)` after a change. */
+  proto._stockItem = function _stockItem(p, onChanged, inProduct = false) {
+    const hass = this._hass;
+    const t = itemTexts(hass);
+    const hh = p.kind === "household";
+    const packs = String(p.packs ?? "").replace(".", String(hass.language || "").toLowerCase().startsWith("de") ? "," : ".");
+    const item = el("section", `stockitem${p.low ? " low" : ""}`);
+    item.dataset.key = p.key;
+    const head = el("div", "stockhead");
+    const name = inProduct ? el("span", "name", p.name) : button("name link", p.name, () => this.openProduct(p.name));
+    if (!inProduct) name.dataset.role = "stock-product";
+    head.append(name, el("span", "count", hh && p.piece ? `${p.count} ${p.piece}` : String(p.count)));
+    if (p.low) head.append(el("span", "badge expired", p.count ? t.stockLow : t.stockNone));
+    const min = el("input");
+    min.type = "number";
+    min.min = "0";
+    min.max = "999";
+    min.inputMode = "numeric";
+    min.dataset.role = "stock-min";
+    min.value = p.min ? String(p.min) : "";
+    min.placeholder = "–";
+    min.setAttribute("aria-label", `${t.stockMin} (${p.name})`);
+    min.addEventListener("change", async () => {
+      const value = Math.max(0, Math.min(999, parseInt(min.value, 10) || 0));
+      try {
+        const res = await hass.callWS({ type: `${DOMAIN}/stock_min`, content: p.name, min: value });
+        onChanged(res);
+      } catch {
+        this.showNotice(t.stockFailed);
+      }
+    });
+    const minWrap = el("label", "stockmin", t.stockMin);
+    minWrap.append(min);
+    head.append(minWrap);
+    item.append(head);
+    const de = String(hass.language || "").toLowerCase().startsWith("de");
+    const own = p.list && (hass.states || {})[p.list];
+    const listName = own ? `🛒 ${(own.attributes && own.attributes.friendly_name) || p.list}` : null;
+    const sub = [hh && p.pack_size > 1 ? t.stockPacks(packs) : null, p.brand, p.package, listName, p.earliest ? t.stockEarliest(fmtDate(hass, p.earliest)) : null].filter(Boolean).join(" · ");
+    if (sub) item.append(el("div", "sub", sub));
+    if (p.usage) {
+      const line = el("div", "usage", t.usageLasts(spanText(p.usage.lasts_days, de), p.usage.takes, spanText(p.usage.days, de, true)));
+      line.dataset.role = "stock-usage";
+      item.append(line);
+    }
+    if (p.suggested_min && p.suggested_min !== p.min) {
+      const suggest = button("link", t.suggestMin(p.suggested_min), async () => {
+        min.value = String(p.suggested_min);
+        min.dispatchEvent(new Event("change"));
+      });
+      suggest.dataset.role = "stock-suggest";
+      item.append(suggest);
+    }
+    // 5.2 (#128): onto the list by consumption, before the minimum stock is reached
+    const auto = el("label", "check stockauto");
+    const autoBox = el("input");
+    autoBox.type = "checkbox";
+    autoBox.checked = !!p.auto;
+    autoBox.dataset.role = "stock-auto";
+    autoBox.addEventListener("change", async () => {
+      try {
+        const res = await hass.callWS({ type: `${DOMAIN}/auto_reorder`, content: p.name, enabled: autoBox.checked });
+        if (res.added && res.added.length) this.showNotice(t.autoAdded(res.added.join(", ")));
+        onChanged(res);
+      } catch {
+        autoBox.checked = !autoBox.checked;
+        this.showNotice(t.stockFailed);
+      }
+    });
+    auto.append(autoBox, el("span", "", t.autoReorder));
+    auto.title = t.autoReorderHint;
+    item.append(auto);
+    if (p.price) {
+      const parts = [t.priceEach(money(p.price.price, de), p.price.source === "openprices")];
+      if (p.value) parts.push(t.valueOf(money(p.value, de)));
+      item.append(el("div", "sub price", parts.join(" · ")));
+    }
+    if (p.price_history && p.price_history.length > 1) {
+      // 4.11: own prices over time, e.g. 1,79 € → 1,99 € → 2,49 €
+      const line = el("div", "sub pricehistory", `${t.priceHistory}: ${p.price_history.map((h) => money(h.price, de)).join(" → ")}`);
+      line.dataset.role = "stock-price-history";
+      item.append(line);
+    }
+    if (!inProduct) item.append(this._historyLink(p.name, "stock-history"));
+    const places = el("div", "places");
+    for (const place of p.places) {
+      const date = (place.best_before ? ` · ${fmtDate(hass, place.best_before)}` : "") + (place.opened ? " · 🔓" : "");
+      const chip = el("button", "place", `${[place.area, place.compartment].filter(Boolean).join(" · ") || "–"}: ${place.count}${date}`);
+      chip.type = "button";
+      chip.dataset.id = place.device_id;
+      chip.addEventListener("click", () => {
+        if (inProduct) this._closeDialog();
+        this.openDetail(place.device_id);
+      });
+      if (inProduct) {
+        // 5.5 (#142): −1 right in the product view
+        const row = el("div", "placerow");
+        const take = button("take", "−1", async () => {
+          take.disabled = true;
+          try {
+            await hass.callWS({ type: `${DOMAIN}/pack_take`, device_id: place.device_id, outcome: "eaten" });
+            onChanged(null);
+          } catch {
+            take.disabled = false;
+            this.showNotice(t.stockFailed);
+          }
+        });
+        take.dataset.role = "product-take";
+        take.dataset.id = place.device_id;
+        row.append(chip, take);
+        places.append(row);
+      } else places.append(chip);
+    }
+    if (p.places.length) item.append(places);
+    return item;
+  };
+
   proto.stockTitle = function stockTitle() {
     return itemTexts(this._hass).stockTitle;
   };
@@ -1171,99 +1288,14 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     if (!products.length) frag.append(el("p", "note", t.stockEmpty));
     const list = el("div", "stocklist");
     for (const p of products) {
-      const hh = p.kind === "household";
-      const packs = String(p.packs ?? "").replace(".", String(hass.language || "").toLowerCase().startsWith("de") ? "," : ".");
-      const item = el("section", `stockitem${p.low ? " low" : ""}`);
-      item.dataset.key = p.key;
-      const head = el("div", "stockhead");
-      head.append(el("span", "name", p.name), el("span", "count", hh && p.piece ? `${p.count} ${p.piece}` : String(p.count)));
-      if (p.low) head.append(el("span", "badge expired", p.count ? t.stockLow : t.stockNone));
-      const min = el("input");
-      min.type = "number";
-      min.min = "0";
-      min.max = "999";
-      min.inputMode = "numeric";
-      min.dataset.role = "stock-min";
-      min.value = p.min ? String(p.min) : "";
-      min.placeholder = "–";
-      min.setAttribute("aria-label", `${t.stockMin} (${p.name})`);
-      min.addEventListener("change", async () => {
-        const value = Math.max(0, Math.min(999, parseInt(min.value, 10) || 0));
-        try {
-          const res = await hass.callWS({ type: `${DOMAIN}/stock_min`, content: p.name, min: value });
-          this._stock = { ...this._stock, products: res.products };
+      list.append(
+        this._stockItem(p, (res) => {
+          if (res && res.products) this._stock = { ...this._stock, products: res.products };
           this._sig = "";
-          this._update();
-        } catch {
-          this.showNotice(t.stockFailed);
-        }
-      });
-      const minWrap = el("label", "stockmin", t.stockMin);
-      minWrap.append(min);
-      head.append(minWrap);
-      item.append(head);
-      const de = String(hass.language || "").toLowerCase().startsWith("de");
-      const own = p.list && (hass.states || {})[p.list];
-      const listName = own ? `🛒 ${(own.attributes && own.attributes.friendly_name) || p.list}` : null;
-      const sub = [hh && p.pack_size > 1 ? t.stockPacks(packs) : null, p.brand, p.package, listName, p.earliest ? t.stockEarliest(fmtDate(hass, p.earliest)) : null].filter(Boolean).join(" · ");
-      if (sub) item.append(el("div", "sub", sub));
-      if (p.usage) {
-        const line = el("div", "usage", t.usageLasts(spanText(p.usage.lasts_days, de), p.usage.takes, spanText(p.usage.days, de, true)));
-        line.dataset.role = "stock-usage";
-        item.append(line);
-      }
-      if (p.suggested_min && p.suggested_min !== p.min) {
-        const suggest = button("link", t.suggestMin(p.suggested_min), async () => {
-          min.value = String(p.suggested_min);
-          min.dispatchEvent(new Event("change"));
-        });
-        suggest.dataset.role = "stock-suggest";
-        item.append(suggest);
-      }
-      // 5.2 (#128): onto the list by consumption, before the minimum stock is reached
-      const auto = el("label", "check stockauto");
-      const autoBox = el("input");
-      autoBox.type = "checkbox";
-      autoBox.checked = !!p.auto;
-      autoBox.dataset.role = "stock-auto";
-      autoBox.addEventListener("change", async () => {
-        try {
-          const res = await hass.callWS({ type: `${DOMAIN}/auto_reorder`, content: p.name, enabled: autoBox.checked });
-          this._stock = { ...this._stock, products: res.products };
-          if (res.added && res.added.length) this.showNotice(t.autoAdded(res.added.join(", ")));
-          this._sig = "";
-          this._update();
-        } catch {
-          autoBox.checked = !autoBox.checked;
-          this.showNotice(t.stockFailed);
-        }
-      });
-      auto.append(autoBox, el("span", "", t.autoReorder));
-      auto.title = t.autoReorderHint;
-      item.append(auto);
-      if (p.price) {
-        const parts = [t.priceEach(money(p.price.price, de), p.price.source === "openprices")];
-        if (p.value) parts.push(t.valueOf(money(p.value, de)));
-        item.append(el("div", "sub price", parts.join(" · ")));
-      }
-      if (p.price_history && p.price_history.length > 1) {
-        // 4.11: own prices over time, e.g. 1,79 € → 1,99 € → 2,49 €
-        const line = el("div", "sub pricehistory", `${t.priceHistory}: ${p.price_history.map((h) => money(h.price, de)).join(" → ")}`);
-        line.dataset.role = "stock-price-history";
-        item.append(line);
-      }
-      item.append(this._historyLink(p.name, "stock-history"));
-      const places = el("div", "places");
-      for (const place of p.places) {
-        const date = (place.best_before ? ` · ${fmtDate(hass, place.best_before)}` : "") + (place.opened ? " · 🔓" : "");
-        const chip = el("button", "place", `${[place.area, place.compartment].filter(Boolean).join(" · ") || "–"}: ${place.count}${date}`);
-        chip.type = "button";
-        chip.dataset.id = place.device_id;
-        chip.addEventListener("click", () => this.openDetail(place.device_id));
-        places.append(chip);
-      }
-      if (p.places.length) item.append(places);
-      list.append(item);
+          if (res) this._update();
+          else this.loadStock();
+        }),
+      );
     }
     frag.append(list);
     this._main.replaceChildren(frag);

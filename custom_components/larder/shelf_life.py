@@ -132,7 +132,7 @@ TIPS: dict[str, tuple[str, str]] = {
 # "~a" is a weak keyword that only counts if nothing else matches ("filet").
 # Increase TABLE_VERSION when entries or the detection change: remembered table values
 # are then calculated anew (own corrections stay).
-TABLE_VERSION = 5  # 3: several contents (comma) estimated one by one; 4: plant-based, soup pasta, bagels; 5: condiments, game, fish
+TABLE_VERSION = 6  # 6: condiments split, values after opening (OPENED); 3: several contents (comma) estimated one by one; 4: plant-based, soup pasta, bagels; 5: condiments, game, fish
 ENTRIES: tuple[Entry, ...] = (
     # --- Dishes and leftovers (priority 3) ---
     _e("dish", "Gericht / Reste", "Dish / leftovers", "dish",
@@ -156,9 +156,43 @@ ENTRIES: tuple[Entry, ...] = (
     _e("pesto_dip", "Pesto / Dip / Aufstrich", "Pesto / dip / spread", "dish",
        "pesto|guacamole|tzatziki|dip|aufstrich",
        5, 7, 60, None, pri=3, perishable=True),
-    _e("soy_sauce", "Ketchup / Senf / Sojasoße", "Ketchup / mustard / soy sauce", "condiment",
-       "sojasosse|soy sauce|sojasauce|worcester|sriracha|ketchup|tomatenketchup|senf|mustard|mayonnaise|mayo|remoulade|grillsosse|bbq sauce|barbecue",
-       180, 180, None, 90, pri=3),
+    # Condiments: storage = like a bottle in the fridge or a closed one in the pantry; after opening see OPENED.
+    _e("ketchup", "Ketchup / Chili- / Cocktailsoße", "Ketchup / chili / cocktail sauce", "condiment",
+       "ketchup|tomatenketchup|curryketchup|cocktailsosse|cocktail sauce|chilisosse|chili sauce|sweet chili",
+       180, 180, None, 365, pri=4),
+    _e("mustard", "Senf", "Mustard", "condiment",
+       "senf|mustard|dijon",
+       365, 365, None, 365, pri=4),
+    _e("mayonnaise", "Mayonnaise / Remoulade", "Mayonnaise / remoulade", "condiment",
+       "mayonnaise|mayo|remoulade|aioli|salatmayonnaise",
+       60, 60, None, 90, pri=4),
+    _e("soy_sauce", "Sojasoße", "Soy sauce", "condiment",
+       "sojasosse|soy sauce|sojasauce|shoyu|tamari",
+       30, 30, None, 730, pri=4),
+    _e("worcester", "Worcestershiresoße", "Worcestershire sauce", "condiment",
+       "worcester|worcestershire",
+       365, 365, None, 365, pri=4),
+    _e("bbq_sauce", "Grill- / Barbecuesoße", "Barbecue sauce", "condiment",
+       "grillsosse|bbq|barbecue|steaksosse",
+       120, 120, None, 365, pri=4),
+    _e("hot_sauce", "Scharfe Soße (Tabasco, Sriracha)", "Hot sauce (Tabasco, sriracha)", "condiment",
+       "sriracha|tabasco|hot sauce|scharfe sosse|chilisauce scharf",
+       180, 180, None, 180, pri=5),
+    _e("dressing", "Salatdressing (Flasche)", "Salad dressing (bottled)", "condiment",
+       "salatdressing|dressing|salatsosse|vinaigrette|salad dressing",
+       30, 30, None, 300, pri=4),
+    _e("horseradish", "Meerrettich", "Horseradish", "condiment",
+       "meerrettich|horseradish|kren|sahnemeerrettich",
+       90, 90, None, None, pri=4),
+    _e("hoisin", "Hoisin- / Austernsoße", "Hoisin / oyster sauce", "condiment",
+       "hoisin|austernsosse|oyster sauce|fischsosse|fish sauce",
+       90, 90, None, 540, pri=4),
+    _e("olives", "Oliven (Glas)", "Olives (jar)", "condiment",
+       "oliven|olives|kalamata",
+       14, 14, None, 365, pri=4),
+    _e("pickles", "Gewürzgurken / Eingelegtes (Glas)", "Pickles (jar)", "condiment",
+       "gewuerzgurke|essiggurke|cornichon|pickles|eingelegte|silberzwiebel|kapern|capers|peperoni eingelegt",
+       30, 30, None, 365, pri=4),
     _e("curry_paste", "Currypaste / Würzpaste", "Curry paste", "condiment",
        "currypaste|curry paste|curry+paste|harissa|miso|sambal|tom yum|gochujang|tomatenmark",
        30, 30, 90, 365, pri=4),
@@ -329,6 +363,40 @@ ENTRIES: tuple[Entry, ...] = (
        "olivenoel|rapsoel|sonnenblumenoel|speiseoel|kokosoel|sesamoel|leinoel|walnussoel|bratoel|oil|olive oil|biolivum",
        180, 180, None, 180, pri=1),
 )
+
+# Shelf life AFTER OPENING of bought products, from USDA FoodKeeper ("refrigerated after opening" /
+# "pantry after opening"); where FoodKeeper gives a range, the lower value. (fridge, pantry) in days;
+# pantry None = keep in the fridge once opened. Entries without a value here use the storage values above
+# (fresh food, leftovers: they already describe food out of its package).
+FOODKEEPER = "USDA FoodKeeper"
+OPENED: dict[str, tuple[int, int | None]] = {
+    "ketchup": (180, 30),  # ketchup, cocktail or chili sauce: 6 months refrigerated, 1 month pantry
+    "mustard": (365, None),  # 12 months refrigerated
+    "mayonnaise": (60, None),  # commercial mayonnaise: 2 months, refrigerate
+    "soy_sauce": (30, None),  # 1 month refrigerated
+    "worcester": (365, None),  # 1 year refrigerated
+    "bbq_sauce": (120, None),  # 4 months refrigerated
+    "hot_sauce": (180, 180),  # 6 months, also in the pantry after opening
+    "dressing": (30, None),  # bottled dressing: 1-3 months, refrigerate
+    "horseradish": (90, None),  # 3-4 months
+    "hoisin": (90, None),  # hoisin / oyster sauce: 3-6 months
+    "olives": (14, None),  # jarred olives: 2 weeks
+    "pickles": (30, None),  # pickles: 1-3 months
+    "jam": (180, None),  # jams, jellies, preserves: 6-12 months, refrigerate
+    "nut_butter": (90, 60),  # peanut butter: 3-4 months refrigerated, 2-3 months pantry
+    "canned_fish": (3, None),  # canned fish once opened: 3-4 days
+    "milk": (7, None),  # milk after opening: 7 days
+    "yogurt": (7, None),  # yogurt: 1-2 weeks
+    "soft_cheese": (7, None),  # soft cheese, cream cheese after opening: about 1 week
+    "hard_cheese": (21, None),  # hard cheese opened: 3-4 weeks
+    "juice": (7, None),  # juice after opening: 7-10 days
+    "deli": (3, None),  # cold cuts / lunch meat opened: 3-5 days
+}
+
+OPENED_NOTE = {
+    "de": "Nach dem Öffnen: {days} ({place}, Quelle: {source}).",
+    "en": "After opening: {days} ({place}, source: {source}).",
+}
 
 _KEYWORD_RES: dict[str, tuple[re.Pattern[str], re.Pattern[str]]] = {}
 _PLURAL = r"(?:e|en|n|s|es|er|ern)?"
@@ -607,8 +675,11 @@ def lookup(
     vacuum: bool,
     language: str,
     storage_hint: str | None = None,
+    opened: bool = False,
 ) -> TableResult:
     """Calculate the shelf life from the table or raise a matching exception.
+
+    `opened`: shelf life after opening a bought product (OPENED, counted from today).
 
     Several contents (separated by commas) are looked up one by one; the shortest value applies.
     If the table does not know one of them, that counts as no match (otherwise exactly the
@@ -617,10 +688,10 @@ def lookup(
     items = split_items(content)
     if len(items) <= 1:
         return _lookup_one(content, area_name=area_name, temperature_c=temperature_c, label_texts=label_texts,
-                           vacuum=vacuum, language=language, storage_hint=storage_hint)
+                           vacuum=vacuum, language=language, storage_hint=storage_hint, opened=opened)
     results = [
         (item, _lookup_one(item, area_name=area_name, temperature_c=temperature_c, label_texts=label_texts,
-                           vacuum=vacuum, language=language, storage_hint=storage_hint))
+                           vacuum=vacuum, language=language, storage_hint=storage_hint, opened=opened))
         for item in items
     ]
     item, shortest = min(results, key=lambda r: r[1].days)
@@ -640,6 +711,7 @@ def _lookup_one(
     vacuum: bool,
     language: str,
     storage_hint: str | None = None,
+    opened: bool = False,
 ) -> TableResult:
     lang = "de" if language.lower().startswith("de") else "en"
     entry = find_entry(content)
@@ -651,6 +723,10 @@ def _lookup_one(
 
     place = STORAGE_LABELS[lang][storage.key]
     food = entry.de if lang == "de" else entry.en
+    if opened and storage.key == FREEZER:
+        raise TableNoMatch  # "opened" in the freezer: no table value, the caller falls back
+    if opened and entry.id in OPENED:
+        return _opened_result(entry, storage, lang, place, food)
     base = entry.days[storage.key]
     if base is None:
         raise TableUnsuitable(food, place)
@@ -671,3 +747,13 @@ def _lookup_one(
             else " Vacuum hardly extends the shelf life of perishable food in the fridge."
         )
     return TableResult(days_int, tip, f"{food} · {place}")
+
+
+def _opened_result(entry: Entry, storage: Storage, lang: str, place: str, food: str) -> TableResult:
+    fridge, pantry = OPENED[entry.id]
+    days = pantry if storage.key == PANTRY else fridge
+    if days is None:
+        raise TableUnsuitable(food, place)
+    days_int = max(1, round(days * storage.factor))
+    note = OPENED_NOTE[lang].format(days=format_duration(days_int, lang), place=place, source=FOODKEEPER)
+    return TableResult(days_int, note, f"{food} · {place} · {FOODKEEPER}")

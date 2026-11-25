@@ -560,9 +560,7 @@ class DoseCard {
       const next = addDays(this.inputs.bestBefore.value, 1);
       if (next && this.ids.date) this._call("date", "set_value", { entity_id: this.ids.date, date: next });
     });
-    this.q("button.opened").addEventListener("click", () => {
-      if (this.ids.date) this._call(DOMAIN, "mark_opened", { entity_id: this.ids.date });
-    });
+    this.q("button.opened").addEventListener("click", () => this._markOpened());
     this.q("button.thawed").addEventListener("click", () => {
       if (this.ids.date) this._call(DOMAIN, "mark_thawed", { entity_id: this.ids.date });
     });
@@ -788,6 +786,31 @@ class DoseCard {
       this._estimating = false;
       this.q("button.estimate").textContent = t.estimate;
       this.q("button.estimate").disabled = false;
+    }
+  }
+
+  /** Opened (5.5): shelf life after opening of the content (USDA FoodKeeper/AI), shows where it comes from. */
+  async _markOpened() {
+    const hass = this._panel.hass;
+    if (!hass || !this.ids.date) return;
+    if (!hass.callWS) {
+      this._call(DOMAIN, "mark_opened", { entity_id: this.ids.date });
+      return;
+    }
+    const t = strings(hass);
+    try {
+      const res = await hass.callWS({
+        type: "call_service",
+        domain: DOMAIN,
+        service: "mark_opened",
+        service_data: {},
+        target: { entity_id: this.ids.date },
+        return_response: true,
+      });
+      const out = res && res.response && res.response[this.ids.date];
+      if (out) this._setTip(out.source === "setting" ? t.openedSetting(out.days) : out.tip || "");
+    } catch (err) {
+      this._setTip((err && err.message) || t.estimateFailed, true);
     }
   }
 

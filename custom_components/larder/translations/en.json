@@ -259,7 +259,7 @@
           "vacuum_default": "New containers start with the “Vacuum” switch on or off. Existing containers keep their value. Switch it off if most of your boxes are not vacuum-sealed.",
           "estimate_mode": "Shows the “Estimate best before” button on the dashboard unless set to Off.",
           "ai_task_entity": "Only needed if you have set up more than one AI service and an AI option is chosen.",
-          "opened_days": "The “Opened” button on the dashboard shortens the best-before date to at most this many days from today.",
+          "opened_days": "Only when neither the table (USDA FoodKeeper values after opening) nor the AI knows the content at that place: “Opened” and “Open” shorten the best-before date to at most this many days from today.",
           "thawed_days": "The “Thawed” button on the dashboard shortens the best-before date to at most this many days from today. Do not refreeze thawed food.",
           "calendar_entity": "Writes each container's best-before date to this calendar as an all-day event (create, move, delete). The calendar must support creating and deleting events, e.g. Google or “Local Calendar” (not CalDAV, which cannot delete). Leave empty = off.",
           "nfc_notify": "When someone scans a linked tag, their phone (Companion app) gets a notification. Tapping it opens the container in the dashboard.",
@@ -348,11 +348,11 @@
     },
     "mark_opened": {
       "name": "Mark as opened",
-      "description": "Shortens the best-before date to at most the given number of days from today. Without a date, one is set. Defaults to the setting “Shelf life after opening”.",
+      "description": "Shortens the best-before date to at most the given number of days from today. Without a date, one is set. Without days: the shelf life after opening of the contents (table from the USDA FoodKeeper, else AI, else the setting “Shelf life after opening”).",
       "fields": {
         "days": {
           "name": "Days",
-          "description": "Days from today (empty = value from the settings)."
+          "description": "Days from today (empty = shelf life after opening of the contents)."
         }
       }
     },

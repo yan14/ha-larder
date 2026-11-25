@@ -114,8 +114,18 @@ async def async_recent_add(hass: HomeAssistant, content: str, packs: int = 1) ->
 async def ws_product_history(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
     history = await async_get_history(hass)
     stock = await async_get_stock(hass)
-    prices = stock.price_history.get(product_key(msg["content"]))
-    connection.send_result(msg["id"], build_product_history(history.records, msg["content"], prices, dt_util.now().date()))
+    key = product_key(msg["content"])
+    prices = stock.price_history.get(key)
+    result = build_product_history(history.records, msg["content"], prices, dt_util.now().date())
+    # 5.5 (#142): the product view also shows stock, places, minimum stock, buy again and price
+    from .stock import stock_overview  # noqa: PLC0415
+
+    minimums = {k: v for k, v in stock.minimums.items() if k == key}
+    result["product"] = next(
+        (p for p in stock_overview(hass, minimums, stock) if p["key"] == key and (p["count"] or p["min"] or p.get("auto"))),
+        None,
+    )
+    connection.send_result(msg["id"], result)
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/recent_products"})

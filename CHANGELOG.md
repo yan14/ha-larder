@@ -3,6 +3,18 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 5.5.0
+
+Block 39: hidden features brought forward, and the shelf life after opening from confirmed sources.
+
+- **Shelf life after opening from USDA FoodKeeper** (#150): **Opened** on a card no longer uses only the fixed setting, and **Open** on a pack no longer uses storage times. Both look up how long the product keeps *once opened* at its place – ketchup 6 months in the fridge, mustard 1 year, mayonnaise 2 months, soy sauce 1 month, olives 2 weeks, jam 6 months, milk 1 week, … (values from the USDA FoodKeeper, the lower value of a range) –, never longer than the printed date. The tip says where the value comes from. Without a table value the AI is asked explicitly for the time *after opening*; only then the setting applies (and the card says so). Ketchup, mustard, mayonnaise, soy sauce & co. now have rows of their own instead of sharing one (mayonnaise had 6 months, mustard too little). Remembered table values are recalculated.
+- **Product view** (#142): tapping a product name in the stock view, **📦 Stock & history** in the barcode dialog and the search, and **📦 …: stock & history** on a card open one view with everything about the product: places with **−1**, minimum stock, **🔁 buy again by consumption**, price and value, and its history.
+- **Compartments tab** (#143): **List · Areas · Compartments · Categories** – every compartment with its containers, **🏷** when it has an NFC tag, one tap to the compartment view.
+- **Long press** on a tile starts the selection (#143), not only the small ☑.
+- **Month tile** on the start page (#144), e.g. *📊 November: 2 thrown away, about €4*, leads to the statistics.
+- **Recipes · Week** (#144): the meal plan and the week suggestion have a tab of their own; the next days stay visible under Recipes.
+- **Opening a pack** offers **🥫 Transfer into a container** right away (#144).
+
 ## 5.4.0
 
 All about speed – with Home Assistant's public ways only, nothing else changes in use.

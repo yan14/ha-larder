@@ -26,7 +26,8 @@ const TEXT = {
     emptied: "geleert",
     stored: (n) => `${n} ${n === 1 ? "Tag" : "Tage"} gelagert`,
     close: "Schließen",
-    link: "📜 Verlauf",
+    link: "📦 Bestand & Verlauf",
+    historyHead: "📜 Verlauf",
     recent: "Zuletzt verwendet",
     recentAdded: (name, place) => `${name} → ${place}`,
     noArea: "ohne Bereich",
@@ -51,7 +52,8 @@ const TEXT = {
     emptied: "emptied",
     stored: (n) => `stored ${n} ${n === 1 ? "day" : "days"}`,
     close: "Close",
-    link: "📜 History",
+    link: "📦 Stock & history",
+    historyHead: "📜 History",
     recent: "Recently used",
     recentAdded: (name, place) => `${name} → ${place}`,
     noArea: "no area",
@@ -88,7 +90,11 @@ export function installHistory(Dashboard, { el, DOMAIN, money }) {
     return link;
   };
 
-  proto.openProductHistory = async function openProductHistory(content) {
+  /**
+   * Product view (5.5, #142): one place for a product – stock and places with −1, minimum stock,
+   * 🔁 buy again by consumption, price and history. Opened by tapping a product name.
+   */
+  proto.openProduct = async function openProduct(content) {
     const hass = this._hass;
     const t = historyTexts(hass);
     let res;
@@ -98,7 +104,14 @@ export function installHistory(Dashboard, { el, DOMAIN, money }) {
       res = { name: content, records: [], summary: { count: 0 } };
     }
     const de = isDe(hass);
-    const parts = [el("h2", "", t.title(res.name || content))];
+    const name = (res.product && res.product.name) || res.name || content;
+    const parts = [el("h2", "", name)];
+    if (res.product && this._stockItem) {
+      const item = this._stockItem(res.product, () => this.openProduct(name), true);
+      item.dataset.role = "product-stock";
+      parts.push(item);
+    }
+    parts.push(el("h3", "", t.historyHead));
     const s = res.summary || {};
     if (!s.count) {
       parts.push(el("p", "hint", t.none));
@@ -148,6 +161,10 @@ export function installHistory(Dashboard, { el, DOMAIN, money }) {
     this._submit = null;
     this._overlay.hidden = false;
     return res;
+  };
+
+  proto.openProductHistory = function openProductHistory(content) {
+    return this.openProduct(content);
   };
 
   /** Chips of the recently used products; one tap adds one pack at its usual place. */
