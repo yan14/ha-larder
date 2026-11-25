@@ -32,6 +32,7 @@ from .const import (
     SERVICE_MARK_THAWED,
     SIGNAL_SETTINGS_CHANGED,
     SOON_DAYS,
+    lang_code,
 )
 from .entity import LarderConfigEntry, LarderResettable
 from .estimate import (
@@ -200,10 +201,15 @@ class LarderBestBefore(DateEntity, LarderResettable):
         days = (await async_get_stock(self.hass)).own_storage_days(content, place)
         if not days:
             return None
-        de = (self.hass.config.language or "en").lower().startswith("de")
-        where = shelf_life.STORAGE_LABELS["de" if de else "en"][place]
-        when = format_duration(days, "de" if de else "en")
-        tip = f"Eigene Lagerdauer für {content}: {when} ({where})." if de else f"Own storage time for {content}: {when} ({where})."
+        lang = lang_code(self.hass.config.language)
+        where = shelf_life.STORAGE_LABELS[lang][place]
+        when = format_duration(days, lang)
+        tip = {
+            "de": f"Eigene Lagerdauer für {content}: {when} ({where}).",
+            "en": f"Own storage time for {content}: {when} ({where}).",
+            "fr": f"Durée de conservation propre pour {content} : {when} ({where}).",
+            "nl": f"Eigen bewaartijd voor {content}: {when} ({where}).",
+        }[lang]
         best = estimate_best_before(filled, days)
         if apply:
             self._pending = None  # an own value is not learned again
@@ -235,11 +241,18 @@ class LarderBestBefore(DateEntity, LarderResettable):
 
         stock = await async_get_stock(self.hass)
         if content.strip() and (own := stock.opened_after.get(product_key(content))):
-            de = (self.hass.config.language or "en").lower().startswith("de")
+            lang = lang_code(self.hass.config.language)
             days = int(own["days"])
-            when = format_duration(days, "de" if de else "en")
-            origin = ("laut Packung" if de else "from the pack") if own.get("source") == "label" else ("eigene Angabe" if de else "your own value")
-            tip = f"Nach dem Öffnen: {when} ({origin})." if de else f"After opening: {when} ({origin})."
+            when = format_duration(days, lang)
+            label = own.get("source") == "label"
+            origin = {
+                "de": "laut Packung" if label else "eigene Angabe",
+                "en": "from the pack" if label else "your own value",
+                "fr": "selon l'emballage" if label else "valeur personnelle",
+                "nl": "volgens de verpakking" if label else "eigen waarde",
+            }[lang]
+            tip = {"de": f"Nach dem Öffnen: {when} ({origin}).", "en": f"After opening: {when} ({origin}).",
+                   "fr": f"Après ouverture : {when} ({origin}).", "nl": f"Na openen: {when} ({origin})."}[lang]
             return days, {"source": "product", "tip": tip, "basis": own.get("name", content)}
         try:
             estimate = await estimator.async_estimate_opened(

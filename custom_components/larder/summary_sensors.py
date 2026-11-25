@@ -23,7 +23,7 @@ from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.event import async_call_later, async_track_time_interval
 
-from .const import DOMAIN
+from .const import DOMAIN, pick
 
 REFRESH = timedelta(minutes=10)
 DEBOUNCE = 2  # seconds
@@ -43,6 +43,20 @@ NAMES = {
         "stock_value": "Larder stock value",
         "shopping_open": "Larder shopping list open",
         "supply_days": "Larder emergency supply days",
+    },
+    "fr": {
+        "expired": "Larder périmés",
+        "expiring_soon": "Larder bientôt périmés",
+        "stock_value": "Larder valeur du stock",
+        "shopping_open": "Larder liste de courses ouverte",
+        "supply_days": "Larder jours de réserves d'urgence",
+    },
+    "nl": {
+        "expired": "Larder verlopen",
+        "expiring_soon": "Larder verloopt binnenkort",
+        "stock_value": "Larder voorraadwaarde",
+        "shopping_open": "Larder boodschappenlijst open",
+        "supply_days": "Larder dagen noodvoorraad",
     },
 }
 ICONS = {
@@ -174,10 +188,9 @@ class LarderSummarySensor(SensorEntity):
     _attr_should_poll = False
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry, key: str, data: SummaryData) -> None:
-        de = (hass.config.language or "en").lower().startswith("de")
         self._key = key
         self._data = data
-        self._attr_name = NAMES["de" if de else "en"][key]
+        self._attr_name = pick(NAMES, hass.config.language)[key]
         self._attr_unique_id = f"{entry.unique_id or entry.entry_id}_{key}"
         self._attr_icon = ICONS[key]
         self.entity_id = f"sensor.larder_{key}"

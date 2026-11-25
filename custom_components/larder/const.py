@@ -171,3 +171,21 @@ def larder_id(device: Any) -> str | None:
     """The Larder ID (cc) of a device, or None for devices of other integrations."""
     ids = larder_ids(device)
     return ids[0] if ids else None
+
+
+LANGUAGES = ("de", "en", "fr", "nl")  # 6.0: French and Dutch (translations, see the README)
+
+
+def lang_code(language: str | None) -> str:
+    """Home Assistant's language as one of LANGUAGES ("fr-BE" → "fr"); anything else is English."""
+    code = str(language or "en").lower()[:2]
+    return code if code in LANGUAGES else "en"
+
+
+def pick(table: dict[str, Any], language: str | None) -> Any:
+    """Texts in this language; dictionaries are completed with the English ones (missing keys stay English)."""
+    base = table["en"]
+    own = table.get(lang_code(language))
+    if isinstance(base, dict):
+        return {**base, **(own or {})}
+    return own if own is not None else base

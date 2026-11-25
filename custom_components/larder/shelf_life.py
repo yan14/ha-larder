@@ -25,6 +25,8 @@ PANTRY = "pantry"
 STORAGE_LABELS = {
     "de": {FRIDGE: "Kühlschrank", ZERO: "0-Grad-Fach", FREEZER: "Gefrierschrank", PANTRY: "Vorrat"},
     "en": {FRIDGE: "fridge", ZERO: "0 °C compartment", FREEZER: "freezer", PANTRY: "pantry"},
+    "fr": {FRIDGE: "réfrigérateur", ZERO: "compartiment 0 °C", FREEZER: "congélateur", PANTRY: "garde-manger"},
+    "nl": {FRIDGE: "koelkast", ZERO: "0 °C-vak", FREEZER: "vriezer", PANTRY: "voorraadkast"},
 }
 
 # How much vacuum extends the shelf life. Perishable food in the fridge
@@ -35,7 +37,7 @@ VACUUM_FACTOR = {FRIDGE: 1.3, ZERO: 1.3, FREEZER: 1.5, PANTRY: 1.5}
 def norm(text: str) -> str:
     """Lower case, without umlauts/accents (ä→ae, ß→ss), only letters, digits and spaces."""
     text = text.casefold()
-    for src, dst in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss")):
+    for src, dst in (("ä", "ae"), ("ö", "oe"), ("ü", "ue"), ("ß", "ss"), ("œ", "oe"), ("æ", "ae")):
         text = text.replace(src, dst)
     text = unicodedata.normalize("NFKD", text)
     text = "".join(c for c in text if not unicodedata.combining(c))
@@ -71,7 +73,7 @@ def _e(id_, de, en, cat, kw, fridge, zero, freezer, pantry, *, pri=1, perishable
     )
 
 
-# Short storage tips per category: (de, en)
+# Short storage tips per category: (de, en); French and Dutch in TIPS_MORE (6.0)
 TIPS: dict[str, tuple[str, str]] = {
     "dish": (
         "Schnell abkühlen lassen, gut verschlossen lagern und vor dem Essen gut durcherhitzen (mind. 70 °C).",
@@ -133,7 +135,7 @@ TIPS: dict[str, tuple[str, str]] = {
 # "~a" is a weak keyword that only counts if nothing else matches ("filet").
 # Increase TABLE_VERSION when entries or the detection change: remembered table values
 # are then calculated anew (own corrections stay).
-TABLE_VERSION = 8  # 8: German sources (cooked rice, eggs), game (UNL); 7: values checked against sources (SOURCES), raw sausage and bacon; 6: condiments split, values after opening (OPENED); 3: several contents (comma) estimated one by one; 4: plant-based, soup pasta, bagels; 5: condiments, game, fish
+TABLE_VERSION = 9  # 9: French and Dutch names, keywords and places (6.0); 8: German sources (cooked rice, eggs), game (UNL); 7: values checked against sources (SOURCES), raw sausage and bacon; 6: condiments split, values after opening (OPENED); 3: several contents (comma) estimated one by one; 4: plant-based, soup pasta, bagels; 5: condiments, game, fish
 ENTRIES: tuple[Entry, ...] = (
     # --- Dishes and leftovers (priority 3) ---
     _e("dish", "Gericht / Reste", "Dish / leftovers", "dish",
@@ -371,6 +373,104 @@ ENTRIES: tuple[Entry, ...] = (
        180, 180, None, 180, pri=1),
 )
 
+TIPS_MORE: dict[str, dict[str, str]] = {
+    "fr": {
+        "dish": "Refroidir rapidement, conserver bien fermé et bien réchauffer avant de manger (au moins 70 °C).",
+        "raw_meat": "Conserver séparément des autres aliments et cuisiner rapidement.",
+        "fish": "Très périssable : garder au froid et consommer rapidement.",
+        "deli": "Une fois ouvert, conserver bien fermé au réfrigérateur.",
+        "dairy": "Une fois ouvert, conserver bien fermé et au froid. La texture peut changer après décongélation.",
+        "egg": "Garder les œufs au réfrigérateur. Ne pas congeler les œufs crus dans leur coquille.",
+        "produce": "Conserver au sec et aéré, retirer les morceaux abîmés.",
+        "bread": "Le pain se congèle bien en tranches.",
+        "condiment": "Une fois ouvert, conserver bien fermé ; ketchup, moutarde et pâtes au réfrigérateur après ouverture.",
+        "plant": "Garder tofu, tempeh et plats prêts comme falafels ou houmous au froid et les consommer vite après ouverture ; conserver les produits secs comme les protéines de soja au sec.",
+        "dry": "Conserver au sec, à l'abri de la lumière et bien fermé.",
+        "coffee": "Conserver à l'abri de la lumière et de l'air. Pour les grains, la date de torréfaction compte plus que la date de remplissage.",
+        "sweet": "Conserver au frais et au sec.",
+    },
+    "nl": {
+        "dish": "Snel laten afkoelen, goed afgesloten bewaren en voor het eten goed verhitten (minstens 70 °C).",
+        "raw_meat": "Gescheiden van ander voedsel bewaren en snel bereiden.",
+        "fish": "Zeer bederfelijk: koel houden en snel opmaken.",
+        "deli": "Na openen goed afgesloten in de koelkast bewaren.",
+        "dairy": "Na openen goed afgesloten en koel bewaren. De structuur kan na ontdooien veranderen.",
+        "egg": "Eieren in de koelkast bewaren. Rauwe eieren niet in de schaal invriezen.",
+        "produce": "Droog en luchtig bewaren, beschadigde stukken weggooien.",
+        "bread": "Brood is goed in plakken in te vriezen.",
+        "condiment": "Na openen goed afgesloten bewaren; ketchup, mosterd en pasta's na openen in de koelkast.",
+        "plant": "Tofu, tempeh en kant-en-klaar eten zoals falafel of hummus koel bewaren en na openen snel opmaken; droge producten zoals sojabrokken droog bewaren.",
+        "dry": "Droog, donker en goed afgesloten bewaren.",
+        "coffee": "Donker en luchtdicht bewaren. Bij koffiebonen telt de branddatum meer dan de vuldatum.",
+        "sweet": "Koel en droog bewaren.",
+    },
+}
+
+# Names of the rows in French and Dutch (6.0); missing ones stay English
+NAMES_MORE: dict[str, dict[str, str]] = {
+    "fr": {
+        "dish": "Plat / restes", "soup": "Soupe / bouillon / sauce", "salad_dish": "Salade composée", "sandwich": "Sandwich",
+        "smoked_fish": "Poisson fumé", "dough": "Pâte", "pesto_dip": "Pesto / dip / pâte à tartiner",
+        "ketchup": "Ketchup / sauce chili / cocktail", "mustard": "Moutarde", "mayonnaise": "Mayonnaise / rémoulade",
+        "soy_sauce": "Sauce soja", "worcester": "Sauce Worcestershire", "bbq_sauce": "Sauce barbecue",
+        "hot_sauce": "Sauce piquante (Tabasco, sriracha)", "dressing": "Vinaigrette (en bouteille)", "horseradish": "Raifort",
+        "hoisin": "Sauce hoisin / huître", "olives": "Olives (bocal)", "pickles": "Cornichons (bocal)", "curry_paste": "Pâte de curry",
+        "curry_powder": "Épices", "ground_meat": "Viande hachée", "poultry": "Volaille (crue)", "marinated_meat": "Viande marinée / gyros",
+        "game": "Gibier (cru)", "meat": "Viande (crue)", "canned_fish": "Conserve de poisson", "fish": "Poisson / fruits de mer (crus)",
+        "deli": "Charcuterie / jambon", "sausage_raw": "Saucisse crue", "bacon": "Lard / bacon", "hard_cheese": "Fromage à pâte dure",
+        "soft_cheese": "Fromage / fromage frais / pâte molle", "yogurt": "Yaourt / fromage blanc / skyr", "milk": "Lait", "cream": "Crème",
+        "butter": "Beurre / margarine", "egg_boiled": "Œufs (cuits durs)", "egg_cooked": "Œufs brouillés / omelette",
+        "egg_separated": "Jaune / blanc d'œuf (cru)", "egg": "Œufs (crus, en coquille)", "tofu": "Tofu / tempeh / seitan",
+        "falafel_hummus": "Falafel / houmous", "dry_protein": "Protéines de soja / lupin / pois (sèches)", "juice": "Jus / smoothie",
+        "leafy": "Salade / légumes-feuilles", "root": "Pommes de terre / oignons / ail", "mushroom": "Champignons", "herbs": "Herbes fraîches",
+        "berries": "Baies", "apple": "Pommes / poires", "citrus": "Agrumes", "fruit": "Fruits", "vegetables": "Légumes (frais)",
+        "bread": "Pain / petits pains", "cake": "Gâteau / pâtisserie", "cookies": "Biscuits / crackers", "chips": "Chips / snacks",
+        "chocolate": "Chocolat / confiseries", "jam": "Confiture (ouverte)", "stable": "Miel / sucre / sel / vinaigre",
+        "soup_pasta": "Pâtes à soupe (sèches)", "pasta": "Pâtes (sèches) / cuites", "rice_raw": "Riz rond (cru)",
+        "brown_rice": "Riz complet (sec) / cuit", "rice": "Riz et céréales (secs) / cuits", "flour": "Farine / amidon / pâtisserie",
+        "cereal": "Flocons d'avoine / muesli / céréales", "legumes": "Lentilles / pois chiches / haricots secs", "nuts": "Noix / graines",
+        "nut_butter": "Purée d'oléagineux / beurre de cacahuète", "dried_fruit": "Fruits secs", "tea": "Thé", "coffee_ground": "Café (moulu)",
+        "coffee": "Café en grains", "oil": "Huile",
+    },
+    "nl": {
+        "dish": "Gerecht / restjes", "soup": "Soep / bouillon / saus", "salad_dish": "Kant-en-klare salade", "sandwich": "Belegd broodje",
+        "smoked_fish": "Gerookte vis", "dough": "Deeg", "pesto_dip": "Pesto / dip / smeersel",
+        "ketchup": "Ketchup / chili- / cocktailsaus", "mustard": "Mosterd", "mayonnaise": "Mayonaise / remoulade",
+        "soy_sauce": "Sojasaus", "worcester": "Worcestershiresaus", "bbq_sauce": "Barbecuesaus",
+        "hot_sauce": "Hete saus (Tabasco, sriracha)", "dressing": "Saladedressing (fles)", "horseradish": "Mierikswortel",
+        "hoisin": "Hoisin- / oestersaus", "olives": "Olijven (pot)", "pickles": "Augurken (pot)", "curry_paste": "Currypasta",
+        "curry_powder": "Kruiden", "ground_meat": "Gehakt", "poultry": "Gevogelte (rauw)", "marinated_meat": "Gemarineerd vlees / gyros",
+        "game": "Wild (rauw)", "meat": "Vlees (rauw)", "canned_fish": "Visconserven", "fish": "Vis / zeevruchten (rauw)",
+        "deli": "Vleeswaren / worst / ham", "sausage_raw": "Rauwe worst", "bacon": "Spek / bacon", "hard_cheese": "Harde kaas",
+        "soft_cheese": "Kaas / roomkaas / zachte kaas", "yogurt": "Yoghurt / kwark / skyr", "milk": "Melk", "cream": "Room",
+        "butter": "Boter / margarine", "egg_boiled": "Eieren (gekookt)", "egg_cooked": "Roerei / omelet",
+        "egg_separated": "Eigeel / eiwit (rauw)", "egg": "Eieren (rauw, in de schaal)", "tofu": "Tofu / tempé / seitan",
+        "falafel_hummus": "Falafel / hummus", "dry_protein": "Sojabrokken / lupine / erwteneiwit (droog)", "juice": "Sap / smoothie",
+        "leafy": "Sla / bladgroente", "root": "Aardappelen / uien / knoflook", "mushroom": "Paddenstoelen", "herbs": "Verse kruiden",
+        "berries": "Bessen", "apple": "Appels / peren", "citrus": "Citrusvruchten", "fruit": "Fruit", "vegetables": "Groente (vers)",
+        "bread": "Brood / broodjes", "cake": "Taart / gebak", "cookies": "Koekjes / crackers", "chips": "Chips / snacks",
+        "chocolate": "Chocolade / snoep", "jam": "Jam (geopend)", "stable": "Honing / suiker / zout / azijn",
+        "soup_pasta": "Soepnoedels (droog)", "pasta": "Pasta (droog) / gekookt", "rice_raw": "Rijst voor rijstepap (rauw)",
+        "brown_rice": "Zilvervliesrijst (droog) / gekookt", "rice": "Rijst en granen (droog) / gekookt", "flour": "Meel / zetmeel / bakken",
+        "cereal": "Havermout / muesli / ontbijtgranen", "legumes": "Linzen / kikkererwten / droge bonen", "nuts": "Noten / zaden",
+        "nut_butter": "Notenpasta / pindakaas", "dried_fruit": "Gedroogd fruit", "tea": "Thee", "coffee_ground": "Koffie (gemalen)",
+        "coffee": "Koffiebonen", "oil": "Olie",
+    },
+}
+
+
+def food_name(entry: Entry, language: str) -> str:
+    lang = _lang(language)
+    if lang == "de":
+        return entry.de
+    return NAMES_MORE.get(lang, {}).get(entry.id) or entry.en
+
+
+def tip_text(cat: str, language: str) -> str:
+    lang = _lang(language)
+    de, en = TIPS[cat]
+    return de if lang == "de" else TIPS_MORE.get(lang, {}).get(cat) or en
+
 # Where the values of a row come from (5.6, #151). Ranges: the lower value. The 0 °C compartment has no
 # source of its own: it is the fridge value plus a little, as before.
 FSIS = "USDA-FSIS Cold Food Storage Chart"
@@ -409,6 +509,8 @@ SOURCES: dict[str, str] = {
 SOURCE_NOTE = {
     "de": {"source": "Quelle: {source}.", OWN: "Ohne bestätigte Quelle: vorsichtige Schätzung von Larder."},
     "en": {"source": "Source: {source}.", OWN: "No confirmed source: Larder's cautious estimate."},
+    "fr": {"source": "Source : {source}.", OWN: "Sans source confirmée : estimation prudente de Larder."},
+    "nl": {"source": "Bron: {source}.", OWN: "Zonder bevestigde bron: voorzichtige schatting van Larder."},
 }
 
 
@@ -419,7 +521,7 @@ def source_of(entry_id: str) -> str:
 
 def source_note(entry_id: str, lang: str) -> str:
     source = source_of(entry_id)
-    notes = SOURCE_NOTE["de" if lang.startswith("de") else "en"]
+    notes = SOURCE_NOTE[_lang(lang)]
     return notes[OWN] if source == OWN else notes["source"].format(source=source)
 
 
@@ -454,7 +556,91 @@ OPENED: dict[str, tuple[int, int | None]] = {
 OPENED_NOTE = {
     "de": "Nach dem Öffnen: {days} ({place}, Quelle: {source}).",
     "en": "After opening: {days} ({place}, source: {source}).",
+    "fr": "Après ouverture : {days} ({place}, source : {source}).",
+    "nl": "Na openen: {days} ({place}, bron: {source}).",
 }
+
+# 6.0: French and Dutch keywords (the table recognises food written in these languages too)
+KEYWORDS_MORE: dict[str, str] = {
+    "dish": "restes|reste|plat cuisine|gratin|lasagnes|ragout|hachis|curry|restjes|stamppot|ovenschotel|gerecht|maaltijd",
+    "soup": "soupe|bouillon|veloute|sauce tomate|soep|bouillon|tomatensaus",
+    "salad_dish": "salade de pates|salade de pommes de terre|taboule|pastasalade|aardappelsalade|huzarensalade",
+    "smoked_fish": "saumon fume|poisson fume|gerookte zalm|gerookte vis|makreel gerookt",
+    "dough": "pate a pizza|pate brisee|pate feuilletee|deeg|pizzadeeg|bladerdeeg",
+    "pesto_dip": "tartinade|houmous|tapenade|smeersel|spread",
+    "ketchup": "ketchup",
+    "mustard": "moutarde|mosterd",
+    "mayonnaise": "mayonnaise|mayonaise|remoulade",
+    "soy_sauce": "sauce soja|sojasaus|ketjap",
+    "bbq_sauce": "sauce barbecue|barbecuesaus",
+    "hot_sauce": "sauce piquante|hete saus|sambal",
+    "dressing": "vinaigrette|saladedressing",
+    "horseradish": "raifort|mierikswortel",
+    "olives": "olives|olijven",
+    "pickles": "cornichons|augurken|zilveruitjes",
+    "curry_paste": "pate de curry|concentre de tomate|currypasta|tomatenpuree",
+    "curry_powder": "epices|poivre|paprika poudre|kruiden|specerijen|peper",
+    "ground_meat": "viande hachee|steak hache|hache|gehakt|rundergehakt",
+    "poultry": "poulet|dinde|volaille|canard|kip|kalkoen|gevogelte|eend",
+    "game": "gibier|chevreuil|sanglier|lapin|wild|hert|ree|konijn|everzwijn",
+    "meat": "viande|boeuf|porc|veau|agneau|cotelette|roti|vlees|rundvlees|varkensvlees|kalfsvlees|lamsvlees|karbonade|biefstuk",
+    "canned_fish": "thon en boite|sardines en boite|tonijn in blik|sardines in blik",
+    "fish": "poisson|saumon|cabillaud|crevettes|thon|truite|moules|vis|zalm|kabeljauw|garnalen|tonijn|forel|mosselen|haring",
+    "deli": "jambon|charcuterie|saucisson|terrine|pate de campagne|pate en croute|rillettes|ham|vleeswaren|salami|leverworst|boterhamworst",
+    "sausage_raw": "saucisse|chipolata|merguez|braadworst|saucijs",
+    "bacon": "lardons|bacon|lard|spek|ontbijtspek",
+    "hard_cheese": "comte|emmental|gruyere|parmesan|cheddar|gouda|oude kaas|belegen kaas|jonge kaas",
+    "soft_cheese": "fromage|camembert|brie|mozzarella|chevre|fromage frais|kaas|roomkaas|zachte kaas|geitenkaas",
+    "yogurt": "yaourt|fromage blanc|skyr|kefir|creme fraiche epaisse|yoghurt|kwark|vla",
+    "milk": "lait|lait d avoine|melk|havermelk|karnemelk",
+    "cream": "creme|creme fraiche|creme liquide|room|slagroom|kookroom",
+    "butter": "beurre|margarine|boter",
+    "egg_boiled": "oeufs durs|oeuf dur|gekookte eieren|gekookt ei",
+    "egg_cooked": "oeufs brouilles|omelette|roerei|omelet",
+    "egg_separated": "jaune d oeuf|blanc d oeuf|eigeel|eiwit",
+    "egg": "oeufs|oeuf|eieren|ei",
+    "tofu": "tofu|tempeh|seitan",
+    "juice": "jus|jus d orange|sap|sinaasappelsap",
+    "leafy": "salade|laitue|epinards|roquette|mache|sla|spinazie|rucola|veldsla",
+    "root": "pommes de terre|oignons|ail|patates|aardappelen|uien|knoflook|patat",
+    "mushroom": "champignons|cepes|girolles|paddenstoelen|champignon",
+    "herbs": "herbes|persil|basilic|ciboulette|coriandre|kruiden vers|peterselie|basilicum|bieslook|koriander",
+    "berries": "fraises|framboises|myrtilles|cerises|aardbeien|frambozen|blauwe bessen|kersen",
+    "apple": "pommes|poires|appels|peren",
+    "citrus": "citron|orange|mandarine|clementine|pamplemousse|citroen|sinaasappel|mandarijn|grapefruit",
+    "fruit": "fruits|banane|raisin|melon|peche|ananas|fruit|banaan|druiven|meloen|perzik",
+    "vegetables": "legumes|tomates|concombre|poivron|courgette|carottes|brocoli|chou|poireau|haricots verts|groente|tomaten|komkommer|paprika|courgette|wortelen|broccoli|kool|prei|sperziebonen",
+    "bread": "pain|baguette|brioche|croissant|pain de mie|brood|stokbrood|broodjes|beschuit",
+    "cake": "gateau|tarte|patisserie|cake|taart|gebak|cake",
+    "cookies": "biscuits|crackers|koekjes|crackers|speculaas",
+    "chips": "chips|snacks|chips",
+    "chocolate": "chocolat|bonbons|sucreries|chocolade|snoep|hagelslag",
+    "jam": "confiture|pate a tartiner|jam|pindakaas|chocopasta",
+    "stable": "miel|sucre|sel|vinaigre|sirop|honing|suiker|zout|azijn|stroop",
+    "pasta": "pates|spaghetti|macaroni|tagliatelle|nouilles|pasta|macaroni|noedels|mie",
+    "rice": "riz|couscous|semoule|quinoa|boulgour|rijst|couscous|bulgur",
+    "flour": "farine|fecule|levure|maizena|meel|bloem|bakpoeder",
+    "cereal": "flocons d avoine|muesli|cereales|havermout|muesli|ontbijtgranen",
+    "legumes": "lentilles|pois chiches|haricots secs|linzen|kikkererwten|bruine bonen",
+    "nuts": "noix|amandes|noisettes|cacahuetes|graines|noten|amandelen|hazelnoten|pinda|zaden",
+    "nut_butter": "beurre de cacahuete|puree d amande|pindakaas|notenpasta",
+    "dried_fruit": "fruits secs|raisins secs|dattes|abricots secs|gedroogd fruit|rozijnen|dadels",
+    "tea": "the|infusion|tisane|thee",
+    "coffee_ground": "cafe moulu|gemalen koffie",
+    "coffee": "cafe|cafe en grains|cacao|koffie|koffiebonen|cacao",
+    "oil": "huile|huile d olive|olie|olijfolie|zonnebloemolie",
+}
+
+
+def _add_keywords() -> None:
+    global ENTRIES  # noqa: PLW0603 - once at import
+    ENTRIES = tuple(
+        Entry(e.id, e.de, e.en, e.cat, e.keywords + tuple(_kw(k) for k in KEYWORDS_MORE.get(e.id, "").split("|") if k), e.days, e.priority, e.perishable)
+        for e in ENTRIES
+    )
+
+
+_add_keywords()
 
 _KEYWORD_RES: dict[str, tuple[re.Pattern[str], re.Pattern[str]]] = {}
 _PLURAL = r"(?:e|en|n|s|es|er|ern)?"
@@ -548,11 +734,16 @@ class Storage:
 _TEMP_RE = re.compile(r"(?<![\w.,])([-−–]?\s?\d{1,2}(?:[.,]\d+)?)\s*(?:°|grad|degrees?)", re.IGNORECASE)
 
 _WORDS = (
-    (FREEZER, 0.5, ("gefrierfach", "freezer compartment", "eisfach")),
-    (FREEZER, 1.0, ("gefrier", "tiefkuehl", "tiefkuhl", "truhe", "freezer", "frozen", "frost")),
-    (ZERO, 1.0, ("null grad", "zero grad", "zero degree", "frischefach", "frischhalte", "fleischfach", "fischfach", "chiller", "0 grad")),
-    (FRIDGE, 1.0, ("kuehlschrank", "kuehl", "fridge", "refrigerator", "icebox", "cooler")),
-    (PANTRY, 1.0, ("vorrat", "speis", "pantry", "keller", "cellar", "basement", "schrank", "cupboard", "regal", "shelf", "abstell", "lager", "trocken", "dry")),
+    (FREEZER, 0.5, ("gefrierfach", "freezer compartment", "eisfach", "vriesvak", "freezer du frigo")),
+    (FREEZER, 1.0, ("gefrier", "tiefkuehl", "tiefkuhl", "truhe", "freezer", "frozen", "frost",
+                    "congel", "surgel", "vriezer", "diepvries", "vrieskist")),
+    (ZERO, 1.0, ("null grad", "zero grad", "zero degree", "frischefach", "frischhalte", "fleischfach", "fischfach", "chiller", "0 grad",
+                 "zero degre", "0 degre", "nul graden", "0 graden")),
+    (FRIDGE, 1.0, ("kuehlschrank", "kuehl", "fridge", "refrigerator", "icebox", "cooler",
+                   "frigo", "refriger", "koelkast", "koel")),
+    (PANTRY, 1.0, ("vorrat", "speis", "pantry", "keller", "cellar", "basement", "schrank", "cupboard", "regal", "shelf", "abstell", "lager", "trocken", "dry",
+                   "garde manger", "placard", "cellier", "cave", "epicerie", "etagere",
+                   "voorraad", "provisie", "kelder", "kast", "plank")),
 )
 
 
@@ -605,7 +796,10 @@ _UNITS = (
     (365, ("y", "yr", "yrs", "year", "years", "j", "jahr", "jahre", "jahren")),
     (30, ("mo", "mon", "month", "months", "monat", "monate", "monaten")),
     (7, ("w", "wk", "week", "weeks", "woche", "wochen")),
-    (1, ("", "d", "day", "days", "t", "tag", "tage", "tagen")),
+    (1, ("", "d", "day", "days", "t", "tag", "tage", "tagen", "jour", "jours", "dag", "dagen")),
+    (365, ("an", "ans", "annee", "annees", "jaar")),
+    (30, ("mois", "maand", "maanden")),
+    (7, ("semaine", "semaines", "weken")),
 )
 
 
@@ -650,20 +844,27 @@ def parse_duration(text: str | None) -> int | None:
     return days if days >= 1 else None
 
 
+_DURATION_WORDS = {
+    "de": (("Jahr", "Jahre"), ("Monat", "Monate"), ("Woche", "Wochen"), ("Tag", "Tage")),
+    "en": (("year", "years"), ("month", "months"), ("week", "weeks"), ("day", "days")),
+    "fr": (("an", "ans"), ("mois", "mois"), ("semaine", "semaines"), ("jour", "jours")),
+    "nl": (("jaar", "jaar"), ("maand", "maanden"), ("week", "weken"), ("dag", "dagen")),
+}
+
+
+def _lang(language: str) -> str:
+    code = str(language or "en").lower()[:2]
+    return code if code in _DURATION_WORDS else "en"
+
+
 def format_duration(days: int, language: str) -> str:
     """Days readable: 1095 → '3 Jahre' / '3 years', 540 → '18 Monate', 42 → '6 Wochen'."""
-    de = language.lower().startswith("de")
-    for size, one, many in (
-        (365, ("Jahr", "year"), ("Jahre", "years")),
-        (30, ("Monat", "month"), ("Monate", "months")),
-        (7, ("Woche", "week"), ("Wochen", "weeks")),
-        (1, ("Tag", "day"), ("Tage", "days")),
-    ):
+    units = _DURATION_WORDS[_lang(language)]
+    for size, (one, many) in zip((365, 30, 7, 1), units, strict=True):
         if days % size == 0:
             n = days // size
-            word = (one if n == 1 else many)[0 if de else 1]
-            return f"{n} {word}"
-    return f"{days} {'Tage' if de else 'days'}"
+            return f"{n} {one if n == 1 else many}"
+    return f"{days} {units[3][1]}"
 
 
 def storage_from_words(text: str) -> Storage | None:
@@ -755,8 +956,12 @@ def lookup(
     item, shortest = min(results, key=lambda r: r[1].days)
     if len({r.days for _, r in results}) == 1:
         return shortest
-    lang = "de" if language.lower().startswith("de") else "en"
-    note = f"„{item}“ bestimmt das MHD." if lang == "de" else f"“{item}” decides the best-before date."
+    note = {
+        "de": f"„{item}“ bestimmt das MHD.",
+        "en": f"“{item}” decides the best-before date.",
+        "fr": f"« {item} » détermine la date.",
+        "nl": f"„{item}” bepaalt de houdbaarheid.",
+    }[_lang(language)]
     return TableResult(shortest.days, f"{note} {shortest.tip}".strip(), shortest.basis)
 
 
@@ -771,7 +976,7 @@ def _lookup_one(
     storage_hint: str | None = None,
     opened: bool = False,
 ) -> TableResult:
-    lang = "de" if language.lower().startswith("de") else "en"
+    lang = _lang(language)
     entry = find_entry(content)
     if entry is None:
         raise TableNoMatch
@@ -780,7 +985,7 @@ def _lookup_one(
         raise TableUnknownStorage
 
     place = STORAGE_LABELS[lang][storage.key]
-    food = entry.de if lang == "de" else entry.en
+    food = food_name(entry, lang)
     if opened and storage.key == FREEZER:
         raise TableNoMatch  # "opened" in the freezer: no table value, the caller falls back
     if opened and entry.id in OPENED:
@@ -796,14 +1001,14 @@ def _lookup_one(
         days *= VACUUM_FACTOR[storage.key]
     days_int = max(1, round(days))
 
-    tip_de, tip_en = TIPS[entry.cat]
-    tip = f"{tip_de if lang == 'de' else tip_en} {source_note(entry.id, lang)}"
+    tip = f"{tip_text(entry.cat, lang)} {source_note(entry.id, lang)}"
     if vacuum and entry.perishable and cold:
-        tip += (
-            " Vakuum verlängert die Haltbarkeit leicht verderblicher Speisen im Kühlschrank kaum."
-            if lang == "de"
-            else " Vacuum hardly extends the shelf life of perishable food in the fridge."
-        )
+        tip += {
+            "de": " Vakuum verlängert die Haltbarkeit leicht verderblicher Speisen im Kühlschrank kaum.",
+            "en": " Vacuum hardly extends the shelf life of perishable food in the fridge.",
+            "fr": " Le sous vide prolonge à peine la conservation des aliments périssables au réfrigérateur.",
+            "nl": " Vacuüm verlengt de houdbaarheid van bederfelijk voedsel in de koelkast nauwelijks.",
+        }[lang]
     return TableResult(days_int, tip, f"{food} · {place} · {_source_label(entry.id, lang)}")
 
 
@@ -821,4 +1026,4 @@ def _source_label(entry_id: str, lang: str) -> str:
     source = source_of(entry_id)
     if source != OWN:
         return source
-    return "Larder (Schätzung)" if lang == "de" else "Larder (estimate)"
+    return {"de": "Larder (Schätzung)", "fr": "Larder (estimation)", "nl": "Larder (schatting)"}.get(_lang(lang), "Larder (estimate)")

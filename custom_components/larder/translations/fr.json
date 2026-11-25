@@ -1,0 +1,534 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ajouter une boîte",
+        "description": "Larder est configuré – les boîtes, sachets, paquets et le reste s'ajoutent le plus facilement dans le tableau de bord **Larder** de la barre latérale. Ici, seule une boîte avec un code QR peut être ajoutée :",
+        "menu_options": {
+          "scan": "Lire un code QR Zwilling",
+          "create": "Créer un nouveau code QR"
+        }
+      },
+      "scan": {
+        "title": "Lire un code QR Zwilling",
+        "description": "Scannez le code QR de la boîte (par ex. avec un raccourci) et collez son contenu ici. L'identifiant seul suffit aussi (valeur de `cc`, par ex. `34OL`).",
+        "data": {
+          "qr_code": "Contenu du code QR ou identifiant",
+          "name": "Nom (facultatif)",
+          "area_id": "Pièce (facultatif)",
+          "vacuum": "Sous vide",
+          "shopping": "Ajouter à la liste de courses une fois vidée",
+          "flexible": "Emplacement variable",
+          "home_area": "Une fois vidée, retour à"
+        }
+      },
+      "create": {
+        "title": "Créer un nouveau code QR",
+        "description": "Un nouvel identifiant unique est généré (format `HA-XXXXXXXX`), qui ne peut pas entrer en conflit avec les codes Zwilling. Le code QR correspondant se trouve ensuite comme image sur l'appareil, prêt à imprimer et à coller.",
+        "data": {
+          "name": "Nom (facultatif)",
+          "area_id": "Pièce (facultatif)",
+          "vacuum": "Sous vide",
+          "shopping": "Ajouter à la liste de courses une fois vidée",
+          "flexible": "Emplacement variable",
+          "home_area": "Une fois vidée, retour à"
+        }
+      },
+      "reconfigure": {
+        "title": "Renommer la boîte",
+        "description": "Identifiant de la boîte : {cc}. L'identifiant reste, les codes QR imprimés et les tags NFC continuent de fonctionner.",
+        "data": {
+          "name": "Nom"
+        }
+      }
+    },
+    "error": {
+      "invalid_code": "Aucun identifiant (cc) valide trouvé dans le code QR.",
+      "name_required": "Veuillez saisir un nom."
+    },
+    "abort": {
+      "already_configured": "Cette boîte a déjà été ajoutée.",
+      "reconfigure_successful": "La boîte a été renommée."
+    }
+  },
+  "entity": {
+    "datetime": {
+      "filled_at": {
+        "name": "Rempli le"
+      }
+    },
+    "text": {
+      "content": {
+        "name": "Contenu"
+      },
+      "compartment": {
+        "name": "Compartiment"
+      }
+    },
+    "button": {
+      "empty_container": {
+        "name": "Vider la boîte"
+      }
+    },
+    "date": {
+      "best_before": {
+        "name": "À consommer de préférence avant"
+      }
+    },
+    "image": {
+      "qr_code": {
+        "name": "Code QR"
+      }
+    },
+    "switch": {
+      "vacuum": {
+        "name": "Sous vide"
+      },
+      "shopping": {
+        "name": "Liste de courses"
+      },
+      "flexible": {
+        "name": "Emplacement variable"
+      }
+    },
+    "sensor": {
+      "days_left": {
+        "name": "Jours jusqu'à la date",
+        "state_attributes": {
+          "status": {
+            "name": "Statut",
+            "state": {
+              "ok": "OK",
+              "soon": "Bientôt périmé",
+              "expired": "Périmé",
+              "none": "Sans date"
+            }
+          }
+        }
+      }
+    },
+    "number": {
+      "portions": {
+        "name": "Quantité"
+      }
+    },
+    "select": {
+      "unit": {
+        "name": "Unité",
+        "state": {
+          "portions": "Portions",
+          "pieces": "Pièces",
+          "slices": "Tranches",
+          "grams": "Grammes",
+          "milliliters": "Millilitres"
+        }
+      },
+      "home_area": {
+        "name": "Emplacement une fois vidée",
+        "state": {
+          "none": "Reste où elle est"
+        }
+      }
+    }
+  },
+  "exceptions": {
+    "nothing_to_reset": {
+      "message": "Aucune entité à réinitialiser n'est disponible pour cette boîte (contenu, date et date de remplissage désactivés ?)."
+    },
+    "ai_unavailable": {
+      "message": "L'intégration « AI Task » de Home Assistant n'est pas configurée."
+    },
+    "no_content": {
+      "message": "Saisissez d'abord le contenu de la boîte."
+    },
+    "no_area": {
+      "message": "Attribuez d'abord une pièce (emplacement) à la boîte pour que l'estimation corresponde à l'endroit."
+    },
+    "ai_failed": {
+      "message": "L'estimation par l'IA a échoué : {error}"
+    },
+    "estimates_disabled": {
+      "message": "Les estimations de date sont désactivées. Activez-les sous Paramètres → Appareils et services → Larder → Configurer."
+    },
+    "table_no_match": {
+      "message": "Le tableau de conservation n'a pas d'entrée pour ce contenu. Saisissez la date vous-même ou choisissez « Tableau, sinon IA » dans les paramètres."
+    },
+    "table_unknown_storage": {
+      "message": "La pièce « {area} » ne correspond à aucun lieu de stockage. Nommez-la par ex. réfrigérateur, compartiment 0 °C, congélateur ou garde-manger, ou ajoutez un capteur de température à la pièce."
+    },
+    "table_unsuitable": {
+      "message": "{food} ne devrait pas être conservé dans « {place} », aucune date n'est donc estimée."
+    },
+    "entry_not_found": {
+      "message": "Cette entrée mémorisée n'existe plus."
+    },
+    "days_out_of_range": {
+      "message": "Le nombre de jours doit être compris entre {min} et {max}."
+    },
+    "nfc_unknown_container": {
+      "message": "Cette boîte n'existe pas."
+    },
+    "nfc_no_tag": {
+      "message": "Aucun identifiant de tag n'a été donné."
+    },
+    "nfc_tag_in_use": {
+      "message": "Ce tag est déjà lié à « {name} ». Dissociez-le d'abord là-bas."
+    },
+    "recipes_failed": {
+      "message": "La suggestion de recettes par l'IA a échoué : {error}"
+    },
+    "recipe_photo_failed": {
+      "message": "La recette n'a pas pu être lue : {error}"
+    },
+    "recipe_photo_none": {
+      "message": "Aucune recette n'a été trouvée sur la photo."
+    },
+    "recipe_photo_unsupported": {
+      "message": "L'IA choisie ne sait pas lire les photos ou fichiers. Choisissez dans les paramètres une tâche IA qui prend en charge les pièces jointes."
+    },
+    "recipe_photo_no_media": {
+      "message": "Home Assistant n'a pas de dossier média ; les photos y sont stockées brièvement."
+    },
+    "content_photo_none": {
+      "message": "Aucun aliment n'a été reconnu sur la photo."
+    },
+    "transfer_invalid": {
+      "message": "Le transvasement ne fonctionne que d'un paquet avec contenu vers une boîte ou un sachet vide."
+    },
+    "date_photo_none": {
+      "message": "Aucune date lisible n'a été trouvée sur la photo."
+    },
+    "opened_photo_none": {
+      "message": "Aucun « à consommer dans les … après ouverture » n'a été trouvé sur la photo."
+    },
+    "receipt_photo_none": {
+      "message": "Aucun ticket de caisse avec des aliments n'a été reconnu sur la photo."
+    },
+    "move_invalid": {
+      "message": "Seuls les paquets peuvent être déplacés, vers une pièce existante."
+    },
+    "open_invalid": {
+      "message": "Seul un paquet non ouvert peut être ouvert."
+    },
+    "place_unknown_area": {
+      "message": "Cette pièce n'existe pas."
+    },
+    "place_tag_container": {
+      "message": "Ce tag appartient déjà à une boîte, un sachet ou un paquet."
+    },
+    "place_tag_in_use": {
+      "message": "Ce tag appartient déjà au compartiment {name}."
+    },
+    "voucher_photo_none": {
+      "message": "Aucun bon n'a été reconnu sur la photo."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Paramètres",
+        "description": "**Estimation de la date**\nDétermine le fonctionnement du bouton « Estimer la date » du tableau de bord et du service. Le tableau intégré fonctionne sans service d'IA et sans internet. L'IA utilise le service configuré sous Paramètres → Appareils et services → « AI Task » ; seuls le contenu, le nom de la pièce avec ses indications (capteur de température, description d'étiquette), sous vide oui/non et la date de remplissage sont envoyés. Les valeurs que vous avez corrigées vous-même l'emportent toujours.\n\n**Webhook de scan**\nSaisissez cette URL **une seule fois** dans le raccourci iOS. Elle est secrète : quiconque la connaît peut consulter les boîtes.\n\n`{webhook_url}`\n\nChemin seul : `{webhook_path}`\n\nLe README du projet explique le raccourci.",
+        "data": {
+          "estimate_mode": "Estimation de la date",
+          "ai_task_entity": "Tâche IA (vide = celle par défaut de Home Assistant)",
+          "opened_days": "Conservation après ouverture (jours)",
+          "thawed_days": "Délai après décongélation (jours)",
+          "calendar_entity": "Calendrier pour les dates (facultatif)",
+          "vacuum_default": "Sous vide par défaut pour les nouvelles boîtes",
+          "nfc_notify": "NFC : notifier le téléphone",
+          "repair_hints": "Indications de réparation",
+          "temperature_warning": "Alerte de température",
+          "todo_entity": "Liste de courses (alimentation)",
+          "todo_household": "Liste de courses pour l'entretien (facultatif)",
+          "todo_pharmacy": "Liste de courses pour les médicaments (facultatif)",
+          "meal_calendar": "Calendrier pour le plan de repas",
+          "thaw_days": "Décongélation : jours à l'avance",
+          "recipe_days": "Période pour les idées de recettes (jours)",
+          "soon_days": "« Bientôt périmé » à partir de (jours)",
+          "long_soon_days": "« Bientôt périmé » pour médicaments, entretien et bons (jours)",
+          "shopping_details": "Marque et conditionnement sur la liste de courses",
+          "watch_allergens": "Allergènes dans le foyer (facultatif)",
+          "stock_lead_days": "Stock : jours jusqu'aux prochaines courses",
+          "reorder_shopping": "Bientôt épuisé : ajouter tout de suite à la liste de courses",
+          "recall_check": "Rappels de produits (lebensmittelwarnung.de)",
+          "recall_state": "Rappels : seulement pour ce Land allemand",
+          "plan_source": "Proposition de semaine : source",
+          "plan_days": "Proposition de semaine : jours",
+          "supply_check": "Contrôle des réserves d'urgence",
+          "supply_persons": "Personnes dans le foyer (réserves d'urgence)",
+          "supply_days": "Jours de réserves d'urgence"
+        },
+        "data_description": {
+          "vacuum_default": "Les nouvelles boîtes commencent avec l'interrupteur « Sous vide » activé ou non. Les boîtes existantes gardent leur valeur. Désactivez-le si la plupart de vos boîtes ne sont pas sous vide.",
+          "estimate_mode": "Affiche le bouton « Estimer la date » dans le tableau de bord, sauf sur Désactivé.",
+          "ai_task_entity": "Nécessaire seulement si plusieurs services d'IA sont configurés et qu'une option IA est choisie.",
+          "opened_days": "Seulement si ni le tableau (valeurs après ouverture de l'USDA FoodKeeper) ni l'IA ne connaissent le contenu à cet endroit : « Ouvert » et « Entamer » raccourcissent la date à au plus autant de jours à partir d'aujourd'hui.",
+          "thawed_days": "Le bouton « Décongelé » du tableau de bord raccourcit la date à au plus autant de jours à partir d'aujourd'hui. Ne recongelez pas un aliment décongelé.",
+          "calendar_entity": "Écrit la date de chaque boîte dans ce calendrier comme événement d'une journée (créer, déplacer, supprimer). Le calendrier doit permettre de créer et de supprimer des événements, par ex. Google ou « Local Calendar » (pas CalDAV, qui ne peut pas supprimer). Vide = désactivé.",
+          "nfc_notify": "Quand quelqu'un scanne un tag lié, son téléphone (application Companion) reçoit une notification. La toucher ouvre la boîte dans le tableau de bord.",
+          "repair_hints": "Affiche sous Paramètres → Système → Réparations des indications pour les boîtes sans pièce, les boîtes remplies sans date et celles périmées depuis au moins 7 jours.",
+          "temperature_warning": "Avertit (indication de réparation et événement larder_temperature_warning) quand un lieu de stockage avec capteur de température reste trop chaud : congélateur au-dessus de −12 °C pendant 30 minutes, réfrigérateur au-dessus de 8 °C ou tiroir 0 °C au-dessus de 6 °C pendant 60 minutes.",
+          "todo_entity": "Une liste de tâches de Home Assistant (par ex. « Liste de courses », Todoist, Bring!). Tout ce que Larder met sur la liste de courses y va : boîtes vidées avec l'interrupteur « Liste de courses », stock minimum, bientôt épuisé, ingrédients du plan de repas (pas en double). Certains produits peuvent avoir une autre liste sur leur carte. Vide = désactivé.",
+          "todo_household": "Une liste de tâches propre aux articles d'entretien (par ex. « Droguerie »). Vide = la même liste que pour l'alimentation. Certains produits peuvent avoir une autre liste sur leur carte.",
+          "todo_pharmacy": "Une liste de tâches propre aux médicaments (par ex. « Pharmacie »). Vide = la même liste que pour l'alimentation.",
+          "meal_calendar": "Facultatif : les plats prévus y apparaissent comme événement d'une journée « 🍽 … ». Sans calendrier, ils ne sont que dans le tableau de bord.",
+          "thaw_days": "Combien de jours avant le jour prévu le résumé rappelle les boîtes au congélateur (0 = le jour même).",
+          "recipe_days": "Les idées de recettes « avec les restes » utilisent les boîtes qui périment dans ce nombre de jours (0 = aujourd'hui seulement). Dans le tableau de bord, vous pouvez changer la période pour une demande ou la désactiver.",
+          "soon_days": "À partir de ce nombre de jours restants, une boîte est « bientôt périmée » (indication dans le tableau de bord, filtre, statut du capteur et valeur par défaut de l'aperçu).",
+          "long_soon_days": "Les médicaments et articles d'entretien avec une date (par ex. crème solaire) sont « bientôt périmés » autant de jours avant et apparaissent dans leur section de la page d'accueil. Ils ne font pas partie du résumé quotidien.",
+          "shopping_details": "Si la marque ou le conditionnement d'une boîte est connu (par ex. après un scan de code-barres), il va sur la liste avec le contenu au moment de vider : « Flocons d'avoine (Kölln, 500 g) ».",
+          "watch_allergens": "Les boîtes dont les allergènes ou le contenu correspondent reçoivent un ⚠ sur la carte et la tuile ; les idées de recettes les laissent de côté et évitent ces ingrédients. Simple indication, sans garantie.",
+          "stock_lead_days": "Pour le stock minimum proposé : autant de paquets que ce qui est consommé pendant cette période.",
+          "reorder_shopping": "Quand un produit avec stock minimum ne durera plus que les « jours jusqu'aux prochaines courses » selon la prévision, la page d'accueil l'affiche sous « Bientôt épuisé » (événement larder_running_low). Activé, il va aussi tout de suite sur la liste de courses (une fois, pas en double).",
+          "recall_check": "Toutes les 6 heures, compare les rappels publics du portail allemand lebensmittelwarnung.de avec la marque et le contenu de vos boîtes, sachets et paquets. Les correspondances apparaissent sur la page d'accueil et la carte ; événement larder_recall pour les notifications. Seul le flux public est récupéré, rien n'est envoyé.",
+          "recall_state": "Vide = alertes pour tous les Länder allemands.",
+          "plan_source": "D'où viennent les plats de « Proposer la semaine » du plan de repas. L'IA nécessite une tâche IA configurée.",
+          "plan_days": "Larder propose des plats pour ce nombre de jours à partir d'aujourd'hui (les jours déjà planifiés sont sautés).",
+          "supply_check": "Affiche sous ⋮ → 🛟 Réserves d'urgence ce qui manque selon la recommandation de l'office fédéral allemand de protection civile (BBK).",
+          "supply_persons": "Le contrôle des réserves d'urgence calcule pour ce nombre de personnes.",
+          "supply_days": "Le BBK recommande des réserves pour 10 jours."
+        }
+      }
+    },
+    "error": {
+      "calendar_not_supported": "Ce calendrier ne peut pas être utilisé : Larder doit pouvoir créer et supprimer des événements. Utilisez par exemple « Local Calendar » ou Google ; le calendrier CalDAV de Home Assistant ne peut pas supprimer d'événements."
+    }
+  },
+  "services": {
+    "estimate_best_before": {
+      "name": "Estimer la date",
+      "description": "Estime la date à partir du contenu, du lieu de stockage (pièce), du sous vide et de la date de remplissage – avec le tableau intégré et/ou l'IA selon les paramètres. Une date existante n'est jamais écrasée sauf si « Écraser » est activé.",
+      "fields": {
+        "apply": {
+          "name": "Appliquer",
+          "description": "Écrire la date estimée dans la boîte. Désactivé : seulement renvoyer la proposition."
+        },
+        "overwrite": {
+          "name": "Écraser",
+          "description": "Estimer même si une date est déjà définie."
+        }
+      }
+    },
+    "clear_best_before": {
+      "name": "Effacer la date",
+      "description": "Supprime la date de la boîte."
+    },
+    "clear_filled_at": {
+      "name": "Effacer la date de remplissage",
+      "description": "Supprime la date de remplissage de la boîte."
+    },
+    "get_expiring_medicines": {
+      "name": "Médicaments bientôt périmés",
+      "description": "Renvoie les médicaments, articles d'entretien avec une date et bons qui périment dans leur délai d'alerte ou sont périmés, avec un texte prêt pour les notifications et la sortie vocale (réponse : count, expired, items, summary, speech).",
+      "fields": {
+        "days": {
+          "name": "Jours",
+          "description": "Dans ce nombre de jours. Sans valeur, le paramètre « Bientôt périmé » pour médicaments et entretien s'applique."
+        },
+        "include_expired": {
+          "name": "Inclure les périmés",
+          "description": "Lister aussi ceux qui sont déjà périmés."
+        },
+        "include_vouchers": {
+          "name": "Inclure les bons",
+          "description": "Aussi les bons qui expirent bientôt (jamais les expirés)."
+        }
+      }
+    },
+    "get_expiring": {
+      "name": "Boîtes bientôt périmées",
+      "description": "Renvoie toutes les boîtes dont la date est proche ou dépassée, avec un texte prêt pour les notifications (réponse : count, expired, items, summary).",
+      "fields": {
+        "days": {
+          "name": "Jours",
+          "description": "Boîtes dont la date est dans ce nombre de jours. Sans valeur, le paramètre « Bientôt périmé » s'applique."
+        },
+        "include_expired": {
+          "name": "Inclure les périmées",
+          "description": "Lister aussi les boîtes déjà périmées."
+        }
+      }
+    },
+    "mark_opened": {
+      "name": "Marquer comme ouvert",
+      "description": "Raccourcit la date à au plus le nombre de jours donné à partir d'aujourd'hui. Sans date, une date est définie. Sans jours : la conservation après ouverture du contenu (tableau de l'USDA FoodKeeper, sinon IA, sinon le paramètre « Conservation après ouverture »).",
+      "fields": {
+        "days": {
+          "name": "Jours",
+          "description": "Jours à partir d'aujourd'hui (vide = conservation après ouverture du contenu)."
+        }
+      }
+    },
+    "mark_thawed": {
+      "name": "Marquer comme décongelé",
+      "description": "Raccourcit la date à au plus le nombre de jours donné à partir d'aujourd'hui, pour un aliment qui vient d'être décongelé. Sans date, une date est définie. Par défaut, le paramètre « Délai après décongélation ».",
+      "fields": {
+        "days": {
+          "name": "Jours",
+          "description": "Jours à partir d'aujourd'hui (vide = valeur des paramètres)."
+        }
+      }
+    },
+    "suggest_recipes": {
+      "name": "Proposer des recettes",
+      "description": "Demande à l'IA des idées de recettes qui utilisent les boîtes dont la date est proche. Renvoie les recettes et un court résumé. Nécessite l'intégration « AI Task » ; seuls le contenu, la quantité, les jours restants et le lieu de stockage sont envoyés. Les boîtes périmées sont laissées de côté.",
+      "fields": {
+        "days": {
+          "name": "Jours à l'avance",
+          "description": "Utiliser les boîtes qui périment dans ce nombre de jours. Sans valeur, la période des paramètres s'applique."
+        },
+        "servings": {
+          "name": "Personnes",
+          "description": "Adapter les recettes à ce nombre de personnes (vide = 2)."
+        },
+        "max_recipes": {
+          "name": "Nombre de recettes",
+          "description": "Combien d'idées demander (1–5)."
+        },
+        "all_containers": {
+          "name": "Toutes les boîtes",
+          "description": "Sans période : utiliser toutes les boîtes remplies, aussi celles sans date (jamais les périmées)."
+        },
+        "containers": {
+          "name": "Boîtes",
+          "description": "Utiliser exactement ces boîtes (appareils), quelle que soit leur date. Les boîtes périmées et vides ne sont jamais utilisées."
+        }
+      }
+    },
+    "rebuild_calendar": {
+      "name": "Nettoyer le calendrier",
+      "description": "Resynchronise tous les événements de date dans le calendrier choisi et supprime les doublons ou événements orphelins.",
+      "fields": {
+        "include_unmarked": {
+          "name": "Supprimer aussi les événements sans marqueur",
+          "description": "Supprime en plus les événements sans marqueur Larder intitulés « MHD: … » ou « Best before: … » (par ex. quand le calendrier perd les descriptions). Tous les événements sont ensuite recréés."
+        }
+      }
+    },
+    "get_statistics": {
+      "name": "Obtenir les statistiques",
+      "description": "Renvoie des statistiques de l'historique (mangé, jeté, part jetée, contenus les plus fréquents, durée de stockage) et l'inventaire actuel.",
+      "fields": {
+        "days": {
+          "name": "Jours",
+          "description": "Seulement les vidages des derniers jours. Vide : tous."
+        }
+      }
+    },
+    "get_monthly_report": {
+      "name": "Obtenir le rapport mensuel",
+      "description": "Renvoie le rapport d'un mois : rempli, vidé, mangé, jeté, la part jetée comparée au mois précédent et ce qui a été le plus jeté, avec un texte et une sortie vocale prêts.",
+      "fields": {
+        "month": {
+          "name": "Mois",
+          "description": "Mois au format AAAA-MM. Vide : le mois précédent."
+        }
+      }
+    },
+    "get_weekly_review": {
+      "name": "Obtenir le bilan de la semaine",
+      "description": "Renvoie les 7 derniers jours (mangé, jeté et sa valeur) et ce qui périme dans les 7 prochains jours, avec un texte et une sortie vocale prêts."
+    }
+  },
+  "selector": {
+    "estimate_mode": {
+      "options": {
+        "off": "Désactivé",
+        "table": "Tableau seulement (sans IA)",
+        "table_ai": "Tableau, sinon IA",
+        "ai": "IA seulement"
+      }
+    },
+    "watch_allergens": {
+      "options": {
+        "gluten": "Gluten",
+        "milk": "Lait (lactose)",
+        "eggs": "Œufs",
+        "nuts": "Fruits à coque",
+        "peanuts": "Arachides",
+        "soybeans": "Soja",
+        "fish": "Poisson",
+        "crustaceans": "Crustacés",
+        "molluscs": "Mollusques",
+        "celery": "Céleri",
+        "mustard": "Moutarde",
+        "sesame_seeds": "Sésame",
+        "sulphur_dioxide_and_sulphites": "Sulfites",
+        "lupin": "Lupin"
+      }
+    },
+    "plan_source": {
+      "options": {
+        "book": "Livre de recettes seulement",
+        "ai": "IA seulement",
+        "book_ai": "Livre de recettes, sinon IA",
+        "both": "Livre de recettes et IA ensemble"
+      }
+    }
+  },
+  "issues": {
+    "containers_without_area": {
+      "title": "Larder : boîtes sans pièce",
+      "fix_flow": {
+        "step": {
+          "area": {
+            "title": "Attribuer des pièces",
+            "description": "Choisissez la pièce où se trouve chaque boîte. Les boîtes laissées vides restent sans pièce."
+          }
+        },
+        "abort": {
+          "nothing_to_fix": "Plus rien à corriger."
+        }
+      }
+    },
+    "filled_without_best_before": {
+      "title": "Larder : boîtes remplies sans date",
+      "fix_flow": {
+        "step": {
+          "estimate": {
+            "title": "Estimer les dates",
+            "description": "Larder estime la date de ces boîtes :\n\n{containers}\n\nCe que l'estimation ne connaît pas reste dans l'indication ; saisissez-le alors dans le tableau de bord."
+          }
+        },
+        "abort": {
+          "nothing_to_fix": "Plus rien à corriger."
+        }
+      }
+    },
+    "long_expired": {
+      "title": "Larder : boîtes périmées depuis plus de {days} jours",
+      "fix_flow": {
+        "step": {
+          "empty": {
+            "title": "Vider les boîtes périmées",
+            "description": "Les boîtes cochées sont vidées et notées comme jetées dans l'historique.",
+            "data": {
+              "containers": "Boîtes"
+            }
+          }
+        },
+        "abort": {
+          "nothing_to_fix": "Plus rien à corriger."
+        }
+      }
+    },
+    "temperature_too_high": {
+      "title": "Larder : {area} est trop chaud",
+      "description": "**{area}** est à {temperature} °C, au-dessus de {limit} °C depuis au moins {minutes} minutes. Boîtes concernées :\n\n{containers}\n\nVérifiez si la porte est ouverte ou si l'appareil est en panne. L'indication disparaît dès qu'il fait de nouveau assez froid."
+    },
+    "area_scopes": {
+      "title": "Larder 4.0 : attribuer les pièces à l'alimentation et à l'entretien",
+      "fix_flow": {
+        "step": {
+          "scopes": {
+            "title": "Attribuer des pièces",
+            "description": "La version 4.0 ajoute les articles d'entretien. Une pièce sert à l'alimentation, à l'entretien ou aux deux – réglé par des étiquettes supplémentaires (`Larder: Food`, `Larder: Household`, depuis 4.4 `Larder: Pharmacy`). Larder peut attribuer automatiquement les pièces sans ambiguïté :\n\n{areas}\n\nLes étiquettes sont seulement ajoutées ; les étiquettes existantes (par ex. `Larder: Freezer` avec température et durée de stockage) restent telles quelles. Toutes les autres pièces Larder servent aux deux et peuvent être changées dans le tableau de bord sous Pièces."
+          }
+        },
+        "abort": {
+          "nothing_to_fix": "Plus rien à corriger."
+        }
+      }
+    }
+  }
+}

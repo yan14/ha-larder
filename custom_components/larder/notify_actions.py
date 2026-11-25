@@ -22,7 +22,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, PACK_KINDS
+from .const import DOMAIN, PACK_KINDS, pick
 from .devices import entry_of
 
 _LOGGER = logging.getLogger(__name__)
@@ -37,6 +37,8 @@ EXTEND_DAYS = 2
 TITLES = {
     "de": {"EATEN": "Verbraucht", "THROWN": "Weggeworfen", "PLUS2": "+2 Tage", "SHOP": "Auf die Liste"},
     "en": {"EATEN": "Used up", "THROWN": "Thrown away", "PLUS2": "+2 days", "SHOP": "On the list"},
+    "fr": {"EATEN": "Consommé", "THROWN": "Jeté", "PLUS2": "+2 jours", "SHOP": "Sur la liste"},
+    "nl": {"EATEN": "Op", "THROWN": "Weggegooid", "PLUS2": "+2 dagen", "SHOP": "Op de lijst"},
 }
 
 
@@ -44,7 +46,7 @@ def item_actions(item: dict[str, Any], language: str) -> list[dict[str, str]]:
     """The buttons for one expiring entry (not for vouchers); used up first (Android shows only three)."""
     if item.get("kind") == "voucher" or not item.get("cc"):
         return []
-    titles = TITLES["de" if (language or "en").lower().startswith("de") else "en"]
+    titles = pick(TITLES, language)
     whats = ["EATEN", "THROWN", "PLUS2"] + (["SHOP"] if item.get("content") else [])
     return [{"action": f"{PREFIX}{what}_{item['cc']}", "title": titles[what]} for what in whats]
 

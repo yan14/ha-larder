@@ -17,7 +17,7 @@ from homeassistant.core import HomeAssistant, ServiceCall, SupportsResponse
 from homeassistant.helpers import entity_registry as er
 from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN
+from .const import DOMAIN, lang_code, pick
 from .expiry import collect_expiring, soon_days
 from .history import async_get_history
 from .shelf_life import split_items
@@ -133,6 +133,8 @@ SERVICE_GET_MONTHLY_REPORT = "get_monthly_report"
 _MONTHS = {
     "de": ["Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember"],
     "en": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+    "fr": ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"],
+    "nl": ["januari", "februari", "maart", "april", "mei", "juni", "juli", "augustus", "september", "oktober", "november", "december"],
 }
 
 
@@ -155,12 +157,80 @@ def _current_fills(hass: HomeAssistant) -> list[str]:
     return out
 
 
+_MONTH_TEXT: dict[str, dict[str, Any]] = {
+    "de": {
+        "filled": lambda f, e: f"📦 {f} befüllt, {e} geleert",
+        "eaten": lambda e, t: f"✅ {e} gegessen, 🗑 {t} weggeworfen",
+        "waste": lambda w: f"Weggeworfen: {w} %",
+        "before": lambda b: f" (Vormonat {b} %)",
+        "value": lambda m: f"💶 ca. {m} weggeworfen",
+        "top": lambda names: f"Am häufigsten weggeworfen: {names}",
+        "speech": lambda label, f, e, eaten, thrown: f"Im {label} wurden {f} Dosen befüllt und {e} geleert. {eaten} davon wurden gegessen und {thrown} weggeworfen.",
+        "trend": {
+            "better": lambda w, b: f" Das sind {w} Prozent, weniger als im Vormonat mit {b} Prozent.",
+            "worse": lambda w, b: f" Das sind {w} Prozent, mehr als im Vormonat mit {b} Prozent.",
+            "same": lambda w, b: f" Das sind {w} Prozent, genauso viel wie im Vormonat.",
+        },
+        "speech_value": lambda v: f" Das waren etwa {v} Euro.",
+        "speech_top": lambda name: f" Am häufigsten weggeworfen: {name}.",
+    },
+    "en": {
+        "filled": lambda f, e: f"📦 {f} filled, {e} emptied",
+        "eaten": lambda e, t: f"✅ {e} eaten, 🗑 {t} thrown away",
+        "waste": lambda w: f"Thrown away: {w} %",
+        "before": lambda b: f" (previous month {b} %)",
+        "value": lambda m: f"💶 about {m} thrown away",
+        "top": lambda names: f"Thrown away most: {names}",
+        "speech": lambda label, f, e, eaten, thrown: f"In {label}, {f} containers were filled and {e} emptied. {eaten} were eaten and {thrown} thrown away.",
+        "trend": {
+            "better": lambda w, b: f" That is {w} percent, less than {b} percent the month before.",
+            "worse": lambda w, b: f" That is {w} percent, more than {b} percent the month before.",
+            "same": lambda w, b: f" That is {w} percent, the same as the month before.",
+        },
+        "speech_value": lambda v: f" That was about {v} euros.",
+        "speech_top": lambda name: f" Thrown away most: {name}.",
+    },
+    "fr": {
+        "filled": lambda f, e: f"📦 {f} remplies, {e} vidées",
+        "eaten": lambda e, t: f"✅ {e} mangées, 🗑 {t} jetées",
+        "waste": lambda w: f"Jeté : {w} %",
+        "before": lambda b: f" (mois précédent {b} %)",
+        "value": lambda m: f"💶 environ {m} jetés",
+        "top": lambda names: f"Le plus jeté : {names}",
+        "speech": lambda label, f, e, eaten, thrown: f"En {label}, {f} boîtes ont été remplies et {e} vidées. {eaten} ont été mangées et {thrown} jetées.",
+        "trend": {
+            "better": lambda w, b: f" Cela fait {w} pour cent, moins que les {b} pour cent du mois précédent.",
+            "worse": lambda w, b: f" Cela fait {w} pour cent, plus que les {b} pour cent du mois précédent.",
+            "same": lambda w, b: f" Cela fait {w} pour cent, autant que le mois précédent.",
+        },
+        "speech_value": lambda v: f" Cela représentait environ {v} euros.",
+        "speech_top": lambda name: f" Le plus jeté : {name}.",
+    },
+    "nl": {
+        "filled": lambda f, e: f"📦 {f} gevuld, {e} geleegd",
+        "eaten": lambda e, t: f"✅ {e} opgegeten, 🗑 {t} weggegooid",
+        "waste": lambda w: f"Weggegooid: {w} %",
+        "before": lambda b: f" (vorige maand {b} %)",
+        "value": lambda m: f"💶 ongeveer {m} weggegooid",
+        "top": lambda names: f"Meest weggegooid: {names}",
+        "speech": lambda label, f, e, eaten, thrown: f"In {label} werden {f} dozen gevuld en {e} geleegd. {eaten} daarvan werden opgegeten en {thrown} weggegooid.",
+        "trend": {
+            "better": lambda w, b: f" Dat is {w} procent, minder dan de {b} procent van de vorige maand.",
+            "worse": lambda w, b: f" Dat is {w} procent, meer dan de {b} procent van de vorige maand.",
+            "same": lambda w, b: f" Dat is {w} procent, net zoveel als de vorige maand.",
+        },
+        "speech_value": lambda v: f" Dat was ongeveer {v} euro.",
+        "speech_top": lambda name: f" Meest weggegooid: {name}.",
+    },
+}
+
+
 def build_monthly_report(
     records: list[dict[str, Any]], fills_now: list[str], month: str, language: str
 ) -> dict[str, Any]:
     """Report for a month (YYYY-MM): filled, emptied, eaten, thrown away, comparison with the previous month."""
     records = [r for r in records if r.get("kind") not in ("household", "medicine")]  # food only
-    lang = "de" if language.lower().startswith("de") else "en"
+    lang = lang_code(language)
 
     def emptied_in(key: str) -> list[dict[str, Any]]:
         return [r for r in records if (d := _emptied_day(r)) and d.strftime("%Y-%m") == key]
@@ -191,44 +261,26 @@ def build_monthly_report(
     thrown_value, _priced = record_value([r for r in items if _was_wasted(r)])
     year, mon = (int(x) for x in month.split("-"))
     label = f"{_MONTHS[lang][mon - 1]} {year}"
-    de = lang == "de"
-    lines = [
-        (f"📦 {filled} befüllt, {len(items)} geleert" if de else f"📦 {filled} filled, {len(items)} emptied"),
-        (f"✅ {eaten} gegessen, 🗑 {thrown} weggeworfen" if de else f"✅ {eaten} eaten, 🗑 {thrown} thrown away"),
-    ]
+    text = pick(_MONTH_TEXT, language)
+    lines = [text["filled"](filled, len(items)), text["eaten"](eaten, thrown)]
     trend = None
     if waste is not None:
-        line = f"Weggeworfen: {waste} %" if de else f"Thrown away: {waste} %"
+        line = text["waste"](waste)
         if waste_before is not None:
             trend = "better" if waste < waste_before else "worse" if waste > waste_before else "same"
-            line += f" (Vormonat {waste_before} %)" if de else f" (previous month {waste_before} %)"
+            line += text["before"](waste_before)
         lines.append(line)
     if thrown_value:
-        money = f"{thrown_value:.2f}".replace(".", ",") if de else f"{thrown_value:.2f}"
-        lines.append(f"💶 ca. {money} € weggeworfen" if de else f"💶 about €{money} thrown away")
+        lines.append(text["value"](_money(thrown_value, lang)))
     if top:
-        joined = ", ".join(f"{t['content']} ({t['count']}×)" for t in top)
-        lines.append(f"Am häufigsten weggeworfen: {joined}" if de else f"Thrown away most: {joined}")
-    if de:
-        speech = f"Im {label} wurden {filled} Dosen befüllt und {len(items)} geleert. {eaten} davon wurden gegessen und {thrown} weggeworfen."
-        if waste is not None and waste_before is not None:
-            speech += {"better": f" Das sind {waste} Prozent, weniger als im Vormonat mit {waste_before} Prozent.",
-                       "worse": f" Das sind {waste} Prozent, mehr als im Vormonat mit {waste_before} Prozent.",
-                       "same": f" Das sind {waste} Prozent, genauso viel wie im Vormonat."}[trend]
-        if thrown_value:
-            speech += f" Das waren etwa {round(thrown_value)} Euro."
-        if top:
-            speech += f" Am häufigsten weggeworfen: {top[0]['content']}."
-    else:
-        speech = f"In {label}, {filled} containers were filled and {len(items)} emptied. {eaten} were eaten and {thrown} thrown away."
-        if waste is not None and waste_before is not None:
-            speech += {"better": f" That is {waste} percent, less than {waste_before} percent the month before.",
-                       "worse": f" That is {waste} percent, more than {waste_before} percent the month before.",
-                       "same": f" That is {waste} percent, the same as the month before."}[trend]
-        if thrown_value:
-            speech += f" That was about {round(thrown_value)} euros."
-        if top:
-            speech += f" Thrown away most: {top[0]['content']}."
+        lines.append(text["top"](", ".join(f"{t['content']} ({t['count']}×)" for t in top)))
+    speech = text["speech"](label, filled, len(items), eaten, thrown)
+    if waste is not None and waste_before is not None:
+        speech += text["trend"][trend](waste, waste_before)
+    if thrown_value:
+        speech += text["speech_value"](round(thrown_value))
+    if top:
+        speech += text["speech_top"](top[0]["content"])
     return {
         "month": month,
         "label": label,
@@ -335,15 +387,63 @@ SERVICE_GET_WEEKLY_REVIEW = "get_weekly_review"
 WEEK = 7
 
 
-def _money(value: float, de: bool) -> str:
-    return f"{value:.2f} €".replace(".", ",") if de else f"€{value:.2f}"
+def _money(value: float, lang: str | bool) -> str:
+    """Euros as people write them: 4,98 € (de, fr, nl) or €4.98 (en)."""
+    if lang is True or lang in ("de", "fr"):
+        return f"{value:.2f} €".replace(".", ",")
+    if lang == "nl":
+        return f"€ {value:.2f}".replace(".", ",")
+    return f"€{value:.2f}"
+
+
+_WEEK_TEXT: dict[str, dict[str, Any]] = {
+    "de": {
+        "eaten": lambda e, t, v: f"✅ {e} gegessen, 🗑 {t} weggeworfen" + (f" (ca. {v})" if v else ""),
+        "thrown": "Weggeworfen: ",
+        "soon": "📅 Nächste Woche läuft ab: ",
+        "none": "📅 Nächste Woche läuft nichts ab.",
+        "speech": lambda e, t: f"Diese Woche wurden {e} Sachen gegessen und {t} weggeworfen.",
+        "speech_soon": lambda names: f" Nächste Woche läuft {names} ab.",
+        "speech_none": " Nächste Woche läuft nichts ab.",
+        "title": "🗓 Wochenrückblick",
+    },
+    "en": {
+        "eaten": lambda e, t, v: f"✅ {e} eaten, 🗑 {t} thrown away" + (f" (about {v})" if v else ""),
+        "thrown": "Thrown away: ",
+        "soon": "📅 Expiring next week: ",
+        "none": "📅 Nothing expires next week.",
+        "speech": lambda e, t: f"This week {e} things were eaten and {t} thrown away.",
+        "speech_soon": lambda names: f" Next week {names} expire.",
+        "speech_none": " Nothing expires next week.",
+        "title": "🗓 Weekly review",
+    },
+    "fr": {
+        "eaten": lambda e, t, v: f"✅ {e} mangés, 🗑 {t} jetés" + (f" (environ {v})" if v else ""),
+        "thrown": "Jeté : ",
+        "soon": "📅 Périme la semaine prochaine : ",
+        "none": "📅 Rien ne périme la semaine prochaine.",
+        "speech": lambda e, t: f"Cette semaine, {e} choses ont été mangées et {t} jetées.",
+        "speech_soon": lambda names: f" La semaine prochaine périme : {names}.",
+        "speech_none": " Rien ne périme la semaine prochaine.",
+        "title": "🗓 Bilan de la semaine",
+    },
+    "nl": {
+        "eaten": lambda e, t, v: f"✅ {e} opgegeten, 🗑 {t} weggegooid" + (f" (ongeveer {v})" if v else ""),
+        "thrown": "Weggegooid: ",
+        "soon": "📅 Volgende week verloopt: ",
+        "none": "📅 Volgende week verloopt niets.",
+        "speech": lambda e, t: f"Deze week werden {e} dingen opgegeten en {t} weggegooid.",
+        "speech_soon": lambda names: f" Volgende week verloopt {names}.",
+        "speech_none": " Volgende week verloopt niets.",
+        "title": "🗓 Weekoverzicht",
+    },
+}
 
 
 def build_weekly_review(
     records: list[dict[str, Any]], expiring: list[dict[str, Any]], today: date, language: str
 ) -> dict[str, Any]:
     """The last 7 days (eaten, thrown away and its value) and what expires in the next 7 days, with text and speech."""
-    de = language.lower().startswith("de")
     since = today - timedelta(days=WEEK)
     week = [r for r in records if r.get("kind") not in ("household", "medicine") and (d := _emptied_day(r)) and since < d <= today]
     thrown = [r for r in week if _was_wasted(r)]
@@ -352,21 +452,13 @@ def build_weekly_review(
     names = list(dict.fromkeys(r.get("content") or r.get("name") or "?" for r in thrown))
     upcoming = [i for i in expiring if i.get("kind") not in ("voucher",)]
     soon_names = [i.get("content") or i.get("name") for i in upcoming]
-    lines: list[str] = []
-    if de:
-        lines.append(f"✅ {len(eaten)} gegessen, 🗑 {len(thrown)} weggeworfen" + (f" (ca. {_money(value, True)})" if value else ""))
-        if names:
-            lines.append("Weggeworfen: " + ", ".join(names[:5]))
-        lines.append(("📅 Nächste Woche läuft ab: " + ", ".join(soon_names[:6])) if soon_names else "📅 Nächste Woche läuft nichts ab.")
-        speech = f"Diese Woche wurden {len(eaten)} Sachen gegessen und {len(thrown)} weggeworfen."
-        speech += f" Nächste Woche läuft {', '.join(soon_names[:3])} ab." if soon_names else " Nächste Woche läuft nichts ab."
-    else:
-        lines.append(f"✅ {len(eaten)} eaten, 🗑 {len(thrown)} thrown away" + (f" (about {_money(value, False)})" if value else ""))
-        if names:
-            lines.append("Thrown away: " + ", ".join(names[:5]))
-        lines.append(("📅 Expiring next week: " + ", ".join(soon_names[:6])) if soon_names else "📅 Nothing expires next week.")
-        speech = f"This week {len(eaten)} things were eaten and {len(thrown)} thrown away."
-        speech += f" Next week {', '.join(soon_names[:3])} expire." if soon_names else " Nothing expires next week."
+    text = pick(_WEEK_TEXT, language)
+    lines: list[str] = [text["eaten"](len(eaten), len(thrown), _money(value, lang_code(language)) if value else None)]
+    if names:
+        lines.append(text["thrown"] + ", ".join(names[:5]))
+    lines.append((text["soon"] + ", ".join(soon_names[:6])) if soon_names else text["none"])
+    speech = text["speech"](len(eaten), len(thrown))
+    speech += text["speech_soon"](", ".join(soon_names[:3])) if soon_names else text["speech_none"]
     return {
         "eaten": len(eaten),
         "thrown": len(thrown),
@@ -374,7 +466,7 @@ def build_weekly_review(
         "thrown_items": names,
         "expiring": upcoming,
         "expiring_count": len(upcoming),
-        "title": "🗓 Wochenrückblick" if de else "🗓 Weekly review",
+        "title": text["title"],
         "summary": "\n".join(lines),
         # 5.8 (#157): two short lines – the figures and what expires next week
         "summary_short": "\n".join([lines[0], lines[-1]]),

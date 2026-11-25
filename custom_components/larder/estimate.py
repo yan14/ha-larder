@@ -334,8 +334,13 @@ _KEEP_OLD_ON = ("ai_failed", "ai_unavailable", "table_no_match", "table_unknown_
 def _cap_note(days: int, language: str, own: bool) -> str:
     """Note in the tip if a value was limited."""
     span = shelf_life.format_duration(days, language)
-    if language.lower().startswith("de"):
+    lang = str(language or "en").lower()[:2]
+    if lang == "de":
         return f"Begrenzt auf die max. Lagerzeit des Bereichs ({span})." if own else f"KI-Schätzung auf {span} begrenzt."
+    if lang == "fr":
+        return f"Limité à la durée de stockage max. de la pièce ({span})." if own else f"Estimation de l'IA limitée à {span}."
+    if lang == "nl":
+        return f"Begrensd tot de max. bewaartijd van de ruimte ({span})." if own else f"AI-schatting begrensd tot {span}."
     return f"Capped at the area's max storage time ({span})." if own else f"AI estimate capped at {span}."
 
 

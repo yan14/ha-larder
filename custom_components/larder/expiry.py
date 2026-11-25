@@ -22,6 +22,7 @@ from .const import (
     SERVICE_GET_EXPIRING_MEDICINES,
     SOON_DAYS,
     UNITS,
+    pick,
 )
 from .entity import kind_of
 from .estimate import storage_context
@@ -121,6 +122,70 @@ _TEXT = {
             "milliliters": lambda n: f"{n} ml",
         },
     },
+    "fr": {
+        "title": "Larder",
+        "none": "Rien ne périme bientôt.",
+        "head": lambda soon, expired: ", ".join(
+            part
+            for part in (
+                f"{expired} {'périmé' if expired == 1 else 'périmés'}" if expired else "",
+                f"{soon} {'périme' if soon == 1 else 'périment'} bientôt" if soon else "",
+            )
+            if part
+        ),
+        "expired": lambda d: "périmé depuis hier" if d == -1 else f"périmé depuis {-d} jours",
+        "empty_it": "à vider",
+        "quality_past": lambda d: "meilleure qualité dépassée depuis hier" if d == -1 else f"meilleure qualité dépassée depuis {-d} jours",
+        "use_soon": "à consommer bientôt",
+        "dispose_it": "à jeter",
+        "head_medicine": lambda soon, expired: "💊 " + ", ".join(
+            p for p in (f"{soon} {'périme' if soon == 1 else 'périment'} bientôt" if soon else "", f"{expired} {'périmé' if expired == 1 else 'périmés'}" if expired else "") if p
+        ),
+        "today": "aujourd'hui",
+        "tomorrow": "demain",
+        "in_days": lambda d: f"dans {d} jours",
+        "unnamed": "Boîte",
+        "opened_for": lambda d: "ouvert aujourd'hui" if d == 0 else f"ouvert depuis {d} {'jour' if d == 1 else 'jours'}" if d < 14 else f"ouvert depuis {round(d / 7)} semaines",
+        "units": {
+            "portions": lambda n: "1 portion" if n == 1 else f"{n} portions",
+            "pieces": lambda n: "1 pièce" if n == 1 else f"{n} pièces",
+            "slices": lambda n: "1 tranche" if n == 1 else f"{n} tranches",
+            "grams": lambda n: f"{n} g",
+            "milliliters": lambda n: f"{n} ml",
+        },
+    },
+    "nl": {
+        "title": "Larder",
+        "none": "Niets verloopt binnenkort.",
+        "head": lambda soon, expired: ", ".join(
+            part
+            for part in (
+                f"{expired} verlopen" if expired else "",
+                f"{soon} {'verloopt' if soon == 1 else 'verlopen'} binnenkort" if soon else "",
+            )
+            if part
+        ),
+        "expired": lambda d: "sinds gisteren verlopen" if d == -1 else f"sinds {-d} dagen verlopen",
+        "empty_it": "moet geleegd worden",
+        "quality_past": lambda d: "beste kwaliteit sinds gisteren voorbij" if d == -1 else f"beste kwaliteit sinds {-d} dagen voorbij",
+        "use_soon": "snel opmaken",
+        "dispose_it": "weggooien",
+        "head_medicine": lambda soon, expired: "💊 " + ", ".join(
+            p for p in (f"{soon} {'verloopt' if soon == 1 else 'verlopen'} binnenkort" if soon else "", f"{expired} verlopen" if expired else "") if p
+        ),
+        "today": "vandaag",
+        "tomorrow": "morgen",
+        "in_days": lambda d: f"over {d} dagen",
+        "unnamed": "Doos",
+        "opened_for": lambda d: "vandaag geopend" if d == 0 else f"{d} {'dag' if d == 1 else 'dagen'} open" if d < 14 else f"{round(d / 7)} weken open",
+        "units": {
+            "portions": lambda n: "1 portie" if n == 1 else f"{n} porties",
+            "pieces": lambda n: f"{n} stuks",
+            "slices": lambda n: "1 plak" if n == 1 else f"{n} plakken",
+            "grams": lambda n: f"{n} g",
+            "milliliters": lambda n: f"{n} ml",
+        },
+    },
 }
 
 
@@ -173,7 +238,7 @@ def build_summary(items: list[dict[str, Any]], language: str, medicines: bool = 
     `short` (5.8, #157): one line per entry with only what and when – no container, amount, place.
     Frozen food past its date (5.8, #156) is "past its best quality – use it soon", not "expired".
     """
-    text = _TEXT["de" if language.lower().startswith("de") else "en"]
+    text = pick(_TEXT, language)
     if not items:
         return text["none"]
     expired = sum(1 for i in items if i["status"] == STATUS_EXPIRED)
@@ -242,11 +307,37 @@ _SPEECH = {
         "frozen_past": lambda names, n: f"{names} in the freezer {'is' if n == 1 else 'are'} past {'its' if n == 1 else 'their'} best quality and should be used soon.",
         "in": "in",
     },
+    "fr": {
+        "none": "Rien ne périme bientôt.",
+        "and": "et",
+        "more": lambda n: f"{n} autres",
+        "today": lambda names, n: f"{names} {'périme' if n == 1 else 'périment'} aujourd'hui.",
+        "tomorrow": lambda names, n: f"{names} {'périme' if n == 1 else 'périment'} demain.",
+        "in_days": lambda d, names, n: f"{names} {'périme' if n == 1 else 'périment'} dans {d} jours.",
+        "expired": lambda names, n: f"{names} {'est périmé et devrait être vidé' if n == 1 else 'sont périmés et devraient être vidés'}.",
+        "expired_dispose": lambda names, n: f"{names} {'est périmé et devrait être jeté' if n == 1 else 'sont périmés et devraient être jetés'}.",
+        "frozen_past": lambda names, n: f"{names} au congélateur {'a' if n == 1 else 'ont'} dépassé la meilleure qualité et {'devrait' if n == 1 else 'devraient'} être consommé{'' if n == 1 else 's'} bientôt.",
+        "in": "dans",
+    },
+    "nl": {
+        "none": "Niets verloopt binnenkort.",
+        "and": "en",
+        "more": lambda n: f"{n} andere",
+        "today": lambda names, n: f"Vandaag {'verloopt' if n == 1 else 'verlopen'} {names}.",
+        "tomorrow": lambda names, n: f"Morgen {'verloopt' if n == 1 else 'verlopen'} {names}.",
+        "in_days": lambda d, names, n: f"Over {d} dagen {'verloopt' if n == 1 else 'verlopen'} {names}.",
+        "expired": lambda names, n: f"{names} {'is verlopen en moet' if n == 1 else 'zijn verlopen en moeten'} geleegd worden.",
+        "expired_dispose": lambda names, n: f"{names} {'is verlopen en moet' if n == 1 else 'zijn verlopen en moeten'} weggegooid worden.",
+        "frozen_past": lambda names, n: f"{names} in de vriezer {'is' if n == 1 else 'zijn'} over de beste kwaliteit heen en {'moet' if n == 1 else 'moeten'} snel op.",
+        "in": "in",
+    },
 }
 
 LABELS = {
     "de": {"recipes": "Rezepte", "dashboard": "Dashboard", "more": "… und {n} weitere im Dashboard", "use_first": "Bitte zuerst aufbrauchen"},
     "en": {"recipes": "Recipes", "dashboard": "Dashboard", "more": "… and {n} more in the dashboard", "use_first": "Please use up first"},
+    "fr": {"recipes": "Recettes", "dashboard": "Tableau de bord", "more": "… et {n} autres dans le tableau de bord", "use_first": "À consommer en premier"},
+    "nl": {"recipes": "Recepten", "dashboard": "Dashboard", "more": "… en {n} meer in het dashboard", "use_first": "Eerst opmaken a.u.b."},
 }
 
 
@@ -261,10 +352,10 @@ def build_speech(items: list[dict[str, Any]], language: str, limit: int = MAX_SP
 
     Order: today, tomorrow, later, expired last.
     """
-    text = _SPEECH["de" if language.lower().startswith("de") else "en"]
+    text = pick(_SPEECH, language)
     if not items:
         return text["none"]
-    unnamed = _TEXT["de" if language.lower().startswith("de") else "en"]["unnamed"]
+    unnamed = pick(_TEXT, language)["unnamed"]
     groups: dict[int, list[str]] = {}
     expired: list[str] = []
     frozen: list[str] = []  # 5.8 (#156): past the best quality in the freezer, not "expired"
@@ -445,7 +536,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
             "summary": summary,
             "summary_short": f"{thaw_summary}\n\n{build_summary(items, language, short=True)}" if thaw and items else (thaw_summary if thaw else build_summary(items, language, short=True)),
             "speech": speech,
-            "labels": {**LABELS["de" if language.lower().startswith("de") else "en"], "thawed": thaw_button},
+            "labels": {**pick(LABELS, language), "thawed": thaw_button},
         }
 
     async def handle_medicines(call: ServiceCall) -> dict[str, Any]:

@@ -32,7 +32,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from . import shelf_life
-from .const import DOMAIN, larder_id
+from .const import DOMAIN, larder_id, pick
 from .devices import device_of
 from .estimate import storage_context
 from .singleton import async_singleton
@@ -372,12 +372,26 @@ _THAW_TEXT = {
         "speech": lambda items: "Please move to the fridge: " + ", ".join(f"{i['content']} from {i['name']}" for i in items) + ".",
         "button": "Thawed",
     },
+    "fr": {
+        "head": "À mettre au réfrigérateur pour décongeler :",
+        "for": "pour",
+        "when": lambda d: "aujourd'hui" if d == 0 else "demain" if d == 1 else f"dans {d} jours",
+        "speech": lambda items: "Merci de mettre au réfrigérateur : " + ", ".join(f"{i['content']} de {i['name']}" for i in items) + ".",
+        "button": "Décongelé",
+    },
+    "nl": {
+        "head": "Naar de koelkast om te ontdooien:",
+        "for": "voor",
+        "when": lambda d: "vandaag" if d == 0 else "morgen" if d == 1 else f"over {d} dagen",
+        "speech": lambda items: "Graag in de koelkast zetten: " + ", ".join(f"{i['content']} uit {i['name']}" for i in items) + ".",
+        "button": "Ontdooid",
+    },
 }
 
 
 def thaw_texts(items: list[dict[str, Any]], language: str) -> tuple[str, str, str]:
     """(Text for the push notification, speech text, title of the button) for the thaw reminder."""
-    text = _THAW_TEXT["de" if language.lower().startswith("de") else "en"]
+    text = pick(_THAW_TEXT, language)
     if not items:
         return "", "", text["button"]
     lines = [text["head"]]
