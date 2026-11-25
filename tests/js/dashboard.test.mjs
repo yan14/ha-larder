@@ -3420,6 +3420,19 @@ test("Data care (4.12): monthly box on the start page, ⋮ dialog, opened since 
   assert.deepEqual([...form.querySelectorAll("[data-group]")].map((g) => g.dataset.group), ["no_date", "no_price"]);
   form.querySelector('[data-group="no_price"] [data-id="d1"]').click();
   assert.equal(el._detail, "d1");
+  // 6.1 (#170): a pack without a price opens its product view, where the price can be entered
+  let opened = null;
+  el.openProduct = (content) => (opened = content);
+  el.openDataCare();
+  await flush();
+  const gap = $(el, "form.dialog").querySelector('[data-group="no_price"] [data-id="p1"]');
+  el._dataGaps.gaps.no_price[0].kind = "pack";
+  el.openDataCare();
+  await flush();
+  $(el, "form.dialog").querySelector('[data-group="no_price"] [data-id="p1"]').click();
+  assert.ok(gap);
+  assert.equal(opened, "Ketchup");
+  delete el.openProduct;
   el._closeDetail && el._closeDetail();
   // not again this month
   const again = mount(hass);
@@ -4014,6 +4027,7 @@ test("fr and nl texts are picked and complete in every text table", async () => 
     ["larder-dashboard-history.js", "historyTexts"],
     ["larder-dashboard-search.js", "searchTexts"],
     ["larder-dashboard-datacare.js", "dataCareTexts"],
+    ["larder-dashboard-putaway.js", "putAwayTexts"],
   ];
   const shape = (o) => JSON.stringify(Object.keys(o).sort());
   for (const [file, fn] of tables) {
@@ -4031,4 +4045,111 @@ test("fr and nl texts are picked and complete in every text table", async () => 
   const { spanText } = await import(dir + "larder-dashboard-items.js");
   assert.equal(spanText(21, false, false, "fr"), "3 semaines");
   assert.equal(spanText(1, false, false, "nl"), "1 dag");
+});
+
+// ---------- Block 46 (6.1): finishing the shopping ----------
+
+const { changedRow, incomplete, parsePrice } = await import("../../custom_components/larder/frontend/larder-dashboard-putaway.js");
+
+test("6.1: put-away list – only incomplete ones, suggestion prefilled, one save with only the changes", async () => {
+  const hass = makeHass(DOSES);
+  const rows = [
+    { device_id: "p1", content: "Milch", kind: "pack", day: "2026-11-25", added: 2, count: 2, area_id: "kitchen", area: "Küche", compartment: "", best_before: null, price: null, suggest: { best_before: "2026-12-04", days: 9, source: "history" } },
+    { device_id: "h1", content: "Klopapier", kind: "household", day: "2026-11-25", added: 8, count: 16, area_id: "kitchen", area: "Küche", compartment: "", best_before: null, price: null },
+    { device_id: "p2", content: "Nudeln", kind: "pack", day: "2026-11-24", added: 1, count: 1, area_id: "kitchen", area: "Küche", compartment: "", best_before: "2028-01-01", price: 1.29 },
+  ];
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/put_away_recent`) return { rows };
+    if (msg.type === `${D}/put_away_save`) {
+      hass.wsCalls.push(msg);
+      return { saved: msg.rows.length };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await el.openPutAwayList(["p1", "h1"]);
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelector("h2").textContent, "Eben eingeräumt");
+  assert.deepEqual([...form.querySelectorAll(".putedit")].map((r) => r.dataset.id), ["p1", "h1"]);
+  const milk = form.querySelector('.putedit[data-id="p1"]');
+  assert.equal(milk.querySelector('[data-f="pa-date"]').value, "2026-12-04");
+  assert.ok(milk.querySelector('[data-f="pa-date"]').classList.contains("suggested"));
+  assert.match(milk.textContent, /Wie beim letzten Kauf: 9 Tage/);
+  assert.equal(form.querySelector('.putedit[data-id="h1"] [data-f="pa-date"]'), null); // household: no date
+  milk.querySelector('[data-f="pa-price"]').value = "1,19";
+  form.querySelector('.putedit[data-id="h1"] [data-f="pa-compartment"]').value = "Regal";
+  form.querySelector('[data-role="putaway-save"]').click();
+  await flush();
+  await flush();
+  assert.deepEqual(hass.wsCalls.at(-1).rows, [
+    { device_id: "p1", added: 2, price: 1.19, best_before: "2026-12-04" },
+    { device_id: "h1", added: 8, area_id: "kitchen", compartment: "Regal" },
+  ]);
+  // everything of the last 7 days, with complete ones when the filter is off
+  form.querySelector('[data-role="putaway-all"]').click();
+  form.querySelector('[data-f="pa-only-open"]').click();
+  assert.deepEqual([...form.querySelectorAll(".putedit")].map((r) => r.dataset.id), ["p1", "h1", "p2"]);
+});
+
+test("6.1: helpers of the put-away list", () => {
+  assert.equal(parsePrice("1,49 €"), 1.49);
+  assert.equal(parsePrice(""), null);
+  assert.equal(incomplete({ kind: "household", price: 2 }), false);
+  assert.equal(incomplete({ kind: "pack", price: 2, best_before: null }), true);
+  const row = { device_id: "x", added: 1, price: 1.5, best_before: "2027-01-01", area_id: "a", compartment: "" };
+  assert.equal(changedRow(row, { price: "1,50", date: "2027-01-01", area_id: "a", compartment: "" }), null);
+  assert.deepEqual(changedRow(row, { price: "1,99", date: "2027-01-01", area_id: "a", compartment: "", store: "Rewe" }), { device_id: "x", added: 1, price: 1.99, store: "Rewe" });
+});
+
+test("6.1: Done after putting away opens the list of what was just put away", async () => {
+  const hass = makeHass(DOSES);
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/put_away`) return { status: "added", content: "Milch", kind: "pack", device_id: "p1", area: "Küche", compartment: "", count: 1, added: 1, new_entry: true, suggest: { best_before: "2026-12-04", days: 9, source: "history" } };
+    if (msg.type === `${D}/put_away_recent`) return { rows: [] };
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  let opened = null;
+  el.openPutAwayList = (devices) => (opened = devices);
+  el.openPutAway();
+  const form = $(el, "form.dialog");
+  form.querySelector('[data-f="putaway-code"]').value = "4000000000001";
+  form.querySelector('[data-role="putaway-add"]').click();
+  await flush();
+  await flush();
+  // inline details: the date is the suggestion
+  form.querySelector('.putrow[data-id="p1"] [data-role="putaway-details"]').click();
+  assert.equal(form.querySelector('[data-f="shop-date"]').value, "2026-12-04");
+  form.querySelector('[data-role="putaway-done"]').click();
+  assert.deepEqual(opened, ["p1"]);
+  delete el.openPutAwayList;
+});
+
+test("6.1: price editable in the product view (#170)", async () => {
+  const hass = makeHass(DOSES);
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/price_set`) {
+      hass.wsCalls.push(msg);
+      return { packs: 1 };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  let changed = 0;
+  const box = el._priceEditor({ name: "Heinz Ketchup", price: { price: 2.49, source: "own" } }, () => changed++);
+  assert.equal(box.querySelector('[data-f="product-price"]').value, "2,49");
+  box.querySelector('[data-f="product-price"]').value = "2,79";
+  box.querySelector('[data-f="product-store"]').value = "Rewe";
+  box.querySelector('[data-role="product-price-save"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/price_set`, content: "Heinz Ketchup", price: 2.79, store: "Rewe" });
+  assert.equal(changed, 1);
+  // an estimate from Open Prices is not shown as the own price
+  assert.equal(el._priceEditor({ name: "Senf", price: { price: 0.99, source: "openprices" } }).querySelector('[data-f="product-price"]').value, "");
 });

@@ -87,6 +87,11 @@ def product_key(content: str | None) -> str:
     return " ".join((content or "").split()).casefold()
 
 
+PUT_AWAY_KEEP = 30  # 6.1: days the put-away log is kept
+PUT_AWAY_MAX = 300
+BUY_DAYS = 5  # 6.1: purchases per product used for the best-before suggestion
+
+
 class Stock:
     """Minimum stocks per product (key → display name and minimum)."""
 
@@ -121,6 +126,10 @@ class Stock:
         self.storage_days: dict[str, dict[str, Any]] = {}  # 5.8: product → own storage time per place kind
         self.stores: dict[str, dict[str, Any]] = {}  # 5.9: store key → name and own order of sections
         self.store_prices: dict[str, dict[str, dict[str, Any]]] = {}  # 5.9: product → store key → last price
+        # 6.1 (#167): what was put away recently, newest last: {"device_id", "content", "kind", "added", "day"}
+        self.put_away_log: list[dict[str, Any]] = []
+        # 6.1 (#168): product → days between putting away and the best-before date, last BUY_DAYS purchases
+        self.buy_days: dict[str, list[int]] = {}
         self._unsub = None
         self._unsub_daily = None
 
@@ -152,6 +161,12 @@ class Stock:
             for k, v in (data.get("store_prices") or {}).items()
             if isinstance(v, dict)
         }
+        self.put_away_log = [r for r in data.get("put_away_log") or [] if isinstance(r, dict) and r.get("device_id")]
+        self.buy_days = {
+            str(k): [int(d) for d in v if isinstance(d, int | float)]
+            for k, v in (data.get("buy_days") or {}).items()
+            if isinstance(v, list)
+        }
 
     def _data(self) -> dict[str, Any]:
         return {
@@ -177,7 +192,54 @@ class Stock:
             "storage_days": self.storage_days,
             "stores": self.stores,
             "store_prices": self.store_prices,
+            "put_away_log": self.put_away_log,
+            "buy_days": self.buy_days,
         }
+
+    # ----- 6.1: putting away, then finishing price, date and place (#167, #168) -----
+
+    def log_put_away(self, device_id: str, content: str, kind: str, added: int) -> None:
+        """Remember what was put away (put away, shopping mode, receipt, ＋), for the list to finish it later."""
+        today = dt_util.now().date()
+        self.put_away_log.append(
+            {"device_id": device_id, "content": " ".join(str(content).split()), "kind": kind, "added": max(1, int(added or 1)), "day": today.isoformat()}
+        )
+        oldest = (today - timedelta(days=PUT_AWAY_KEEP)).isoformat()
+        self.put_away_log = [r for r in self.put_away_log if str(r.get("day")) >= oldest][-PUT_AWAY_MAX:]
+        self._save()
+
+    def relink_put_away(self, old_device_id: str, new_device_id: str, added: int) -> None:
+        """The packs just put away got an entry of their own (date entered): the list follows them."""
+        if old_device_id == new_device_id:
+            return
+        for record in reversed(self.put_away_log):
+            if record.get("device_id") == old_device_id:
+                record["device_id"] = new_device_id
+                record["added"] = max(1, int(added or record.get("added") or 1))
+                self._save()
+                return
+
+    def put_away_day(self, device_id: str) -> date | None:
+        for record in reversed(self.put_away_log):
+            if record.get("device_id") == device_id:
+                try:
+                    return date.fromisoformat(str(record["day"]))
+                except ValueError:
+                    return None
+        return None
+
+    def learn_buy_days(self, content: str, days: int) -> None:
+        """#168: how long this product (exactly this one) still kept when it was put away."""
+        key = product_key(content)
+        if not key or not 0 < int(days) <= 3650:
+            return
+        self.buy_days[key] = [*self.buy_days.get(key, []), int(days)][-BUY_DAYS:]
+        self._save()
+
+    def typical_buy_days(self, content: str) -> int | None:
+        """Median of the last purchases of exactly this product (None without history)."""
+        days = sorted(self.buy_days.get(product_key(content)) or [])
+        return days[len(days) // 2] if days else None
 
     def set_opened_after(self, content: str, days: int | None, source: str = "manual") -> None:
         """5.7 (#154): "use within … after opening" of exactly this product (never shared with similar ones)."""
@@ -609,6 +671,7 @@ def pack_entries(hass: HomeAssistant, exclude: set[str] | None = None) -> list[d
                 "opened": attrs.get("opened"),
                 "price": attrs.get("price"),
                 "price_source": attrs.get("price_source"),
+                "store": attrs.get("store"),
                 "kind": kind_of(entry),
                 "pack_size": max(1, int(attrs.get("pack_size") or 1)),
                 "piece": attrs.get("piece"),
@@ -1285,8 +1348,13 @@ async def async_add_known(hass: HomeAssistant, known: dict[str, Any], packs: int
     stock = await async_get_stock(hass)
     stock.dismiss_product(known["content"])
     stock.remember_recent(known["content"], known["kind"], known.get("product"), area_id, compartment)
+    stock.log_put_away(device_id, known["content"], known["kind"], size)
     area = ar.async_get(hass).async_get_area(area_id) if area_id else None
+    from .put_away_review import suggest_best_before  # noqa: PLC0415 - avoids an import cycle
+
+    suggestion = suggest_best_before(hass, stock, known["content"], known["kind"], device_id)
     return {
+        **({"suggest": suggestion} if suggestion else {}),
         "status": "added",
         "content": known["content"],
         "kind": known["kind"],

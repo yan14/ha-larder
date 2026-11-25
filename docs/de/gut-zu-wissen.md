@@ -32,6 +32,11 @@ Egal wie ein Produkt hereinkommt – **📥 Einräumen**, Abhaken im **Einkaufsm
 3. Der **Preis** kommt in den Preisverlauf des Produkts.
 4. Der passende Eintrag auf der **Einkaufsliste wird abgehakt**, und *Eingekauft – in den Vorrat?* bietet ihn nicht noch einmal an.
 5. **＋1** legt eine weitere Packung desselben Produkts dazu, ohne erneut zu scannen; Preis und MHD gelten dann für alle.
+6. Seit 6.1 wird das **MHD vorgeschlagen**: aus früheren Käufen genau dieses Produkts (*die Milch hatte beim letzten Einräumen noch 9 Tage*), sonst – nur bei frischen Lebensmitteln – aus der Haltbarkeitstabelle. Ein Vorschlag hat einen gestrichelten Rahmen; prüfen und bei Bedarf ändern. Ähnliche Produkte teilen sich nie ihre Daten (*Heinz Ketchup* und *Heinz Ketchup Zero* bleiben getrennt).
+
+### Nachtragen: zuletzt eingeräumt
+
+Seit 6.1 öffnen **Fertig** nach dem Einräumen und **Anlegen** nach einem Kassenbon **📝 Eben eingeräumt**: eine Liste mit **Preis**, **MHD**, **Bereich** und **Fach** jeder Zeile, alles änderbar, einmal **Speichern**. Gespeichert wird nur, was sich geändert hat; ein MHD für die neuen Packungen gibt ihnen einen eigenen Eintrag. **Mehr → 📝 Zuletzt eingeräumt** zeigt dieselbe Liste für die letzten 7 Tage (*Nur Unvollständiges* ist voreingestellt), damit du nichts einzeln suchen musst.
 
 Nur **unbekannte** Produkte öffnen einen Dialog (siehe unten). Details: [Bestand](containers.md#bestand), [Einkaufsmodus](kitchen.md#einkaufsmodus).
 

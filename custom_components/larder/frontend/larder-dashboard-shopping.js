@@ -342,7 +342,7 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
         this._shopUnknown.push({ content: res.name });
         this._shopDone[item.uid] = { text: t.unknown };
       } else {
-        this._shopDone[item.uid] = { text: t.added(res), device_id: res.device_id, added: res.added || 1 };
+        this._shopDone[item.uid] = { text: t.added(res), device_id: res.device_id, added: res.added || 1, suggest: res.suggest };
       }
     } catch {
       delete this._shopDone[item.uid];
@@ -375,10 +375,10 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
       }
       message = t.scanUnknown(res.name);
     } else if (res.matched) {
-      this._shopDone[res.uid] = { text: t.added(res), device_id: res.device_id, added: res.added || 1 };
+      this._shopDone[res.uid] = { text: t.added(res), device_id: res.device_id, added: res.added || 1, suggest: res.suggest };
       message = t.scanAdded(res.content, place(res));
     } else {
-      this._shopExtra.push({ content: res.content, text: t.added(res), device_id: res.device_id, added: res.added || 1, key: `x${this._shopExtra.length}` });
+      this._shopExtra.push({ content: res.content, text: t.added(res), device_id: res.device_id, added: res.added || 1, suggest: res.suggest, key: `x${this._shopExtra.length}` });
       message = t.scanAdded(res.content, place(res));
     }
     this._sig = "";
@@ -402,6 +402,13 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
     date.type = "date";
     date.setAttribute("aria-label", t.bestBefore);
     date.dataset.f = "shop-date";
+    // 6.1 (#168): suggested from earlier purchases of exactly this product (or the table for fresh food)
+    if (done.suggest && done.suggest.best_before) {
+      date.value = done.suggest.best_before;
+      date.classList.add("suggested");
+      date.title = `💡 ${done.suggest.days}`;
+      date.addEventListener("input", () => date.classList.remove("suggested"));
+    }
     const save = button("primary", t.save, async () => {
       const msg = { type: `${DOMAIN}/shopping_details`, device_id: done.device_id, added: done.added || 1 };
       const amount = parseFloat(String(price.value).replace(",", "."));

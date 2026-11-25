@@ -306,12 +306,16 @@ async def ws_create_items(
     """Create bags or packs (for all users: part of everyday use like filling)."""
     try:
         created = await async_create_items(hass, msg["kind"], msg["items"], msg.get("area_id"), msg.get("compartment"))
-        if msg.get("shopping_list"):
-            from .stock import async_get_stock  # noqa: PLC0415 - avoids an import cycle
+        from .stock import async_get_stock  # noqa: PLC0415 - avoids an import cycle
 
-            stock = await async_get_stock(hass)
+        stock = await async_get_stock(hass)
+        if msg.get("shopping_list"):
             for item in msg["items"]:
                 stock.set_list(str(item["content"]), msg["shopping_list"])
+        if msg["kind"] in PACK_KINDS:
+            # 6.1 (#167): new packs show up in "Recently put away" to finish price and date
+            for made, item in zip(created, msg["items"], strict=False):
+                stock.log_put_away(made["device_id"], str(item["content"]), msg["kind"], int(item.get("quantity") or 1))
     except HomeAssistantError as err:
         connection.send_error(msg["id"], "create_failed", str(err))
         return

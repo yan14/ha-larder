@@ -180,6 +180,11 @@ export function installDataCare(Dashboard, { el, DOMAIN }) {
       group.append(el("h3", "", `${t.groups[key]} (${data.counts[key]})`));
       for (const r of rows) {
         const line = button("link", r.place ? `${r.content} · ${r.place}` : r.content, () => {
+          // 6.1 (#170): a missing price is entered in the product view (for all its packs)
+          if (key === "no_price" && r.kind && this.openProduct) {
+            this.openProduct(r.content);
+            return;
+          }
           this._closeDialog();
           this.openDetail(r.device_id);
         });

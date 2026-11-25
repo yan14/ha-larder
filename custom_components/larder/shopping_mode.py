@@ -258,6 +258,11 @@ async def async_shopping_details(
         )
     if best_before is None:
         return {"device_id": device_id}
+    stock = await async_get_stock(hass)
+    # 6.1 (#168): learn how long exactly this product keeps when bought (only food with a date)
+    put_day = stock.put_away_day(device_id) or dt_util.now().date()
+    if "best_before" in ents:
+        stock.learn_buy_days(ents["content"].native_value or "", (best_before - put_day).days)
     source = next((p for p in pack_entries(hass) if p["cc"] == cc), None)
     if source is None or source["count"] <= added:
         await ents["best_before"].async_set_value(best_before)
@@ -269,6 +274,7 @@ async def async_shopping_details(
         "product": {k: v for k, v in ents["content"].product.items() if k != "opened"},
     }
     created = await async_create_items(hass, source["kind"], [item], source["area_id"], source["compartment"])
+    stock.relink_put_away(device_id, created[0]["device_id"], added)
     return {"device_id": created[0]["device_id"]}
 
 
@@ -421,6 +427,9 @@ async def async_receipt_add(
     created = await async_create_items(hass, KIND_PACK, unknown, area_id, compartment) if unknown else []
     if unknown_household:
         created += await async_create_items(hass, KIND_HOUSEHOLD, unknown_household, area_id, compartment)
+    stock = await async_get_stock(hass)
+    for made, item in zip(created, [*unknown, *unknown_household], strict=False):
+        stock.log_put_away(made["device_id"], item["content"], KIND_HOUSEHOLD if item in unknown_household else KIND_PACK, int(item.get("quantity") or 1))
     ticked = await async_tick_off(hass, [item["content"] for item in items])
     return {"added": added, "created": created, "ticked": ticked}
 

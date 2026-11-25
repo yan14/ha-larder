@@ -190,11 +190,11 @@ const TEXT = {
     stockLow: "zu wenig",
     stockNone: "keine mehr da",
     stockFailed: "Speichern fehlgeschlagen.",
-    receipt: "Kassenbon",
+    receipt: "Kassenbon / Rechnung",
     receiptJoined: (n) => (n === 1 ? "1 bekanntes Produkt an seinen üblichen Ort gelegt." : `${n} bekannte Produkte an ihren üblichen Ort gelegt.`),
     receiptBusy: "Kassenbon wird gelesen …",
     receiptDone: (n) => `${n} Produkt(e) vom Kassenbon übernommen. Bitte prüfen und das MHD ergänzen.`,
-    receiptFailed: "Auf dem Foto wurde kein Kassenbon erkannt.",
+    receiptFailed: "Kein Kassenbon und keine Rechnung erkannt.",
     moveTitle: "Verschieben / aufteilen",
     moveCount: (n) => `Wie viele? (von ${n})`,
     moveTo: "Nach",
@@ -373,11 +373,11 @@ const TEXT = {
     stockLow: "too few",
     stockNone: "none left",
     stockFailed: "Saving failed.",
-    receipt: "Receipt",
+    receipt: "Receipt / invoice",
     receiptJoined: (n) => (n === 1 ? "1 known product put at its usual place." : `${n} known products put at their usual place.`),
     receiptBusy: "Reading the receipt …",
     receiptDone: (n) => `${n} product(s) taken from the receipt. Please check them and add the best-before dates.`,
-    receiptFailed: "No receipt was recognised in the photo.",
+    receiptFailed: "No receipt or invoice was recognised.",
     moveTitle: "Move / split",
     moveCount: (n) => `How many? (of ${n})`,
     moveTo: "To",
@@ -556,11 +556,11 @@ const TEXT = {
     stockLow: "trop peu",
     stockNone: "plus rien",
     stockFailed: "L'enregistrement a échoué.",
-    receipt: "Ticket de caisse",
+    receipt: "Ticket / facture",
     receiptJoined: (n) => (n === 1 ? "1 produit connu rangé à sa place habituelle." : `${n} produits connus rangés à leur place habituelle.`),
     receiptBusy: "Lecture du ticket …",
     receiptDone: (n) => `${n} produit(s) repris du ticket. Vérifiez-les et ajoutez les dates de péremption.`,
-    receiptFailed: "Aucun ticket reconnu sur la photo.",
+    receiptFailed: "Aucun ticket ni facture reconnu.",
     moveTitle: "Déplacer / partager",
     moveCount: (n) => `Combien ? (sur ${n})`,
     moveTo: "Vers",
@@ -739,11 +739,11 @@ const TEXT = {
     stockLow: "te weinig",
     stockNone: "niets meer",
     stockFailed: "Opslaan mislukt.",
-    receipt: "Kassabon",
+    receipt: "Kassabon / factuur",
     receiptJoined: (n) => (n === 1 ? "1 bekend product op de vaste plek gezet." : `${n} bekende producten op hun vaste plek gezet.`),
     receiptBusy: "Kassabon wordt gelezen …",
     receiptDone: (n) => `${n} product(en) van de kassabon overgenomen. Controleer ze en vul de houdbaarheidsdata aan.`,
-    receiptFailed: "Geen kassabon herkend op de foto.",
+    receiptFailed: "Geen kassabon of factuur herkend.",
     moveTitle: "Verplaatsen / splitsen",
     moveCount: (n) => `Hoeveel? (van ${n})`,
     moveTo: "Naar",
@@ -1216,8 +1216,10 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       parts.splice(2, 0, scan);
     }
     const done = button("submit", t.done, () => {
-      this._closeDialog();
       if (state.done.length) this.loadBought(); // bought items of these products are taken care of
+      // 6.1 (#167): then one list to fill in price, date and place of everything just put away
+      if (state.done.length && this.openPutAwayList) this.openPutAwayList(state.done.map((r) => r.device_id));
+      else this._closeDialog();
     });
     done.dataset.role = "putaway-done";
     form.replaceChildren(...parts, status, list, buttonsRow(done));
@@ -1689,6 +1691,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       line.dataset.role = "stock-price-history";
       item.append(line);
     }
+    if (inProduct && this._priceEditor) item.append(this._priceEditor(p, onChanged)); // 6.1 (#170): price editable here
     if (inProduct && scopeOfKind(p.kind) === "food") item.append(...this._ownValues(p, onChanged));
     if (!inProduct) item.append(this._historyLink(p.name, "stock-history"));
     const places = el("div", "places");
@@ -2076,7 +2079,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       // take a photo of the receipt: the AI suggests products with their count
       const file = el("input");
       file.type = "file";
-      file.accept = "image/*";
+      file.accept = "image/*,application/pdf"; // 6.1 (#169): also an invoice as PDF (online orders)
       file.hidden = true;
       file.dataset.role = "receipt-file";
       const receipt = button("link", `🧾 ${t.receipt}`, () => file.click());
@@ -2200,6 +2203,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
           const store = receiptStore && receiptStore.value.trim();
           const rec = await hass.callWS({ type: `${DOMAIN}/receipt_add`, items: fromReceipt, ...place, ...(store ? { store } : {}) });
           joined = (rec.added || []).length;
+          this._lastReceiptAdded = rec.added || [];
           res.items.push(...(rec.created || []));
         }
         if (typed.length) {
@@ -2219,6 +2223,11 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
           this._closeDialog();
         }
         if (joined) this.showNotice(created.length ? `${t.receiptJoined(joined)} ${t.createdPack(created.length)}` : t.receiptJoined(joined));
+        // 6.1 (#167): from a receipt or invoice, the list right away (dates are not on the receipt)
+        if (fromReceipt.length && this.openPutAwayList) {
+          const ids = [...(res.items || []).map((i) => i.device_id), ...((this._lastReceiptAdded || []).map((a) => a.device_id))];
+          this.openPutAwayList(ids.filter(Boolean));
+        }
         if (preset && preset.onCreated) preset.onCreated(created);
       } catch (err) {
         error.textContent = (err && err.message) || t.failed;

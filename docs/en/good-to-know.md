@@ -32,6 +32,11 @@ No matter how a product comes in – **📥 Put away**, ticking off in the **sho
 3. The **price** goes into the price history of the product.
 4. The matching item on the **shopping list is ticked off**, and *Bought – into stock?* does not offer it again.
 5. **＋1** adds another pack of the same product without scanning again; price and date then apply to all of them.
+6. Since 6.1 the **best-before date is suggested**: from earlier purchases of exactly this product (*milk kept 9 days when it was put away last time*), else – fresh food only – from the shelf-life table. A suggestion has a dashed frame; check it and change it if needed. Similar products never share their history (*Heinz Ketchup* and *Heinz Ketchup Zero* stay separate).
+
+### Finishing it afterwards: recently put away
+
+Since 6.1, **Done** after putting away and **Add** after a receipt open **📝 Just put away**: one list with **price**, **best-before date**, **area** and **compartment** of every row, all editable, one **Save**. Only what changed is saved; a date entered for the new packs gives them an entry of their own. **More → 📝 Recently put away** shows the same list for the last 7 days (*Only incomplete ones* on by default), so nothing has to be searched one by one.
 
 Only **unknown** products open a dialog (see below). Details: [Stock](containers.md#stock), [shopping mode](kitchen.md#shopping-mode).
 

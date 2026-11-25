@@ -20,6 +20,7 @@ const { installDataCare, dataCareTexts } = await import(`./larder-dashboard-data
 const { sectionNames } = await import(`./larder-dashboard-supply.js${VERSION_QUERY}`);
 const { installSearch, searchTexts } = await import(`./larder-dashboard-search.js${VERSION_QUERY}`);
 const { installHistory } = await import(`./larder-dashboard-history.js${VERSION_QUERY}`);
+const { installPutAway, putAwayTexts } = await import(`./larder-dashboard-putaway.js${VERSION_QUERY}`);
 
 const DOMAIN = "larder";
 const STORAGE_KEY = `${DOMAIN}.dashboard`;
@@ -909,6 +910,7 @@ export class LarderDashboard extends HTMLElement {
       ["everyday", [
         ["menu-putaway", `📥 ${this.putAwayTitle()}`, true, () => this.openPutAway()],
         ["menu-receipt", shop.receipt, this.canReadReceipt(), () => this.openReceipt()],
+        ["menu-putaway-list", putAwayTexts(hass).menu, true, () => this.openPutAwayList()],
         ["menu-stocktake", `📋 ${this.stocktakeTitle()}`, true, () => this.setView("stocktake")],
         ["menu-batch", cook.batch, this.canBatch(), () => this.openBatchDialog()],
         ["menu-labels", `🖨 ${t.menuLabels}`, true, () => this.openLabelDialog()],
@@ -3757,6 +3759,7 @@ installSupply(LarderDashboard, { el, DOMAIN });
 installDataCare(LarderDashboard, { el, DOMAIN });
 installSearch(LarderDashboard, { el });
 installHistory(LarderDashboard, { el, DOMAIN, money });
+installPutAway(LarderDashboard, { el, DOMAIN, listAreas });
 installShopping(LarderDashboard, { el, DOMAIN, todoLists, sectionNames });
 installVouchers(LarderDashboard, { el, isAdmin, listAreas, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment });
 installCare(LarderDashboard, { el, isAdmin, listAreas, scopeOfKind, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment, CATEGORY_ICONS });

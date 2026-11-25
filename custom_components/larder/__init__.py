@@ -34,6 +34,7 @@ from .places import async_get_places, async_setup_place_websocket
 from .plan import async_get_plan, async_setup_plan_websocket
 from .product import async_setup_product_websocket
 from .product_history import async_setup_product_history_websocket
+from .put_away_review import async_setup_put_away_websocket
 from .recall import async_get_recalls, async_setup_recall_websocket
 from .receipt_photo import async_setup_receipt_photo
 from .recipe_book import async_setup_recipe_book_websocket
@@ -89,6 +90,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_shopping_mode_websocket(hass)
     async_setup_product_history_websocket(hass)
     async_setup_grocy_websocket(hass)
+    async_setup_put_away_websocket(hass)
     async_setup_recipe_link_websocket(hass)
     async_setup_voucher_websocket(hass)
     async_setup_notify_actions(hass)

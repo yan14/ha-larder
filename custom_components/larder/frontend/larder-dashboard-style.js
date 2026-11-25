@@ -227,6 +227,17 @@ export const STYLE = `
   .placetag button { font: inherit; padding: 6px 12px; border-radius: 8px; cursor: pointer; border: 1px solid var(--divider-color); background: none; color: inherit; }
   .datagroup button.link { display: block; text-align: left; padding: 6px 0; }
   .datagroup h3 { margin: 14px 0 2px; }
+  .dialog .putedit { flex-direction: column; align-items: stretch; }
+  .putfields { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .putfields input, .putfields select, .priceedit input { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--divider-color); background: none; color: inherit; min-width: 0; }
+  .putfields input[data-f="pa-price"] { width: 80px; }
+  .putfields input[data-f="pa-compartment"] { width: 110px; }
+  input.suggested { border-style: dashed; border-color: var(--primary-color); color: var(--primary-color); }
+  .putedit .suggest { font-size: 12px; color: var(--primary-color); }
+  .putfilters { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .putlist { display: flex; flex-direction: column; gap: 8px; }
+  .priceedit { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin: 6px 0; }
+  .priceedit input[data-f="product-price"] { width: 90px; }
   .shopdetails { display: flex; gap: 8px; align-items: center; padding: 4px 0 8px 48px; flex-wrap: wrap; }
   .shopdetails input { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--divider-color); background: none; color: inherit; max-width: 140px; }
   .shop .boughtrow > button:first-child { min-width: 40px; font-size: 18px; }

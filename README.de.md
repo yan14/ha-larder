@@ -33,6 +33,8 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 
 ## Was ist neu?
 
+> **6.1:** **Einkauf nacharbeiten** – nach dem Einräumen eine Liste für Preis, MHD und Ort, das MHD **vorgeschlagen vom letzten Kauf**, Online-Rechnungen als **PDF** (REWE online) und der Preis in der Produktansicht änderbar.
+>
 > **6.0:** Larder spricht **Französisch und Niederländisch** (übersetzt, [Korrekturen willkommen](docs/de/gut-zu-wissen.md#sprachen)), [Übernahme aus Grocy](docs/de/dashboard.md#aus-grocy-übernehmen), ein **visueller Editor** für alle vier Karten und ein [Rezept aus einem Link](docs/de/kitchen.md#rezeptbuch). Alte Altlasten sind entfernt – vor dem Update bitte das [Changelog](CHANGELOG.md) lesen. **6.0.1:** *Wildpreiselbeeren* sind wieder Marmelade statt Wild.
 >
 > **5.9:** **Einkaufen nach Laden** – Preise je Laden (günstigster zuerst), der Kassenbon kennt den Laden, und *Ich bin bei Aldi* zeigt nur, was du dort kaufst, in der Reihenfolge des Ladens.

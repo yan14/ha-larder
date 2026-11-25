@@ -3,6 +3,15 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 6.1.0
+
+Block 46: finishing the shopping – from real use after an online order.
+
+- **List after putting away** (#167): **Done** after putting away and **Add** after a receipt open **📝 Just put away** – price, best-before date, area and compartment of every row in one list, one **Save** (only changes are sent; dated new packs get an entry of their own). **More → 📝 Recently put away** shows the last 7 days, *only incomplete ones* by default. Put away, the shopping mode, the receipt and ＋ all count. WebSocket `larder/put_away_recent`, `larder/put_away_save`.
+- **Best-before suggestion** (#168): the date field is prefilled from earlier purchases of exactly this product (the median of how many days it kept when put away, last 5 purchases), else – for fresh food only – from the shelf-life table. Shown with a dashed frame and *💡 Like the last purchase: 9 days*. Also in the inline *Price/date* of put away and the shopping mode; `put_away` returns `suggest`. Similar products never share their history.
+- **Online invoices and PDFs** (#169): **🧾 Receipt / invoice** takes PDFs (also several pages) and screenshots of invoices and order confirmations (REWE online, delivery services); delivery and service fees, deposits, discounts, VAT and missing items are left out, the store is read from the header (*REWE Markt GmbH* → *Rewe*).
+- **Price later** (#170): **💶 Price per pack** in the product view (optionally with the store) sets the price on all packs of exactly this product; data care *Without a price* opens the product view. WebSocket `larder/price_set`.
+
 ## 6.0.1
 
 - **Wildpreiselbeeren were estimated as game** (raw meat). The French and Dutch keywords of 6.0 (*wild* = game in Dutch) took German words starting the same way. They now only count when no German or English keyword matches, and short ones only as a word of their own. This also fixes *Sellerie* (was salt), *Spekulatius* (was bacon), *Wildlachs*, *Wildreis*, *Wildkräuter* and *Wildheidelbeeren*.

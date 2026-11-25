@@ -110,8 +110,8 @@ async def async_content_from_photo(hass: HomeAssistant, mime: str, content: byte
     return text
 
 
-async def read_photo(view: HomeAssistantView, request: web.Request) -> tuple[str, bytes] | web.Response:
-    """Read a photo from the form (field `file`); on errors the finished response."""
+async def read_photo(view: HomeAssistantView, request: web.Request, *, pdf: bool = False) -> tuple[str, bytes] | web.Response:
+    """Read a photo from the form (field `file`); on errors the finished response. `pdf`: also a PDF (6.1, invoices)."""
     hass = request.app[KEY_HASS]
     request._client_max_size = MAX_FILE_BYTES + 1024 * 1024  # noqa: SLF001
     try:
@@ -122,7 +122,7 @@ async def read_photo(view: HomeAssistantView, request: web.Request) -> tuple[str
     if not isinstance(field, web.FileField):
         return view.json({"error": "file_count"}, HTTPStatus.BAD_REQUEST)
     mime = (field.content_type or "").split(";")[0].strip().lower()
-    if mime not in TYPES or mime == "application/pdf":
+    if mime not in TYPES or (mime == "application/pdf" and not pdf):
         return view.json({"error": "unsupported_type", "type": mime}, HTTPStatus.BAD_REQUEST)
     content = await hass.async_add_executor_job(field.file.read, MAX_FILE_BYTES + 1)
     if len(content) > MAX_FILE_BYTES:
