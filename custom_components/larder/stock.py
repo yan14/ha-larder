@@ -78,6 +78,11 @@ RECENT_PRODUCT_KEYS = ("brand", "package", "ean", "price", "pack_size", "piece",
 STORAGE_PLACES = ("fridge", "freezer", "pantry")
 
 
+def store_key(name: str | None) -> str:
+    """Stores compare by name without case and extra spaces ("REWE" = "Rewe")."""
+    return " ".join(str(name or "").split()).casefold()
+
+
 def product_key(content: str | None) -> str:
     return " ".join((content or "").split()).casefold()
 
@@ -114,6 +119,8 @@ class Stock:
         self.auto_reorder: dict[str, dict[str, Any]] = {}
         self.opened_after: dict[str, dict[str, Any]] = {}  # 5.7: product → days after opening (from the pack)
         self.storage_days: dict[str, dict[str, Any]] = {}  # 5.8: product → own storage time per place kind
+        self.stores: dict[str, dict[str, Any]] = {}  # 5.9: store key → name and own order of sections
+        self.store_prices: dict[str, dict[str, dict[str, Any]]] = {}  # 5.9: product → store key → last price
         self._unsub = None
         self._unsub_daily = None
 
@@ -139,6 +146,12 @@ class Stock:
         self.auto_reorder = {str(k): v for k, v in (data.get("auto_reorder") or {}).items() if isinstance(v, dict)}
         self.opened_after = {str(k): v for k, v in (data.get("opened_after") or {}).items() if isinstance(v, dict) and v.get("days")}
         self.storage_days = {str(k): v for k, v in (data.get("storage_days") or {}).items() if isinstance(v, dict)}
+        self.stores = {str(k): v for k, v in (data.get("stores") or {}).items() if isinstance(v, dict) and v.get("name")}
+        self.store_prices = {
+            str(k): {str(s): p for s, p in v.items() if isinstance(p, dict) and p.get("price")}
+            for k, v in (data.get("store_prices") or {}).items()
+            if isinstance(v, dict)
+        }
 
     def _data(self) -> dict[str, Any]:
         return {
@@ -162,6 +175,8 @@ class Stock:
             "auto_reorder": self.auto_reorder,
             "opened_after": self.opened_after,
             "storage_days": self.storage_days,
+            "stores": self.stores,
+            "store_prices": self.store_prices,
         }
 
     def set_opened_after(self, content: str, days: int | None, source: str = "manual") -> None:
@@ -172,6 +187,26 @@ class Stock:
         else:
             self.opened_after.pop(key, None)
         self._save()
+
+    def learn_store(self, name: str | None) -> str:
+        """5.9 (#139): a store used with a price becomes known (display name as first written)."""
+        skey = store_key(name)
+        if not skey:
+            return ""
+        if skey not in self.stores:
+            self.stores[skey] = {"name": " ".join(str(name).split())[:60]}
+        return self.stores[skey]["name"]
+
+    def store_name(self, skey: str) -> str:
+        return (self.stores.get(skey) or {}).get("name") or skey
+
+    def prices_by_store(self, content: str) -> list[dict[str, Any]]:
+        """Last price per store of a product, cheapest first."""
+        rows = [
+            {"store": self.store_name(skey), "price": p["price"], "day": p.get("day")}
+            for skey, p in (self.store_prices.get(product_key(content)) or {}).items()
+        ]
+        return sorted(rows, key=lambda r: (r["price"], r["store"].casefold()))
 
     def set_storage_days(self, content: str, days: dict[str, int | None]) -> None:
         """5.8 (#158): own storage time of exactly this product per place kind (fridge, freezer, pantry)."""
@@ -274,7 +309,7 @@ class Stock:
         key = product_key(content)
         return forecast([t for t in self.takes if t.get("key") == key], 0) if key else None
 
-    def remember_price(self, content: str, price: float, source: str = "own") -> None:
+    def remember_price(self, content: str, price: float, source: str = "own", store: str | None = None) -> None:
         key = product_key(content)
         if not key or not price:
             return
@@ -282,12 +317,15 @@ class Stock:
         if source == "openprices" and current and current.get("source") != "openprices":
             return  # own prices take precedence over estimates
         entry = {"price": round(float(price), 2), "source": source, "day": dt_util.now().date().isoformat()}
+        skey = store_key(store) if source != "openprices" else ""
         if source != "openprices":
-            # price history of own prices: one per day, the last one counts
-            history = [p for p in self.price_history.get(key, []) if p.get("day") != entry["day"]]
-            if not history or history[-1].get("price") != entry["price"]:
-                history.append({"day": entry["day"], "price": entry["price"]})
+            # price history of own prices: one per day and store, the last one counts (5.9: with the store)
+            history = [p for p in self.price_history.get(key, []) if (p.get("day"), store_key(p.get("store"))) != (entry["day"], skey)]
+            if not history or history[-1].get("price") != entry["price"] or store_key(history[-1].get("store")) != skey:
+                history.append({"day": entry["day"], "price": entry["price"], **({"store": self.learn_store(store)} if skey else {})})
             self.price_history[key] = history[-PRICE_HISTORY:]
+            if skey:
+                self.store_prices.setdefault(key, {})[skey] = {"price": entry["price"], "day": entry["day"]}
             self._save()
         if current and {k: current.get(k) for k in ("price", "source")} == {k: entry[k] for k in ("price", "source")}:
             return
@@ -640,6 +678,8 @@ def stock_overview(hass: HomeAssistant, minimums: dict[str, dict[str, Any]], sto
             product["auto"] = product["key"] in stock.auto_reorder
             if (after := stock.opened_after.get(product["key"])) is not None:
                 product["opened_after"] = int(after["days"])
+            if len(by_store := stock.prices_by_store(product["name"])) >= 1:
+                product["store_prices"] = by_store  # 5.9 (#139): cheapest first
             if own := stock.storage_days.get(product["key"]):
                 product["storage_days"] = {k: own[k] for k in STORAGE_PLACES if own.get(k)}
         if stock is not None and stock.lists.get(product["key"]):
@@ -1357,6 +1397,53 @@ async def ws_storage_days(hass: HomeAssistant, connection: websocket_api.ActiveC
     connection.send_result(msg["id"], {"products": stock_overview(hass, stock.minimums, stock)})
 
 
+def stores_overview(stock: Stock) -> list[dict[str, Any]]:
+    """Known stores (5.9) with the number of products priced there and their own order of sections."""
+    counts: dict[str, int] = {}
+    for prices in stock.store_prices.values():
+        for skey in prices:
+            counts[skey] = counts.get(skey, 0) + 1
+    rows = [
+        {"name": info["name"], "products": counts.get(skey, 0), **({"order": info["order"]} if info.get("order") else {})}
+        for skey, info in stock.stores.items()
+    ]
+    return sorted(rows, key=lambda r: (-r["products"], r["name"].casefold()))
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/stores"})
+@websocket_api.async_response
+async def ws_stores(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    connection.send_result(msg["id"], {"stores": stores_overview(await async_get_stock(hass))})
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/store_save",
+        vol.Required("name"): vol.All(str, vol.Length(min=1, max=60)),
+        vol.Optional("order"): vol.Any(None, [vol.In(SECTIONS)]),
+        vol.Optional("delete", default=False): bool,
+    }
+)
+@websocket_api.async_response
+async def ws_store_save(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """Add a store, give it its own order of sections (None = the general order) or delete it (5.9, #140)."""
+    stock = await async_get_stock(hass)
+    skey = store_key(msg["name"])
+    if msg["delete"]:
+        stock.stores.pop(skey, None)
+        for prices in stock.store_prices.values():
+            prices.pop(skey, None)
+    else:
+        stock.learn_store(msg["name"])
+        if "order" in msg:
+            if msg["order"]:
+                stock.stores[skey]["order"] = list(dict.fromkeys(msg["order"]))
+            else:
+                stock.stores[skey].pop("order", None)
+    stock._save()
+    connection.send_result(msg["id"], {"stores": stores_overview(stock)})
+
+
 @websocket_api.websocket_command(
     {
         vol.Required("type"): f"{DOMAIN}/stock_code",
@@ -1686,6 +1773,8 @@ def async_setup_stock_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_auto_reorder)
     websocket_api.async_register_command(hass, ws_opened_after)
     websocket_api.async_register_command(hass, ws_storage_days)
+    websocket_api.async_register_command(hass, ws_stores)
+    websocket_api.async_register_command(hass, ws_store_save)
     websocket_api.async_register_command(hass, ws_pack_move)
     websocket_api.async_register_command(hass, ws_stock_code)
     websocket_api.async_register_command(hass, ws_stock_code_link)

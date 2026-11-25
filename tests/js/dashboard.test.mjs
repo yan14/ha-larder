@@ -3879,3 +3879,44 @@ test("5.8: frozen – 'quality ↓' instead of expired, the freezer list, own st
   await flush();
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/storage_days`), { type: `${D}/storage_days`, content: "Chili", pantry: 30 });
 });
+
+test("5.9: shopping at a store – chips, only what is bought there, the rest folded", async () => {
+  const hass = makeHass(DOSES);
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/shopping_mode`) {
+      hass.wsCalls.push(msg);
+      const at = msg.store || null;
+      const items = [
+        { list: "todo.e", list_name: "E", uid: "u1", summary: "Senf", section: "dry", known: true, stores: ["Aldi", "Rewe"] },
+        { list: "todo.e", list_name: "E", uid: "u2", summary: "Ketchup", section: "dry", known: true, stores: ["Rewe"] },
+        { list: "todo.e", list_name: "E", uid: "u3", summary: "Bananen", section: "produce", known: false, stores: [] },
+      ].map((i) => (at ? { ...i, here: i.stores.length ? i.stores.includes(at) : null } : i));
+      return { order: ["produce", "dry"], items, lists: [], configured: true, store: at, stores: [{ name: "Rewe", products: 2 }, { name: "Aldi", products: 1 }] };
+    }
+    return base(msg);
+  };
+  try {
+    dom.window.localStorage.removeItem("larder.shop_store");
+  } catch {
+    /* ignore */
+  }
+  const el = mount(hass);
+  await go(el, "shopping");
+  await flush();
+  const chips = $$(el, '[data-role="shop-stores"] button[data-store]');
+  assert.deepEqual(chips.map((c) => c.textContent), ["Überall", "Rewe", "Aldi"]);
+  // everywhere: the cheapest store under each item
+  assert.match($(el, '[data-uid="u1"]').textContent, /💶 Aldi/);
+  chips[2].click();
+  await flush();
+  await flush();
+  assert.equal(hass.wsCalls.filter((m) => m.type === `${D}/shopping_mode`).at(-1).store, "Aldi");
+  assert.equal(dom.window.localStorage.getItem("larder.shop_store"), "Aldi");
+  const main = $(el, "main");
+  assert.ok(main.querySelector('section [data-uid="u1"]') && main.querySelector('section [data-uid="u3"]'));
+  const folded = $(el, '[data-role="shop-elsewhere"]');
+  assert.match(folded.textContent, /Woanders gekauft \(1\).*Ketchup.*bisher bei Rewe/);
+  assert.ok($(el, '[data-role="shop-store-order"]'));
+  dom.window.localStorage.removeItem("larder.shop_store");
+});

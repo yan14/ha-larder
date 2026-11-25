@@ -55,6 +55,7 @@ PRODUCT_FIELDS: dict[str, type] = {
     "value": float,  # vouchers (4.8): remaining value
     "value_initial": float,  # vouchers: value at the start
     "price_source": str,  # "receipt", "own" or "openprices" (estimate)
+    "store": str,  # 5.9 (#139): where it was bought (with the price)
     "pack_size": float,  # household items: pieces per pack (e.g. 8 rolls)
     "piece": str,  # household items: name of one piece (e.g. "Rollen")
     "pao": float,  # cosmetics and medicines: keeps this many months after opening (the jar symbol "12M")
@@ -175,7 +176,9 @@ class LarderContent(TextEntity, LarderResettable):
         self._remember_ean(stock)
         if stock is not None and self._kind in PACK_KINDS and self._product.get("price") and self._attr_native_value:
             # remember the price for the next purchase of this product (estimates from Open Prices only if there is nothing)
-            stock.remember_price(self._attr_native_value, self._product["price"], self._product.get("price_source") or "own")
+            stock.remember_price(
+                self._attr_native_value, self._product["price"], self._product.get("price_source") or "own", self._product.get("store")
+            )
 
     async def async_set_value(self, value: str) -> None:
         self._attr_native_value = value

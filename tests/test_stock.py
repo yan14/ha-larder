@@ -130,7 +130,7 @@ async def test_receipt_photo(hass: HomeAssistant, hass_client, ready) -> None:  
     client = await hass_client()
     resp = await client.post(RECEIPT_URL, data=_form(("bon.jpg", "image/jpeg", b"\xff\xd8x")))
     assert resp.status == HTTPStatus.OK
-    assert (await resp.json()) == {"items": [{"name": "Gehackte Tomaten", "count": 3}, {"name": "Milch", "count": 1}]}
+    assert (await resp.json()) == {"items": [{"name": "Gehackte Tomaten", "count": 3}, {"name": "Milch", "count": 1}], "store": None}
     assert "receipt" in calls[0]["instructions"]
     _fake_ai(hass, {"found": False})
     resp = await client.post(RECEIPT_URL, data=_form(("bon.jpg", "image/jpeg", b"x")))

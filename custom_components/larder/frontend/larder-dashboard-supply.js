@@ -72,6 +72,9 @@ const TEXT = {
     sectionsMenu: "🏪 Abteilungen",
     sectionsTitle: "Abteilungen im Laden",
     sectionsIntro: "In dieser Reihenfolge zeigt der Einkaufsmodus die Einkaufslisten – so, wie du durch deinen Laden gehst.",
+    sectionsStoreTitle: (name) => `Abteilungen bei ${name}`,
+    sectionsStoreIntro: (name) => `So gehst du durch ${name}. Gilt im Einkaufsmodus, wenn „Ich bin bei ${name}“ gewählt ist.`,
+    sectionsGeneral: "Allgemeine Reihenfolge",
     up: "Nach oben",
     down: "Nach unten",
     save: "Speichern",
@@ -115,6 +118,9 @@ const TEXT = {
     sectionsMenu: "🏪 Store sections",
     sectionsTitle: "Store sections",
     sectionsIntro: "The shopping mode shows the shopping lists in this order – the way you walk through your store.",
+    sectionsStoreTitle: (name) => `Sections at ${name}`,
+    sectionsStoreIntro: (name) => `The way you walk through ${name}. Applies in the shopping mode when “I am at ${name}” is chosen.`,
+    sectionsGeneral: "General order",
     up: "Move up",
     down: "Move down",
     save: "Save",
@@ -234,7 +240,7 @@ export function installSupply(Dashboard, { el, DOMAIN }) {
   };
 
   /** Order of the store sections (administrators): ↑/↓, then save. */
-  proto.openSectionsDialog = async function openSectionsDialog() {
+  proto.openSectionsDialog = async function openSectionsDialog(store = null, onSaved = null) {
     const hass = this._hass;
     const t = supplyTexts(hass);
     const names = sectionNames(hass);
@@ -243,6 +249,10 @@ export function installSupply(Dashboard, { el, DOMAIN }) {
       order = (await hass.callWS({ type: `${DOMAIN}/sections` })).order || order;
     } catch {
       /* default order */
+    }
+    if (store && Array.isArray(store.order) && store.order.length) {
+      // 5.9 (#140): the store's own order, the rest behind it
+      order = [...store.order, ...order.filter((k) => !store.order.includes(k))];
     }
     const list = el("div", "sectionlist");
     const draw = () => {
@@ -270,18 +280,42 @@ export function installSupply(Dashboard, { el, DOMAIN }) {
       );
     };
     draw();
+    const store_save = async (value) => {
+      await hass.callWS({ type: `${DOMAIN}/store_save`, name: store.name, order: value });
+    };
     const save = button("submit", t.save, async () => {
       try {
-        await hass.callWS({ type: `${DOMAIN}/section_order`, order });
+        if (store) await store_save(order);
+        else await hass.callWS({ type: `${DOMAIN}/section_order`, order });
       } catch {
         return;
       }
       this._closeDialog();
+      if (onSaved) onSaved();
     });
     save.dataset.role = "sections-save";
     const buttons = el("div", "buttons");
-    buttons.append(button("cancel", t.cancel, () => this._closeDialog()), save);
-    this._form.replaceChildren(el("h2", "", t.sectionsTitle), el("p", "hint", t.sectionsIntro), list, buttons);
+    buttons.append(button("cancel", t.cancel, () => this._closeDialog()));
+    if (store && store.order) {
+      const general = button("", t.sectionsGeneral, async () => {
+        try {
+          await store_save(null);
+        } catch {
+          return;
+        }
+        this._closeDialog();
+        if (onSaved) onSaved();
+      });
+      general.dataset.role = "sections-general";
+      buttons.append(general);
+    }
+    buttons.append(save);
+    this._form.replaceChildren(
+      el("h2", "", store ? t.sectionsStoreTitle(store.name) : t.sectionsTitle),
+      el("p", "hint", store ? t.sectionsStoreIntro(store.name) : t.sectionsIntro),
+      list,
+      buttons,
+    );
     this._submit = null;
     this._overlay.hidden = false;
   };

@@ -166,6 +166,9 @@ const TEXT = {
     stockNoList: "Für den Mindestbestand fehlt noch eine Einkaufsliste in den Einstellungen.",
     stockEmpty: "Noch keine Packungen. Lege sie über ＋ → Packung an.",
     stockMin: "Mindestens",
+    receiptStore: "Laden (vom Kassenbon)",
+    storePrices: "Preise je Laden",
+    storeCheapest: "günstigster",
     openedAfter: "🔓 Nach dem Öffnen verbrauchen innerhalb von",
     openedAfterUnit: "Tagen",
     openedAfterHint: "Steht auf der Packung (📷 liest es). Gilt nur für genau dieses Produkt und vor der Tabelle.",
@@ -346,6 +349,9 @@ const TEXT = {
     stockNoList: "For the minimum stock, choose a shopping list in the settings first.",
     stockEmpty: "No packs yet. Add them with ＋ → Pack.",
     stockMin: "At least",
+    receiptStore: "Store (from the receipt)",
+    storePrices: "Prices per store",
+    storeCheapest: "cheapest",
     openedAfter: "🔓 Once opened, use within",
     openedAfterUnit: "days",
     openedAfterHint: "Printed on the pack (📷 reads it). Applies to exactly this product only, before the table.",
@@ -1277,9 +1283,17 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       if (p.value) parts.push(t.valueOf(money(p.value, de)));
       item.append(el("div", "sub price", parts.join(" · ")));
     }
+    if (p.store_prices && p.store_prices.length) {
+      // 5.9 (#139): last price per store, cheapest first
+      const de = String(hass.language || "").toLowerCase().startsWith("de");
+      const parts = p.store_prices.map((r, i) => `${r.store} ${money(r.price, de)}${i === 0 && p.store_prices.length > 1 ? ` (${t.storeCheapest})` : ""}`);
+      const line = el("div", "sub storeprices", `🏪 ${t.storePrices}: ${parts.join(" · ")}`);
+      line.dataset.role = "stock-store-prices";
+      item.append(line);
+    }
     if (p.price_history && p.price_history.length > 1) {
       // 4.11: own prices over time, e.g. 1,79 € → 1,99 € → 2,49 €
-      const line = el("div", "sub pricehistory", `${t.priceHistory}: ${p.price_history.map((h) => money(h.price, de)).join(" → ")}`);
+      const line = el("div", "sub pricehistory", `${t.priceHistory}: ${p.price_history.map((h) => `${money(h.price, de)}${h.store ? ` (${h.store})` : ""}`).join(" → ")}`);
       line.dataset.role = "stock-price-history";
       item.append(line);
     }
@@ -1664,6 +1678,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       scan.dataset.role = "item-scan";
       extras.push(scan);
     }
+    let receiptStore = null;
     if (!bag && !hh && !med && this._canGenerate() && hass.fetchWithAuth) {
       // take a photo of the receipt: the AI suggests products with their count
       const file = el("input");
@@ -1673,6 +1688,14 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       file.dataset.role = "receipt-file";
       const receipt = button("link", `🧾 ${t.receipt}`, () => file.click());
       receipt.dataset.role = "item-receipt";
+      // 5.9 (#141): the store read from the receipt (editable); its prices go to that store
+      receiptStore = el("input");
+      receiptStore.type = "text";
+      receiptStore.maxLength = 60;
+      receiptStore.placeholder = t.receiptStore;
+      receiptStore.setAttribute("aria-label", t.receiptStore);
+      receiptStore.dataset.f = "receipt-store";
+      receiptStore.hidden = true;
       file.addEventListener("change", async () => {
         const photo = file.files && file.files[0];
         file.value = "";
@@ -1703,13 +1726,15 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
             row.classList.toggle("household", row._household);
           }
           status.textContent = t.receiptDone(data.items.length);
+          receiptStore.value = data.store || "";
+          receiptStore.hidden = false;
         } catch (err) {
           status.textContent = (err && err.message) || t.receiptFailed;
         } finally {
           receipt.disabled = false;
         }
       });
-      extras.push(receipt, file);
+      extras.push(receipt, file, receiptStore);
     }
     const more = button("link", t.more, () => addRow().querySelector('[data-i="content"]').focus());
     more.dataset.role = "item-more";
@@ -1779,7 +1804,8 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
         let res = { items: [] };
         let joined = 0;
         if (fromReceipt.length) {
-          const rec = await hass.callWS({ type: `${DOMAIN}/receipt_add`, items: fromReceipt, ...place });
+          const store = receiptStore && receiptStore.value.trim();
+          const rec = await hass.callWS({ type: `${DOMAIN}/receipt_add`, items: fromReceipt, ...place, ...(store ? { store } : {}) });
           joined = (rec.added || []).length;
           res.items.push(...(rec.created || []));
         }

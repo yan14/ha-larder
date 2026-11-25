@@ -83,9 +83,19 @@ async def _open_items(hass: HomeAssistant, entity_id: str) -> list[dict[str, Any
     return ((response or {}).get(entity_id) or {}).get("items") or []
 
 
-async def async_shopping_view(hass: HomeAssistant) -> dict[str, Any]:
+async def async_shopping_view(hass: HomeAssistant, store: str | None = None) -> dict[str, Any]:
+    """Open items of the shopping lists by store section.
+
+    5.9 (#140): with `store` ("I am at Rewe") every item says whether it is bought there (`here`: True, False, or None
+    when no store is known for it), and the store's own order of sections applies if it has one.
+    """
+    from .stock import store_key  # noqa: PLC0415
+
     stock = await async_get_stock(hass)
     order = section_order(hass)
+    skey = store_key(store)
+    if skey and (own := (stock.stores.get(skey) or {}).get("order")):
+        order = [*own, *(s for s in order if s not in own)]
     items: list[dict[str, Any]] = []
     # 5.3.2: which lists were read and how (the page says why it is empty instead of showing nothing)
     lists: list[dict[str, Any]] = []
@@ -112,21 +122,31 @@ async def async_shopping_view(hass: HomeAssistant) -> dict[str, Any]:
             except Exception:  # noqa: BLE001 - one odd item must not hide the whole list
                 _LOGGER.debug("Eintrag %s nicht zuordenbar", summary, exc_info=True)
                 known, section = None, "other"
-            items.append({
+            content = known["content"] if known else _base_name(summary)
+            stores = [r["store"] for r in stock.prices_by_store(content)]
+            entry = {
                 "list": entity_id,
                 "list_name": list_name,
                 "uid": item["uid"],
                 "summary": summary,
                 "section": section,
                 "known": bool(known),
-            })
+                "stores": stores,  # where it was bought, cheapest first
+            }
+            if skey:
+                entry["here"] = (skey in (stock.store_prices.get(product_key(content)) or {})) if stores else None
+            items.append(entry)
     rank = {s: n for n, s in enumerate(order)}
     items.sort(key=lambda i: rank.get(i["section"], len(order)))
     chosen = default_list(hass)
+    from .stock import stores_overview  # noqa: PLC0415
+
     return {
         "order": order,
         "items": items,
         "lists": lists,
+        "store": stock.store_name(skey) if skey else None,
+        "stores": stores_overview(stock),
         "configured": bool(chosen),
         # chosen in the settings but not there (renamed, integration not loaded)
         "missing": chosen if chosen and hass.states.get(str(chosen)) is None else None,
@@ -212,7 +232,7 @@ async def async_shopping_scan(hass: HomeAssistant, code: str) -> dict[str, Any]:
 
 
 async def async_shopping_details(
-    hass: HomeAssistant, device_id: str, added: int, price: float | None, best_before: date | None
+    hass: HomeAssistant, device_id: str, added: int, price: float | None, best_before: date | None, store: str | None = None
 ) -> dict[str, Any]:
     """Price and best-before date of what was just put into stock (4.11).
 
@@ -231,7 +251,11 @@ async def async_shopping_details(
         raise HomeAssistantError("entry not found")
     ents = entry.runtime_data.resettable
     if price:
-        await ents["content"].async_set_product({"price": round(price, 2), "price_source": "own"}, replace=False)
+        # 5.9 (#139/#141): the store goes with the price
+        await ents["content"].async_set_product(
+            {"price": round(price, 2), "price_source": "own", "store": " ".join(str(store or "").split())[:60] or None},
+            replace=False,
+        )
     if best_before is None:
         return {"device_id": device_id}
     source = next((p for p in pack_entries(hass) if p["cc"] == cc), None)
@@ -293,11 +317,13 @@ def recurring_list(stock) -> list[dict[str, Any]]:
     return sorted(({"key": k, **v} for k, v in stock.recurring.items()), key=lambda e: e["name"].casefold())
 
 
-@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/shopping_mode"})
+@websocket_api.websocket_command(
+    {vol.Required("type"): f"{DOMAIN}/shopping_mode", vol.Optional("store"): vol.Any(None, vol.All(str, vol.Length(max=60)))}
+)
 @websocket_api.async_response
 async def ws_shopping_mode(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
     try:
-        result = await async_shopping_view(hass)
+        result = await async_shopping_view(hass, msg.get("store"))
     except Exception as err:  # noqa: BLE001 - say why instead of an empty page
         _LOGGER.exception("Einkaufsmodus konnte nicht geladen werden")
         connection.send_error(msg["id"], "shopping_failed", str(err) or type(err).__name__)
@@ -343,6 +369,7 @@ async def ws_shopping_scan(hass: HomeAssistant, connection: websocket_api.Active
         vol.Optional("added", default=1): vol.All(vol.Coerce(int), vol.Range(min=1, max=999)),
         vol.Optional("price"): vol.All(vol.Coerce(float), vol.Range(min=0, max=10000)),
         vol.Optional("best_before"): vol.Date(),
+        vol.Optional("store"): vol.Any(None, vol.All(str, vol.Length(max=60))),
     }
 )
 @websocket_api.async_response
@@ -351,7 +378,7 @@ async def ws_shopping_details(hass: HomeAssistant, connection: websocket_api.Act
     if isinstance(best, str):
         best = date.fromisoformat(best)
     try:
-        result = await async_shopping_details(hass, msg["device_id"], msg["added"], msg.get("price"), best)
+        result = await async_shopping_details(hass, msg["device_id"], msg["added"], msg.get("price"), best, msg.get("store"))
     except HomeAssistantError as err:
         connection.send_error(msg["id"], "details_failed", str(err))
         return
@@ -359,7 +386,7 @@ async def ws_shopping_details(hass: HomeAssistant, connection: websocket_api.Act
 
 
 async def async_receipt_add(
-    hass: HomeAssistant, items: list[dict[str, Any]], area_id: str | None, compartment: str | None
+    hass: HomeAssistant, items: list[dict[str, Any]], area_id: str | None, compartment: str | None, store: str | None = None
 ) -> dict[str, Any]:
     """Rows read from a receipt (4.11.1): known products go to their usual place and join a pack there (like the
     shopping mode), with price and date; only unknown ones are created at the place chosen in the dialog."""
@@ -375,7 +402,10 @@ async def async_receipt_add(
         found = [p for p in packs if product_key(p["content"]) == key and p["kind"] in (KIND_PACK, KIND_HOUSEHOLD)]
         if not found:
             # 5.0 (#121): household goods from the receipt become household items, the rest food packs
-            (unknown_household if item.get("household") else unknown).append({k: v for k, v in item.items() if k != "household"})
+            new = {k: v for k, v in item.items() if k != "household"}
+            if store and (new.get("product") or {}).get("price"):
+                new["product"] = {**new["product"], "store": store}  # 5.9 (#141): the price belongs to this store
+            (unknown_household if item.get("household") else unknown).append(new)
             continue
         count = max(1, int(item.get("quantity") or 1))
         result = await async_add_known(hass, _known_product(found, ""), count)
@@ -384,7 +414,7 @@ async def async_receipt_add(
         if isinstance(best, str):
             best = date.fromisoformat(best)
         if price or best:
-            details = await async_shopping_details(hass, result["device_id"], result.get("added") or count, price, best)
+            details = await async_shopping_details(hass, result["device_id"], result.get("added") or count, price, best, store)
             result["device_id"] = details["device_id"]
         added.append(result)
         packs = pack_entries(hass)
@@ -436,6 +466,7 @@ async def async_tick_off(hass: HomeAssistant, contents: list[str]) -> list[str]:
         vol.Required("items"): vol.All([dict], vol.Length(min=1, max=30)),
         vol.Optional("area_id"): vol.Any(str, None),
         vol.Optional("compartment"): vol.All(str, vol.Length(max=60)),
+        vol.Optional("store"): vol.Any(None, vol.All(str, vol.Length(max=60))),
     }
 )
 @websocket_api.async_response
@@ -448,7 +479,7 @@ async def ws_receipt_add(hass: HomeAssistant, connection: websocket_api.ActiveCo
             {**_ITEM({k: v for k, v in item.items() if k != "household"}), **({"household": True} if item.get("household") is True else {})}
             for item in msg["items"]
         ]
-        result = await async_receipt_add(hass, items, msg.get("area_id"), msg.get("compartment"))
+        result = await async_receipt_add(hass, items, msg.get("area_id"), msg.get("compartment"), msg.get("store"))
     except (vol.Invalid, HomeAssistantError) as err:
         connection.send_error(msg["id"], "receipt_failed", str(err))
         return

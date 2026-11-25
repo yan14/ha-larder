@@ -33,6 +33,8 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 
 ## Was ist neu?
 
+> **5.9:** **Einkaufen nach Laden** – Preise je Laden (günstigster zuerst), der Kassenbon kennt den Laden, und *Ich bin bei Aldi* zeigt nur, was du dort kaufst, in der Reihenfolge des Ladens.
+>
 > **5.8:** der **Gefrierschrank** im Blick (Qualität statt *abgelaufen*), eine **Kurzfassung** für jede Push und eine **eigene Lagerdauer** pro Produkt (selbstgemachte Marmelade).
 >
 > **5.7:** **„nach dem Öffnen … verbrauchen“** pro Produkt, mit 📷 von der Packung gelesen, deutsche Quellen (gekochter Reis, Eier) und eine wöchentliche Erinnerung an **Angebrochenes**.

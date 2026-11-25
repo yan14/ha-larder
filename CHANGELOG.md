@@ -3,6 +3,15 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 5.9.0
+
+Block 38: shopping by store.
+
+- **Price per store** (#139): a price can carry the store where it was paid. Larder remembers the last price per store and product; the stock view and the product view show **🏪 Prices per store**, cheapest first, and the price history names the store (*1,49 € (Rewe) → 0,99 € (ALDI Süd)*). Products are never merged: every name keeps its own prices.
+- **The receipt knows the store** (#141): the AI also reads the store from the receipt header; it is shown (editable) in the dialog, and the prices of the receipt go to that store.
+- **"I am at …"** (#140): **📍 Where are you?** in the shopping mode – at a store it shows what you bought there before (and everything without a known store), what you only bought elsewhere so far folded at the end, in the store's own order of sections (**🏪 Sections at …**). *Everywhere* shows the cheapest store under each item. A price entered in the shopping mode goes to the chosen store.
+- WebSocket: `larder/stores`, `larder/store_save` (add, own order, delete), `larder/shopping_mode` with `store`, `larder/receipt_add` and `larder/shopping_details` with `store`; the receipt photo returns `store`.
+
 ## 5.8.0
 
 Block 43: freezer at a glance, short pushes, own storage time per product.

@@ -24,6 +24,12 @@ const TEXT = {
     failed: "Abhaken fehlgeschlagen.",
     addUnknown: (n) => (n === 1 ? "＋ 1 neuen Artikel anlegen" : `＋ ${n} neue Artikel anlegen`),
     reload: "🔄 Aktualisieren",
+    storeWhere: "📍 Wo bist du?",
+    storeAll: "Überall",
+    storeNew: "Laden, z. B. Rewe",
+    storeOrder: (name) => `🏪 Abteilungen bei ${name}`,
+    elsewhere: (n, store) => `Woanders gekauft (${n}) – bisher nicht bei ${store}`,
+    boughtAt: (stores) => `bisher bei ${stores}`,
     scan: "📷 Scannen",
     receipt: "🧾 Kassenbon",
     details: "€ / MHD",
@@ -71,6 +77,12 @@ const TEXT = {
     failed: "Ticking off failed.",
     addUnknown: (n) => (n === 1 ? "＋ Add 1 new item" : `＋ Add ${n} new items`),
     reload: "🔄 Refresh",
+    storeWhere: "📍 Where are you?",
+    storeAll: "Everywhere",
+    storeNew: "Store, e.g. Rewe",
+    storeOrder: (name) => `🏪 Sections at ${name}`,
+    elsewhere: (n, store) => `Bought elsewhere (${n}) – not at ${store} so far`,
+    boughtAt: (stores) => `so far at ${stores}`,
     scan: "📷 Scan",
     receipt: "🧾 Receipt",
     details: "€ / date",
@@ -115,6 +127,64 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
     return b;
   };
 
+  const STORE_KEY = `${DOMAIN}.shop_store`;
+
+  /** Choose the store you are in (null = everywhere); remembered on this device. */
+  proto.setShopStore = function setShopStore(name) {
+    this._shopStore = name || null;
+    try {
+      if (this._shopStore) window.localStorage.setItem(STORE_KEY, this._shopStore);
+      else window.localStorage.removeItem(STORE_KEY);
+    } catch {
+      /* private mode: only for now */
+    }
+    this.loadShopping();
+  };
+
+  /** Chips "Everywhere · Rewe · Aldi · ＋" and the store's sections. */
+  proto._storeBar = function _storeBar(data, t) {
+    const bar = el("div", "storebar");
+    bar.dataset.role = "shop-stores";
+    bar.append(el("span", "lbl", t.storeWhere));
+    const current = data.store || null;
+    const chip = (label, name) => {
+      const b = button(name === current || (!name && !current) ? "chip on" : "chip", label, () => this.setShopStore(name));
+      b.dataset.store = name || "";
+      return b;
+    };
+    bar.append(chip(t.storeAll, null));
+    for (const store of data.stores || []) bar.append(chip(store.name, store.name));
+    const add = button("chip", "＋", () => {
+      const input = el("input");
+      input.type = "text";
+      input.maxLength = 60;
+      input.placeholder = t.storeNew;
+      input.dataset.role = "shop-store-new";
+      input.addEventListener("keydown", async (ev) => {
+        if (ev.key !== "Enter" || !input.value.trim()) return;
+        ev.preventDefault();
+        try {
+          await this._hass.callWS({ type: `${DOMAIN}/store_save`, name: input.value.trim() });
+        } catch {
+          return;
+        }
+        this.setShopStore(input.value.trim());
+      });
+      add.replaceWith(input);
+      input.focus();
+    });
+    add.dataset.role = "shop-store-add";
+    add.setAttribute("aria-label", t.storeNew);
+    bar.append(add);
+    if (current && this.openSectionsDialog) {
+      const store = (data.stores || []).find((s) => s.name === current) || { name: current };
+      const order = button("link", t.storeOrder(current), () => this.openSectionsDialog(store, () => this.loadShopping()));
+      order.dataset.role = "shop-store-order";
+      bar.append(order);
+    }
+    return bar;
+  };
+
   proto.shoppingTitle = function shoppingTitle() {
     return shoppingTexts(this._hass).title;
   };
@@ -123,7 +193,15 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
     const hass = this._hass;
     if (!hass || !hass.callWS) return;
     try {
-      this._shopping = await hass.callWS({ type: `${DOMAIN}/shopping_mode` });
+      // 5.9 (#140): "I am at …" – only what is bought there, in that store's order
+      if (this._shopStore === undefined) {
+        try {
+          this._shopStore = window.localStorage.getItem(STORE_KEY) || null;
+        } catch {
+          this._shopStore = null;
+        }
+      }
+      this._shopping = await hass.callWS(this._shopStore ? { type: `${DOMAIN}/shopping_mode`, store: this._shopStore } : { type: `${DOMAIN}/shopping_mode` });
     } catch (err) {
       this._shopping = { items: [], error: (err && err.message) || true };
     }
@@ -211,6 +289,7 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
       const amount = parseFloat(String(price.value).replace(",", "."));
       if (amount > 0) msg.price = Math.round(amount * 100) / 100;
       if (date.value) msg.best_before = date.value;
+      if (msg.price && this._view === "shopping" && this._shopStore) msg.store = this._shopStore; // 5.9: price at this store
       if (!msg.price && !msg.best_before) return;
       save.disabled = true;
       try {
@@ -278,7 +357,11 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
       return;
     }
     frag.append(el("p", "lead", t.intro));
-    const items = data.items || [];
+    if (!data.error) frag.append(this._storeBar(data, t));
+    const all = data.items || [];
+    // 5.9: at a store, what is only bought elsewhere goes to the end (folded)
+    const items = data.store ? all.filter((i) => i.here !== false) : all;
+    const elsewhere = data.store ? all.filter((i) => i.here === false) : [];
     if (data.error) {
       // 5.3.2: say why instead of an empty page
       const error = el("p", "note warn", t.loadFailed(data.error === true ? "" : data.error));
@@ -319,7 +402,8 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
       check.disabled = !!done;
       const text = el("span", "name");
       text.append(el("span", "", item.summary));
-      const sub = [done && done.text, lists.size > 1 ? item.list_name : null].filter(Boolean).join(" · ");
+      const where = !data.store && item.stores && item.stores.length ? `💶 ${item.stores[0]}` : null; // cheapest store
+      const sub = [done && done.text, where, lists.size > 1 ? item.list_name : null].filter(Boolean).join(" · ");
       if (sub) text.append(el("span", "sub", sub));
       row.append(check, text);
       if (done && done.device_id) {
@@ -330,6 +414,23 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
         row.append(details);
       }
       box.append(row);
+    }
+    if (elsewhere.length) {
+      const other = el("details", "stat shop elsewhere");
+      other.dataset.role = "shop-elsewhere";
+      other.append(el("summary", "", t.elsewhere(elsewhere.length, data.store)));
+      for (const item of elsewhere) {
+        const row = el("div", "boughtrow");
+        row.dataset.uid = item.uid;
+        const text = el("span", "name");
+        text.append(el("span", "", item.summary), el("span", "sub", t.boughtAt(item.stores.join(", "))));
+        const check = button("", "○", () => this._shopCheck(item));
+        check.dataset.role = "shop-check";
+        check.setAttribute("aria-label", t.check);
+        row.append(check, text);
+        other.append(row);
+      }
+      frag.append(other);
     }
     if (this._shopExtra.length) {
       const extra = el("section", "stat shop");

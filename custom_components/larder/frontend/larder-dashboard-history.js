@@ -141,7 +141,7 @@ export function installHistory(Dashboard, { el, DOMAIN, money }) {
       }
     }
     if (res.price_history && res.price_history.length > 1) {
-      const line = el("p", "sub", `${t.prices}: ${res.price_history.map((p) => money(p.price, de)).join(" → ")}`);
+      const line = el("p", "sub", `${t.prices}: ${res.price_history.map((p) => `${money(p.price, de)}${p.store ? ` (${p.store})` : ""}`).join(" → ")}`);
       line.dataset.role = "history-prices";
       parts.push(line);
     }

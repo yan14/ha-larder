@@ -33,6 +33,8 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 ## What's new
 
+> **5.9:** **shopping by store** – prices per store (cheapest first), the receipt knows the store, and *I am at Aldi* shows only what you buy there, in that store's order.
+>
 > **5.8:** the **freezer** at a glance (quality instead of *expired*), a **short version** for every push and an **own storage time** per product (homemade jam).
 >
 > **5.7:** **"use within … after opening"** per product, read from the pack with 📷, German sources (cooked rice, eggs) and a weekly reminder of **opened items**.
