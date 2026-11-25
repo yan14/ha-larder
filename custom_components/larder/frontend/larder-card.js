@@ -48,6 +48,123 @@ function texts(hass) {
 
 const valid = (st) => !!st && !["unknown", "unavailable", ""].includes(st.state);
 
+// ----- 6.0 (#164): visual editor for the cards (instead of YAML only) -----
+
+const EDITOR_LABELS = {
+  de: { title: "Überschrift", days: "Nur was in so vielen Tagen abläuft", show_expired: "Abgelaufenes zeigen", limit: "Höchstens so viele Einträge", area: "Bereich", compartment: "Fach (leer = ganzer Bereich)", show_bought: "Eingekauftes zeigen", show_opened: "Angebrochenes zeigen" },
+  en: { title: "Title", days: "Only what expires within so many days", show_expired: "Show expired ones", limit: "At most so many entries", area: "Area", compartment: "Compartment (empty = whole area)", show_bought: "Show bought items", show_opened: "Show opened items" },
+};
+
+const EDITOR_SCHEMAS = {
+  "larder-card": [
+    { name: "title", selector: { text: {} } },
+    { name: "days", selector: { number: { min: 1, max: 365, mode: "box" } } },
+    { name: "limit", selector: { number: { min: 1, max: 50, mode: "box" } } },
+    { name: "show_expired", selector: { boolean: {} } },
+    { name: "area", selector: { area: {} } },
+  ],
+  "larder-stock-card": [
+    { name: "title", selector: { text: {} } },
+    { name: "show_bought", selector: { boolean: {} } },
+    { name: "show_opened", selector: { boolean: {} } },
+  ],
+  "larder-shopping-card": [{ name: "title", selector: { text: {} } }],
+  "larder-place-card": [
+    { name: "area", selector: { area: {} } },
+    { name: "compartment", selector: { text: {} } },
+    { name: "title", selector: { text: {} } },
+  ],
+};
+
+function editorLabels(hass) {
+  const lang = String((hass && hass.language) || "en").toLowerCase().slice(0, 2);
+  return { ...EDITOR_LABELS.en, ...(EDITOR_LABELS[lang] || {}) };
+}
+
+/**
+ * Editor of a Larder card: Home Assistant's own form (`ha-form` with selectors) when it is there, otherwise
+ * plain fields. Every change is reported with the event `config-changed`, as Lovelace expects.
+ */
+export class LarderCardEditor extends HTMLElement {
+  set hass(hass) {
+    this._hass = hass;
+    this._render();
+  }
+
+  setConfig(config) {
+    this._config = { ...(config || {}) };
+    this._render();
+  }
+
+  get _schema() {
+    return EDITOR_SCHEMAS[String((this._config && this._config.type) || "").replace(/^custom:/, "")] || EDITOR_SCHEMAS[this.cardType] || [];
+  }
+
+  _changed(config) {
+    this._config = config;
+    this.dispatchEvent(new CustomEvent("config-changed", { detail: { config }, bubbles: true, composed: true }));
+  }
+
+  _render() {
+    if (!this._hass || !this._config) return;
+    const labels = editorLabels(this._hass);
+    if (customElements.get("ha-form")) {
+      if (!this._form || this._form.tagName !== "HA-FORM") {
+        this._form = document.createElement("ha-form");
+        this._form.computeLabel = (field) => labels[field.name] || field.name;
+        this._form.addEventListener("value-changed", (ev) => this._changed({ ...this._config, ...ev.detail.value }));
+        this.replaceChildren(this._form);
+      }
+      this._form.hass = this._hass;
+      this._form.schema = this._schema;
+      this._form.data = this._config;
+      return;
+    }
+    // fallback without ha-form (e.g. outside the edit mode): simple fields
+    const box = document.createElement("div");
+    box.className = "larder-editor";
+    for (const field of this._schema) {
+      const label = document.createElement("label");
+      label.style.display = "block";
+      label.style.margin = "8px 0";
+      const input = document.createElement(field.selector.area ? "select" : "input");
+      input.dataset.name = field.name;
+      if (field.selector.area) {
+        for (const a of [{ area_id: "", name: "–" }, ...Object.values(this._hass.areas || {})]) {
+          const o = document.createElement("option");
+          o.value = a.area_id;
+          o.textContent = a.name;
+          input.append(o);
+        }
+        input.value = this._config[field.name] || "";
+      } else if (field.selector.boolean) {
+        input.type = "checkbox";
+        input.checked = this._config[field.name] !== false;
+      } else {
+        input.type = field.selector.number ? "number" : "text";
+        input.value = this._config[field.name] ?? "";
+      }
+      input.addEventListener("change", () => {
+        const value = field.selector.boolean ? input.checked : field.selector.number ? (input.value === "" ? undefined : Number(input.value)) : input.value;
+        const next = { ...this._config, [field.name]: value };
+        if (value === undefined || value === "") delete next[field.name];
+        this._changed(next);
+      });
+      label.append(document.createTextNode(`${labels[field.name] || field.name} `), input);
+      box.append(label);
+    }
+    this.replaceChildren(box);
+  }
+}
+
+if (!customElements.get("larder-card-editor")) customElements.define("larder-card-editor", LarderCardEditor);
+
+function editorFor(type) {
+  const editor = document.createElement("larder-card-editor");
+  editor.cardType = type;
+  return editor;
+}
+
 /** Containers with a date within the limit (expired first), as the card shows them. */
 export function expiringRows(hass, config = {}, now = new Date()) {
   const states = (hass && hass.states) || {};
@@ -77,6 +194,10 @@ export function expiringRows(hass, config = {}, now = new Date()) {
 }
 
 export class LarderCard extends HTMLElement {
+  static getConfigElement() {
+    return editorFor("larder-card");
+  }
+
   static getStubConfig() {
     return { show_expired: true, limit: 8 };
   }
@@ -179,6 +300,10 @@ const REFRESH_MS = 5 * 60 * 1000;
 
 /** Lovelace card "Larder: stock" (type: custom:larder-stock-card). */
 export class LarderStockCard extends HTMLElement {
+  static getConfigElement() {
+    return editorFor("larder-stock-card");
+  }
+
   static getStubConfig() {
     return { show_bought: true, show_opened: true };
   }
@@ -350,6 +475,10 @@ const goTo = (path) => {
 
 /** Lovelace card "Larder: shopping" (type: custom:larder-shopping-card): open items per list. */
 export class LarderShoppingCard extends HTMLElement {
+  static getConfigElement() {
+    return editorFor("larder-shopping-card");
+  }
+
   static getStubConfig() {
     return {};
   }
@@ -450,6 +579,10 @@ export function placeRows(hass, config = {}, now = new Date()) {
 
 /** Lovelace card "Larder: compartment" (type: custom:larder-place-card, options area and compartment). */
 export class LarderPlaceCard extends HTMLElement {
+  static getConfigElement() {
+    return editorFor("larder-place-card");
+  }
+
   static getStubConfig(hass) {
     const area = Object.keys((hass && hass.areas) || {})[0] || "";
     return { area, compartment: "" };

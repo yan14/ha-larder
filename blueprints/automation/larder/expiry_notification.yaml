@@ -49,15 +49,6 @@ blueprint:
           min: 1
           max: 10
           mode: box
-    recipes_page:
-      name: "Recipes button opens"
-      description: No longer needed (Larder experimental was removed in 3.0); kept so existing automations stay valid.
-      default: classic
-      selector:
-        select:
-          options:
-            - label: Larder (recipe page)
-              value: classic
     voice_action:
       name: Voice output (optional)
       description: >
@@ -161,7 +152,6 @@ variables:
   buttons: !input buttons
   item_pushes: !input item_pushes
   max_item_pushes: !input max_item_pushes
-  recipes_page: !input recipes_page
   # Aktionen wie notify.mobile_app_iphone, getrennt durch Komma, Semikolon, Leerzeichen oder Zeilen
   push_targets: "{{ (notify_action or '') | string | lower | regex_findall('[a-z0-9_]+[.][a-z0-9_]+') }}"
   voice_targets: "{{ (voice_action or '') | string | lower | regex_findall('[a-z0-9_]+[.][a-z0-9_]+') }}"

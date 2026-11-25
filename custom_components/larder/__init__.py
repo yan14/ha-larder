@@ -22,6 +22,7 @@ from .entity import LarderConfigEntry, LarderRuntime, is_main
 from .estimate import async_get_estimator
 from .expiry import async_setup_services
 from .export import async_setup_export
+from .grocy import async_setup_grocy_websocket
 from .history import async_setup_history_websocket
 from .household import async_setup_household_websocket
 from .labels import async_setup_labels
@@ -36,6 +37,7 @@ from .product_history import async_setup_product_history_websocket
 from .recall import async_get_recalls, async_setup_recall_websocket
 from .receipt_photo import async_setup_receipt_photo
 from .recipe_book import async_setup_recipe_book_websocket
+from .recipe_link import async_setup_recipe_link_websocket
 from .recipe_photo import async_setup_recipe_photo
 from .recipes import async_setup_recipe_service
 from .repair_hints import async_get_repairs
@@ -86,6 +88,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_datacare_websocket(hass)
     async_setup_shopping_mode_websocket(hass)
     async_setup_product_history_websocket(hass)
+    async_setup_grocy_websocket(hass)
+    async_setup_recipe_link_websocket(hass)
     async_setup_voucher_websocket(hass)
     async_setup_notify_actions(hass)
     await async_get_sizes(hass)

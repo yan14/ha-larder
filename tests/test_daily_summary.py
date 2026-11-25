@@ -113,7 +113,6 @@ async def test_motion_window_fallback_and_presence(hass: HomeAssistant, blueprin
         send_time="07:00:00",
         latest_time="11:00:00",
         buttons=False,
-        recipes_page="classic",
     )
     # 07:00 without motion: nothing; motion before 07:00: nothing
     await _at(hass, freezer, "06:30:00")

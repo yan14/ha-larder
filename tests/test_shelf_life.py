@@ -291,23 +291,6 @@ async def test_corrected_value_beats_table_and_is_remembered(hass: HomeAssistant
     assert out["days"] == 6 and out["cached"] is True and out["source"] == "learned"
 
 
-async def test_legacy_ai_enabled_setting_migrates(hass: HomeAssistant) -> None:
-    from custom_components.larder.estimate import Estimator
-
-    for legacy, expected in (({"ai_enabled": True}, "ai"), ({"ai_enabled": False}, "table"), ({}, "table")):
-        estimator = Estimator(hass)
-
-        async def load(legacy=legacy):
-            return {"settings": legacy, "cache": {}}
-
-        estimator._store.async_load = load
-        await estimator.async_load()
-        assert estimator.mode == expected
-
-
-# ---------- Origin of corrected values and managing remembered entries ----------
-
-
 async def _set_date(hass: HomeAssistant, days: int) -> None:
     value = (dt_util.now().date() + timedelta(days=days)).isoformat()
     await hass.services.async_call(

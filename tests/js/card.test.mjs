@@ -174,3 +174,24 @@ test("compartment card: entries of an area and compartment, −1 for packs", asy
   empty.hass = hass;
   assert.match(empty.shadowRoot.textContent, /Bereich/);
 });
+
+test("6.0: every card has a visual editor that reports its changes", async () => {
+  const mod = await import("../../custom_components/larder/frontend/larder-card.js");
+  for (const [cls, type] of [[mod.LarderCard, "larder-card"], [mod.LarderStockCard, "larder-stock-card"], [mod.LarderShoppingCard, "larder-shopping-card"], [mod.LarderPlaceCard, "larder-place-card"]]) {
+    const editor = cls.getConfigElement();
+    assert.equal(editor.tagName.toLowerCase(), "larder-card-editor");
+    editor.setConfig({ type: `custom:${type}` });
+    editor.hass = { language: "de", areas: { kitchen: { area_id: "kitchen", name: "Küche" } } };
+    assert.ok(editor.querySelectorAll("[data-name]").length >= 1, type);
+  }
+  const editor = mod.LarderCard.getConfigElement();
+  editor.setConfig({ type: "custom:larder-card", limit: 8 });
+  editor.hass = { language: "de", areas: { kitchen: { area_id: "kitchen", name: "Küche" } } };
+  let changed = null;
+  editor.addEventListener("config-changed", (ev) => (changed = ev.detail.config));
+  const area = editor.querySelector('[data-name="area"]');
+  area.value = "kitchen";
+  area.dispatchEvent(new Event("change"));
+  assert.deepEqual(changed, { type: "custom:larder-card", limit: 8, area: "kitchen" });
+  assert.match(editor.textContent, /Höchstens so viele Einträge/);
+});

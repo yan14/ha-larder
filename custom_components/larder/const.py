@@ -51,7 +51,6 @@ MAIN_UNIQUE_ID = "larder_main"
 MANUFACTURER = "ZWILLING"
 
 # AI estimate of the best-before date (optional, needs the Home Assistant integration "AI Task")
-CONF_AI_ENABLED = "ai_enabled"  # old (up to 0.5), migrated to CONF_ESTIMATE_MODE
 CONF_ESTIMATE_MODE = "estimate_mode"
 ESTIMATE_OFF = "off"
 ESTIMATE_TABLE = "table"

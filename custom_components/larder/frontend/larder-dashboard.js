@@ -22,7 +22,8 @@ const { installSearch, searchTexts } = await import(`./larder-dashboard-search.j
 const { installHistory } = await import(`./larder-dashboard-history.js${VERSION_QUERY}`);
 
 const DOMAIN = "larder";
-const STORAGE_KEY = `${DOMAIN}.experimental`; // historic name, kept so saved views survive
+const STORAGE_KEY = `${DOMAIN}.dashboard`;
+const OLD_STORAGE_KEY = `${DOMAIN}.experimental`; // up to 5.9: taken over once, then removed (6.0)
 
 const { TEXTS } = await import(`./larder-dashboard-strings.js${VERSION_QUERY}`);
 export { TEXTS };
@@ -221,6 +222,10 @@ const LABEL_DESIGNS = ["plain", "frame", "notched", "handwritten"];
 
 function loadOptions() {
   try {
+    if (window.localStorage.getItem(STORAGE_KEY) === null && window.localStorage.getItem(OLD_STORAGE_KEY) !== null) {
+      window.localStorage.setItem(STORAGE_KEY, window.localStorage.getItem(OLD_STORAGE_KEY));
+    }
+    window.localStorage.removeItem(OLD_STORAGE_KEY);
     const raw = JSON.parse(window.localStorage.getItem(STORAGE_KEY) || "{}");
     return {
       mode: MODES.includes(raw.mode) ? raw.mode : "grid",
@@ -926,6 +931,7 @@ export class LarderDashboard extends HTMLElement {
         ["menu-sections", st.sectionsMenu, admin, () => this.openSectionsDialog()],
         ["menu-sizes", cook.sizes, admin, () => this.openSizesDialog()],
         ["menu-data", `📦 ${t.menuData}`, admin, () => this.openDataDialog()],
+        ["menu-grocy", `📥 ${t.grocyMenu}`, admin, () => this.openGrocyImport()],
         ["menu-estimates", `📋 ${t.menuEstimates}`, admin, () => this.setView("estimates")],
         ["menu-settings", `⚙ ${t.menuSettings}`, admin, () => navigate(`/config/integrations/integration/${DOMAIN}`)],
       ]],
@@ -2313,6 +2319,93 @@ export class LarderDashboard extends HTMLElement {
   }
 
   /** 5.0 (#117): the frequent actions at the top of the start page: scan, put away, receipt, recipe idea. */
+  /** 📥 Import from Grocy (6.0, #163): address + API key → preview with the places → import. */
+  openGrocyImport() {
+    const hass = this._hass;
+    const t = texts(hass);
+    const button = (cls, label, onClick) => {
+      const b = el("button", cls, label);
+      b.type = "button";
+      if (onClick) b.addEventListener("click", onClick);
+      return b;
+    };
+    const input = (type, f, placeholder) => {
+      const i = el("input");
+      i.type = type;
+      i.dataset.f = f;
+      i.placeholder = placeholder;
+      return i;
+    };
+    const url = input("text", "grocy-url", "http://grocy.local:9283");
+    const key = input("password", "grocy-key", t.grocyKey);
+    const out = el("div", "grocypreview");
+    out.dataset.role = "grocy-preview";
+    const status = el("p", "hint");
+    status.setAttribute("role", "status");
+    let preview = null;
+    const selects = {};
+    const go = button("submit", t.grocyImport(0), null);
+    go.dataset.role = "grocy-import";
+    go.disabled = true;
+    const check = button("", t.grocyCheck, async () => {
+      check.disabled = true;
+      status.textContent = t.grocyBusy;
+      try {
+        preview = await hass.callWS({ type: `${DOMAIN}/grocy_preview`, url: url.value.trim(), api_key: key.value.trim() });
+      } catch (err) {
+        status.textContent = t.grocyFailed((err && err.message) || "");
+        check.disabled = false;
+        return;
+      }
+      check.disabled = false;
+      status.textContent = t.grocyFound(preview.total, Object.keys(preview.after_open || {}).length);
+      out.replaceChildren();
+      const areas = listAreas(hass, null);
+      for (const loc of preview.locations) {
+        const select = el("select");
+        select.dataset.location = loc.id;
+        for (const a of [{ id: "", name: t.noArea }, ...areas]) {
+          const o = el("option", "", a.name);
+          o.value = a.id;
+          select.append(o);
+        }
+        select.value = loc.area_id || "";
+        selects[loc.id] = select;
+        const row = el("label", "field");
+        row.append(el("span", "", `${loc.freezer ? "🧊 " : ""}${loc.name} (${loc.count}) →`), select);
+        out.append(row);
+      }
+      go.textContent = t.grocyImport(preview.total);
+      go.disabled = !preview.total;
+    });
+    check.dataset.role = "grocy-check";
+    this._submit = async () => {
+      if (!preview) return;
+      go.disabled = true;
+      status.textContent = t.grocyBusy;
+      const areasByLocation = Object.fromEntries(Object.entries(selects).map(([id, sel]) => [id, sel.value || null]));
+      try {
+        const res = await hass.callWS({ type: `${DOMAIN}/grocy_import`, url: url.value.trim(), api_key: key.value.trim(), areas: areasByLocation });
+        this._closeDialog();
+        this.showNotice(t.grocyDone(res.created));
+      } catch (err) {
+        status.textContent = t.grocyFailed((err && err.message) || "");
+        go.disabled = false;
+      }
+    };
+    const field = (label, control) => {
+      const f = el("label", "field");
+      f.append(el("span", "", label), control);
+      return f;
+    };
+    const cancel = button("cancel", t.cancel || "✕", () => this._closeDialog());
+    const buttons = el("div", "buttons");
+    buttons.append(cancel, check, go);
+    go.type = "submit";
+    this._form.replaceChildren(el("h2", "", `📥 ${t.grocyMenu}`), el("p", "hint", t.grocyIntro), field(t.grocyUrl, url), field(t.grocyKey, key), status, out, buttons);
+    this._overlay.hidden = false;
+  }
+
   /** 🧊 Freezer (5.8, #156): what is frozen, longest first, with since when and until when the quality lasts. */
   openFreezer() {
     const t = texts(this._hass);
@@ -2616,6 +2709,17 @@ export class LarderDashboard extends HTMLElement {
     const expanded = suggestion !== null || this._openRecipe === recipe.id;
     if (suggestion === null && recipe.source === "ai") node.append(el("div", "tag", t.fromAi));
     if (suggestion === null && recipe.source === "photo") node.append(el("div", "tag", t.fromPhoto));
+    if (suggestion === null && recipe.source === "link") {
+      const tag = el("div", "tag", t.fromLink);
+      if (recipe.url) {
+        const a = el("a", "", ` ↗`);
+        a.href = recipe.url;
+        a.target = "_blank";
+        a.rel = "noopener noreferrer";
+        tag.append(a);
+      }
+      node.append(tag);
+    }
     if (suggestion === null) {
       h.addEventListener("click", () => {
         this._openRecipe = this._openRecipe === recipe.id ? null : recipe.id;
@@ -2628,7 +2732,14 @@ export class LarderDashboard extends HTMLElement {
       if (ingredients.length) {
         body.append(el("h4", "", t.ingredients));
         const ul = el("ul");
-        for (const item of ingredients) ul.append(el("li", "", item));
+        // 6.0 (#165): ✓ for what is in stock (a word of a container's or pack's content in the ingredient)
+        const have = this._stockWords();
+        for (const item of ingredients) {
+          const words = String(item).toLowerCase().split(/[^a-zäöüßéèàç]+/);
+          const there = suggestion === null && words.some((w) => w.length >= 4 && have.has(w));
+          const li = el("li", there ? "have" : "", there ? `✓ ${item}` : item);
+          ul.append(li);
+        }
         body.append(ul);
       }
       if (steps.length) {
@@ -2750,6 +2861,14 @@ export class LarderDashboard extends HTMLElement {
       bar.append(photo);
     }
     if (isAdmin(this._hass)) {
+      // 6.0 (#165): take over a recipe from a link
+      const link = el("button", "icon", "🔗");
+      link.type = "button";
+      link.dataset.role = "recipe-link";
+      link.setAttribute("aria-label", t.linkTitle);
+      link.title = t.linkTitle;
+      link.addEventListener("click", () => this.openRecipeLink());
+      bar.append(link);
       const add = el("button", "icon", "＋");
       add.type = "button";
       add.dataset.role = "add-recipe";
@@ -2824,6 +2943,56 @@ export class LarderDashboard extends HTMLElement {
     this._main.replaceChildren(frag);
   }
 
+  /** Words of everything in stock (contents with at least 4 letters), for ✓ next to recipe ingredients. */
+  _stockWords() {
+    const words = new Set();
+    for (const row of this._rows()) {
+      for (const w of String(row.content || "").toLowerCase().split(/[^a-zäöüßéèàç]+/)) if (w.length >= 4) words.add(w);
+    }
+    return words;
+  }
+
+  /** 🔗 A recipe from a link (6.0, #165): the page's recipe data, checked in the recipe dialog before saving. */
+  openRecipeLink() {
+    const hass = this._hass;
+    const t = texts(hass);
+    const url = el("input");
+    url.type = "url";
+    url.dataset.f = "recipe-url";
+    url.placeholder = "https://…";
+    const status = el("p", "hint", t.linkIntro);
+    status.setAttribute("role", "status");
+    const cancel = el("button", "cancel", t.cancel);
+    cancel.type = "button";
+    cancel.addEventListener("click", () => this._closeDialog());
+    const submit = el("button", "submit", t.linkRead);
+    submit.type = "submit";
+    submit.dataset.role = "recipe-link-read";
+    const buttons = el("div", "buttons");
+    buttons.append(cancel, submit);
+    this._submit = async () => {
+      const value = url.value.trim();
+      if (!/^https?:\/\//.test(value)) {
+        status.textContent = t.linkInvalid;
+        return;
+      }
+      submit.disabled = true;
+      status.textContent = t.linkBusy;
+      try {
+        const res = await hass.callWS({ type: `${DOMAIN}/recipe_from_url`, url: value });
+        this.openRecipeDialog(res.recipe);
+      } catch (err) {
+        status.textContent = err && err.code === "no_recipe" ? t.linkNone : t.linkFailed;
+        submit.disabled = false;
+      }
+    };
+    const label = el("label", "", t.linkLabel);
+    label.append(url);
+    this._form.replaceChildren(el("h2", "", t.linkTitle), label, status, buttons);
+    this._overlay.hidden = false;
+    url.focus();
+  }
+
   openRecipeDialog(recipe = null) {
     const t = texts(this._hass);
     this._editing = recipe;
@@ -2862,7 +3031,8 @@ export class LarderDashboard extends HTMLElement {
     submit.type = "submit";
     buttons.append(cancel, submit);
     form.replaceChildren(
-      el("h2", "", recipe && recipe.id ? t.recipeEdit : recipe && recipe.source === "photo" ? t.photoCheck : t.recipeNew),
+      el("h2", "", recipe && recipe.id ? t.recipeEdit : recipe && recipe.source === "photo" ? t.photoCheck : recipe && recipe.source === "link" ? t.linkCheck : t.recipeNew),
+      ...(recipe && recipe.source === "link" && recipe.url && !recipe.id ? [el("p", "hint", t.linkFrom(recipe.url))] : []),
       field(t.recipeTitle, title),
       field(t.recipeMinutes, minutes),
       field(t.recipeIngredients, ingredients),
@@ -3560,6 +3730,10 @@ export class LarderDashboard extends HTMLElement {
     if (minutes > 0) payload.minutes = Math.min(minutes, 1440);
     if (this._editing && this._editing.id) payload.recipe_id = this._editing.id;
     else if (this._editing && this._editing.source === "photo") payload.source = "photo";
+    else if (this._editing && this._editing.source === "link") {
+      payload.source = "link"; // 6.0 (#165)
+      if (this._editing.url) payload.url = this._editing.url;
+    }
     form.querySelector("button.submit").disabled = true;
     try {
       await this._saveRecipe(payload);

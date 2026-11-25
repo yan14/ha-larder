@@ -30,6 +30,7 @@ export const STYLE = `
     background: var(--card-background-color, #fff); color: var(--primary-text-color); border: 1px solid var(--divider-color); }
   .groupbar { display: flex; gap: 0; margin: 0 0 12px; border: 1px solid var(--divider-color, #ddd); border-radius: 18px; overflow: hidden; }
   .groupbar button { flex: 1; border: 0; background: none; padding: 8px 2px; font: inherit; font-size: 13px; white-space: nowrap; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: inherit; cursor: pointer; }
+  .recipe li.have { color: var(--success-color, #2e7d32); }
   .storebar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 12px; }
   .storebar .lbl { font-size: 14px; color: var(--secondary-text-color); margin-right: 4px; }
   .storebar button.chip { font: inherit; font-size: 14px; padding: 6px 12px; border-radius: 16px; cursor: pointer;

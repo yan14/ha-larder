@@ -55,6 +55,7 @@ class RecipeBook:
         minutes: int | None = None,
         source: str = "manual",
         recipe_id: str | None = None,
+        url: str | None = None,
     ) -> dict[str, Any]:
         """Create a recipe or (with `recipe_id`) replace it."""
         existing = self._recipes.get(recipe_id) if recipe_id else None
@@ -69,6 +70,7 @@ class RecipeBook:
             "steps": _clean(steps),
             "minutes": minutes,
             "source": existing["source"] if existing else source,
+            **({"url": url or existing.get("url")} if (url or (existing and existing.get("url"))) else {}),
             "created": existing["created"] if existing else datetime.now(UTC).isoformat(),
         }
         self._recipes[recipe["id"]] = recipe
@@ -116,7 +118,8 @@ async def ws_recipes(hass: HomeAssistant, connection: websocket_api.ActiveConnec
         vol.Optional("ingredients", default=list): _LINES,
         vol.Optional("steps", default=list): _LINES,
         vol.Optional("minutes"): vol.Any(None, vol.All(vol.Coerce(int), vol.Range(min=1, max=1440))),
-        vol.Optional("source", default="manual"): vol.In(["manual", "ai", "photo"]),
+        vol.Optional("source", default="manual"): vol.In(["manual", "ai", "photo", "link"]),
+        vol.Optional("url"): vol.Any(None, vol.All(str, vol.Length(max=500), vol.Match(r"^https?://"))),
     }
 )
 @websocket_api.require_admin
@@ -134,6 +137,7 @@ async def ws_recipe_save(hass: HomeAssistant, connection: websocket_api.ActiveCo
             minutes=msg.get("minutes"),
             source=msg["source"],
             recipe_id=msg.get("recipe_id"),
+            url=msg.get("url"),
         )
     except KeyError:
         connection.send_error(msg["id"], "not_found", "recipe not found")

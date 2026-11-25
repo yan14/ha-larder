@@ -30,7 +30,6 @@ from homeassistant.util import dt as dt_util
 
 from . import shelf_life
 from .const import (
-    CONF_AI_ENABLED,
     CONF_AI_TASK_ENTITY,
     CONF_CALENDAR_ENTITY,
     CONF_ESTIMATE_MODE,
@@ -361,9 +360,6 @@ class Estimator:
     async def async_load(self) -> None:
         data = await self._store.async_load() or {}
         settings = dict(data.get("settings", {}))
-        if settings.get(CONF_ESTIMATE_MODE) not in ESTIMATE_MODES:
-            # Setting from version 0.5: AI on → AI only (previous behaviour), else table.
-            settings[CONF_ESTIMATE_MODE] = ESTIMATE_AI if settings.get(CONF_AI_ENABLED) else ESTIMATE_TABLE
         self._apply(settings)
         self._cache = data.get("cache", {})
         today = dt_util.now().date().isoformat()

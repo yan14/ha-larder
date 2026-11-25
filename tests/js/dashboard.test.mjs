@@ -262,7 +262,7 @@ test("Larder: sort order is remembered, groups by area and category", async () =
   assert.deepEqual($$(el, "main h2").map((h) => h.textContent), ["Milchprodukte", "Gerichte & Reste", "Trockenware", "Leer", "Fisch"]);
   await pick("name");
   assert.deepEqual(names(el), ["Chili", "Gouda", "Lachs", "Reis", "Leer"]);
-  assert.equal(JSON.parse(dom.window.localStorage.getItem("larder.experimental")).sort, "name");
+  assert.equal(JSON.parse(dom.window.localStorage.getItem("larder.dashboard")).sort, "name");
 
   // new session: the sort order is still there
   document.body.innerHTML = "";
@@ -298,7 +298,7 @@ test("Larder: switch between tiles and list", async () => {
   assert.equal($$(el, "main .tiles").length, 0);
   assert.equal($$(el, "main .row").length, 5);
   assert.equal($$(el, "main .row .sub")[0].textContent, "Dose 3 · Keller");
-  assert.equal(JSON.parse(dom.window.localStorage.getItem("larder.experimental")).mode, "list");
+  assert.equal(JSON.parse(dom.window.localStorage.getItem("larder.dashboard")).mode, "list");
 });
 
 test("Larder: a filled container opens the detail view, an empty one the fill dialog, Back closes", async () => {
@@ -1668,7 +1668,7 @@ test("create bags: dialog, create_items, then NFC stickers one after another or 
   assert.deepEqual(created.items.map((i) => i.content), ["Hackfleisch", "Hackfleisch", "Rehgulasch"]);
   assert.match(form.querySelector("h2").textContent, /3 Beutel angelegt/);
   assert.equal(form.querySelectorAll("ul.created li").length, 3);
-  assert.equal(JSON.parse(dom.window.localStorage.getItem("larder.experimental")).itemArea.bag, "cellar");
+  assert.equal(JSON.parse(dom.window.localStorage.getItem("larder.dashboard")).itemArea.bag, "cellar");
 
   // NFC series: the scanned sticker is linked with the current bag, then the next
   form.querySelector('[data-role="items-nfc"]').click();
@@ -3919,4 +3919,83 @@ test("5.9: shopping at a store – chips, only what is bought there, the rest fo
   assert.match(folded.textContent, /Woanders gekauft \(1\).*Ketchup.*bisher bei Rewe/);
   assert.ok($(el, '[data-role="shop-store-order"]'));
   dom.window.localStorage.removeItem("larder.shop_store");
+});
+
+test("6.0: saved views move from the old storage key once", async () => {
+  dom.window.localStorage.removeItem("larder.dashboard");
+  dom.window.localStorage.setItem("larder.experimental", JSON.stringify({ mode: "list", sort: "name" }));
+  const el = mount(makeHass(DOSES));
+  await go(el, "containers");
+  assert.equal(JSON.parse(dom.window.localStorage.getItem("larder.dashboard")).mode, "list");
+  assert.equal(dom.window.localStorage.getItem("larder.experimental"), null);
+  dom.window.localStorage.removeItem("larder.dashboard");
+});
+
+test("6.0: import from Grocy – preview with places, then import", async () => {
+  const hass = makeHass(DOSES);
+  hass.user = { is_admin: true };
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/grocy_preview`) {
+      hass.wsCalls.push(msg);
+      return { total: 3, after_open: { Ketchup: 56 }, locations: [{ id: "1", name: "Kühlschrank", count: 2, area_id: "kitchen", freezer: false }, { id: "2", name: "Truhe", count: 1, area_id: null, freezer: true }], items: [] };
+    }
+    if (msg.type === `${D}/grocy_import`) {
+      hass.wsCalls.push(msg);
+      return { created: 3, after_open: 1 };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await go(el, "more");
+  $(el, '[data-role="menu-grocy"]').click();
+  const form = $(el, "form.dialog");
+  form.querySelector('[data-f="grocy-url"]').value = "grocy.local:9283";
+  form.querySelector('[data-f="grocy-key"]').value = "abc";
+  form.querySelector('[data-role="grocy-check"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/grocy_preview`), { type: `${D}/grocy_preview`, url: "grocy.local:9283", api_key: "abc" });
+  assert.match(form.textContent, /3 Einträge gefunden, 1 mit „nach dem Öffnen“/);
+  form.querySelector('[data-location="2"]').value = "cellar";
+  form.querySelector('[data-role="grocy-import"]').click();
+  await flush();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/grocy_import`).areas, { 1: "kitchen", 2: "cellar" });
+  assert.match($(el, ".notice").textContent, /3 Packungen aus Grocy übernommen/);
+});
+
+test("6.0: recipe from a link – read, check in the dialog, save with its link; ✓ for what is in stock", async () => {
+  const hass = makeHass(DOSES);
+  hass.user = { is_admin: true };
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/recipe_from_url`) {
+      hass.wsCalls.push(msg);
+      return { recipe: { title: "Chili", ingredients: ["400 g Kidneybohnen", "Reis"], steps: ["Kochen."], minutes: 30, source: "link", url: "https://koch.example/chili" } };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await go(el, "recipes");
+  $(el, '[data-role="recipe-link"]').click();
+  const form = $(el, "form.dialog");
+  form.querySelector('[data-f="recipe-url"]').value = "https://koch.example/chili";
+  form.querySelector('[data-role="recipe-link-read"]').click();
+  await flush();
+  assert.equal(form.querySelector('[data-f="title"]').value, "Chili");
+  assert.match(form.textContent, /Rezept vom Link prüfen.*Von https:\/\/koch\.example\/chili/);
+  form.querySelector("button.submit").click();
+  await flush();
+  const saved = hass.wsCalls.find((m) => m.type === `${D}/recipe_save`);
+  assert.equal(saved.source, "link");
+  assert.equal(saved.url, "https://koch.example/chili");
+  // in the book: ✓ next to what is in stock (rice is in container 4)
+  hass.recipes = [{ id: "r9", title: "Chili", ingredients: ["400 g Kidneybohnen", "Reis"], steps: [], source: "link", url: "https://koch.example/chili", created: "x" }];
+  el._recipes = null;
+  await el.loadRecipes();
+  el._openRecipe = "r9";
+  el._sig = "";
+  el._update();
+  const items = $$(el, '.recipe[data-id="r9"] li');
+  assert.deepEqual(items.map((li) => li.textContent), ["400 g Kidneybohnen", "✓ Reis"]);
 });
