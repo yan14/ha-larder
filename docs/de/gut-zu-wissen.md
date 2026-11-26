@@ -111,7 +111,7 @@ Daneben bekommt das scannende Handy nach einem NFC-Scan eine Benachrichtigung (E
 
 ## Sprachen
 
-Larder richtet sich nach der Sprache deines Home-Assistant-Benutzers: **Deutsch**, **Englisch**, **Französisch** und **Niederländisch** (seit 6.0) – Dashboard, Karten, Einstellungen, Benachrichtigungen und Sprachausgabe, Berichte und die Haltbarkeitstabelle (Lebensmittel und Bereichsnamen wie *réfrigérateur* oder *koelkast* werden erkannt). Andere Sprachen fallen auf Englisch zurück.
+Larder richtet sich nach der Sprache deines Home-Assistant-Benutzers: **Deutsch**, **Englisch**, **Französisch** und **Niederländisch** (seit 6.0) – Dashboard, Karten, Einstellungen, Benachrichtigungen und Sprachausgabe, Berichte und die Haltbarkeitstabelle (Lebensmittel und Bereichsnamen wie *réfrigérateur* oder *koelkast* werden erkannt). Andere Sprachen fallen auf Englisch zurück. Seit 6.2 schickt das Dashboard beim Schätzen **deine** Sprache mit (aus deinem Home-Assistant-Profil): die Wörter deiner Sprache zählen zuerst (*pommes* sind für Franzosen Äpfel, für Deutsche Pommes) und der Tipp kommt in deiner Sprache. Benachrichtigungen, Sensoren und Automationen haben keinen Benutzer und nutzen die Systemsprache. Bei Deutsch und Englisch werden französische und niederländische Wörter gar nicht verwendet.
 
 Französisch und Niederländisch sind **Übersetzungen ohne Muttersprachler** (mit Hilfe einer KI erstellt und mit den Begriffen von Home Assistant abgeglichen). Manches klingt vielleicht hölzern. Korrekturen sind sehr willkommen – als [Issue](https://github.com/yan14/ha-larder/issues) oder Pull Request auf `translations/fr.json` / `nl.json` und die Texttabellen in `frontend/`.
 

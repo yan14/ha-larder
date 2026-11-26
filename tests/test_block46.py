@@ -91,3 +91,40 @@ async def test_receipt_takes_an_invoice_as_pdf(hass: HomeAssistant, hass_client,
     assert calls[0]["attachments"][0]["media_content_type"] == "application/pdf"
     text = build_instructions("de")
     assert "invoice" in text and "delivery" in text and "several pages" in text
+
+
+# ---------- Block 44 (6.2): freezer first ----------
+
+
+def test_freezer_first_weights_and_choice() -> None:
+    from datetime import date
+
+    from custom_components.larder.week_plan import _weight, choose
+
+    window = 42
+    fridge_soon = {"cc": "f1", "days_left": 2}
+    fridge_week = {"cc": "f2", "days_left": 7}
+    pantry = {"cc": "p1", "days_left": 200}
+    frozen_near = {"cc": "z1", "days_left": 20, "frozen": True}
+    frozen_far = {"cc": "z2", "days_left": 200, "frozen": True}
+    # fridge within a week first, then frozen near the end of its best quality, before long-life food
+    assert _weight(fridge_soon, window) > _weight(fridge_week, window) >= _weight(frozen_near, window) > _weight(pantry, window)
+    assert _weight(frozen_far, window) == 0.0  # nothing is thawed at random
+    assert _weight(frozen_far) > 0  # setting off: as before
+    items = [fridge_soon, frozen_near, frozen_far, pantry]
+    candidates = [
+        {"title": "Gulasch", "ccs": ["z1"]},
+        {"title": "Eintopf", "ccs": ["p1"]},
+        {"title": "Omelett", "ccs": ["f1"]},
+        {"title": "Braten", "ccs": ["z2"]},
+    ]
+    days = [date(2026, 12, 1), date(2026, 12, 2), date(2026, 12, 3), date(2026, 12, 4)]
+    chosen, _ = choose(candidates, items, days, window)
+    assert [c["title"] for c in chosen] == ["Omelett", "Gulasch", "Eintopf"]
+
+
+def test_recipe_instructions_name_frozen_food() -> None:
+    from custom_components.larder.recipes import _describe
+
+    line = _describe({"content": "Gulasch", "name": "Dose 1", "days_left": 20, "frozen": True, "area": "Gefrierschrank"}, "de")
+    assert "frozen, best quality ends in 20 days" in line and "thawing" in line

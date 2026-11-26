@@ -35,6 +35,7 @@ Settings → Devices & services → **Larder** → **Configure** (on any contain
 | Recall warnings: only for this German state | all | Only warnings that concern this state |
 | Week plan suggestion: source | Recipe book, otherwise AI | Where the dishes of the [week suggestion](kitchen.md#week-suggestion) come from |
 | Week plan suggestion: days | 5 | How many days the suggestion covers |
+| Freezer first: weeks before the end of best quality | 6 | Frozen food this close to the end of its best quality is planned first ([Week suggestion](kitchen.md#week-suggestion)); 0 = off |
 | Emergency supply check | on | **More → 🛟 Emergency supply**, see [Emergency supply](kitchen.md#emergency-supply) |
 | Persons in the household (emergency supply) | 2 | Persons the emergency supply is calculated for |
 | Days of emergency supply | 10 | The BBK recommends 10 days |

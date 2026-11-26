@@ -254,6 +254,7 @@
           "recall_state": "Rückrufwarnungen: nur für dieses Bundesland",
           "plan_source": "Wochenplan-Vorschlag: Quelle",
           "plan_days": "Wochenplan-Vorschlag: Tage",
+          "freezer_first_weeks": "Tiefkühl vorziehen: Wochen vor Ende der besten Qualität",
           "supply_check": "Notvorrat-Check",
           "supply_persons": "Personen im Haushalt (Notvorrat)",
           "supply_days": "Tage Notvorrat"
@@ -284,6 +285,7 @@
           "recall_state": "Leer = Warnungen für alle Bundesländer.",
           "plan_source": "Woher die Gerichte für „Woche vorschlagen“ im Wochenplan kommen. Die KI braucht eine eingerichtete KI-Aufgabe.",
           "plan_days": "Für so viele Tage ab heute schlägt Larder Gerichte vor (Tage, für die schon etwas geplant ist, werden übersprungen).",
+          "freezer_first_weeks": "Eingefrorenes, dessen beste Qualität in so vielen Wochen endet, kommt in Wochenvorschlag und Rezeptideen nach vorne – nach dem, was im Kühlschrank bald abläuft. 0 = aus.",
           "supply_check": "Zeigt unter ⋮ → 🛟 Notvorrat, was laut Empfehlung des BBK (Bundesamt für Bevölkerungsschutz) für den Haushalt fehlt.",
           "supply_persons": "Für so viele Personen rechnet der Notvorrat-Check.",
           "supply_days": "Das BBK empfiehlt einen Vorrat für 10 Tage."
@@ -306,6 +308,10 @@
         "overwrite": {
           "name": "Überschreiben",
           "description": "Auch dann schätzen, wenn schon ein MHD gesetzt ist."
+        },
+        "language": {
+          "name": "Sprache",
+          "description": "Sprache der fragenden Person (z. B. fr): ihre Wörter für den Inhalt zählen zuerst und der Tipp kommt in dieser Sprache. Leer: die Systemsprache."
         }
       }
     },

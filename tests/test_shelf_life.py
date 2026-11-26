@@ -804,16 +804,17 @@ def test_french_dutch_keywords_do_not_take_german_words():
         "Sellerie": "vegetables",
         "Spekulatius": "cookies",
         "Wildschwein": "game",
-        # French and Dutch still work
-        "Sanglier": "game",
-        "Wild": "game",
-        "Kipfilet": "poultry",
-        "Pâtes": "pasta",
     }
     for content, expected in cases.items():
-        entry = find_entry(content)
-        assert entry is not None and entry.id == expected, (content, entry and entry.id)
-    assert find_entry("Pommes") is None or find_entry("Pommes").id != "apple"
+        for language in ("de", "fr", None):
+            entry = find_entry(content, language)
+            assert entry is not None and entry.id == expected, (content, language, entry and entry.id)
+    # French and Dutch for French and Dutch users (6.2, #172) – for German users their words are not used
+    for content, expected, language in (("Sanglier", "game", "fr"), ("Wild", "game", "nl"), ("Kipfilet", "poultry", "nl"), ("Pâtes", "pasta", "fr"), ("Pommes", "apple", "fr")):
+        entry = find_entry(content, language)
+        assert entry is not None and entry.id == expected, (content, language, entry and entry.id)
+    assert find_entry("Pommes", "de").id == "dish"  # chips
+    assert find_entry("Sanglier", "de") is None and find_entry("Kip", "de") is None
 
 
 def test_plant_based_with_a_meat_word_is_plant_based():

@@ -65,6 +65,8 @@ Für eigene Automationen löst ein verknüpfter Scan das Ereignis `larder_dose_s
 
 ### Fächer
 
+**Wohin damit?** (seit 6.2) Legst du Beutel oder Packungen an oder füllst eine Dose mit wechselndem Platz, schlägt Larder das Fach vor, sobald der Inhalt eingetragen ist: wo genau dieses Produkt schon liegt, sonst wo es zuletzt lag, sonst – im gewählten Bereich – das Fach mit dem wenigsten darin. Ein Hinweis unter dem Feld sagt, warum; ein selbst eingetipptes Fach wird nie ersetzt. Ähnliche Produkte zählen nie (*Heinz Ketchup* ist nicht *Heinz Ketchup Zero*).
+
 <p align="center"><img src="../images/dashboard-place-de.png" width="250" alt="Fach"></p>
 
 Ein **Fach** (Bereich mit Fach, z. B. *Keller · Regal oben*, oder ein ganzer Bereich) kann einen eigenen NFC-Tag oder ein QR-Etikett bekommen. Scannen öffnet das Fach: alles, was dort liegt, das älteste MHD zuerst, mit **−1** bei Packungen und **Öffnen** bei Dosen und Beuteln, dazu **📋 Inventur** genau für dieses Fach.

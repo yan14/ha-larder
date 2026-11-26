@@ -825,7 +825,7 @@ export function buildItems(kind, rows, vacuum = true) {
   return items;
 }
 
-export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, scopeOfKind, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment }) {
+export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, scopeOfKind, DOMAIN, attachCompartmentChips, knownCompartments, rememberCompartment, attachPlaceSuggestion = null }) {
   const proto = Dashboard.prototype;
 
   const fmtDate = (hass, iso) => {
@@ -2163,6 +2163,18 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     const chipsFor = () => knownCompartments(hass, this._classic._devices, area.value);
     const refreshChips = attachCompartmentChips(compartment, chipsFor, () => {});
     area.addEventListener("change", refreshChips);
+    // 6.2 (#160): the compartment where the same already is, where it was last time, else the emptiest one
+    if (attachPlaceSuggestion && !(preset && preset.compartment)) {
+      const firstContent = () => {
+        const input = [...rows.querySelectorAll('[data-i="content"]')].find((i) => i.value.trim());
+        return input ? input.value : "";
+      };
+      const suggestPlace = attachPlaceSuggestion(hass, { area, compartment, getContent: firstContent });
+      rows.addEventListener("change", (ev) => {
+        if (ev.target && ev.target.dataset && ev.target.dataset.i === "content") suggestPlace();
+      });
+      area.addEventListener("change", suggestPlace);
+    }
     this._submit = async () => {
       const data = [...rows.children].map((row) => {
         const v = (name) => {

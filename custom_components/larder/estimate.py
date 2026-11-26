@@ -33,6 +33,7 @@ from .const import (
     CONF_AI_TASK_ENTITY,
     CONF_CALENDAR_ENTITY,
     CONF_ESTIMATE_MODE,
+    CONF_FREEZER_FIRST_WEEKS,
     CONF_LONG_SOON_DAYS,
     CONF_MEAL_CALENDAR,
     CONF_NFC_NOTIFY,
@@ -59,6 +60,7 @@ from .const import (
     CONF_TODO_PHARMACY,
     CONF_VACUUM_DEFAULT,
     CONF_WATCH_ALLERGENS,
+    DEFAULT_FREEZER_FIRST_WEEKS,
     DEFAULT_LONG_SOON_DAYS,
     DEFAULT_OPENED_DAYS,
     DEFAULT_RECIPE_DAYS,
@@ -139,7 +141,7 @@ def cache_key(content: str, area_name: str | None, vacuum: bool) -> str:
 def parse_key(key: str) -> tuple[str, str, bool]:
     """Read (content, area, vacuum) back from a cache key."""
     content, area, vacuum = key.rsplit("|", 2)
-    return content, area, vacuum == "vacuum"
+    return content, area, vacuum.split("#", 1)[0] == "vacuum"  # 6.2: "#fr" = for another language
 
 
 def _clamp(value: Any, default: int, low: int, high: int) -> int:
@@ -316,6 +318,7 @@ SETTINGS: dict[str, tuple[str, Any, Any]] = {
     CONF_RECALL_CHECK: ("recall_check", True, _flag),
     CONF_PLAN_SOURCE: ("plan_source", "book_ai", lambda value, default: value if value in PLAN_SOURCES else default),
     CONF_PLAN_DAYS: ("plan_days", 5, _number(1, 14)),
+    CONF_FREEZER_FIRST_WEEKS: ("freezer_first_weeks", DEFAULT_FREEZER_FIRST_WEEKS, _number(0, 26)),
     CONF_RECALL_STATE: ("recall_state", None, lambda value, default: value if value in RECALL_STATES else None),
     CONF_AI_TASK_ENTITY: ("ai_task_entity", None, _entity),
     CONF_SECTION_ORDER: ("section_order", list(SECTIONS), normalize_order),
@@ -522,8 +525,9 @@ class Estimator:
         await self._store.async_save(self._data())
 
     async def async_estimate(
-        self, *, content: str, context: StorageContext, vacuum: bool, filled: date
+        self, *, content: str, context: StorageContext, vacuum: bool, filled: date, language: str | None = None
     ) -> Estimate:
+        """`language`: of the person asking (6.2, #172: the dashboard sends it); else the system language."""
         if not self.enabled:
             raise EstimateError("estimates_disabled")
         if not content.strip():
@@ -532,6 +536,9 @@ class Estimator:
             raise EstimateError("no_area")
 
         key = cache_key(content, context.area_name, vacuum)
+        if language and (lang := str(language).lower()[:2]) != str(self.hass.config.language or "").lower()[:2]:
+            # 6.2 (#172): the same word can mean something else in another language ("Pommes")
+            key = f"{key}#{lang}"
         hit = self._cache.get(key)
         if hit is not None and hit.get("source") == "table" and hit.get("table_version") != shelf_life.TABLE_VERSION:
             # table or detection was improved: look up again (own corrections stay)
@@ -539,7 +546,7 @@ class Estimator:
         if hit is not None and self._is_stale(hit):
             # old AI estimate: estimate again; if that fails the old value still applies
             try:
-                return await self._async_estimate_fresh(key, content, context, vacuum, filled)
+                return await self._async_estimate_fresh(key, content, context, vacuum, filled, language)
             except EstimateError as err:
                 if err.translation_key not in _KEEP_OLD_ON:
                     raise
@@ -559,7 +566,7 @@ class Estimator:
                 str(hit.get("basis", "")),
                 hit.get("origin"),
             )
-        return await self._async_estimate_fresh(key, content, context, vacuum, filled)
+        return await self._async_estimate_fresh(key, content, context, vacuum, filled, language)
 
     async def async_estimate_opened(self, *, content: str, context: StorageContext) -> Estimate:
         """Shelf life after opening a bought product, counted from today (5.5).
@@ -613,10 +620,10 @@ class Estimator:
         return (dt_util.now().date() - created).days >= AI_REFRESH_DAYS
 
     async def _async_estimate_fresh(
-        self, key: str, content: str, context: StorageContext, vacuum: bool, filled: date
+        self, key: str, content: str, context: StorageContext, vacuum: bool, filled: date, language: str | None = None
     ) -> Estimate:
         """Estimate without a remembered value: table and/or AI, depending on the mode."""
-        language = self.hass.config.language
+        language = language or self.hass.config.language
         if self.mode in (ESTIMATE_TABLE, ESTIMATE_TABLE_AI):
             try:
                 result = shelf_life.lookup(

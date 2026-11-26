@@ -48,6 +48,11 @@ STRUCTURE: dict[str, Any] = {
 }
 
 
+def freezer_window(estimator: object) -> int:
+    """Days before the end of best quality from which frozen food is planned first (0 = off)."""
+    return max(0, int(getattr(estimator, "freezer_first_weeks", 0) or 0)) * 7
+
+
 def _describe(item: dict[str, Any], language: str) -> str:
     """An ingredient as a short line for the instructions to the AI (only content, quantity, days left, place)."""
     text = _TEXT["de" if language.lower().startswith("de") else "en"]
@@ -57,6 +62,9 @@ def _describe(item: dict[str, Any], language: str) -> str:
     days = item["days_left"]
     if days is None:
         parts.append("no best-before date known")
+    elif item.get("frozen"):
+        # 6.2 (#159): frozen food keeps safely; its best quality ends – plan it soon, it has to be thawed
+        parts.append(f"frozen, best quality ends in {max(0, days)} day{'s' if days != 1 else ''} – please use soon (needs thawing)")
     else:
         parts.append("use up today" if days <= 0 else f"must be used within {days} day{'s' if days != 1 else ''}")
     if item.get("area"):
@@ -216,7 +224,15 @@ async def async_suggest_recipes(
     elif days is None:
         days = estimator.recipe_days
     items = []
-    for item in collect_expiring(hass, days, include_expired=False, include_undated=all_containers):
+    found = collect_expiring(hass, days, include_expired=False, include_undated=all_containers)
+    if (window := freezer_window(estimator)) and not all_containers and days is not None:
+        # 6.2 (#159): frozen food close to the end of its best quality comes along, after what expires in the fridge
+        seen = {i["cc"] for i in found}
+        found += [
+            i for i in collect_expiring(hass, max(days, window), include_expired=False)
+            if i.get("frozen") and i["cc"] not in seen and (i.get("days_left") or 0) <= window
+        ]
+    for item in found:
         if not (item["content"] or "").strip() or (chosen is not None and item["cc"] not in chosen):
             continue
         if warning := _allergen_warning(hass, item["cc"]):

@@ -11,6 +11,7 @@ from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import area_registry as ar, device_registry as dr
 
+from . import shelf_life
 from .calendar_sync import async_get_calendar_sync, async_setup_calendar_service
 from .const import CONF_AREA, CONF_CC, CONF_INITIAL, CONF_SOURCE, DOMAIN, MAIN_UNIQUE_ID, PLATFORMS, SOURCE_MAIN
 from .content_photo import async_setup_content_photo
@@ -30,6 +31,7 @@ from .learning import async_setup_learning_websocket
 from .nfc import async_get_nfc
 from .notify_actions import async_setup_notify_actions
 from .panel import async_setup_panel, async_teardown_panel
+from .place_suggest import async_setup_place_suggest_websocket
 from .places import async_get_places, async_setup_place_websocket
 from .plan import async_get_plan, async_setup_plan_websocket
 from .product import async_setup_product_websocket
@@ -59,6 +61,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     """Set up a container (the scan webhook is registered once for all containers)."""
     entry.runtime_data = LarderRuntime()
     async_invalidate_entries(hass)  # 5.4: index ID → entry
+    shelf_life.set_default_language(hass.config.language)  # 6.2 (#172): words of the system language first
     await async_get_estimator(hass)
     async_setup_websocket(hass)
     async_setup_services(hass)
@@ -91,6 +94,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_product_history_websocket(hass)
     async_setup_grocy_websocket(hass)
     async_setup_put_away_websocket(hass)
+    async_setup_place_suggest_websocket(hass)
     async_setup_recipe_link_websocket(hass)
     async_setup_voucher_websocket(hass)
     async_setup_notify_actions(hass)

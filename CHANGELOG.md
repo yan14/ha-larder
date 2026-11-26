@@ -3,6 +3,15 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 6.2.0
+
+Block 44: freezer first, compartment suggestion, the user's language.
+
+- **Freezer first** (#159): frozen containers within the last weeks of their best quality are planned in the **week suggestion** – after what expires within a week in the fridge, before long-life food – and shown with 🧊; frozen food far from that date is not suggested (nothing is thawed at random). **Recipe ideas** get them too, marked *frozen, use soon*. Accepting a day brings the thaw reminder as before. New setting *Freezer first: weeks before the end of best quality* (6, 0 = off).
+- **Compartment suggestion** (#160): when adding bags or packs or filling a container whose place varies, the compartment is suggested from the contents – where exactly this product is, else where it was last time, else the compartment with the least in it in the chosen area – with a short hint why. A compartment typed by hand is never replaced. WebSocket `larder/place_suggest`.
+- **The user's language** (#172): the dashboard sends the language of your Home Assistant profile with an estimate (`language` in `larder.estimate_best_before`). Its words come first (*pommes*: apples for a French user, chips for a German one) and the tip is in that language; remembered estimates are kept per language where the meaning differs. Without a user (notifications, sensors, automations) the system language counts. For German and English the French and Dutch words are no longer used at all.
+- *Pommes* (chips) is recognised as a dish; table version 12.
+
 ## 6.1.1
 
 - **Plant-based products are recognised as plant-based** (#171): *vegan*, *veggie*, *vegetarisch* or *pflanzlich* together with a meat, sausage or fish word now always gives the plant-based row (tofu, tempeh, seitan & co.) – vegane Salami, Wiener and Mortadella, Veggie Hack (was ground meat, 1 day), Veggie Bratwurst, vegane Schnitzel, Like Chicken, vegetarisches Gyros, vegane Nuggets, Beyond Burger, veganer Räucherlachs. This changes the best-before estimate, the icon and the store section. Dishes (*vegetarische Frikadellen*) and dairy alternatives (*vegane Butter*, *Sojajoghurt*) keep their rows.

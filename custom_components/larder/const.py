@@ -82,6 +82,8 @@ CONF_REORDER_SHOPPING = "reorder_shopping"  # put "running low" on the shopping 
 CONF_RECALL_CHECK = "recall_check"  # check recall warnings (lebensmittelwarnung.de)
 CONF_PLAN_SOURCE = "plan_source"  # week plan suggestion: recipe book, AI, recipe book else AI, both
 CONF_PLAN_DAYS = "plan_days"  # week plan suggestion: this many days
+CONF_FREEZER_FIRST_WEEKS = "freezer_first_weeks"  # 6.2 (#159): frozen food this close to its best quality is planned first (0 = off)
+DEFAULT_FREEZER_FIRST_WEEKS = 6
 PLAN_SOURCES = ("book", "ai", "book_ai", "both")
 CONF_RECALL_STATE = "recall_state"  # only warnings for this federal state (empty = all)
 RECALL_STATES = (

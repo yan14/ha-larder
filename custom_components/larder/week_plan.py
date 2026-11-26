@@ -29,7 +29,7 @@ from .estimate import EstimateError, async_get_estimator
 from .expiry import collect_expiring
 from .plan import async_get_plan
 from .recipe_book import async_get_recipe_book
-from .recipes import _allergen_warning, async_suggest_recipes
+from .recipes import _allergen_warning, async_suggest_recipes, freezer_window
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -55,12 +55,19 @@ def uses_content(line: str, content: str) -> bool:
     return bool(words) and all(any(hit(w, h) for h in have) for w in words)
 
 
-def _weight(item: dict[str, Any]) -> float:
+def _weight(item: dict[str, Any], window: int = 0) -> float:
+    """How urgent a container is. 6.2 (#159), with `window` (days): frozen food only counts within the last
+    `window` days of its best quality, and then after what expires within a week in the fridge (it keeps safely)."""
     left = item.get("days_left")
-    return 1.0 / (1 + max(0, left if left is not None else 30))
+    left = max(0, left if left is not None else 30)
+    if window and item.get("frozen"):
+        return 1.0 / (8 + left * 7 / window) if left <= window else 0.0
+    return 1.0 / (1 + left)
 
 
-def choose(candidates: list[dict[str, Any]], items: list[dict[str, Any]], days: list[date]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+def choose(
+    candidates: list[dict[str, Any]], items: list[dict[str, Any]], days: list[date], window: int = 0
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     """Greedily per day the dish with the most urgent containers still free. Returns (days, remaining candidates)."""
     free = {i["cc"] for i in items}
     by_cc = {i["cc"]: i for i in items}
@@ -69,7 +76,7 @@ def choose(candidates: list[dict[str, Any]], items: list[dict[str, Any]], days: 
     for day in days:
         best, best_score = None, 0.0
         for cand in pool:
-            score = sum(_weight(by_cc[cc]) for cc in cand["ccs"] if cc in free)
+            score = sum(_weight(by_cc[cc], window) for cc in cand["ccs"] if cc in free)
             if score > best_score:
                 best, best_score = cand, score
         if best is None:
@@ -129,7 +136,13 @@ async def async_suggest_week(hass: HomeAssistant, days: int | None = None, sourc
         i
         for i in collect_expiring(hass, days=None, include_expired=False)
         if (i.get("content") or "").strip() and i["cc"] not in planned and not _allergen_warning(hass, i["cc"])
-    ][:MAX_ITEMS]
+    ]
+    window = freezer_window(estimator)
+    if window:
+        # 6.2 (#159): frozen food far from the end of its best quality stays where it is (nothing is thawed at random)
+        items = [i for i in items if not i.get("frozen") or (i.get("days_left") or 0) <= window]
+        items.sort(key=lambda i: -_weight(i, window))
+    items = items[:MAX_ITEMS]
     result: dict[str, Any] = {"source": source, "days": [], "others": [], "error": None}
     if not items or not plan_days:
         return _public(hass, result, items)
@@ -150,12 +163,12 @@ async def async_suggest_week(hass: HomeAssistant, days: int | None = None, sourc
 
     if source in ("ai", "both"):
         candidates += await ai(items, len(plan_days))
-    chosen, others = choose(candidates, items, plan_days)
+    chosen, others = choose(candidates, items, plan_days, window)
     if source == "book_ai" and len(chosen) < len(plan_days):
         used = {cc for c in chosen for cc in c["ccs"]}
         rest = [i for i in items if i["cc"] not in used]
         if rest:
-            more, more_others = choose(await ai(rest, len(plan_days) - len(chosen)), rest, plan_days[len(chosen):])
+            more, more_others = choose(await ai(rest, len(plan_days) - len(chosen)), rest, plan_days[len(chosen):], window)
             chosen += more
             others += more_others
     result["days"], result["others"] = chosen, others
@@ -172,7 +185,7 @@ def _public(hass: HomeAssistant, result: dict[str, Any], items: list[dict[str, A
         for cc in entry["ccs"]:
             device = device_of(hass, cc)
             item = by_cc.get(cc, {})
-            uses.append({"device_id": device.id if device else None, "content": item.get("content"), "name": item.get("name"), "best_before": item.get("best_before")})
+            uses.append({"device_id": device.id if device else None, "content": item.get("content"), "name": item.get("name"), "best_before": item.get("best_before"), **({"frozen": True} if item.get("frozen") else {})})
         return {k: v for k, v in entry.items() if k != "ccs"} | {"uses": uses}
 
     return {

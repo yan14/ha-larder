@@ -254,6 +254,7 @@
           "recall_state": "Terugroepacties: alleen voor deze Duitse deelstaat",
           "plan_source": "Weekvoorstel: bron",
           "plan_days": "Weekvoorstel: dagen",
+          "freezer_first_weeks": "Diepvries eerst: weken vóór het einde van de beste kwaliteit",
           "supply_check": "Controle noodvoorraad",
           "supply_persons": "Personen in het huishouden (noodvoorraad)",
           "supply_days": "Dagen noodvoorraad"
@@ -284,6 +285,7 @@
           "recall_state": "Leeg = waarschuwingen voor alle Duitse deelstaten.",
           "plan_source": "Waar de gerechten voor „Week voorstellen” in het weekmenu vandaan komen. De AI heeft een ingestelde AI-taak nodig.",
           "plan_days": "Larder stelt gerechten voor zoveel dagen vanaf vandaag voor (dagen die al een plan hebben, worden overgeslagen).",
+          "freezer_first_weeks": "Ingevroren voedsel waarvan de beste kwaliteit binnen zoveel weken eindigt, komt eerst in het weekvoorstel en de receptideeën – na wat binnenkort in de koelkast verloopt. 0 = uit.",
           "supply_check": "Toont onder ⋮ → 🛟 Noodvoorraad wat ontbreekt volgens het advies van het Duitse Bundesamt für Bevölkerungsschutz (BBK).",
           "supply_persons": "De noodvoorraadcontrole rekent voor zoveel personen.",
           "supply_days": "Het BBK adviseert een voorraad voor 10 dagen."
@@ -306,6 +308,10 @@
         "overwrite": {
           "name": "Overschrijven",
           "description": "Ook schatten als er al een datum is."
+        },
+        "language": {
+          "name": "Taal",
+          "description": "Taal van de vrager (bijv. fr): de woorden in die taal tellen eerst en de tip komt in die taal. Leeg: de systeemtaal."
         }
       }
     },

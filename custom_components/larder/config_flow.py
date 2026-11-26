@@ -36,6 +36,7 @@ from .const import (
     CONF_CALENDAR_ENTITY,
     CONF_CC,
     CONF_ESTIMATE_MODE,
+    CONF_FREEZER_FIRST_WEEKS,
     CONF_INITIAL,
     CONF_KIND,
     CONF_LONG_SOON_DAYS,
@@ -68,6 +69,7 @@ from .const import (
     CONF_TODO_PHARMACY,
     CONF_VACUUM_DEFAULT,
     CONF_WATCH_ALLERGENS,
+    DEFAULT_FREEZER_FIRST_WEEKS,
     DEFAULT_LONG_SOON_DAYS,
     DEFAULT_OPENED_DAYS,
     DEFAULT_RECIPE_DAYS,
@@ -364,6 +366,9 @@ class LarderOptionsFlow(OptionsFlow):
                 ),
                 vol.Optional(CONF_PLAN_DAYS, default=5): NumberSelector(
                     NumberSelectorConfig(min=1, max=14, step=1, mode=NumberSelectorMode.BOX)
+                ),
+                vol.Optional(CONF_FREEZER_FIRST_WEEKS, default=DEFAULT_FREEZER_FIRST_WEEKS): NumberSelector(
+                    NumberSelectorConfig(min=0, max=26, step=1, mode=NumberSelectorMode.BOX, unit_of_measurement="wk")
                 ),
                 vol.Optional(CONF_SUPPLY_CHECK, default=True): BooleanSelector(),
                 vol.Optional(CONF_SUPPLY_PERSONS, default=2): NumberSelector(

@@ -75,6 +75,8 @@ async def async_setup_entry(
         {
             vol.Optional("apply", default=True): cv.boolean,
             vol.Optional("overwrite", default=False): cv.boolean,
+            # 6.2 (#172): language of the person (dashboard), for recognising the contents and the tip
+            vol.Optional("language"): vol.All(cv.string, vol.Length(max=10)),
         },
         "async_estimate_best_before",
         supports_response=SupportsResponse.OPTIONAL,
@@ -279,7 +281,7 @@ class LarderBestBefore(DateEntity, LarderResettable):
         return {"best_before": new.isoformat(), "days": days, "shortened": new != current}
 
     async def async_estimate_best_before(
-        self, apply: bool = True, overwrite: bool = False
+        self, apply: bool = True, overwrite: bool = False, language: str | None = None
     ) -> dict[str, Any]:
         """Estimate the best-before date by table/AI (service `larder.estimate_best_before`)."""
         async with self._lock:
@@ -305,6 +307,7 @@ class LarderBestBefore(DateEntity, LarderResettable):
                 context=storage_context(self.hass, self._cc),
                 vacuum=vacuum_state is None or vacuum_state.state != "off",
                 filled=filled,
+                language=language,
             )
             best = estimate_best_before(filled, estimate.days)
             if apply:

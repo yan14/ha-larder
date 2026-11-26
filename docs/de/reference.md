@@ -35,6 +35,7 @@ Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** (bei ei
 | Rückrufwarnungen: nur für dieses Bundesland | alle | Nur Warnungen, die dieses Bundesland betreffen |
 | Wochenplan-Vorschlag: Quelle | Rezeptbuch, sonst KI | Woher die Gerichte des [Wochenvorschlags](kitchen.md#wochenvorschlag) kommen |
 | Wochenplan-Vorschlag: Tage | 5 | Für wie viele Tage der Vorschlag gilt |
+| Tiefkühl vorziehen: Wochen vor Ende der besten Qualität | 6 | Eingefrorenes so kurz vor Ende der besten Qualität wird zuerst eingeplant ([Wochenvorschlag](kitchen.md#wochenvorschlag)); 0 = aus |
 | Notvorrat-Check | an | **Mehr → 🛟 Notvorrat**, siehe [Notvorrat](kitchen.md#notvorrat) |
 | Personen im Haushalt (Notvorrat) | 2 | Für so viele Personen rechnet der Notvorrat |
 | Tage Notvorrat | 10 | Das BBK empfiehlt 10 Tage |

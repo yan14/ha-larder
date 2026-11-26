@@ -136,11 +136,11 @@ TIPS: dict[str, tuple[str, str]] = {
 # "~a" is a weak keyword that only counts if nothing else matches ("filet").
 # Increase TABLE_VERSION when entries or the detection change: remembered table values
 # are then calculated anew (own corrections stay).
-TABLE_VERSION = 11  # 11: plant-based with a meat word (vegan salami, veggie mince …), Oatly, Cuisine, mortadella (6.1.1); 10: French/Dutch keywords only as a fallback, Preiselbeeren as jam (6.0.1); 9: French and Dutch names, keywords and places (6.0); 8: German sources (cooked rice, eggs), game (UNL); 7: values checked against sources (SOURCES), raw sausage and bacon; 6: condiments split, values after opening (OPENED); 3: several contents (comma) estimated one by one; 4: plant-based, soup pasta, bagels; 5: condiments, game, fish
+TABLE_VERSION = 12  # 12: words of the user's language first, Pommes (chips) as a dish, Wild (6.2); 11: plant-based with a meat word (vegan salami, veggie mince …), Oatly, Cuisine, mortadella (6.1.1); 10: French/Dutch keywords only as a fallback, Preiselbeeren as jam (6.0.1); 9: French and Dutch names, keywords and places (6.0); 8: German sources (cooked rice, eggs), game (UNL); 7: values checked against sources (SOURCES), raw sausage and bacon; 6: condiments split, values after opening (OPENED); 3: several contents (comma) estimated one by one; 4: plant-based, soup pasta, bagels; 5: condiments, game, fish
 ENTRIES: tuple[Entry, ...] = (
     # --- Dishes and leftovers (priority 3) ---
     _e("dish", "Gericht / Reste", "Dish / leftovers", "dish",
-       "reste|leftover|gekocht|cooked|auflauf|teriyaki|dim sum|dimsum|gyoza|dumpling|lo mai|fertiggericht|ready meal|rice bowl|frühlingsrolle|fruehlingsrolle|spring roll|lasagne|gratin|gericht|meal prep|pfanne|bratkartoffel|eintopf|quiche|pizza|dal|chili|curry|bolognese|gulasch|goulash|ragout|frikadelle|bulette|knoedel|gemuesepfanne|milchreis|griessbrei|pudding|pueree|kartoffelbrei|pfannkuchen|crepe|kaiserschmarrn|risotto|paella|gebraten|fried rice|bratreis",
+       "reste|leftover|gekocht|cooked|auflauf|teriyaki|dim sum|dimsum|gyoza|dumpling|lo mai|fertiggericht|ready meal|rice bowl|frühlingsrolle|fruehlingsrolle|spring roll|lasagne|gratin|gericht|meal prep|pfanne|bratkartoffel|eintopf|quiche|pizza|dal|chili|curry|bolognese|gulasch|goulash|ragout|frikadelle|bulette|knoedel|gemuesepfanne|milchreis|griessbrei|pudding|pueree|kartoffelbrei|pfannkuchen|crepe|kaiserschmarrn|risotto|paella|gebraten|fried rice|bratreis|pommes|pommes frites|fritten|french fries",
        3, 4, 60, None, pri=3, perishable=True),
     _e("soup", "Suppe / Brühe / Soße", "Soup / broth / sauce", "dish",
        "suppe|bruehe|soup|broth|sosse|sauce|stew|tomatensosse|bechamel|dressing",
@@ -214,7 +214,7 @@ ENTRIES: tuple[Entry, ...] = (
        "pfannengyros|gyros|schaschlik|grillfleisch|marinierte|mariniertes|grillspiess",
        2, 3, 90, None, pri=4, perishable=True),
     _e("game", "Wild (roh)", "Game (raw)", "raw_meat",
-       "reh|hirsch|wildschwein|damwild|gams|hasen|feldhase|kaninchen|wildfleisch|venison|rabbit|rehruecken|rehkeule|rehfilet",
+       "reh|hirsch|wildschwein|damwild|gams|hasen|feldhase|kaninchen|wildfleisch|venison|rabbit|rehruecken|rehkeule|rehfilet|wildbret",
        2, 3, 180, None, pri=3, perishable=True),
     _e("meat", "Fleisch (roh)", "Meat (raw)", "raw_meat",
        "fleisch|steak|schnitzel|rind|schwein|kalb|kalbs|lamm|kotelett|braten|beef|pork|lamb|~filet|roulade|gulaschfleisch|geschnetzeltes|~unterschale|~oberschale|~keule|~schenkel|~ruecken|nacken",
@@ -563,7 +563,7 @@ OPENED_NOTE = {
 
 # 6.0: French and Dutch keywords (the table recognises food written in these languages too)
 KEYWORDS_MORE: dict[str, str] = {
-    "dish": "restes|reste|plat cuisine|gratin|lasagnes|ragout|hachis|curry|restjes|stamppot|ovenschotel|gerecht|maaltijd",
+    "dish": "restes|reste|plat cuisine|gratin|lasagnes|ragout|hachis|curry|restjes|stamppot|ovenschotel|gerecht|maaltijd|frites|pommes frites|friet|patat|patates frites",
     "soup": "soupe|bouillon|veloute|sauce tomate|soep|bouillon|tomatensaus",
     "salad_dish": "salade de pates|salade de pommes de terre|taboule|pastasalade|aardappelsalade|huzarensalade",
     "smoked_fish": "saumon fume|poisson fume|gerookte zalm|gerookte vis|makreel gerookt",
@@ -607,7 +607,7 @@ KEYWORDS_MORE: dict[str, str] = {
     "mushroom": "champignons|cepes|girolles|paddenstoelen|champignon",
     "herbs": "herbes|persil|basilic|ciboulette|coriandre|kruiden vers|peterselie|basilicum|bieslook|koriander",
     "berries": "fraises|framboises|myrtilles|cerises|aardbeien|frambozen|blauwe bessen|kersen",
-    "apple": "pomme golden|pommes golden|poires|appels|peren",
+    "apple": "pomme|poires|appels|peren",
     "citrus": "citron|orange|mandarine|clementine|pamplemousse|citroen|sinaasappel|mandarijn|grapefruit",
     "fruit": "fruits|banane|raisin|melon|peche|ananas|fruit|banaan|druiven|meloen|perzik",
     "vegetables": "legumes|tomates|concombre|poivron|courgette|carottes|brocoli|chou|poireau|haricots verts|groente|tomaten|komkommer|paprika|courgette|wortelen|broccoli|kool|prei|sperziebonen",
@@ -704,13 +704,31 @@ def category_for(content: str) -> str | None:
     return cats.pop() if len(cats) == 1 else MIXED
 
 
-def find_entry(content: str) -> Entry | None:
+DEFAULT_LANGUAGE: str | None = None  # 6.2: the system language, set when Larder starts
+
+
+def set_default_language(language: str | None) -> None:
+    global DEFAULT_LANGUAGE  # noqa: PLW0603 - one value for the whole table
+    DEFAULT_LANGUAGE = language
+
+
+def find_entry(content: str, language: str | None = None) -> Entry | None:
     """Find the best table entry for the content: no weak keyword, higher priority,
     base word at the end of a word, then the longest keyword."""
     text = f" {norm(content)} "
     # German and English first; the French and Dutch keywords only when none of them matches, and short
     # ones only as a word of their own – otherwise "wild" (Dutch: game) would take "Wildpreiselbeeren",
     # "sel" (French: salt) "Sellerie" and "spek" (Dutch: bacon) "Spekulatius" (6.0.1).
+    # 6.2 (#172): the language of the person (sent by the dashboard), else the system language. For French and
+    # Dutch their words come first ("pommes" are apples there, not chips); for German and English the French and
+    # Dutch words are not used at all.
+    lang = str(language or DEFAULT_LANGUAGE or "").lower()[:2]
+    if lang in ("fr", "nl"):
+        more_score, more_entry = _best_entry(text, more=True)
+        if more_score is not None and more_score[0] == 1:
+            return _plant_based(text, more_entry)
+    elif lang in ("de", "en"):
+        return _plant_based(text, _best_entry(text, more=False)[1])
     # A weak German keyword ("~filet") gives way to a real French/Dutch one ("kip" in "Kipfilet").
     score, entry = _best_entry(text, more=False)
     entry = _plant_based(text, entry)
@@ -1015,7 +1033,7 @@ def _lookup_one(
     opened: bool = False,
 ) -> TableResult:
     lang = _lang(language)
-    entry = find_entry(content)
+    entry = find_entry(content, language)
     if entry is None:
         raise TableNoMatch
     storage = classify_storage(area_name, temperature_c, label_texts, storage_hint)

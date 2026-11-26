@@ -144,6 +144,8 @@ Plan a dish for a day: **📅 Plan** on a recipe idea or a recipe from the book 
 
 **🪄 Suggest week** on the recipe page proposes dishes for the next days (setting *Week plan suggestion: days*, 5 by default) that use up the containers expiring first. Days that already have a plan are skipped, containers already planned are left out. Where the dishes come from is a setting, like the best-before estimate: *recipe book only*, *AI only*, *recipe book, otherwise AI* (default) or *recipe book and AI together*. A recipe from the book fits when one of its ingredient lines names the contents of a container. Per day you see the dish and the containers it uses; **↻ Other** swaps in another dish, **Remove** drops the day, **Accept** puts everything into the meal plan (with thaw reminders and missing ingredients as usual).
 
+**Freezer first** (since 6.2): frozen food keeps safely, but its best quality ends. Frozen containers within the last weeks of their best quality (setting *Freezer first: weeks before the end of best quality*, 6 by default, 0 = off) are planned too – after what expires within a week in the fridge, before long-life food – and shown with 🧊. Frozen food far from that date is not suggested, so nothing is thawed at random. Recipe ideas get the same containers, marked *frozen, use soon*. Accepting a day brings the usual thaw reminder the day before.
+
 ## Shopping list
 
 **Time for … again?** The start page suggests what you ate at least three times in the last 90 days but have in no container or pack right now ("Bolognese, eaten 4× …"). **🛒 Shopping list** puts it on the list, **✕** hides the suggestion for 30 days.

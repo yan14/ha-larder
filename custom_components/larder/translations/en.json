@@ -254,6 +254,7 @@
           "recall_state": "Recall warnings: only for this German state",
           "plan_source": "Week plan suggestion: source",
           "plan_days": "Week plan suggestion: days",
+          "freezer_first_weeks": "Freezer first: weeks before the end of best quality",
           "supply_check": "Emergency supply check",
           "supply_persons": "Persons in the household (emergency supply)",
           "supply_days": "Days of emergency supply"
@@ -284,6 +285,7 @@
           "recall_state": "Empty = warnings for all German states.",
           "plan_source": "Where the dishes for “Suggest week” in the meal plan come from. The AI needs an AI task set up.",
           "plan_days": "Larder suggests dishes for this many days from today (days that already have a plan are skipped).",
+          "freezer_first_weeks": "Frozen food whose best quality ends within this many weeks comes first in the week suggestion and the recipe ideas – after what expires soon in the fridge. 0 = off.",
           "supply_check": "Shows under ⋮ → 🛟 Emergency supply what is missing according to the recommendation of the German Federal Office of Civil Protection (BBK).",
           "supply_persons": "The emergency supply check calculates for this many persons.",
           "supply_days": "The BBK recommends a supply for 10 days."
@@ -306,6 +308,10 @@
         "overwrite": {
           "name": "Overwrite",
           "description": "Estimate even if a best-before date is already set."
+        },
+        "language": {
+          "name": "Language",
+          "description": "Language of the person asking (e.g. fr): their words for the contents count first and the tip is in that language. Empty: the system language."
         }
       }
     },

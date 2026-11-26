@@ -110,6 +110,64 @@ export function attachCompartmentChips(input, getList, onPick = null) {
   return refresh;
 }
 
+/**
+ * 6.2 (#160): suggest the place for what is typed: where the same product is, where it was last time, else the
+ * compartment with the least in it. Fills the compartment (and an empty area) only while the person has not typed
+ * one; a short hint says why. `getContent()` returns the contents, `deviceId` the entry being filled (left out).
+ * Returns `run()`: call it when the contents or the area change.
+ */
+export function attachPlaceSuggestion(hass, { area, compartment, getContent, deviceId = null }) {
+  if (!hass || !hass.callWS) return () => {};
+  const t = strings(hass);
+  let hint = compartment.parentElement && compartment.parentElement.querySelector('[data-role="place-hint"]');
+  if (!hint) {
+    hint = document.createElement("div");
+    hint.className = "hint placehint";
+    hint.dataset.role = "place-hint";
+    hint.hidden = true;
+    const chips = compartment.nextElementSibling && compartment.nextElementSibling.classList.contains("compchips") ? compartment.nextElementSibling : compartment;
+    chips.after(hint);
+  }
+  // the value Larder put in (replaced again while the person has not changed it); kept on the field, as the
+  // dialogs are reused
+  const state = compartment._place || (compartment._place = { suggested: null, seq: 0 });
+  state.suggested = null;
+  hint.hidden = true;
+  if (!compartment.dataset.placeSuggest) {
+    compartment.dataset.placeSuggest = "1";
+    compartment.addEventListener("input", () => {
+      state.suggested = null;
+      hint.hidden = true;
+    });
+  }
+  const run = async () => {
+    const content = String(getContent() || "").trim();
+    if (!content || (compartment.value.trim() && compartment.value !== state.suggested)) return;
+    const mine = ++state.seq;
+    let res;
+    try {
+      res = await hass.callWS({ type: "larder/place_suggest", content, area_id: (area && area.value) || null, ...(deviceId ? { device_id: deviceId } : {}) });
+    } catch {
+      return;
+    }
+    if (mine !== state.seq || (compartment.value.trim() && compartment.value !== state.suggested)) return;
+    const s = res && res.suggestion;
+    if (!s) {
+      if (state.suggested !== null) compartment.value = "";
+      state.suggested = null;
+      hint.hidden = true;
+      return;
+    }
+    if (area && !area.value && s.area_id && [...area.options].some((o) => o.value === s.area_id)) area.value = s.area_id;
+    compartment.value = s.compartment || "";
+    state.suggested = compartment.value;
+    if (compartment._refreshChips) compartment._refreshChips();
+    hint.textContent = { same: t.placeSame, before: t.placeBefore, free: t.placeFree }[s.reason] || "";
+    hint.hidden = !hint.textContent || !s.compartment;
+  };
+  return run;
+}
+
 /** Label of the source of an estimate (table, AI or corrected by the user, with origin). */
 export function sourceLabel(t, source, origin) {
   if (source === "learned") {
@@ -773,7 +831,8 @@ class DoseCard {
         type: "call_service",
         domain: DOMAIN,
         service: "estimate_best_before",
-        service_data: {},
+        // 6.2 (#172): the user's language – their words for the contents first, the tip in their language
+        service_data: hass.language ? { language: hass.language } : {},
         target: { entity_id: this.ids.date },
         return_response: true,
       });
@@ -1417,6 +1476,8 @@ class LarderPanel extends HTMLElement {
     });
     this._fillForm.querySelector("button.cancel").addEventListener("click", () => this.closeFillDialog());
     this._fillForm.querySelector("button.barcode").addEventListener("click", () => this.scanBarcode());
+    // 6.2 (#160): suggest the compartment once the contents are known
+    this._fillForm.querySelector('[data-f="content"]').addEventListener("change", () => this._suggestPlace && this._suggestPlace());
     this._fillForm.querySelector("button.photo").addEventListener("click", () => this._fillForm.querySelector("input.photofile").click());
     this._fillForm.querySelector("input.photofile").addEventListener("change", (ev) => this.contentFromPhoto(ev.target));
     this._fillForm.addEventListener("submit", (ev) => {
@@ -1963,7 +2024,15 @@ class LarderPanel extends HTMLElement {
       f("compartment").placeholder = t.compartmentHint;
       // suggest compartments of the chosen area (changes with the area)
       const refresh = attachCompartmentChips(f("compartment"), () => knownCompartments(hass, this._devices, f("area").value), () => {});
-      f("area").onchange = refresh;
+      // 6.2 (#160): where the same is, where it was last time, else the emptiest compartment
+      const suggest = attachPlaceSuggestion(hass, { area: f("area"), compartment: f("compartment"), getContent: () => f("content").value, deviceId: flexible[0].deviceId });
+      f("area").onchange = () => {
+        refresh();
+        suggest();
+      };
+      this._suggestPlace = suggest;
+    } else {
+      this._suggestPlace = null;
     }
     const shop = states[dev.entities.shopping];
     f("shopping").checked = !!shop && shop.state === "on";

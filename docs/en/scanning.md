@@ -65,6 +65,8 @@ For your own automations a linked scan fires the event `larder_dose_scanned` (`c
 
 ### Compartments
 
+**Where should it go?** (since 6.2) When you add bags or packs or fill a container whose place varies, Larder suggests the compartment as soon as the contents are typed: where exactly this product already is, else where it was last time, else – in the chosen area – the compartment with the least in it. A hint under the field says why; a compartment you type yourself is never replaced. Similar products never count (*Heinz Ketchup* is not *Heinz Ketchup Zero*).
+
 <p align="center"><img src="../images/dashboard-place-en.png" width="250" alt="Compartment"></p>
 
 A **compartment** (an area with a compartment, e.g. *Cellar · top shelf*, or a whole area) can get its own NFC tag or QR label. Scanning it opens the compartment: everything that is there, the oldest best-before date first, with **−1** for packs and **Open** for containers and bags, plus **📋 Stocktake** for exactly this compartment.

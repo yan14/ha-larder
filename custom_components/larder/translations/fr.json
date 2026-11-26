@@ -254,6 +254,7 @@
           "recall_state": "Rappels : seulement pour ce Land allemand",
           "plan_source": "Proposition de semaine : source",
           "plan_days": "Proposition de semaine : jours",
+          "freezer_first_weeks": "Congélateur d'abord : semaines avant la fin de la meilleure qualité",
           "supply_check": "Contrôle des réserves d'urgence",
           "supply_persons": "Personnes dans le foyer (réserves d'urgence)",
           "supply_days": "Jours de réserves d'urgence"
@@ -284,6 +285,7 @@
           "recall_state": "Vide = alertes pour tous les Länder allemands.",
           "plan_source": "D'où viennent les plats de « Proposer la semaine » du plan de repas. L'IA nécessite une tâche IA configurée.",
           "plan_days": "Larder propose des plats pour ce nombre de jours à partir d'aujourd'hui (les jours déjà planifiés sont sautés).",
+          "freezer_first_weeks": "Les produits congelés dont la meilleure qualité se termine dans ce nombre de semaines passent en premier dans la proposition de semaine et les idées de recettes – après ce qui périme bientôt au réfrigérateur. 0 = désactivé.",
           "supply_check": "Affiche sous ⋮ → 🛟 Réserves d'urgence ce qui manque selon la recommandation de l'office fédéral allemand de protection civile (BBK).",
           "supply_persons": "Le contrôle des réserves d'urgence calcule pour ce nombre de personnes.",
           "supply_days": "Le BBK recommande des réserves pour 10 jours."
@@ -306,6 +308,10 @@
         "overwrite": {
           "name": "Écraser",
           "description": "Estimer même si une date est déjà définie."
+        },
+        "language": {
+          "name": "Langue",
+          "description": "Langue de la personne qui demande (p. ex. fr) : ses mots pour le contenu comptent d'abord et le conseil est dans cette langue. Vide : la langue du système."
         }
       }
     },

@@ -768,7 +768,7 @@ test("estimate best-before calls the service and shows the estimate with the tip
       type: "call_service",
       domain: D,
       service: "estimate_best_before",
-      service_data: {},
+      service_data: { language: "de" }, // 6.2 (#172): the user's language
       target: { entity_id: dateId },
       return_response: true,
     },

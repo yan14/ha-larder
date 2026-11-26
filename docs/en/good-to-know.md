@@ -111,7 +111,7 @@ Besides that, the scanning phone gets a notification after an NFC scan (setting 
 
 ## Languages
 
-Larder follows the language of your Home Assistant user: **English**, **German**, **French** and **Dutch** (since 6.0) – the dashboard, the cards, the settings, the notifications and speech, the reports and the shelf-life table (food names and area names like *réfrigérateur* or *koelkast* are recognised). Other languages fall back to English.
+Larder follows the language of your Home Assistant user: **English**, **German**, **French** and **Dutch** (since 6.0) – the dashboard, the cards, the settings, the notifications and speech, the reports and the shelf-life table (food names and area names like *réfrigérateur* or *koelkast* are recognised). Other languages fall back to English. Since 6.2 the dashboard sends **your own** language (your Home Assistant profile) when it estimates a date: the words of your language come first (*pommes* are apples for a French user, chips for a German one) and the tip is in your language. Notifications, sensors and automations have no user and use the system language. For German and English, French and Dutch words are not used at all.
 
 French and Dutch are **translations without a native speaker** (made with the help of an AI and checked against Home Assistant's own wording). Some phrases may sound stiff. Corrections are very welcome – as an [issue](https://github.com/yan14/ha-larder/issues) or a pull request on `translations/fr.json` / `nl.json` and the text tables in `frontend/`.
 

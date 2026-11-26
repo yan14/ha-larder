@@ -4153,3 +4153,35 @@ test("6.1: price editable in the product view (#170)", async () => {
   // an estimate from Open Prices is not shown as the own price
   assert.equal(el._priceEditor({ name: "Senf", price: { price: 0.99, source: "openprices" } }).querySelector('[data-f="product-price"]').value, "");
 });
+
+// ---------- Block 44 (6.2) ----------
+
+test("6.2: compartment suggestion in the add dialog – filled while untouched, with the reason", async () => {
+  const hass = makeHass(DOSES);
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/place_suggest`) {
+      hass.wsCalls.push(msg);
+      return { suggestion: msg.content === "Hackfleisch" ? { area_id: "kitchen", compartment: "Schublade 1", reason: "same" } : null };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  el.openItemsDialog("bag");
+  const form = $(el, "form.dialog");
+  const content = form.querySelector('[data-i="content"]');
+  content.value = "Hackfleisch";
+  content.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+  await flush();
+  await flush();
+  assert.equal(form.querySelector('[data-f="compartment"]').value, "Schublade 1");
+  assert.match(form.querySelector('[data-role="place-hint"]').textContent, /wo das Gleiche schon liegt/);
+  // typed by hand: never replaced
+  const comp = form.querySelector('[data-f="compartment"]');
+  comp.value = "Oben";
+  comp.dispatchEvent(new dom.window.Event("input"));
+  content.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
+  await flush();
+  assert.equal(comp.value, "Oben");
+});

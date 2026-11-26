@@ -513,7 +513,7 @@ export function installCook(Dashboard, { el, isAdmin, DOMAIN }) {
         card.dataset.date = day.date;
         const head = el("div", "head");
         head.append(el("span", "day", t.weekDay(day.date)), el("span", "title", day.title), el("span", "src", t.weekSource[day.source] || ""));
-        card.append(head, el("div", "sub", t.weekUses(day.uses.map((u) => u.content).join(", "))));
+        card.append(head, el("div", "sub", t.weekUses(day.uses.map((u) => (u.frozen ? `🧊 ${u.content}` : u.content)).join(", "))));
         const acts = el("div", "acts");
         if (others.length) {
           const other = button("", t.weekOther, () => {

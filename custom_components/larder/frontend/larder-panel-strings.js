@@ -1,6 +1,9 @@
 /** Cards and dialogs (larder-panel.js): texts (German and English). */
 export const STRINGS = {
   de: {
+    placeSame: "📍 Vorschlag: wo das Gleiche schon liegt",
+    placeBefore: "📍 Vorschlag: wo es zuletzt lag",
+    placeFree: "📍 Vorschlag: das Fach mit dem wenigsten darin",
     title: "Larder",
     area: "Bereich",
     compartment: "Fach",
@@ -227,6 +230,9 @@ export const STRINGS = {
     estOff: "Die MHD-Schätzung ist ausgeschaltet. Die Einträge bleiben erhalten.",
   },
   en: {
+    placeSame: "📍 Suggested: where the same is already",
+    placeBefore: "📍 Suggested: where it was last time",
+    placeFree: "📍 Suggested: the compartment with the least in it",
     title: "Larder",
     area: "Area",
     compartment: "Compartment",
@@ -452,6 +458,9 @@ export const STRINGS = {
     estOff: "Best-before estimates are switched off. The entries are kept.",
   },
   fr: {
+    placeSame: "📍 Suggestion : là où se trouve déjà le même",
+    placeBefore: "📍 Suggestion : là où il était la dernière fois",
+    placeFree: "📍 Suggestion : le compartiment le moins rempli",
     title: "Larder",
     area: "Pièce",
     compartment: "Compartiment",
@@ -675,6 +684,9 @@ export const STRINGS = {
     estOff: "Les estimations de date sont désactivées. Les entrées sont conservées.",
   },
   nl: {
+    placeSame: "📍 Voorstel: waar hetzelfde al ligt",
+    placeBefore: "📍 Voorstel: waar het de vorige keer lag",
+    placeFree: "📍 Voorstel: het vak met het minste erin",
     title: "Larder",
     area: "Ruimte",
     compartment: "Vak",
