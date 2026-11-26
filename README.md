@@ -33,7 +33,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 ## What's new
 
-> **6.1:** **finishing the shopping** – after putting away one list for price, best-before date and place, the date **suggested from your last purchase**, online invoices as **PDF** (REWE online) and the price editable in the product view.
+> **6.1:** **finishing the shopping** – after putting away one list for price, best-before date and place, the date **suggested from your last purchase**, online invoices as **PDF** (REWE online) and the price editable in the product view. **6.1.1:** vegan salami, veggie mince & co. are recognised as plant-based.
 >
 > **6.0:** Larder speaks **French and Dutch** (translated, [corrections welcome](docs/en/good-to-know.md#languages)), [import from Grocy](docs/en/dashboard.md#import-from-grocy), a **visual editor** for all four cards and a [recipe from a link](docs/en/kitchen.md#recipe-book). Old leftovers are gone – see the [changelog](CHANGELOG.md) before updating. **6.0.1:** *Wildpreiselbeeren* are jam again, not game.
 >

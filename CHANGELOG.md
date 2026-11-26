@@ -3,6 +3,12 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 6.1.1
+
+- **Plant-based products are recognised as plant-based** (#171): *vegan*, *veggie*, *vegetarisch* or *pflanzlich* together with a meat, sausage or fish word now always gives the plant-based row (tofu, tempeh, seitan & co.) – vegane Salami, Wiener and Mortadella, Veggie Hack (was ground meat, 1 day), Veggie Bratwurst, vegane Schnitzel, Like Chicken, vegetarisches Gyros, vegane Nuggets, Beyond Burger, veganer Räucherlachs. This changes the best-before estimate, the icon and the store section. Dishes (*vegetarische Frikadellen*) and dairy alternatives (*vegane Butter*, *Sojajoghurt*) keep their rows.
+- New words: Oatly (plant drink), Hafer/Soja Cuisine (cooking cream), Mortadella, Lyoner, Bierschinken, Nuggets.
+- Remembered table estimates are recalculated (table version 11); your own corrections stay.
+
 ## 6.1.0
 
 Block 46: finishing the shopping – from real use after an online order.

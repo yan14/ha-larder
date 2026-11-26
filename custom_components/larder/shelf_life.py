@@ -136,7 +136,7 @@ TIPS: dict[str, tuple[str, str]] = {
 # "~a" is a weak keyword that only counts if nothing else matches ("filet").
 # Increase TABLE_VERSION when entries or the detection change: remembered table values
 # are then calculated anew (own corrections stay).
-TABLE_VERSION = 10  # 10: French/Dutch keywords only as a fallback, Preiselbeeren as jam (6.0.1); 9: French and Dutch names, keywords and places (6.0); 8: German sources (cooked rice, eggs), game (UNL); 7: values checked against sources (SOURCES), raw sausage and bacon; 6: condiments split, values after opening (OPENED); 3: several contents (comma) estimated one by one; 4: plant-based, soup pasta, bagels; 5: condiments, game, fish
+TABLE_VERSION = 11  # 11: plant-based with a meat word (vegan salami, veggie mince …), Oatly, Cuisine, mortadella (6.1.1); 10: French/Dutch keywords only as a fallback, Preiselbeeren as jam (6.0.1); 9: French and Dutch names, keywords and places (6.0); 8: German sources (cooked rice, eggs), game (UNL); 7: values checked against sources (SOURCES), raw sausage and bacon; 6: condiments split, values after opening (OPENED); 3: several contents (comma) estimated one by one; 4: plant-based, soup pasta, bagels; 5: condiments, game, fish
 ENTRIES: tuple[Entry, ...] = (
     # --- Dishes and leftovers (priority 3) ---
     _e("dish", "Gericht / Reste", "Dish / leftovers", "dish",
@@ -208,7 +208,7 @@ ENTRIES: tuple[Entry, ...] = (
        "hackfleisch|gehacktes|mett|ground beef|ground meat|ground pork|mince|hack|rinderhack|schweinehack|gemischtes hack|hackbaellchen",
        1, 2, 90, None, pri=2, perishable=True),
     _e("poultry", "Geflügel (roh)", "Poultry (raw)", "raw_meat",
-       "haehnchen|huehnchen|huhn|pute|truthahn|gefluegel|chicken|turkey|poultry|ente|gans",
+       "haehnchen|huehnchen|huhn|pute|truthahn|gefluegel|chicken|turkey|poultry|ente|gans|nuggets",
        1, 2, 270, None, pri=2, perishable=True),
     _e("marinated_meat", "Mariniertes Fleisch / Gyros", "Marinated meat / gyros", "raw_meat",
        "pfannengyros|gyros|schaschlik|grillfleisch|marinierte|mariniertes|grillspiess",
@@ -226,7 +226,7 @@ ENTRIES: tuple[Entry, ...] = (
        "fisch|lachs|forelle|thunfisch|garnele|shrimp|salmon|fish|cod|kabeljau|meeresfruechte|seafood|scholle|zander|lachsfilet|fischfilet|seelachs|dorsch|tilapia|pangasius|hering|makrele|tuna|prawn|calamari|tintenfisch|muschel|rotbarsch|barsch|dorade|wolfsbarsch|heilbutt|alaska|pollack|seehecht|hecht|karpfen|saibling|wildlachs|sardine",
        1, 2, 60, None, pri=2, perishable=True),
     _e("deli", "Wurst / Aufschnitt / Schinken", "Cold cuts / sausage / ham", "deli",
-       "wurst|aufschnitt|schinken|leberkaese|fleischkaese|salami|ham |cold cuts|fleischwurst|leberwurst|wiener|lunch meat",
+       "wurst|aufschnitt|schinken|leberkaese|fleischkaese|salami|ham |cold cuts|fleischwurst|leberwurst|wiener|lunch meat|mortadella|lyoner|bierschinken",
        3, 4, 30, None, pri=2, perishable=True),
     _e("sausage_raw", "Bratwurst (roh)", "Raw sausage", "raw_meat",
        "bratwurst|rostbratwurst|nuernberger|salsiccia|grobe bratwurst|weisswurst|raw sausage|sausage",
@@ -244,10 +244,10 @@ ENTRIES: tuple[Entry, ...] = (
        "joghurt|yoghurt|yogurt|quark|skyr|kefir|schmand|sauerrahm|sour cream",
        7, 10, 30, None, pri=2, perishable=True),
     _e("milk", "Milch", "Milk", "dairy",
-       "milch|milk|buttermilch|hafermilch|haferdrink|sojadrink|mandelmilch|pflanzendrink|oat drink|kokosmilch",
+       "milch|milk|buttermilch|hafermilch|haferdrink|sojadrink|mandelmilch|pflanzendrink|oat drink|kokosmilch|oatly|alpro drink",
        7, 8, 90, None, pri=2, perishable=True),
     _e("cream", "Sahne", "Cream", "dairy",
-       "sahne|schlagsahne|cream|creme fraiche|schlagobers",
+       "sahne|schlagsahne|cream|creme fraiche|schlagobers|kochcreme|hafer cuisine|soja cuisine|cuisine",
        3, 4, 60, None, pri=2, perishable=True),
     _e("butter", "Butter / Margarine", "Butter / margarine", "dairy",
        "butter|margarine",
@@ -265,7 +265,7 @@ ENTRIES: tuple[Entry, ...] = (
        "eier|egg|eggs",
        21, 28, None, 7, pri=2),
     _e("tofu", "Tofu / Tempeh / Seitan", "Tofu / tempeh / seitan", "plant",
-       "tofu|tempeh|seitan|veggie+schnitzel|vegane wurst|veganer aufschnitt|vegan+wurst|vegan+aufschnitt|vegan+burger|veggie burger|veggie+burger|plant based|plant-based",
+       "tofu|tempeh|seitan|veggie+schnitzel|vegane wurst|veganer aufschnitt|vegan+wurst|vegan+aufschnitt|vegan+burger|veggie burger|veggie+burger|plant based|plant-based|beyond meat|beyond burger|like chicken|like meat|vegetarian butcher|fleischersatz|fleischalternative",
        5, 7, 90, None, pri=3, perishable=True),
     _e("falafel_hummus", "Falafel / Hummus", "Falafel / hummus", "plant",
        "falafel|hummus|humus",
@@ -713,10 +713,24 @@ def find_entry(content: str) -> Entry | None:
     # "sel" (French: salt) "Sellerie" and "spek" (Dutch: bacon) "Spekulatius" (6.0.1).
     # A weak German keyword ("~filet") gives way to a real French/Dutch one ("kip" in "Kipfilet").
     score, entry = _best_entry(text, more=False)
+    entry = _plant_based(text, entry)
     if score is None or score[0] == 0:
         more_score, more_entry = _best_entry(text, more=True)
         if more_score is not None and (score is None or more_score[0] == 1):
-            return more_entry
+            return _plant_based(text, more_entry)
+    return entry
+
+
+# 6.1.1 (#171): "vegan", "veggie", "vegetarisch", "pflanzlich" … with a meat, sausage or fish word is plant-based
+_PLANT_MARKER = re.compile(
+    r"(?<![a-z])(vegan|veggie|vegetar|pflanzlich|fleischlos|plant based|plant-based|vegetal|plantaardig)"
+)
+_MEAT_LIKE = ("ground_meat", "poultry", "marinated_meat", "game", "meat", "sausage_raw", "deli", "bacon", "fish", "smoked_fish")
+
+
+def _plant_based(text: str, entry: Entry | None) -> Entry | None:
+    if entry is not None and entry.id in _MEAT_LIKE and _PLANT_MARKER.search(text):
+        return next((e for e in ENTRIES if e.id == "tofu"), entry)
     return entry
 
 

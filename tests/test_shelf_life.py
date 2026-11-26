@@ -814,3 +814,18 @@ def test_french_dutch_keywords_do_not_take_german_words():
         entry = find_entry(content)
         assert entry is not None and entry.id == expected, (content, entry and entry.id)
     assert find_entry("Pommes") is None or find_entry("Pommes").id != "apple"
+
+
+def test_plant_based_with_a_meat_word_is_plant_based():
+    """6.1.1 (#171): vegan/veggie/vegetarisch/pflanzlich + meat, sausage or fish word → plant-based row."""
+    from custom_components.larder.shelf_life import find_entry
+
+    for content in ("Vegane Salami", "Veggie Hack", "Veggie Bratwurst", "Vegane Schnitzel", "Like Chicken", "Vegane Hähnchenstreifen",
+                    "Vegetarisches Gyros", "Vegane Mortadella", "Vegane Nuggets", "Beyond Burger", "Pflanzliche Wiener", "Veganer Räucherlachs"):
+        entry = find_entry(content)
+        assert entry is not None and entry.id == "tofu", (content, entry and entry.id)
+    # without a marker nothing changes; dishes and dairy alternatives keep their rows
+    expected = {"Salami": "deli", "Hackfleisch": "ground_meat", "Bratwurst": "sausage_raw", "Vegetarische Frikadellen": "dish",
+                "Vegane Butter": "butter", "Sojajoghurt": "yogurt", "Oatly Barista": "milk", "Hafer Cuisine": "cream"}
+    for content, entry_id in expected.items():
+        assert find_entry(content).id == entry_id, content
