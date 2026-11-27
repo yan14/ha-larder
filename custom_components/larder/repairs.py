@@ -27,13 +27,17 @@ from .repair_hints import (
     ISSUE_NO_AREA,
     ISSUE_NO_DATE,
     async_get_repairs,
+    describe_items,
     find_problem_containers,
+    item_label,
     scope_listing,
 )
 
 
-def _labels(items: list[tuple[str, str]]) -> dict[str, str]:
-    """Field name per container (cc → display name); equal names get the ID added."""
+def _labels(items: list[tuple[str, str]], hass: HomeAssistant | None = None) -> dict[str, str]:
+    """Field name per container (cc → contents and display name, 6.6.1); equal names get the ID added."""
+    if hass is not None:
+        items = [(item_label(hass, name, cc), cc) for name, cc in items]
     names = [name for name, _cc in items]
     return {cc: (name if names.count(name) == 1 else f"{name} ({cc})") for name, cc in items}
 
@@ -77,7 +81,7 @@ class LarderFixFlow(RepairsFlow):
         )
 
     async def async_step_area(self, user_input: dict[str, Any] | None = None) -> data_entry_flow.FlowResult:
-        labels = _labels(self._items())
+        labels = _labels(self._items(), self.hass)
         if not labels:
             return await self._done()
         if user_input is not None:
@@ -106,15 +110,27 @@ class LarderFixFlow(RepairsFlow):
                 )
             except HomeAssistantError:
                 pass  # what could not be estimated stays in the hint
-            return await self._done()
+            (await async_get_repairs(self.hass)).async_update()
+            return await self.async_step_estimate_left()
         return self.async_show_form(
             step_id="estimate",
             data_schema=vol.Schema({}),
-            description_placeholders={"containers": "\n".join(f"- {name}" for name, _cc in items)},
+            description_placeholders={"containers": describe_items(self.hass, items, self.hass.config.language or "en")},
+        )
+
+    async def async_step_estimate_left(self, user_input: dict[str, Any] | None = None) -> data_entry_flow.FlowResult:
+        """6.6.1: what the estimate did not know – with contents, place and a link to fix it in the dashboard."""
+        left = self._items()
+        if not left or user_input is not None:
+            return await self._done()
+        return self.async_show_form(
+            step_id="estimate_left",
+            data_schema=vol.Schema({}),
+            description_placeholders={"containers": describe_items(self.hass, left, self.hass.config.language or "en")},
         )
 
     async def async_step_empty(self, user_input: dict[str, Any] | None = None) -> data_entry_flow.FlowResult:
-        labels = _labels(self._items())
+        labels = _labels(self._items(), self.hass)
         if not labels:
             return await self._done()
         if user_input is not None:

@@ -123,3 +123,33 @@ async def test_fix_flows(hass: HomeAssistant) -> None:
     assert hass.states.get(_eid(hass, "text", "CCCC")).state == ""
     assert (await async_get_history(hass)).list("CCCC")[0]["outcome"] == "thrown"
     assert ISSUE_LONG_EXPIRED not in _issues(hass)
+
+
+async def test_estimate_fix_names_contents_place_and_links(hass: HomeAssistant) -> None:
+    """6.6.1: the hint says what is in the container, where it is and links to it; what is left is shown again."""
+    from homeassistant.components.repairs import repairs_flow_manager
+    from homeassistant.setup import async_setup_component
+
+    hass.config.language = "de"
+    assert await async_setup_component(hass, "repairs", {})
+    await _setup(hass, "AAAA")
+    await _setup(hass, "BBBB")
+    await _area(hass, "AAAA", "Kühlschrank")
+    await _area(hass, "BBBB", "Kühlschrank")
+    for cc, content in (("AAAA", "Hackfleisch"), ("BBBB", "Omas Geheimrezept")):
+        await hass.services.async_call("text", "set_value", {"entity_id": _eid(hass, "text", cc), "value": content}, blocking=True)
+    repairs = await async_get_repairs(hass)
+    repairs.async_update()
+    flows = repairs_flow_manager(hass)
+    result = await flows.async_init(DOMAIN, data={"issue_id": ISSUE_NO_DATE})
+    assert result["step_id"] == "estimate"
+    text = result["description_placeholders"]["containers"]
+    device = dr.async_get(hass).async_get_device(identifiers={(DOMAIN, "AAAA")})
+    assert f"- **Hackfleisch** – Dose AAAA, Kühlschrank → [öffnen](/larder?open={device.id})" in text
+    # the table knows mince but not grandma's recipe: that one is shown with its link
+    result = await flows.async_configure(result["flow_id"], {})
+    assert result["step_id"] == "estimate_left"
+    left = result["description_placeholders"]["containers"]
+    assert "Omas Geheimrezept" in left and "Hackfleisch" not in left
+    result = await flows.async_configure(result["flow_id"], {})
+    assert result["type"] == "create_entry"

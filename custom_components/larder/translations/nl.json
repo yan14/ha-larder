@@ -501,7 +501,11 @@
         "step": {
           "estimate": {
             "title": "Houdbaarheid schatten",
-            "description": "Larder schat de datum van deze dozen:\n\n{containers}\n\nWat de schatting niet kent, blijft in de melding staan; vul het dan in het dashboard in."
+            "description": "Larder schat de houdbaarheid voor:\n\n{containers}\n\nTik op **Verzenden**. Wat de schatting niet kent, staat in de volgende stap met een link om het in te vullen."
+          },
+          "estimate_left": {
+            "title": "Nog zonder datum",
+            "description": "Voor deze kent de schatting geen datum (bijv. onbekende inhoud of geen ruimte). **openen** brengt je direct naar de doos in het dashboard:\n\n{containers}"
           }
         },
         "abort": {

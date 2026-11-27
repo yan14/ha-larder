@@ -501,7 +501,11 @@
         "step": {
           "estimate": {
             "title": "MHD schätzen",
-            "description": "Larder schätzt das MHD für diese Dosen:\n\n{containers}\n\nWas die Schätzung nicht kennt, bleibt im Hinweis; trage es dann im Dashboard ein."
+            "description": "Larder schätzt das MHD für:\n\n{containers}\n\nTippe auf **Absenden**. Was die Schätzung nicht kennt, zeigt der nächste Schritt mit Link zum Nachtragen."
+          },
+          "estimate_left": {
+            "title": "Noch ohne MHD",
+            "description": "Für diese Einträge kennt die Schätzung kein MHD (z. B. Inhalt unbekannt oder kein Bereich). Über **öffnen** springst du direkt zur Dose im Dashboard:\n\n{containers}"
           }
         },
         "abort": {

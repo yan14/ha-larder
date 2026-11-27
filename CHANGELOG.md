@@ -3,6 +3,10 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 6.6.1
+
+- **Repair hints say what and where** (#192): *Filled containers without a best-before date* listed only generic names (*Dose HA-7VDCL64Z*). Every line now shows the **contents**, the container, the **area and compartment** and a link **open** that jumps straight to it in the dashboard. After *Estimate*, a second step lists what the estimate did not know – with the same links – instead of just closing. The fields of *Assign areas* and *Empty expired containers* show the contents too.
+
 ## 6.6.0
 
 Block 47: online shopping – without reading e-mails.

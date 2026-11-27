@@ -33,7 +33,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 ## What's new
 
-> **6.6:** **online shopping** – *Prepare the order* lists what runs out before the next delivery (copy it or onto the list), and a push on the **delivery day** opens put away.
+> **6.6:** **online shopping** – *Prepare the order* lists what runs out before the next delivery (copy it or onto the list), and a push on the **delivery day** opens put away. **6.6.1:** repair hints show contents, place and a link to each container.
 >
 > **6.5:** **throw away less** – **🧊 Freeze** instead of throwing away (in the push and the dashboard), a weekly **rescue list** with *Into the meal plan*, and what you throw away most with a tip each.
 >

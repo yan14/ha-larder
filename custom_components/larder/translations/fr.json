@@ -501,7 +501,11 @@
         "step": {
           "estimate": {
             "title": "Estimer les dates",
-            "description": "Larder estime la date de ces boîtes :\n\n{containers}\n\nCe que l'estimation ne connaît pas reste dans l'indication ; saisissez-le alors dans le tableau de bord."
+            "description": "Larder estime la date pour :\n\n{containers}\n\nAppuyez sur **Valider**. Ce que l'estimation ne connaît pas apparaît à l'étape suivante, avec un lien pour le compléter."
+          },
+          "estimate_left": {
+            "title": "Encore sans date",
+            "description": "L'estimation ne connaît pas de date pour ceux-ci (contenu inconnu ou sans pièce, par ex.). **ouvrir** mène directement à la boîte dans le tableau de bord :\n\n{containers}"
           }
         },
         "abort": {

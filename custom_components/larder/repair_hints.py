@@ -97,6 +97,41 @@ def find_problem_containers(hass: HomeAssistant, today: date | None = None) -> d
     return found
 
 
+_WORDS = {
+    "de": {"empty": "ohne Inhalt", "open": "öffnen", "and": "und", "more": "weitere", "no_area": "ohne Bereich"},
+    "en": {"empty": "no contents", "open": "open", "and": "and", "more": "more", "no_area": "no area"},
+    "fr": {"empty": "sans contenu", "open": "ouvrir", "and": "et", "more": "de plus", "no_area": "sans pièce"},
+    "nl": {"empty": "geen inhoud", "open": "openen", "and": "en", "more": "meer", "no_area": "geen ruimte"},
+}
+
+
+def item_label(hass: HomeAssistant, name: str, cc: str) -> str:
+    """A field label that says what it is: contents and container (6.6.1)."""
+    content = (_state(hass, er.async_get(hass), "text", f"{cc}_content") or "").strip()
+    return f"{content} ({name})" if content else name
+
+
+def describe_items(hass: HomeAssistant, items: list[tuple[str, str]], language: str) -> str:
+    """6.6.1: one line per container – what is in it, where it is and a link that opens it in the dashboard."""
+    from .const import pick  # noqa: PLC0415
+
+    words = pick(_WORDS, language)
+    registry = er.async_get(hass)
+    lines = []
+    for name, cc in items[:MAX_LISTED]:
+        content = _state(hass, registry, "text", f"{cc}_content") or ""
+        compartment = _state(hass, registry, "text", f"{cc}_compartment") or ""
+        area = storage_context(hass, cc).area_name
+        where = " · ".join(x for x in (area or words["no_area"], compartment.strip()) if x)
+        device = device_of(hass, cc)
+        link = f" → [{words['open']}](/{DOMAIN}?open={device.id})" if device is not None else ""
+        what = f"**{content.strip()}**" if content.strip() else f"_{words['empty']}_"
+        lines.append(f"- {what} – {name}, {where}{link}")
+    if len(items) > MAX_LISTED:
+        lines.append(f"- … {words['and']} {len(items) - MAX_LISTED} {words['more']}")
+    return "\n".join(lines)
+
+
 def _listing(names: list[str], language: str) -> str:
     shown = names[:MAX_LISTED]
     text = "\n".join(f"- {n}" for n in shown)

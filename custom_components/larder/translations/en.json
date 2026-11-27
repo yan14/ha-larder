@@ -501,7 +501,11 @@
         "step": {
           "estimate": {
             "title": "Estimate best-before dates",
-            "description": "Larder estimates the best-before date of these containers:\n\n{containers}\n\nWhat the estimate does not know stays in the hint; enter it in the dashboard then."
+            "description": "Larder estimates the best-before date for:\n\n{containers}\n\nPress **Submit**. What the estimate does not know is shown in the next step, with a link to fill it in."
+          },
+          "estimate_left": {
+            "title": "Still without a date",
+            "description": "The estimate knows no date for these (e.g. unknown contents or no area). **open** takes you straight to the container in the dashboard:\n\n{containers}"
           }
         },
         "abort": {
