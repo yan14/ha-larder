@@ -3,6 +3,15 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 6.10.0
+
+Block 58: shopping list 2.0.
+
+- **Quick add** (#243): chips below *Onto the list …* with what you buy often (put away in the last 60 days) and what was struck off or put away lately – not what is on the list already; typing suggests your known products. WebSocket `larder/shopping_suggest`.
+- **Amount and note per item** (#244): tap an item for *2×* and *lactose-free*; kept in the to-do item's description (`todo.update_item`), on lists without descriptions in brackets behind the name. *2×* puts two packs into stock when ticked off. Similar products are never merged. WebSocket `larder/shopping_note`; `larder/shopping_check` takes `packs`.
+- **Running total** (#245): *about €19.24 open · €5.37 in the basket · 1 without a price*, with the chosen store's prices, else the last paid ones; `price` and `description` per item in `larder/shopping_mode`.
+- **Paste several lines** (#246): a pasted list becomes one item per line, with a preview to untick; nothing twice. WebSocket `larder/shopping_add_many`.
+
 ## 6.9.3
 
 - **Strike items off the shopping list** (#242): **✕** next to an item on the Shopping page removes it from its list – not bought, nothing goes into stock (Home Assistant's `todo.remove_item`, works with every list that can delete items). **Undo** in the notice puts it back on the same list; a product with a minimum stock says that it comes back when it runs low. WebSocket `larder/shopping_remove`; `larder/shopping_add` takes an optional `list`.

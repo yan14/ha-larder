@@ -22,8 +22,50 @@ function shoppingTextsAdded(lang, r) {
   return TEXT[lang].added(r);
 }
 
+/** 6.10: helpers for the shopping list items. */
+function baseName(summary) {
+  return String(summary || "").split(" (", 1)[0].trim().toLowerCase();
+}
+function baseNameShown(summary) {
+  return String(summary || "").split(" (", 1)[0].trim();
+}
+export function splitLines(text) {
+  return [...new Set(String(text || "").split(/\r?\n/).map((l) => l.replace(/^\s*(?:[-*•–]|\d+[.)])\s*/, "").trim()).filter(Boolean))].slice(0, 50);
+}
+/** The note of an item: its description, or what a list without descriptions keeps in brackets (6.10, #244). */
+function itemDescription(item) {
+  if (item.description) return item.description;
+  const m = String(item.summary || "").match(/\(([^()]*\d[^()]*×[^()]*|[^()]*·[^()]*)\)\s*$/);
+  return m ? m[1].trim() : "";
+}
+export function splitDescription(text) {
+  const parts = String(text || "").split(" · ");
+  if (parts.length > 1 && /^\d/.test(parts[0])) return { amount: parts[0], note: parts.slice(1).join(" · ") };
+  if (/^\d+\s*(×|x|stk|stück|pcs)?$/i.test(parts[0])) return { amount: parts[0], note: "" };
+  return { amount: "", note: String(text || "") };
+}
+/** "2×" / "3 x" / "2 Stück" → 2 packs; anything else (e.g. "500 g") → 1. */
+export function packsOf(item) {
+  const { amount } = splitDescription(itemDescription(item));
+  const m = /^(\d+)\s*(×|x|stk|stück|pcs|packs?|packungen?)?$/i.exec(amount.trim());
+  return m ? Math.max(1, Math.min(50, Number(m[1]))) : 1;
+}
+
 const TEXT = {
   de: {
+    chipsLabel: "Schnell dazu:",
+    pasteTitle: (n) => `${n} Einträge einfügen`,
+    pasteHint: "Jede Zeile wird ein Eintrag. Weghaken, was nicht auf die Liste soll.",
+    pasteAdd: "Auf die Liste",
+    pasteDone: (n, dup) => `${n === 1 ? "1 Eintrag" : `${n} Einträge`} auf die Liste gesetzt${dup ? `, ${dup} stand${dup === 1 ? "" : "en"} schon drauf` : ""}.`,
+    noteEdit: "Menge und Notiz",
+    noteAmount: "Menge",
+    noteAmountHint: "z. B. 2× oder 500 g",
+    noteLabel: "Notiz",
+    noteHint: "z. B. laktosefrei, die große Packung",
+    noteKeep: "„2×“ legt beim Abhaken zwei Packungen in den Vorrat. Ähnliche Produkte bleiben getrennte Einträge.",
+    noteSave: "Speichern",
+    totalLine: (open, basket, missing) => `💶 ca. ${open} offen${basket ? ` · ${basket} im Korb` : ""}${missing ? ` · ${missing} ohne Preis` : ""}`,
     removeLabel: "Streichen – nicht mehr nötig",
     removed: (name) => `${name} gestrichen.`,
     removedMinimum: "Er hat einen Mindestbestand und kommt wieder auf die Liste, wenn er knapp wird.",
@@ -106,6 +148,19 @@ const TEXT = {
     orderListed: (n) => `${n} auf die Einkaufsliste gesetzt.`,
   },
   en: {
+    chipsLabel: "Quick add:",
+    pasteTitle: (n) => `Paste ${n} items`,
+    pasteHint: "Every line becomes an item. Untick what should not go on the list.",
+    pasteAdd: "Onto the list",
+    pasteDone: (n, dup) => `${n === 1 ? "1 item" : `${n} items`} put on the list${dup ? `, ${dup} already on it` : ""}.`,
+    noteEdit: "Amount and note",
+    noteAmount: "Amount",
+    noteAmountHint: "e.g. 2× or 500 g",
+    noteLabel: "Note",
+    noteHint: "e.g. lactose-free, the big pack",
+    noteKeep: "“2×” puts two packs into stock when ticked off. Similar products stay separate items.",
+    noteSave: "Save",
+    totalLine: (open, basket, missing) => `💶 about ${open} open${basket ? ` · ${basket} in the basket` : ""}${missing ? ` · ${missing} without a price` : ""}`,
     removeLabel: "Strike off – not needed any more",
     removed: (name) => `${name} struck off.`,
     removedMinimum: "It has a minimum stock and comes back onto the list when it runs low.",
@@ -188,6 +243,19 @@ const TEXT = {
     orderListed: (n) => `${n} put onto the shopping list.`,
   },
   fr: {
+    chipsLabel: "Ajout rapide :",
+    pasteTitle: (n) => `Coller ${n} articles`,
+    pasteHint: "Chaque ligne devient un article. Décoche ce qui ne doit pas aller sur la liste.",
+    pasteAdd: "Sur la liste",
+    pasteDone: (n, dup) => `${n === 1 ? "1 article" : `${n} articles`} ajouté(s)${dup ? `, ${dup} déjà présent(s)` : ""}.`,
+    noteEdit: "Quantité et note",
+    noteAmount: "Quantité",
+    noteAmountHint: "p. ex. 2× ou 500 g",
+    noteLabel: "Note",
+    noteHint: "p. ex. sans lactose, le grand paquet",
+    noteKeep: "« 2× » met deux paquets en stock en cochant. Les produits similaires restent séparés.",
+    noteSave: "Enregistrer",
+    totalLine: (open, basket, missing) => `💶 env. ${open} à acheter${basket ? ` · ${basket} dans le panier` : ""}${missing ? ` · ${missing} sans prix` : ""}`,
     removeLabel: "Rayer – plus nécessaire",
     removed: (name) => `${name} rayé.`,
     removedMinimum: "Il a un stock minimum et revient sur la liste quand il manque.",
@@ -270,6 +338,19 @@ const TEXT = {
     orderListed: (n) => `${n} mis sur la liste de courses.`,
   },
   nl: {
+    chipsLabel: "Snel erbij:",
+    pasteTitle: (n) => `${n} items plakken`,
+    pasteHint: "Elke regel wordt een item. Vink uit wat niet op de lijst moet.",
+    pasteAdd: "Op de lijst",
+    pasteDone: (n, dup) => `${n === 1 ? "1 item" : `${n} items`} op de lijst gezet${dup ? `, ${dup} stond(en) er al op` : ""}.`,
+    noteEdit: "Hoeveelheid en notitie",
+    noteAmount: "Hoeveelheid",
+    noteAmountHint: "bv. 2× of 500 g",
+    noteLabel: "Notitie",
+    noteHint: "bv. lactosevrij, de grote verpakking",
+    noteKeep: "„2×” zet bij afvinken twee verpakkingen in de voorraad. Vergelijkbare producten blijven aparte items.",
+    noteSave: "Opslaan",
+    totalLine: (open, basket, missing) => `💶 ca. ${open} open${basket ? ` · ${basket} in het mandje` : ""}${missing ? ` · ${missing} zonder prijs` : ""}`,
     removeLabel: "Doorstrepen – niet meer nodig",
     removed: (name) => `${name} doorgestreept.`,
     removedMinimum: "Het heeft een minimumvoorraad en komt terug op de lijst als het opraakt.",
@@ -442,6 +523,12 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
           this._shopStore = null;
         }
       }
+      // 6.10 (#243): chips and names to type – fetched first, so the page is never drawn half loaded
+      try {
+        this._shopSuggest = await hass.callWS({ type: `${DOMAIN}/shopping_suggest` });
+      } catch {
+        this._shopSuggest = null;
+      }
       this._shopping = await hass.callWS(this._shopStore ? { type: `${DOMAIN}/shopping_mode`, store: this._shopStore } : { type: `${DOMAIN}/shopping_mode` });
     } catch (err) {
       this._shopping = { items: [], error: (err && err.message) || true };
@@ -524,7 +611,8 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
     this._sig = "";
     this._update();
     try {
-      const res = await this._hass.callWS({ type: `${DOMAIN}/shopping_check`, list: item.list, uid: item.uid, summary: item.summary });
+      const packs = packsOf(item); // 6.10 (#244): "2×" in the note puts two packs into stock
+      const res = await this._hass.callWS({ type: `${DOMAIN}/shopping_check`, list: item.list, uid: item.uid, summary: item.summary, ...(packs > 1 ? { packs } : {}) });
       if (res.status === "unknown") {
         this._shopUnknown.push({ content: res.name });
         this._shopDone[item.uid] = { text: t.unknown };
@@ -589,8 +677,9 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
     this._update();
   };
 
-  /** 6.7 (#200): "Onto the list …" at the top of the Shopping page. */
+  /** 6.7 (#200): "Onto the list …" at the top of the Shopping page; 6.10: suggestions, chips, pasting lines. */
   proto._shopAddRow = function _shopAddRow(t) {
+    const wrap = el("div", "shopaddwrap");
     const form = el("form", "bar search shopadd");
     const input = el("input");
     input.type = "text";
@@ -598,29 +687,177 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
     input.placeholder = t.addPlaceholder;
     input.setAttribute("aria-label", t.addLabel);
     input.dataset.f = "shop-add";
+    // 6.10 (#243): your known products while typing
+    const suggest = this._shopSuggest || { chips: [], known: [] };
+    const listId = "larder-shop-known";
+    const datalist = el("datalist");
+    datalist.id = listId;
+    for (const name of suggest.known || []) {
+      const o = el("option");
+      o.value = name;
+      datalist.append(o);
+    }
+    input.setAttribute("list", listId);
     const add = button("", t.addButton, null);
     add.type = "submit";
     add.dataset.role = "shop-add";
     add.setAttribute("aria-label", t.addLabel);
     add.title = t.addLabel;
-    form.append(input, add);
+    form.append(input, add, datalist);
+    const addOne = async (name) => {
+      try {
+        const res = await this._hass.callWS({ type: `${DOMAIN}/shopping_add`, item: name });
+        this.showNotice(res && res.created === false ? t.addAlready(name) : t.addDone(name));
+        await this.loadShopping({ keep: true });
+      } catch {
+        this.showNotice(t.addFailed);
+      }
+    };
     form.addEventListener("submit", async (ev) => {
       ev.preventDefault();
       const name = input.value.trim();
       if (!name) return;
       add.disabled = true;
+      await addOne(name);
+      input.value = "";
+      add.disabled = false;
+    });
+    // 6.10 (#246): a pasted list (e.g. from a chat) becomes one item per line
+    input.addEventListener("paste", (ev) => {
+      const text = (ev.clipboardData || window.clipboardData || { getData: () => "" }).getData("text");
+      const lines = splitLines(text);
+      if (lines.length < 2) return;
+      ev.preventDefault();
+      this.openShopPaste(lines);
+    });
+    wrap.append(form);
+    // 6.10 (#243): bought often / lately – not what is on a list already
+    const open = new Set(((this._shopping && this._shopping.items) || []).map((i) => baseName(i.summary)));
+    const chips = (suggest.chips || []).filter((name) => !open.has(baseName(name)));
+    if (chips.length) {
+      const box = el("div", "chips shopchips");
+      box.dataset.role = "shop-chips";
+      box.append(el("span", "hint", t.chipsLabel));
+      for (const name of chips) {
+        const chip = button("chip", `＋ ${name}`, async () => {
+          chip.disabled = true;
+          await addOne(name);
+        });
+        chip.dataset.name = name;
+        box.append(chip);
+      }
+      wrap.append(box);
+    }
+    return wrap;
+  };
+
+  /** 6.10 (#246): preview of the pasted lines – untick what should not go on the list. */
+  proto.openShopPaste = function openShopPaste(lines) {
+    const t = shoppingTexts(this._hass);
+    const list = el("div", "checks");
+    for (const line of lines) {
+      const label = el("label", "check");
+      const box = el("input");
+      box.type = "checkbox";
+      box.checked = true;
+      box.value = line;
+      label.append(box, el("span", "", line));
+      list.append(label);
+    }
+    const status = el("p", "hint");
+    const save = button("submit", t.pasteAdd, async () => {
+      const items = [...list.querySelectorAll("input:checked")].map((b) => b.value);
+      if (!items.length) return;
+      save.disabled = true;
       try {
-        const res = await this._hass.callWS({ type: `${DOMAIN}/shopping_add`, item: name });
-        input.value = "";
-        this.showNotice(res && res.created === false ? t.addAlready(name) : t.addDone(name));
-        await this.loadShopping();
+        const res = await this._hass.callWS({ type: `${DOMAIN}/shopping_add_many`, items });
+        this._closeDialog();
+        this.showNotice(t.pasteDone(res.added.length, res.already.length));
+        await this.loadShopping({ keep: true });
       } catch {
-        this.showNotice(t.addFailed);
-      } finally {
-        add.disabled = false;
+        status.textContent = t.addFailed;
+        save.disabled = false;
       }
     });
-    return form;
+    save.dataset.role = "shop-paste-add";
+    const buttons = el("div", "buttons");
+    buttons.append(button("cancel", t.close, () => this._closeDialog()), save);
+    this._form.replaceChildren(el("h2", "", t.pasteTitle(lines.length)), el("p", "hint", t.pasteHint), list, status, buttons);
+    this._submit = null;
+    this._overlay.hidden = false;
+  };
+
+  /** 6.10 (#244): amount and note of one item. */
+  proto.openShopNote = function openShopNote(item) {
+    const t = shoppingTexts(this._hass);
+    const { amount, note } = splitDescription(itemDescription(item));
+    const field = (label, control) => {
+      const wrap = el("label", "", label);
+      wrap.append(control);
+      return wrap;
+    };
+    const amountIn = el("input");
+    amountIn.type = "text";
+    amountIn.maxLength = 30;
+    amountIn.placeholder = t.noteAmountHint;
+    amountIn.value = amount;
+    amountIn.dataset.f = "shop-amount";
+    const noteIn = el("input");
+    noteIn.type = "text";
+    noteIn.maxLength = 200;
+    noteIn.placeholder = t.noteHint;
+    noteIn.value = note;
+    noteIn.dataset.f = "shop-note";
+    const status = el("p", "hint");
+    const save = button("submit", t.noteSave, async () => {
+      save.disabled = true;
+      try {
+        const res = await this._hass.callWS({
+          type: `${DOMAIN}/shopping_note`, list: item.list, uid: item.uid, summary: item.summary,
+          amount: amountIn.value.trim(), note: noteIn.value.trim(),
+        });
+        item.description = res.description;
+        if (res.summary !== item.summary) {
+          item.summary = res.summary;
+          item.description = "";
+        }
+        this._closeDialog();
+        this._sig = "";
+        this._update();
+      } catch (err) {
+        status.textContent = (err && err.message) || t.addFailed;
+        save.disabled = false;
+      }
+    });
+    save.dataset.role = "shop-note-save";
+    const buttons = el("div", "buttons");
+    buttons.append(button("cancel", t.close, () => this._closeDialog()), save);
+    this._form.replaceChildren(el("h2", "", baseNameShown(item.summary)), field(t.noteAmount, amountIn), field(t.noteLabel, noteIn), el("p", "hint", t.noteKeep), status, buttons);
+    this._submit = null;
+    this._overlay.hidden = false;
+    amountIn.focus();
+  };
+
+  /** 6.10 (#245): what the list costs – open and already in the basket. */
+  proto._shopTotal = function _shopTotal(items, t) {
+    let open = 0;
+    let basket = 0;
+    let missing = 0;
+    for (const item of items) {
+      if (!item.price) {
+        missing += 1;
+        continue;
+      }
+      const sum = item.price * packsOf(item);
+      const done = (this._shopDone || {})[item.uid];
+      if (done && !done.busy) basket += sum;
+      else open += sum;
+    }
+    if (!open && !basket) return null;
+    const fmt = (v) => new Intl.NumberFormat(this._hass.language || "de", { style: "currency", currency: "EUR" }).format(v);
+    const line = el("p", "note shoptotal", t.totalLine(fmt(open), basket ? fmt(basket) : null, missing));
+    line.dataset.role = "shop-total";
+    return line;
   };
 
   proto.shoppingSig = function shoppingSig() {
@@ -807,6 +1044,8 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
     frag.append(el("p", "lead", t.intro));
     if (!data.error && data.configured !== false) frag.append(this._shopAddRow(t));
     if (!data.error) frag.append(this._storeBar(data, t));
+    const total = data.items ? this._shopTotal(data.items, t) : null;
+    if (total) frag.append(total);
     const all = data.items || [];
     // 5.9: at a store, what is only bought elsewhere goes to the end (folded)
     const items = data.store ? all.filter((i) => i.here !== false) : all;
@@ -851,8 +1090,16 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
       check.disabled = !!done;
       const text = el("span", "name");
       text.append(el("span", "", item.summary));
+      // 6.10 (#244): amount and note; tapping the name edits them
+      const desc = item.description || "";
       const where = !data.store && item.stores && item.stores.length ? `💶 ${item.stores[0]}` : null; // cheapest store
-      const sub = [done && done.text, where, lists.size > 1 ? item.list_name : null].filter(Boolean).join(" · ");
+      const sub = [desc ? `📝 ${desc}` : null, done && done.text, where, lists.size > 1 ? item.list_name : null].filter(Boolean).join(" · ");
+      if (!done) {
+        text.classList.add("editable");
+        text.dataset.role = "shop-note";
+        text.title = t.noteEdit;
+        text.addEventListener("click", () => this.openShopNote(item));
+      }
       if (sub) text.append(el("span", "sub", sub));
       row.append(check, text);
       // 6.9.3 (#242): strike it off – not needed any more, nothing goes into stock

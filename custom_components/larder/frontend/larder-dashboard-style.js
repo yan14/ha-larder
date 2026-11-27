@@ -131,6 +131,12 @@ export const STYLE = `
   .bar button.on { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: var(--primary-color); }
   .badge { font-size: 11px; padding: 1px 8px; border-radius: 10px; color: #fff; white-space: nowrap; background: var(--secondary-text-color); }
   .boughtrow button.strike { margin-left: auto; border: 0; background: none; color: var(--secondary-text-color); font-size: 18px; padding: 4px 8px; cursor: pointer; }
+  .shopchips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: -4px 0 12px; }
+  .shopchips .hint { font-size: 12px; margin: 0 4px 0 0; }
+  .shopchips button.chip { background: none; color: var(--primary-color); border: 1px solid var(--divider-color); border-radius: 14px;
+    padding: 3px 10px; font: inherit; font-size: 13px; cursor: pointer; }
+  .boughtrow .name.editable { cursor: pointer; }
+  .shoptotal { margin: 0 0 10px; }
   .soontile { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
   .soontile > .tile { flex: 1; }
   .tileacts { display: flex; flex-direction: column; gap: 4px; }

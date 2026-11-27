@@ -33,6 +33,8 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 
 ## Was ist neu?
 
+> **6.10:** **Einkaufsliste 2.0** – Schnell-dazu-Chips mit dem, was ihr oft kauft, Menge und Notiz je Eintrag (*2×*, *laktosefrei*), eine laufende Summe für Offenes und Korb und das Einfügen einer ganzen Liste aus dem Chat.
+>
 > **6.9:** **Abteilungen wie in deinem Laden** – *Nudeln & Reis*, *Konserven*, *Backen*, *Gewürze*, *Internationale Küche*, *Süßes & Snacks* und **eigene Abteilungen**; die Einkaufsseite aktualisiert sich selbst, Rezepte mit klarer KI-Box und beschrifteten Knöpfen, dazu viele kleine Formulierungen. **6.9.1:** Beutel mit NFC-Tag beim Einräumen von Hand, und leere Dosen lassen sich umräumen, ohne sie zu befüllen. **6.9.2:** Umräumen bietet die benutzten Fächer an. **6.9.3:** Einträge von der Einkaufsliste streichen, ohne sie zu kaufen.
 >
 > **6.8:** **ruhigere Startseite, leichteres Befüllen** – die Startseite zeigt die zwei dringendsten Kästen und klappt den Rest ein, *Gegessen* / *Einfrieren* direkt an den Kacheln, Reparatur-Hinweise mit Links, eine kurze Erklärung und die Einkaufsliste gleich in den ersten Schritten, die Vakuum-Frage einmal und Einräumen per Name für Ware ohne Strichcode.

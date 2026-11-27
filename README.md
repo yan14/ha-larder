@@ -33,6 +33,8 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 ## What's new
 
+> **6.10:** **shopping list 2.0** – quick-add chips with what you buy often, amount and note per item (*2×*, *lactose-free*), a running total of open items and the basket, and pasting a whole list from a chat.
+>
 > **6.9:** **store sections that fit your store** – *Pasta & rice*, *Canned*, *Baking*, *Spices*, *International food*, *Sweets & snacks* and your **own sections**; the Shopping page refreshes itself, recipes with a clear AI box and labelled buttons, and many small wording fixes. **6.9.1:** bags with an NFC tag when putting away by hand, and empty containers can be moved without filling them. **6.9.2:** Move offers the used compartments. **6.9.3:** strike items off the shopping list without buying them.
 >
 > **6.8:** **calmer start page and easier filling** – the start page keeps the two most urgent boxes open and folds the rest, *Eaten* / *Freeze* right on the tiles, repair hints with links, a short explanation and the shopping list in the first steps, the vacuum question once, and putting away by name for goods without a barcode.

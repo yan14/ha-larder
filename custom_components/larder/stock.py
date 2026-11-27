@@ -88,6 +88,7 @@ def product_key(content: str | None) -> str:
     return " ".join((content or "").split()).casefold()
 
 
+STRUCK_MAX = 20
 PUT_AWAY_KEEP = 30  # 6.1: days the put-away log is kept
 PUT_AWAY_MAX = 300
 BUY_DAYS = 5  # 6.1: purchases per product used for the best-before suggestion
@@ -136,6 +137,7 @@ class Stock:
         self.area_storage: dict[str, str] = {}  # 6.7 (#196): area id → storage kind chosen in the dashboard
         self.vacuum_asked = False  # 6.8 (#217): the household was asked whether it has a vacuum sealer
         self.own_sections: dict[str, str] = {}  # 6.9 (#238): own store sections, key → name
+        self.struck: list[str] = []  # 6.10 (#243): items struck off the shopping list, newest first
         self._unsub = None
         self._unsub_daily = None
 
@@ -155,6 +157,7 @@ class Stock:
         self.lists = {str(k): str(v) for k, v in (data.get("lists") or {}).items() if str(v).startswith("todo.")}
         self.intervals = {k: v for k, v in (data.get("intervals") or {}).items() if isinstance(v, dict) and v.get("weeks")}
         self.own_sections = {str(k): str(v) for k, v in (data.get("own_sections") or {}).items() if is_section(k) and v}
+        self.struck = [str(s) for s in data.get("struck") or [] if s][:STRUCK_MAX]
         self.sections = {
             str(k): str(v) for k, v in (data.get("sections") or {}).items() if v in SECTIONS or v in self.own_sections
         }
@@ -212,6 +215,7 @@ class Stock:
             "area_storage": self.area_storage,
             "vacuum_asked": self.vacuum_asked,
             "own_sections": self.own_sections,
+            "struck": self.struck,
         }
 
     def set_delivery(self, day: date | None) -> None:
@@ -504,6 +508,22 @@ class Stock:
         self._save()
         async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
         return key
+
+    def remember_struck(self, name: str) -> None:
+        """6.10 (#243): struck off the shopping list – offered again under "recently"."""
+        name = " ".join(str(name).split(" (", 1)[0].split())
+        if not name:
+            return
+        self.struck = [name, *(s for s in self.struck if s.casefold() != name.casefold())][:STRUCK_MAX]
+        self._save()
+
+    def item_price(self, content: str, store_key_: str | None = None) -> float | None:
+        """6.10 (#245): price of one pack – at this store if known, else the last own price."""
+        key = product_key(content)
+        if store_key_ and (here := (self.store_prices.get(key) or {}).get(store_key_)):
+            return float(here["price"])
+        price = (self.prices.get(key) or {}).get("price")
+        return float(price) if price else None
 
     def delete_own_section(self, key: str) -> None:
         """Its products go back to the suggestion; the store orders forget it."""

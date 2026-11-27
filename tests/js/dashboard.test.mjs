@@ -4695,3 +4695,46 @@ test("6.9.3 (#242): strike an item off the shopping list, undo puts it back", as
   await flush();
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/shopping_add`), { type: `${D}/shopping_add`, item: "Senf", list: "todo.einkaufen" });
 });
+
+test("Block 58 (#243–#246): chips, amount and note, running total, pasting lines", async () => {
+  const shop = await import("../../custom_components/larder/frontend/larder-dashboard-shopping.js");
+  assert.deepEqual(shop.splitLines("- Milch\n2. Brot\n\n• Milch\nFettarme Milch"), ["Milch", "Brot", "Fettarme Milch"]);
+  assert.equal(shop.packsOf({ description: "3× · groß" }), 3);
+  assert.equal(shop.packsOf({ description: "500 g" }), 1);
+  assert.equal(shop.packsOf({ summary: "Senf (2× · scharf)", description: "" }), 2);
+  const hass = makeHass(DOSES);
+  hass.callWS = (base => async (msg) => {
+    if ([`${D}/shopping_note`, `${D}/shopping_add_many`, `${D}/shopping_add`].includes(msg.type)) hass.wsCalls.push(msg);
+    if (msg.type === `${D}/shopping_suggest`) return { chips: ["Senf", "Butter"], known: ["Butter", "Senf"] };
+    if (msg.type === `${D}/shopping_mode`) return { order: ["dry"], items: [{ list: "todo.einkaufen", list_name: "Einkaufen", uid: "u1", summary: "Senf", section: "dry", known: true, price: 1.5, description: "2×" }, { list: "todo.einkaufen", list_name: "Einkaufen", uid: "u2", summary: "Salz", section: "dry", known: false, price: null }] };
+    if (msg.type === `${D}/shopping_note`) return { description: "3× · scharf", summary: msg.summary };
+    if (msg.type === `${D}/shopping_add_many`) return { added: msg.items, already: [], failed: [] };
+    if (msg.type === `${D}/shopping_add`) return { list: "todo.einkaufen", created: true };
+    return base(msg);
+  })(hass.callWS);
+  const el = mount(hass);
+  await flush();
+  el.setView("shopping");
+  await flush();
+  await flush();
+  // chips without what is on the list already
+  assert.deepEqual([...$$(el, '[data-role="shop-chips"] .chip')].map((c) => c.dataset.name), ["Butter"]);
+  // total: 2 × 1.50, one item without a price
+  assert.match($(el, '[data-role="shop-total"]').textContent, /3,00\s€ offen · 1 ohne Preis/);
+  assert.match($(el, '[data-uid="u1"]').textContent, /📝 2×/);
+  // amount and note
+  $(el, '[data-uid="u1"] [data-role="shop-note"]').click();
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelector('[data-f="shop-amount"]').value, "2×");
+  form.querySelector('[data-f="shop-amount"]').value = "3×";
+  form.querySelector('[data-f="shop-note"]').value = "scharf";
+  form.querySelector('[data-role="shop-note-save"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/shopping_note`), { type: `${D}/shopping_note`, list: "todo.einkaufen", uid: "u1", summary: "Senf", amount: "3×", note: "scharf" });
+  // pasting several lines
+  el.openShopPaste(["Milch", "Brot"]);
+  $(el, "form.dialog").querySelectorAll("input[type=checkbox]")[1].checked = false;
+  $(el, '[data-role="shop-paste-add"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/shopping_add_many`), { type: `${D}/shopping_add_many`, items: ["Milch"] });
+});

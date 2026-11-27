@@ -132,6 +132,9 @@ async def async_shopping_view(hass: HomeAssistant, store: str | None = None) -> 
                 "section": section,
                 "known": bool(known),
                 "stores": stores,  # where it was bought, cheapest first
+                # 6.10 (#244): amount and note from the item's description; (#245) price of one pack
+                "description": str(item.get("description") or ""),
+                "price": stock.item_price(content, skey or None),
             }
             if skey:
                 entry["here"] = (skey in (stock.store_prices.get(product_key(content)) or {})) if stores else None
@@ -153,10 +156,16 @@ async def async_shopping_view(hass: HomeAssistant, store: str | None = None) -> 
     }
 
 
-async def async_shopping_check(hass: HomeAssistant, entity_id: str, uid: str, summary: str) -> dict[str, Any]:
-    """Tick an item off and put it into stock (known products) – or report it as unknown."""
+async def async_shopping_check(
+    hass: HomeAssistant, entity_id: str, uid: str, summary: str, packs: int | None = None
+) -> dict[str, Any]:
+    """Tick an item off and put it into stock (known products) – or report it as unknown.
+
+    `packs`: the amount of the item (6.10, #244: "2×" in its note), else what Larder asked for.
+    """
     stock = await async_get_stock(hass)
-    known, packs = known_for(hass, stock, summary)
+    known, asked = known_for(hass, stock, summary)
+    packs = packs or asked
     # taken care of here: "bought – into stock?" must not offer it again
     stock.tracked.pop(summary.strip().casefold(), None)
     await hass.services.async_call(
@@ -224,6 +233,46 @@ async def async_shopping_undo(
     stock = await async_get_stock(hass)
     stock.unlog_put_away(device_id, removed)
     return {"removed": removed}
+
+
+TODO_SET_DESCRIPTION = 64  # TodoListEntityFeature.SET_DESCRIPTION_ON_ITEM
+SUGGEST_MAX = 12
+
+
+def description_text(amount: str, note: str) -> str:
+    """ "2×" and "laktosefrei" → "2× · laktosefrei" (either may be empty)."""
+    return " · ".join(p for p in (" ".join(amount.split()), " ".join(note.split())) if p)
+
+
+def shopping_suggestions(hass: HomeAssistant, stock) -> dict[str, Any]:
+    """Bought most often (put away in the last 60 days), then struck off or put away lately; not on a list now."""
+    from collections import Counter  # noqa: PLC0415
+    from datetime import timedelta  # noqa: PLC0415
+
+    since = (dt_util.now().date() - timedelta(days=60)).isoformat()
+    names: dict[str, str] = {}
+    count: Counter[str] = Counter()
+    for record in stock.put_away_log:
+        name = str(record.get("content") or "").strip()
+        if not name:
+            continue
+        key = product_key(name)
+        names.setdefault(key, name)
+        if str(record.get("day") or "") >= since:
+            count[key] += 1
+    recent = [*(product_key(n) for n in stock.struck), *(product_key(r.get("content")) for r in reversed(stock.put_away_log))]
+    for name in stock.struck:
+        names.setdefault(product_key(name), name)
+    order = [k for k, _n in count.most_common()] + [k for k in recent if k not in count]
+    tracked = {product_key(_base_name(str(info.get("summary") or k))) for k, info in stock.tracked.items()}
+    chips = [names[k] for k in dict.fromkeys(order) if k in names and k not in tracked][:SUGGEST_MAX]
+    known = {product_key(p["content"]): p["content"] for p in pack_entries(hass)}
+    for key, info in stock.minimums.items():
+        known.setdefault(key, info.get("name") or key)
+    for record in stock.recent:
+        known.setdefault(product_key(record.get("content")), record.get("content"))
+    known.update({k: v for k, v in names.items() if k not in known})
+    return {"chips": chips, "known": sorted({v for v in known.values() if v}, key=str.casefold)[:500]}
 
 
 def _base_name(summary: str) -> str:
@@ -370,12 +419,13 @@ async def ws_shopping_mode(hass: HomeAssistant, connection: websocket_api.Active
         vol.Required("list"): vol.All(str, vol.Match(r"^todo\.")),
         vol.Required("uid"): str,
         vol.Required("summary"): vol.All(str, vol.Length(min=1, max=255)),
+        vol.Optional("packs"): vol.All(vol.Coerce(int), vol.Range(min=1, max=50)),
     }
 )
 @websocket_api.async_response
 async def ws_shopping_check(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
     try:
-        result = await async_shopping_check(hass, msg["list"], msg["uid"], msg["summary"])
+        result = await async_shopping_check(hass, msg["list"], msg["uid"], msg["summary"], msg.get("packs"))
     except HomeAssistantError as err:
         connection.send_error(msg["id"], "check_failed", str(err))
         return
@@ -424,6 +474,73 @@ async def ws_shopping_list_set(hass: HomeAssistant, connection: websocket_api.Ac
 
 @websocket_api.websocket_command(
     {
+        vol.Required("type"): f"{DOMAIN}/shopping_note",
+        vol.Required("list"): vol.All(str, vol.Match(r"^todo\.")),
+        vol.Required("uid"): str,
+        vol.Required("summary"): vol.All(str, vol.Length(min=1, max=255)),
+        vol.Optional("amount", default=""): vol.All(str, vol.Length(max=30)),
+        vol.Optional("note", default=""): vol.All(str, vol.Length(max=200)),
+    }
+)
+@websocket_api.async_response
+async def ws_shopping_note(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """6.10 (#244): amount and note of a list item, in its description (Home Assistant's todo.update_item).
+
+    Lists that cannot keep a description get it in brackets behind the name: "Milch (2× · laktosefrei)";
+    Larder reads the product name without the brackets, so nothing is merged with a similar product.
+    """
+    text = description_text(msg["amount"], msg["note"])
+    state = hass.states.get(msg["list"])
+    features = int((state.attributes.get("supported_features") if state else 0) or 0)
+    data: dict[str, Any] = {"entity_id": msg["list"], "item": msg["uid"]}
+    if features & TODO_SET_DESCRIPTION:
+        data["description"] = text
+    else:
+        base = _base_name(msg["summary"])
+        data["rename"] = f"{base} ({text})" if text else base
+    try:
+        await hass.services.async_call("todo", "update_item", data, blocking=True)
+    except HomeAssistantError as err:
+        connection.send_error(msg["id"], "note_failed", str(err))
+        return
+    connection.send_result(msg["id"], {"description": text, "summary": data.get("rename", msg["summary"])})
+
+
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/shopping_suggest"})
+@websocket_api.async_response
+async def ws_shopping_suggest(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """6.10 (#243): chips to tap (bought often, struck off or put away lately) and names for typing."""
+    stock = await async_get_stock(hass)
+    connection.send_result(msg["id"], shopping_suggestions(hass, stock))
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/shopping_add_many",
+        vol.Required("items"): vol.All([vol.All(str, vol.Length(min=1, max=255))], vol.Length(min=1, max=50)),
+    }
+)
+@websocket_api.async_response
+async def ws_shopping_add_many(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """6.10 (#246): several lines pasted at once – each onto its list, nothing twice."""
+    await async_get_stock(hass)
+    added, already, failed = [], [], []
+    for raw in msg["items"]:
+        item = " ".join(raw.split())
+        if not item:
+            continue
+        entity_id = shopping_list_for(hass, item)
+        if not entity_id:
+            failed.append(item)
+        elif await async_add_to_shopping_list(hass, entity_id, item):
+            added.append(item)
+        else:
+            already.append(item)
+    connection.send_result(msg["id"], {"added": added, "already": already, "failed": failed})
+
+
+@websocket_api.websocket_command(
+    {
         vol.Required("type"): f"{DOMAIN}/shopping_remove",
         vol.Required("list"): vol.All(str, vol.Match(r"^todo\.")),
         vol.Required("uid"): str,
@@ -443,6 +560,8 @@ async def ws_shopping_remove(hass: HomeAssistant, connection: websocket_api.Acti
         return
     content = _base_name(msg["summary"]) if msg["summary"] else ""
     minimum = bool(content and stock.minimum(content))
+    if content:
+        stock.remember_struck(content)
     connection.send_result(msg["id"], {"removed": True, "minimum": minimum})
 
 
@@ -683,5 +802,5 @@ def async_setup_shopping_mode_websocket(hass: HomeAssistant) -> None:
     if domain_data.get("shopping_mode_ws"):
         return
     domain_data["shopping_mode_ws"] = True
-    for command in (ws_shopping_mode, ws_shopping_add, ws_shopping_list_set, ws_shopping_check, ws_shopping_remove, ws_shopping_undo, ws_shopping_scan, ws_shopping_details, ws_receipt_add, ws_bought_add, ws_shopping_lists, ws_recurring, ws_recurring_set, ws_recurring_delete):
+    for command in (ws_shopping_mode, ws_shopping_add, ws_shopping_list_set, ws_shopping_check, ws_shopping_remove, ws_shopping_undo, ws_shopping_note, ws_shopping_suggest, ws_shopping_add_many, ws_shopping_scan, ws_shopping_details, ws_receipt_add, ws_bought_add, ws_shopping_lists, ws_recurring, ws_recurring_set, ws_recurring_delete):
         websocket_api.async_register_command(hass, command)

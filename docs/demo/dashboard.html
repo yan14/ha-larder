@@ -267,11 +267,13 @@ const hass = {
     ] };
     if (msg.type === "larder/shopping_mode") return { order: [], items: (de ? [
       ["Bananen", "produce", false], ["Äpfel", "produce", false], ["Vollkornbrot", "bakery", true], ["Milch", "fridge", true], ["Gouda", "fridge", true],
-      ["Penne (Barilla, 500 g)", "dry", true], ["Gehackte Tomaten (Mutti, 400 g)", "dry", true], ["Wasserkiste", "drinks", false], ["Klopapier (Zewa, 2 Packungen)", "drugstore", true],
+      ["Penne (Barilla, 500 g)", "pasta", true], ["Gehackte Tomaten (Mutti, 400 g)", "canned", true], ["Wasserkiste", "drinks", false], ["Klopapier (Zewa, 2 Packungen)", "drugstore", true],
     ] : [
       ["Bananas", "produce", false], ["Apples", "produce", false], ["Wholemeal bread", "bakery", true], ["Milk", "fridge", true], ["Gouda", "fridge", true],
       ["Penne (Barilla, 500 g)", "dry", true], ["Chopped tomatoes (Mutti, 400 g)", "dry", true], ["Crate of water", "drinks", false], ["Toilet paper (Zewa, 2 packs)", "drugstore", true],
-    ]).map(([summary, section, known], i) => ({ list: "todo.einkaufen", list_name: "Einkaufen", uid: `s${i}`, summary, section, known })) };
+    ]).map(([summary, section, known], i) => ({ list: "todo.einkaufen", list_name: "Einkaufen", uid: `s${i}`, summary, section, known,
+      price: [null, 2.49, 2.99, 1.19, 3.49, 1.79, 0.99, 5.99, 4.49][i], description: i === 3 ? (de ? "2× · fettarm" : "2× · low-fat") : "" })) };
+    if (msg.type === "larder/shopping_suggest") return { chips: de ? ["Butter", "Eier", "Kaffee", "Joghurt"] : ["Butter", "Eggs", "Coffee", "Yoghurt"], known: [] };
     if (msg.type === "larder/freezable") return { device_ids: ["demo01"] };
     if (msg.type === "larder/shopping_add") return { list: "todo.einkaufsliste", created: true };
     if (msg.type === "larder/shopping_undo") return { removed: 1 };
