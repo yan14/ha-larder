@@ -34,7 +34,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 ## What's new
 
-> **6.11:** **Group and convert products** – groups like *Milk* over whole and low-fat milk (by hand, nothing is merged) with their own minimum stock, contents per piece with total amount and unit price (€/kg), *crate = 6 bottles* and an amount per tap (−2 slices). **6.11.1:** faster start without the warning *Updating state … took 0.4 seconds*.
+> **6.11:** **Group and convert products** – groups like *Milk* over whole and low-fat milk (by hand, nothing is merged) with their own minimum stock, contents per piece with total amount and unit price (€/kg), *crate = 6 bottles* and an amount per tap (−2 slices). **6.11.1:** faster start without the warning *Updating state … took 0.4 seconds*. **6.11.2:** the page scrolls like a website – pull to refresh anywhere, a tap on the status bar goes to the top; every dialog has a ✕ in the top right corner.
 >
 > **6.10:** **shopping list 2.0** – quick-add chips with what you buy often, amount and note per item (*2×*, *lactose-free*), a running total of open items and the basket, and pasting a whole list from a chat.
 >

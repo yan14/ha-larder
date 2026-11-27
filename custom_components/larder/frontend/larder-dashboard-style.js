@@ -1,23 +1,24 @@
 /** Larder dashboard: stylesheet (inserted into the shadow DOM). */
 export const STYLE = `
-  /* Fixed height (measured in _fitHeight): only main scrolls, header and navigation stay put */
-  :host { position: relative; display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; background: var(--primary-background-color);
+  /* 6.11.2: the page itself scrolls (pull to refresh, tap on the status bar goes to the top); header and
+     navigation stick to the edges. The minimum height is measured in _fitHeight. */
+  :host { position: relative; display: flex; flex-direction: column; min-height: 100vh; min-height: 100dvh; background: var(--primary-background-color);
     color: var(--primary-text-color); font-family: var(--paper-font-body1_-_font-family, Roboto, sans-serif); }
   [hidden] { display: none !important; }
   header { display: flex; align-items: center; gap: 8px; padding: 0 12px; height: 56px; box-sizing: border-box;
     background: var(--app-header-background-color, var(--primary-color)); color: var(--app-header-text-color, #fff);
-    flex: 0 0 auto; z-index: 2; }
+    flex: 0 0 auto; z-index: 3; position: sticky; top: env(safe-area-inset-top, 0px); }
   header h1 { flex: 1; font-size: 20px; font-weight: 400; margin: 0; }
   header button { background: none; border: 0; color: inherit; font-size: 22px; cursor: pointer; padding: 4px 8px; }
   #menu { display: none; }
   :host([narrow]) #menu { display: inline-block; }
-  main { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch;
+  main { flex: 1 0 auto;
     padding: 12px 16px 16px; box-sizing: border-box; display: flex; flex-direction: column; }
   main > * { flex: 0 0 auto; }
   main > .selbar { margin-top: auto; }
   /* Cards view: the bar on top (main), below it the embedded view scrolls */
-  :host([classic-view]) main { flex: 0 0 auto; padding-bottom: 0; overflow: visible; }
-  larder-panel-embedded { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  :host([classic-view]) main { flex: 0 0 auto; padding-bottom: 0; }
+  larder-panel-embedded { flex: 1 0 auto; }
   /* 5.0: More – sections of actions (instead of the ⋮ menu) */
   section.more { background: var(--card-background-color, #fff); border: 1px solid var(--divider-color); border-radius: 12px;
     margin-bottom: 14px; overflow: hidden; display: flex; flex-direction: column; }
@@ -122,8 +123,8 @@ export const STYLE = `
   .tile.selected, .row.selected { outline: 3px solid var(--primary-color); outline-offset: -3px; opacity: 1; }
   .tile .check, .row .check { position: absolute; top: 6px; right: 8px; font-size: 16px; color: var(--primary-color); }
   .row { position: relative; }
-  .selbar { position: sticky; bottom: -16px; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
-    margin: 12px -16px -16px; padding: 10px 16px; background: var(--card-background-color, #fff); border-top: 1px solid var(--divider-color); }
+  .selbar { position: sticky; bottom: var(--larder-nav-h, 56px); z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    margin: 12px -16px 0; padding: 10px 16px; background: var(--card-background-color, #fff); border-top: 1px solid var(--divider-color); }
   .selbar .count { flex: 1; font-size: 14px; color: var(--secondary-text-color); min-width: 90px; }
   .selbar button { font: inherit; font-size: 14px; border-radius: 18px; padding: 7px 12px; cursor: pointer;
     background: var(--card-background-color, #fff); color: var(--primary-text-color); border: 1px solid var(--divider-color); }
@@ -181,7 +182,7 @@ export const STYLE = `
     background: var(--card-background-color, #fff); color: var(--primary-text-color); border: 1px solid var(--divider-color); }
   button.primary { background: var(--primary-color); color: var(--text-primary-color, #fff); border: 0; text-align: center; }
   button:disabled { opacity: .5; cursor: default; }
-  nav { flex: 0 0 auto; z-index: 2; display: flex; background: var(--card-background-color, #fff);
+  nav { flex: 0 0 auto; z-index: 3; display: flex; position: sticky; bottom: 0; background: var(--card-background-color, #fff);
     border-top: 1px solid var(--divider-color); padding-bottom: env(safe-area-inset-bottom, 0); }
   nav button { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 8px 2px 7px; font: inherit; font-size: 11px;
     background: none; border: 0; color: var(--secondary-text-color); cursor: pointer; min-width: 0; }
@@ -202,7 +203,12 @@ export const STYLE = `
   .error { color: var(--error-color, #db4437); font-size: 14px; margin: 8px 0; }
   .overlay { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, .5); padding: 16px; }
   .dialog { background: var(--card-background-color, #fff); color: var(--primary-text-color); border-radius: 14px; padding: 18px;
-    width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; }
+    width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; }
+  /* 6.11.2: ✕ top right, sticky while the dialog scrolls, without taking space */
+  .dialog > .dialogclose { position: sticky; top: -8px; align-self: flex-end; z-index: 2; margin: -10px -8px -42px 0; width: 32px; height: 32px;
+    border-radius: 50%; border: 0; padding: 0; font: inherit; font-size: 16px; line-height: 32px; cursor: pointer; flex: 0 0 auto;
+    background: var(--secondary-background-color, rgba(127, 127, 127, .15)); color: var(--secondary-text-color); }
+  .dialog > h2:first-of-type { padding-right: 34px; }
   .dialog h2 { margin: 0; font-size: 18px; text-transform: none; letter-spacing: 0; color: var(--primary-text-color); }
   .dialog label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--secondary-text-color); }
   .dialog input, .dialog textarea { font: inherit; color: var(--primary-text-color); background: var(--card-background-color, #fff);

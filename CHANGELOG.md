@@ -3,6 +3,11 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 6.11.2
+
+- **The page scrolls like a website**: the dashboard no longer scrolls inside its own box, the page itself does; the header sticks to the top and the navigation to the bottom. So in the Home Assistant app **pull to refresh** works from anywhere at the top of a page (before only on the header), a **tap on the status bar** scrolls back to the top, and swiping on the navigation no longer stretches it. The selection bar sits right above the navigation.
+- **✕ in every dialog**: every dashboard dialog has a ✕ in the top right corner that stays visible while a long dialog (a compartment, a product, the stock) scrolls – no more scrolling down to close it.
+
 ## 6.11.1
 
 - **Faster first states after a restart**: the keyword patterns of the shelf-life table are now compiled once at setup outside the event loop. Before, the first content entity compiled them while writing its state, which on a Raspberry Pi could take about half a second and logged *Updating state for text.…_inhalt took 0.4 seconds*.

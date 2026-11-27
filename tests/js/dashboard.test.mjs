@@ -2907,16 +2907,16 @@ test("Bereiche bearbeiten: use (scope) per area and automatic assignment", async
   assert.equal($(el, '[data-role="scope-auto"]'), null);
 });
 
-test("Fixed height: the dashboard fills exactly the space below its top edge (iOS safe area, 4.0.1)", async () => {
+test("Minimum height: the dashboard fills at least the space below its top edge, the page scrolls (4.0.1, 6.11.2)", async () => {
   const el = mount(makeHass(DOSES));
   el.getBoundingClientRect = () => ({ top: 47, left: 0, right: 390, bottom: 0, width: 390, height: 0 });
   window.dispatchEvent(new window.Event("resize"));
-  assert.equal(el.style.height, `${window.innerHeight - 47}px`);
-  assert.equal(el.style.minHeight, "0px");
+  assert.equal(el.style.minHeight, `${window.innerHeight - 47}px`);
+  assert.equal(el.style.height, "");
   // a scrolled Home Assistant container (negative top) keeps the last good value
   el.getBoundingClientRect = () => ({ top: -200, left: 0, right: 390, bottom: 0, width: 390, height: 0 });
   window.dispatchEvent(new window.Event("resize"));
-  assert.equal(el.style.height, `${window.innerHeight - 47}px`);
+  assert.equal(el.style.minHeight, `${window.innerHeight - 47}px`);
   el.remove();
 });
 
@@ -4799,4 +4799,20 @@ test("6.11 (Block 60): groups in the stock view, unit price, contents per piece,
   grp.dispatchEvent(new dom.window.Event("change"));
   await flush();
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/product_group`), { type: `${D}/product_group`, content: "Nudeln", group: "Pasta" });
+});
+
+test("6.11.2: every dialog has a ✕ in the top right corner that closes it", async () => {
+  const el = mount(makeHass(DOSES));
+  await flush();
+  el.openHowItWorks();
+  await flush();
+  await flush();
+  const form = $(el, "form.dialog");
+  const close = form.firstElementChild;
+  assert.equal(close.dataset.role, "dialog-close");
+  assert.equal(close.getAttribute("aria-label"), "Schließen");
+  assert.equal(form.querySelectorAll(":scope > .dialogclose").length, 1);
+  close.click();
+  assert.equal($(el, ".overlay").hidden, true);
+  el.remove();
 });

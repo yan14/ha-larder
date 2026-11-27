@@ -369,6 +369,23 @@ export class LarderDashboard extends HTMLElement {
     this._overlay.addEventListener("click", (ev) => {
       if (ev.target === this._overlay) this._closeDialog();
     });
+    // 6.11.2: every dialog gets a ✕ in the top right corner that stays visible while a long dialog scrolls
+    const addClose = () => {
+      if (!this._form.firstElementChild || this._form.querySelector(":scope > .dialogclose")) return;
+      const close = document.createElement("button");
+      close.type = "button";
+      close.className = "dialogclose";
+      close.dataset.role = "dialog-close";
+      close.textContent = "✕";
+      const label = texts(this._hass).close;
+      close.title = label;
+      close.setAttribute("aria-label", label);
+      close.addEventListener("click", () => this._closeDialog());
+      this._form.prepend(close);
+    };
+    const Observer = globalThis.MutationObserver || (typeof window !== "undefined" && window.MutationObserver);
+    if (Observer) new Observer(addClose).observe(this._form, { childList: true });
+    this._addDialogClose = addClose;
   }
 
   /**
@@ -398,9 +415,10 @@ export class LarderDashboard extends HTMLElement {
   }
 
   /**
-   * Fixed height = the space Home Assistant really leaves below our top edge. `100dvh` alone is too tall in
-   * the app on iOS: the panel starts below the status bar (safe area), so the navigation was pushed off the
-   * screen and the whole page could be scrolled.
+   * Minimum height = the space Home Assistant really leaves below our top edge, so the navigation sits at the
+   * bottom of a short page. 6.11.2: only a minimum – the page itself scrolls (pull to refresh in the app and a
+   * tap on the status bar work everywhere); header and navigation are sticky. `100dvh` alone is too tall in the
+   * app on iOS: the panel starts below the status bar (safe area).
    */
   _fitHeight() {
     const top = this.getBoundingClientRect().top + (window.scrollY || 0);
@@ -408,9 +426,11 @@ export class LarderDashboard extends HTMLElement {
     if (top >= 0) this._top = top;
     const viewport = window.innerHeight || document.documentElement.clientHeight || 0;
     if (!viewport) return;
-    // set on the element itself, so no outer style (min-height: 100vh and the like) can stretch it again
-    this.style.height = `${Math.max(240, Math.floor(viewport - (this._top || 0)))}px`;
-    this.style.minHeight = "0px";
+    this.style.minHeight = `${Math.max(240, Math.floor(viewport - (this._top || 0)))}px`;
+    this.style.height = "";
+    // the selection bar sticks right above the navigation
+    const nav = this.shadowRoot && this.shadowRoot.querySelector("nav");
+    if (nav && nav.offsetHeight) this.style.setProperty("--larder-nav-h", `${nav.offsetHeight}px`);
   }
 
   disconnectedCallback() {
@@ -620,7 +640,7 @@ export class LarderDashboard extends HTMLElement {
 
   setView(view, filter = null) {
     if (!ALL_VIEWS.includes(view)) return;
-    if (view !== this._view && this._main) this._main.scrollTop = 0; // a new page starts at the top
+    if (view !== this._view && window.scrollTo) window.scrollTo(0, 0); // a new page starts at the top
     if (view === "estimates" && !isAdmin(this._hass)) return;
     if (view !== "areas") this._areaEdit = false;
     if (view !== "containers") {
