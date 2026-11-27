@@ -1145,6 +1145,8 @@ class DoseCard {
         return o;
       };
       const targets = { pack: t.convertToPack, household: t.convertToHousehold, medicine: t.convertToMedicine };
+      // 6.9.1 (#239): a food pack can become a bag, e.g. vacuum-packed meat that gets an NFC tag
+      if (kind === "pack") targets.bag = t.convertToBag;
       convert.replaceChildren(option("", t.convertTo), ...Object.entries(targets).filter(([k]) => k !== kind).map(([k, label]) => option(k, label)));
       convert.dataset.sig = convertSig;
     }
@@ -1473,6 +1475,7 @@ class LarderPanel extends HTMLElement {
           <div class="hint" data-w="bbhint" data-l="fillBestBeforeHint" hidden></div>
           <label class="check" data-w="estimate"><input type="checkbox" data-f="estimate" checked><span data-l="fillEstimate"></span></label>
           <div class="error" role="alert"></div>
+          <button type="button" class="link onlymove" data-l="fillOnlyMove" hidden></button>
           <div class="buttons"><button type="button" class="cancel"></button><button type="submit" class="submit"></button></div>
         </form>
       </div>
@@ -1519,6 +1522,12 @@ class LarderPanel extends HTMLElement {
       if (ev.target === this._fillOverlay) this.closeFillDialog();
     });
     this._fillForm.querySelector("button.cancel").addEventListener("click", () => this.closeFillDialog());
+    // 6.9.1 (#240): move an empty container without filling it (the dashboard asks for area and compartment)
+    this._fillForm.querySelector("button.onlymove").addEventListener("click", () => {
+      const ids = [...this._fillDevices];
+      this.closeFillDialog();
+      this.dispatchEvent(new CustomEvent("larder-move-places", { detail: { deviceIds: ids } }));
+    });
     // 6.8 (#217): the answer sets the preset; without a sealer the empty containers lose the tick
     for (const [cls, has] of [["button.vacyes", true], ["button.vacno", false]]) {
       this._fillForm.querySelector(cls).addEventListener("click", async () => {
@@ -2115,6 +2124,7 @@ class LarderPanel extends HTMLElement {
     this._fillForm.querySelector('[data-w="bbhint"]').hidden = !canEstimate;
     f("estimate").checked = true;
     this._fillForm.querySelector(".error").textContent = "";
+    this._fillForm.querySelector("button.onlymove").hidden = !(this.hasAttribute("embedded") && isAdmin(hass));
     this._fillOverlay.hidden = false;
     this._loadContents();
     if (f("content").focus) f("content").focus();

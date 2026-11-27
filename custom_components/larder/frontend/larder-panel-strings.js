@@ -1,6 +1,8 @@
 /** Cards and dialogs (larder-panel.js): texts (German and English). */
 export const STRINGS = {
   de: {
+    fillOnlyMove: "📍 Nur umräumen (bleibt leer)",
+    convertToBag: "Beutel (z. B. vakuumiert, mit NFC-Tag)",
     vacuumAsk: "Hast du ein Vakuumiergerät?",
     vacuumYes: "Ja",
     vacuumNo: "Nein",
@@ -238,6 +240,8 @@ export const STRINGS = {
     estOff: "Die MHD-Schätzung ist ausgeschaltet. Die Einträge bleiben erhalten.",
   },
   en: {
+    fillOnlyMove: "📍 Only move (stays empty)",
+    convertToBag: "Bag (e.g. vacuum-packed, with an NFC tag)",
     vacuumAsk: "Do you have a vacuum sealer?",
     vacuumYes: "Yes",
     vacuumNo: "No",
@@ -474,6 +478,8 @@ export const STRINGS = {
     estOff: "Best-before estimates are switched off. The entries are kept.",
   },
   fr: {
+    fillOnlyMove: "📍 Seulement déplacer (reste vide)",
+    convertToBag: "Sachet (p. ex. sous vide, avec tag NFC)",
     vacuumAsk: "As-tu une machine sous vide ?",
     vacuumYes: "Oui",
     vacuumNo: "Non",
@@ -708,6 +714,8 @@ export const STRINGS = {
     estOff: "Les estimations de date sont désactivées. Les entrées sont conservées.",
   },
   nl: {
+    fillOnlyMove: "📍 Alleen verplaatsen (blijft leeg)",
+    convertToBag: "Zakje (bv. vacuüm, met NFC-tag)",
     vacuumAsk: "Heb je een vacuümapparaat?",
     vacuumYes: "Ja",
     vacuumNo: "Nee",

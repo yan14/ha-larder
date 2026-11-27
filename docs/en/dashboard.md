@@ -54,6 +54,7 @@ The dashboard is visible to all users; only **administrators** can add container
 **☑** on the **Larder** page or on the recipe page, or a long press on a tile, switches to selection: tap containers to select them, **All** selects everything shown. The bar at the bottom then offers
 
 - **Fill (n)** (administrators): fills all selected *empty* containers at once with the same contents, vacuum, filled-on date and best-before date, for example after cooking a big batch or after shopping. Quantity counts per container. With the estimate switched on, each container gets its own estimate.
+- **📍 Move** (administrators, since 6.9.1): sets area and compartment of all selected entries – empty containers stay empty, contents and date stay. A single empty container also goes through **📍 Only move (stays empty)** in the fill dialog.
 - **✨ Recipe ideas**: asks the AI for recipes that use exactly the selected *filled* containers, whatever their best-before date (expired ones are still left out).
 - **🗑 Empty (n)** (administrators): empties the selected filled containers after asking **Eaten** or **Thrown away** (for the history).
 - **🖨 Labels**: an [A4 label sheet](scanning.md#label-sheet) with the QR codes of the selected containers.

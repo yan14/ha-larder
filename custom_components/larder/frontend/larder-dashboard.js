@@ -360,6 +360,8 @@ export class LarderDashboard extends HTMLElement {
     this._classic.addEventListener("larder-transfer", (ev) => this.openTransferDialog(ev.detail.deviceId));
     this._classic.addEventListener("larder-move", (ev) => this.openMoveDialog(ev.detail.deviceId));
     this._classic.addEventListener("larder-open-pack", (ev) => this.openOpenDialog(ev.detail.deviceId));
+    // 6.9.1 (#240): "Only move (keep empty)" in the fill dialog
+    this._classic.addEventListener("larder-move-places", (ev) => this.openMovePlaces(ev.detail.deviceIds || []));
     this._form.addEventListener("submit", (ev) => {
       ev.preventDefault();
       if (this._submit) this._submit();
@@ -1473,9 +1475,86 @@ export class LarderDashboard extends HTMLElement {
       const filled = chosen.filter((r) => r.content !== "").length;
       button("empty-selected", `🗑 ${t.selectEmpty(filled)}`, () => this.openEmptyDialog([...this._selected]), { disabled: !filled });
     }
+    if (isAdmin(this._hass)) {
+      // 6.9.1 (#240): move several entries – empty or filled – to another area and compartment
+      button("move-selected", `📍 ${t.moveSelected}`, () => this.openMovePlaces([...this._selected]), { disabled: !chosen.length });
+    }
     button("labels-selected", `🖨 ${t.selectLabels}`, () => this.openLabelDialog([...this._selected]), { disabled: !chosen.length });
     button("select-done", t.selectDone, () => this.stopSelecting(), { primary: true });
     return bar;
+  }
+
+  /** 6.9.1 (#240): area and compartment for several entries at once, without filling or emptying them. */
+  openMovePlaces(ids) {
+    const hass = this._hass;
+    const t = texts(hass);
+    if (!isAdmin(hass) || !ids.length) return;
+    const rows = this._rows().filter((r) => ids.includes(r.id));
+    if (!rows.length) return;
+    const area = el("select");
+    area.dataset.f = "move-area";
+    for (const a of [{ id: "", name: t.noArea }, ...listAreas(hass, null)]) {
+      const o = el("option", "", a.name);
+      o.value = a.id;
+      area.append(o);
+    }
+    const sameArea = rows.every((r) => (r.areaId || "") === (rows[0].areaId || ""));
+    area.value = sameArea ? rows[0].areaId || "" : "";
+    const compartment = el("input");
+    compartment.type = "text";
+    compartment.maxLength = 60;
+    compartment.dataset.f = "move-compartment";
+    compartment.placeholder = t.moveCompartmentHint;
+    const refresh = attachCompartmentChips(compartment, () => knownCompartments(hass, this._classic._devices, area.value), () => {});
+    area.addEventListener("change", refresh);
+    const field = (label, control) => {
+      const wrap = el("label", "", label);
+      wrap.append(control);
+      return wrap;
+    };
+    const error = el("div", "error");
+    error.setAttribute("role", "alert");
+    const names = rows.map((r) => (r.content ? `${r.content} (${r.name})` : `${t.empty} (${r.name})`));
+    const cancel = el("button", "cancel", t.cancel);
+    cancel.type = "button";
+    cancel.addEventListener("click", () => this._closeDialog());
+    const submit = el("button", "submit", t.moveSave);
+    submit.type = "submit";
+    submit.dataset.role = "move-save";
+    const buttons = el("div", "buttons");
+    buttons.append(cancel, submit);
+    this._form.replaceChildren(
+      el("h2", "", t.moveTitle(rows.length)),
+      el("p", "hint", names.join(", ")),
+      field(t.moveArea, area),
+      field(t.moveCompartment, compartment),
+      el("p", "hint", t.moveHint),
+      error,
+      buttons,
+    );
+    this._submit = async () => {
+      submit.disabled = true;
+      const comp = compartment.value.trim();
+      try {
+        for (const row of rows) {
+          if ((row.areaId || "") !== area.value) {
+            await hass.callWS({ type: "config/device_registry/update", device_id: row.id, area_id: area.value || null });
+          }
+          const compId = row.dev && row.dev.entities && row.dev.entities.compartment;
+          if (compId && (row.compartment || "") !== comp) {
+            await hass.callService("text", "set_value", { entity_id: compId, value: comp });
+          }
+        }
+        if (comp) rememberCompartment(area.value, comp);
+        this._closeDialog();
+        this.showNotice(t.moveDone(rows.length));
+        if (this._selecting) this.stopSelecting();
+      } catch (err) {
+        error.textContent = (err && err.message) || String(err);
+        submit.disabled = false;
+      }
+    };
+    this._overlay.hidden = false;
   }
 
   _select(options, value, onChange, label) {

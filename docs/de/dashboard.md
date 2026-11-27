@@ -54,6 +54,7 @@ Das Dashboard ist für alle Nutzer sichtbar; nur **Administratoren** können Dos
 **☑** auf der Seite **Vorrat** oder der Rezeptseite, oder langes Drücken auf eine Kachel, schaltet in die Auswahl: Dosen antippen wählt sie aus, **Alle** wählt alles Angezeigte. Die Leiste unten bietet dann
 
 - **Befüllen (n)** (Administratoren): befüllt alle gewählten *leeren* Dosen auf einmal mit demselben Inhalt, Vakuum, Befüllt am und MHD, z. B. nach dem Vorkochen oder dem Einkauf. Die Menge gilt pro Dose. Ist die Schätzung aktiv, bekommt jede Dose ihre eigene.
+- **📍 Umräumen** (Administratoren, seit 6.9.1): setzt Bereich und Fach aller gewählten Einträge – leere Dosen bleiben leer, Inhalt und MHD bleiben. Eine einzelne leere Dose geht auch über **📍 Nur umräumen (bleibt leer)** im Befüll-Dialog.
 - **✨ Rezeptideen**: fragt die KI nach Rezepten mit genau den gewählten *befüllten* Dosen, egal wann sie ablaufen (abgelaufene bleiben trotzdem draußen).
 - **🗑 Leeren (n)** (Administratoren): leert die gewählten gefüllten Dosen, nachdem es **Gegessen** oder **Weggeworfen** gefragt hat (für den Verlauf).
 - **🖨 Etiketten**: ein [A4-Etikettenbogen](scanning.md#etikettenbogen) mit den QR-Codes der gewählten Dosen.

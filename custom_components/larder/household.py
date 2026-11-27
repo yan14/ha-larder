@@ -24,7 +24,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import area_registry as ar, device_registry as dr, label_registry as lr
 
 from . import shelf_life
-from .const import CONF_KIND, DOMAIN, PACK_KINDS, larder_id
+from .const import CONF_KIND, DOMAIN, KIND_BAG, KIND_PACK, PACK_KINDS, larder_id
 from .devices import entry_of
 from .entity import kind_of
 
@@ -251,19 +251,35 @@ def ws_area_scopes_auto(hass: HomeAssistant, connection: websocket_api.ActiveCon
 
 
 @websocket_api.websocket_command(
-    {vol.Required("type"): f"{DOMAIN}/convert_kind", vol.Required("device_id"): str, vol.Required("kind"): vol.In(PACK_KINDS)}
+    {
+        vol.Required("type"): f"{DOMAIN}/convert_kind",
+        vol.Required("device_id"): str,
+        vol.Required("kind"): vol.In((*PACK_KINDS, KIND_BAG)),
+    }
 )
 @websocket_api.async_response
 async def ws_convert_kind(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    """Turn a pack into a household item or a medicine (or back); the entry is reloaded with the other kind."""
+    """Turn a pack into a household item or a medicine (or back); the entry is reloaded with the other kind.
+
+    6.9.1 (#239): a food pack can also become a bag (e.g. vacuum-packed meat from the butcher) – then it can get
+    an NFC tag. It is renamed to the next free bag name.
+    """
     device = dr.async_get(hass).async_get(msg["device_id"])
     cc = larder_id(device)
     entry = entry_of(hass, cc)
-    if entry is None or kind_of(entry) not in PACK_KINDS:
+    if entry is None or kind_of(entry) not in PACK_KINDS or (msg["kind"] == KIND_BAG and kind_of(entry) != KIND_PACK):
         connection.send_error(msg["id"], "not_found", "not a pack, household item or medicine")
         return
     if kind_of(entry) != msg["kind"]:
-        hass.config_entries.async_update_entry(entry, data={**entry.data, CONF_KIND: msg["kind"]})
+        update: dict[str, Any] = {"data": {**entry.data, CONF_KIND: msg["kind"]}}
+        if msg["kind"] == KIND_BAG:
+            from .disposable import next_names  # noqa: PLC0415 - avoids an import cycle
+
+            name = next_names(hass, KIND_BAG, 1)[0]
+            update["title"] = name
+            if device is not None and not device.name_by_user:
+                dr.async_get(hass).async_update_device(device.id, name=name)
+        hass.config_entries.async_update_entry(entry, **update)
         await hass.config_entries.async_reload(entry.entry_id)
     connection.send_result(msg["id"], {"kind": msg["kind"]})
 

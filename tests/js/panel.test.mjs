@@ -2179,7 +2179,7 @@ test("Card of a household item / medicine: optional date, pieces and packs, peri
   await new Promise((r) => setTimeout(r, 0));
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/convert_kind`), { type: `${D}/convert_kind`, device_id: "d1", kind: "medicine" });
   assert.equal(convert.value, "");
-  assert.deepEqual([...pack.querySelector("select.convert").options].map((o) => o.value), ["", "household", "medicine"]);
+  assert.deepEqual([...pack.querySelector("select.convert").options].map((o) => o.value), ["", "household", "medicine", "bag"]); // 6.9.1 (#239)
 });
 
 test("Card: own shopping list per product (4.1), only with content and to-do lists", async () => {

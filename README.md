@@ -33,7 +33,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 ## What's new
 
-> **6.9:** **store sections that fit your store** – *Pasta & rice*, *Canned*, *Baking*, *Spices*, *International food*, *Sweets & snacks* and your **own sections**; the Shopping page refreshes itself, recipes with a clear AI box and labelled buttons, and many small wording fixes.
+> **6.9:** **store sections that fit your store** – *Pasta & rice*, *Canned*, *Baking*, *Spices*, *International food*, *Sweets & snacks* and your **own sections**; the Shopping page refreshes itself, recipes with a clear AI box and labelled buttons, and many small wording fixes. **6.9.1:** bags with an NFC tag when putting away by hand, and empty containers can be moved without filling them.
 >
 > **6.8:** **calmer start page and easier filling** – the start page keeps the two most urgent boxes open and folds the rest, *Eaten* / *Freeze* right on the tiles, repair hints with links, a short explanation and the shopping list in the first steps, the vacuum question once, and putting away by name for goods without a barcode.
 >

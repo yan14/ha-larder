@@ -28,7 +28,7 @@ const TEXT = {
     choiceReceipt: "Kassenbon oder Rechnung",
     choiceReceiptHint: "Foto vom Kassenbon oder PDF-Rechnung vom Online-Einkauf.",
     choiceHand: "Von Hand",
-    choiceHandHint: "Eintippen, z. B. Obst oder Brot vom Bäcker.",
+    choiceHandHint: "Eintippen – Packung, Beutel (z. B. vakuumiert vom Metzger, mit NFC-Tag), Haushalt oder Medikament.",
     receiptTitle: "🧾 Kassenbon oder Rechnung lesen",
     receiptIntro: "Larder liest Produkte, Anzahl und Preise. Danach prüfst du die Liste und trägst das MHD nach.",
     receiptPhoto: "📷 Foto vom Kassenbon",
@@ -73,7 +73,7 @@ const TEXT = {
     choiceReceipt: "Receipt or invoice",
     choiceReceiptHint: "Photo of the receipt or PDF invoice from an online order.",
     choiceHand: "By hand",
-    choiceHandHint: "Type it in, e.g. fruit or bread from the bakery.",
+    choiceHandHint: "Type it in – pack, bag (e.g. vacuum-packed from the butcher, with an NFC tag), household or medicine.",
     receiptTitle: "🧾 Read a receipt or invoice",
     receiptIntro: "Larder reads products, counts and prices. Then you check the list and add the best-before dates.",
     receiptPhoto: "📷 Photo of the receipt",
@@ -118,7 +118,7 @@ const TEXT = {
     choiceReceipt: "Ticket ou facture",
     choiceReceiptHint: "Photo du ticket ou facture PDF d'une commande en ligne.",
     choiceHand: "À la main",
-    choiceHandHint: "Saisir, p. ex. des fruits ou du pain de la boulangerie.",
+    choiceHandHint: "Saisir – paquet, sachet (p. ex. sous vide du boucher, avec tag NFC), entretien ou médicament.",
     receiptTitle: "🧾 Lire un ticket ou une facture",
     receiptIntro: "Larder lit les produits, quantités et prix. Ensuite tu vérifies la liste et ajoutes les dates.",
     receiptPhoto: "📷 Photo du ticket",
@@ -163,7 +163,7 @@ const TEXT = {
     choiceReceipt: "Kassabon of factuur",
     choiceReceiptHint: "Foto van de kassabon of pdf-factuur van een online bestelling.",
     choiceHand: "Met de hand",
-    choiceHandHint: "Intypen, bv. fruit of brood van de bakker.",
+    choiceHandHint: "Intypen – verpakking, zakje (bv. vacuüm van de slager, met NFC-tag), huishouden of medicijn.",
     receiptTitle: "🧾 Kassabon of factuur lezen",
     receiptIntro: "Larder leest producten, aantallen en prijzen. Daarna controleer je de lijst en vul je de data aan.",
     receiptPhoto: "📷 Foto van de kassabon",
@@ -269,7 +269,8 @@ export function installPutAway(Dashboard, { el, DOMAIN, listAreas }) {
     if (this.canReadReceipt && this.canReadReceipt()) {
       choices.append(choice("putaway-receipt", "🧾", t.choiceReceipt, t.choiceReceiptHint, () => this.openReceipt()));
     }
-    choices.append(choice("putaway-hand", "✍️", t.choiceHand, t.choiceHandHint, () => this.openItemsDialog("pack")));
+    // 6.9.1 (#239): by hand first asks what it is – a vacuum-packed bag can get its NFC tag right after
+    choices.append(choice("putaway-hand", "✍️", t.choiceHand, t.choiceHandHint, () => this.openAddMenu()));
     const recent = button("link", t.menu, () => this.openPutAwayList());
     recent.dataset.role = "putaway-recent";
     const actions = el("div", "buttons");

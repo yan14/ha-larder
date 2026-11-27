@@ -4622,3 +4622,47 @@ test("6.9 (#224, #227, #230, #231): shopping ⋯ menu, AI box, reason for step 1
   assert.equal(TEXTS.de.startAreasFound(8), "8 Bereiche gefunden – fertig, ändern geht jederzeit.");
   assert.equal(TEXTS.de.aiBoxTitle, "✨ KI-Ideen aus deinen Resten");
 });
+
+test("6.9.1 (#240): move entries without filling – selection and the fill dialog", async () => {
+  const hass = makeHass(DOSES);
+  const calls = [];
+  hass.callWS = (base => async (msg) => {
+    if (msg.type === "config/device_registry/update") {
+      calls.push(msg);
+      return {};
+    }
+    return base(msg);
+  })(hass.callWS);
+  const el = mount(hass);
+  await flush();
+  await go(el, "containers");
+  el.startSelecting();
+  el._selected = new Set(["d5"]);
+  el._sig = "";
+  el._update();
+  assert.ok($(el, '[data-role="move-selected"]'));
+  el.openMovePlaces(["d5"]);
+  const form = el._form;
+  assert.equal(form.querySelector("h2").textContent, "Umräumen");
+  form.querySelector('[data-f="move-area"]').value = "kitchen";
+  await el._submit();
+  assert.deepEqual(calls, [{ type: "config/device_registry/update", device_id: "d5", area_id: "kitchen" }]);
+  // the fill dialog of an empty container offers "only move"
+  el._classic.openFillDialog("d5");
+  const only = el._classic.shadowRoot.querySelector("form.fillform button.onlymove");
+  assert.equal(only.hidden, false);
+  let moved = null;
+  el.openMovePlaces = (ids) => (moved = ids);
+  only.click();
+  assert.deepEqual(moved, ["d5"]);
+});
+
+test("6.9.1 (#239): by hand opens the kinds, so a bag can get its NFC tag", async () => {
+  const hass = makeHass(DOSES);
+  const el = mount(hass);
+  await flush();
+  el.openPutAwayChoice();
+  $(el, '[data-role="putaway-hand"]').click();
+  assert.ok($(el, '[data-role="add-bag"]'));
+  assert.ok($(el, '[data-role="add-pack"]'));
+});
