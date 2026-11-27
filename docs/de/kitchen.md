@@ -200,6 +200,12 @@ Seit 4.11:
 - **€ / MHD** neben einem abgehakten Eintrag: **Preis** (kommt in den Preisverlauf) und **MHD** eintragen. Ist die Packung zu einem Eintrag mit weiteren Packungen dazugekommen, bekommt sie einen eigenen, damit die anderen ihr Datum behalten.
 - **🧾 Kassenbon** liest stattdessen einen Kassenbon (siehe [Packungen](containers.md#beutel-und-packungen)).
 
+### Online-Bestellung
+
+Seit 6.6 hilft **Einkaufen → 📦 Bestellung vorbereiten** bei einer Online-Bestellung (REWE, Lieferdienste): **Liefertag** eintragen, Larder listet, was bis zur übernächsten Lieferung ausgeht (nach Verbrauch, Liefertag + Vorlauf aus den Einstellungen) und was unter dem Mindestbestand ist, mit Anzahl – *8× Milch · reicht noch 2 Tage*. **📋 Kopieren** legt die Liste in die Zwischenablage für die App des Ladens, **🛒 Auf die Einkaufsliste** setzt sie dort drauf. **Liefertag merken** behält den Tag: Der Blueprint **Larder – delivery day** schickt dann morgens eine Push, deren Knopf **📥 Einräumen** öffnet – danach die Liste für Preis und MHD. Ist der Tag vorbei, wird er vergessen. Es wird weder E-Mail noch ein Konto beim Laden gelesen. Dienst `larder.get_delivery`.
+
+[![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fdelivery_day.yaml)
+
 ### Wiederkehrende Einkäufe
 
 Was du regelmäßig kaufst, aber nicht zählst, kommt von selbst auf die Liste: **🔁 Wiederkehrend** auf der Einkaufen-Seite. Name, **Wochentage** (z. B. *Fr* für die Wasserkiste) oder **alle n Tage** (Milch alle 3 Tage) und optional eine Liste. Larder trägt es morgens um 8 Uhr ein, nie doppelt, solange noch einer offen ist.

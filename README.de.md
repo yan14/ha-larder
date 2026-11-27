@@ -33,6 +33,8 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 
 ## Was ist neu?
 
+> **6.6:** **Online-Einkauf** – *Bestellung vorbereiten* listet, was bis zur nächsten Lieferung ausgeht (kopieren oder auf die Liste), und am **Liefertag** öffnet eine Push das Einräumen.
+>
 > **6.5:** **weniger wegwerfen** – **🧊 Einfrieren** statt wegwerfen (in der Push und im Dashboard), eine wöchentliche **Retten-Liste** mit *In den Wochenplan* und was ihr am meisten wegwerft, mit je einem Tipp.
 >
 > **6.4:** **Kochen mit dem Vorrat** – *Gekocht* an einem Rezept nimmt die Zutaten aus dem Vorrat, Reste kommen gleich in eine leere Dose, und *Passt zum Vorrat* zeigt, was du ohne KI kochen kannst.

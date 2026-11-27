@@ -131,6 +131,7 @@ class Stock:
         # 6.1 (#168): product → days between putting away and the best-before date, last BUY_DAYS purchases
         self.buy_days: dict[str, list[int]] = {}
         self.table_rows: dict[str, dict[str, Any]] = {}  # 6.3 (#174): product → {"name", "entry"} chosen by you
+        self.delivery: str | None = None  # 6.6 (#176/#177): delivery day of the next online order (ISO date)
         self._unsub = None
         self._unsub_daily = None
 
@@ -164,6 +165,7 @@ class Stock:
         }
         self.put_away_log = [r for r in data.get("put_away_log") or [] if isinstance(r, dict) and r.get("device_id")]
         self.table_rows = {str(k): v for k, v in (data.get("table_rows") or {}).items() if isinstance(v, dict) and v.get("entry")}
+        self.delivery = str(data["delivery"]) if data.get("delivery") else None
         self.buy_days = {
             str(k): [int(d) for d in v if isinstance(d, int | float)]
             for k, v in (data.get("buy_days") or {}).items()
@@ -197,7 +199,19 @@ class Stock:
             "put_away_log": self.put_away_log,
             "buy_days": self.buy_days,
             "table_rows": self.table_rows,
+            "delivery": self.delivery,
         }
+
+    def set_delivery(self, day: date | None) -> None:
+        """6.6: the delivery day of the next online order (None = none)."""
+        self.delivery = day.isoformat() if day else None
+        self._save()
+
+    def delivery_day(self) -> date | None:
+        try:
+            return date.fromisoformat(self.delivery) if self.delivery else None
+        except ValueError:
+            return None
 
     # ----- 6.3: the row of the shelf-life table per product (#173, #174) -----
 

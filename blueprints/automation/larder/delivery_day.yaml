@@ -1,0 +1,63 @@
+blueprint:
+  name: Larder – delivery day
+  description: >
+    On the delivery day of your next online order (enter it in the dashboard: Shopping → 📦 Prepare the order)
+    a push in the morning – its button opens put away, and afterwards the list to add price and date.
+    Nothing is sent on other days.
+    Liefertag: am Tag der Lieferung eine Push, der Knopf öffnet das Einräumen.
+  domain: automation
+  source_url: https://github.com/yan14/ha-larder/blob/main/blueprints/automation/larder/delivery_day.yaml
+  input:
+    notify_action:
+      name: Push notification
+      description: >
+        Notify action(s), for example notify.mobile_app_your_iphone or a notify group.
+        Several are separated by commas.
+      selector:
+        text:
+    send_time:
+      name: Time
+      default: "08:00:00"
+      selector:
+        time:
+    title:
+      name: Title
+      default: ""
+      description: Empty means the title in the language of Home Assistant.
+      selector:
+        text:
+
+mode: single
+max_exceeded: silent
+
+variables:
+  notify_action: !input notify_action
+  title: !input title
+  push_targets: "{{ (notify_action or '') | string | lower | regex_findall('[a-z0-9_]+[.][a-z0-9_]+') }}"
+
+triggers:
+  - trigger: time
+    at: !input send_time
+
+conditions: []
+
+actions:
+  - action: larder.get_delivery
+    response_variable: result
+  - condition: template
+    value_template: "{{ result.due }}"
+  - repeat:
+      for_each: "{{ push_targets }}"
+      sequence:
+        - action: "{{ repeat.item }}"
+          data:
+            title: "{{ title if title else result.title }}"
+            message: "{{ result.message }}"
+            data:
+              url: "{{ result.url }}"
+              clickAction: "{{ result.url }}"
+              actions:
+                - action: URI
+                  title: "{{ result.button }}"
+                  uri: "{{ result.url }}"
+          continue_on_error: true

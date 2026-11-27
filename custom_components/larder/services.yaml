@@ -145,6 +145,7 @@ get_statistics:
 
 get_weekly_review:
 get_rescue_list:
+get_delivery:
 get_monthly_report:
   fields:
     month:

@@ -438,6 +438,10 @@
     "get_rescue_list": {
       "name": "Retten-Liste abrufen",
       "description": "Liefert, was diese Woche weg muss und noch nicht eingeplant ist (läuft in 7 Tagen ab, Eingefrorenes kurz vor Ende der besten Qualität), mit kurzem Text für eine Push und dem Link zum Wochenvorschlag."
+    },
+    "get_delivery": {
+      "name": "Lieferung abrufen",
+      "description": "Ob die Lieferung der nächsten Online-Bestellung (Tag im Dashboard eingetragen) heute ist, mit Titel, Text und Link zum Einräumen. Ein vergangener Tag wird vergessen."
     }
   },
   "selector": {

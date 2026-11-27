@@ -563,6 +563,12 @@ export class LarderDashboard extends HTMLElement {
     const problem = params.get("problem");
     const place = params.get("place");
     const assignTag = params.get("assign_tag");
+    if (params.get("putaway") === "1") {
+      // 6.6 (#177): the delivery day push – put away right away
+      window.history.replaceState(null, "", window.location.pathname);
+      if (this.openPutAway) this.openPutAway();
+      return;
+    }
     if (!view && !open && !add && !cc && !problem && !place && !assignTag && !params.has("recipes")) return;
     window.history.replaceState(null, "", window.location.pathname);
     if (params.has("recipes")) this.setView("recipes");

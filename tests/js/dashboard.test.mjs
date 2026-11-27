@@ -4310,3 +4310,31 @@ test("6.5: rescue this week – freeze what keeps, plan the rest; stats show wha
   assert.ok(week);
   delete el.openWeekSuggest;
 });
+
+// ---------- Block 47 (6.6): online shopping ----------
+
+test("6.6: prepare the order – list, copy, onto the shopping list, remember the delivery day", async () => {
+  const hass = makeHass(DOSES);
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/order_prepare`) return { date: msg.date || "2026-11-30", saved: null, items: [{ name: "Milch", count: 2, need: 8, reason: "usage", lasts_days: 2 }], text: "8× Milch" };
+    if (msg.type === `${D}/order_to_list` || msg.type === `${D}/delivery_set`) {
+      hass.wsCalls.push(msg);
+      return msg.type === `${D}/delivery_set` ? { date: msg.date } : { added: ["Milch"] };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await el.openOrder();
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelector('[data-f="order-date"]').value, "2026-11-30");
+  assert.match(form.querySelector(".orderlist").textContent, /8× Milch · reicht noch 2 Tage/);
+  form.querySelector('[data-role="order-remember"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/delivery_set`, date: "2026-11-30" });
+  form.querySelector('[data-role="order-list"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/order_to_list`, names: ["Milch"] });
+  assert.match(form.textContent, /1 auf die Einkaufsliste gesetzt/);
+});

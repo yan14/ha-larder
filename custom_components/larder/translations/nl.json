@@ -438,6 +438,10 @@
     "get_rescue_list": {
       "name": "Reddingslijst ophalen",
       "description": "Geeft wat deze week op moet en nog niet gepland is (verloopt binnen 7 dagen, diepvries vlak voor het einde van de beste kwaliteit), met een korte tekst voor een melding en de link naar het weekvoorstel."
+    },
+    "get_delivery": {
+      "name": "Levering ophalen",
+      "description": "Of de levering van de volgende online bestelling (dag ingevuld in het dashboard) vandaag is, met titel, tekst en link om op te bergen. Een voorbije dag wordt vergeten."
     }
   },
   "selector": {

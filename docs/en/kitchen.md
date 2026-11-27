@@ -200,6 +200,12 @@ Since 4.11:
 - **€ / date** next to a ticked-off item: enter the **price** (goes into the price history) and the **best-before date**. If the pack joined an entry with more packs, it gets an entry of its own, so the others keep their date.
 - **🧾 Receipt** reads a receipt instead (see [Packs](containers.md#bags-and-packs)).
 
+### Online order
+
+Since 6.6 **Shopping → 📦 Prepare the order** helps with an online order (REWE, delivery services): enter the **delivery day** and Larder lists what runs out before the delivery after that one (by consumption, delivery day + the lead time of the settings) and what is below its minimum stock, with how many – *8× milk · lasts 2 more days*. **📋 Copy** puts the list on the clipboard for the shop's app, **🛒 Onto the shopping list** puts it there. **Remember the delivery day** keeps the day: the blueprint **Larder – delivery day** then sends a push that morning whose button opens **📥 Put away** – afterwards the list to add price and date. The day is forgotten once it is over. Nothing reads your e-mail or shop account. Service `larder.get_delivery`.
+
+[![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fdelivery_day.yaml)
+
 ### Recurring purchases
 
 Things you buy regularly but do not count go onto the list on their own: **🔁 Recurring** on the shopping page. Give a name, the **weekdays** (e.g. *Fri* for a crate of water) or **every n days** (milk every 3 days) and optionally a list. Larder adds them in the morning at 8, never twice while one is still open.

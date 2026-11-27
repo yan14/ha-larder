@@ -70,6 +70,19 @@ const TEXT = {
     needName: "Bitte einen Namen eingeben.",
     needWhen: "Bitte Wochentage oder „alle … Tage“ wählen.",
     when: (e, days) => (e.weekdays && e.weekdays.length ? e.weekdays.map((d) => days[d]).join(", ") : `alle ${e.every_days} Tage`),
+    order: "📦 Bestellung vorbereiten",
+    orderTitle: "📦 Bestellung vorbereiten",
+    orderIntro: "Was bis zur übernächsten Lieferung ausgeht (nach Verbrauch) oder unter dem Mindestbestand ist. Kopieren und in die App des Ladens übertragen – oder auf die Einkaufsliste.",
+    orderDate: "Liefertag",
+    orderSaveDate: "Liefertag merken",
+    orderSaved: (d) => (d ? `Liefertag gemerkt – an dem Tag kommt eine Erinnerung zum Einräumen (Blueprint „delivery day“).` : "Kein Liefertag gemerkt."),
+    orderNone: "Bis dahin geht nichts aus.",
+    orderLine: (r) => `${r.need}× ${r.name}`,
+    orderWhy: (r) => (r.reason === "min" ? `noch ${r.count}, Mindestbestand` : r.lasts_days === 0 ? "schon leer" : `reicht noch ${r.lasts_days} ${r.lasts_days === 1 ? "Tag" : "Tage"}`),
+    orderCopy: "📋 Kopieren",
+    orderCopied: "Liste kopiert.",
+    orderList: "🛒 Auf die Einkaufsliste",
+    orderListed: (n) => `${n} auf die Einkaufsliste gesetzt.`,
   },
   en: {
     title: "Shopping",
@@ -123,6 +136,19 @@ const TEXT = {
     needName: "Please enter a name.",
     needWhen: "Please choose weekdays or “every … days”.",
     when: (e, days) => (e.weekdays && e.weekdays.length ? e.weekdays.map((d) => days[d]).join(", ") : `every ${e.every_days} days`),
+    order: "📦 Prepare the order",
+    orderTitle: "📦 Prepare the order",
+    orderIntro: "What runs out before the delivery after this one (by consumption) or is below its minimum stock. Copy it into the shop's app – or put it onto the shopping list.",
+    orderDate: "Delivery day",
+    orderSaveDate: "Remember the delivery day",
+    orderSaved: (d) => (d ? "Delivery day remembered – on that day a reminder to put away comes (blueprint “delivery day”)." : "No delivery day remembered."),
+    orderNone: "Nothing runs out by then.",
+    orderLine: (r) => `${r.need}× ${r.name}`,
+    orderWhy: (r) => (r.reason === "min" ? `${r.count} left, minimum stock` : r.lasts_days === 0 ? "already gone" : `lasts ${r.lasts_days} more ${r.lasts_days === 1 ? "day" : "days"}`),
+    orderCopy: "📋 Copy",
+    orderCopied: "List copied.",
+    orderList: "🛒 Onto the shopping list",
+    orderListed: (n) => `${n} put onto the shopping list.`,
   },
   fr: {
     title: "Courses",
@@ -176,6 +202,19 @@ const TEXT = {
     needName: "Veuillez saisir un nom.",
     needWhen: "Choisissez des jours de la semaine ou « tous les … jours ».",
     when: (e, days) => (e.weekdays && e.weekdays.length ? e.weekdays.map((d) => days[d]).join(", ") : `tous les ${e.every_days} jours`),
+    order: "📦 Préparer la commande",
+    orderTitle: "📦 Préparer la commande",
+    orderIntro: "Ce qui sera épuisé avant la livraison suivante (selon la consommation) ou sous le stock minimum. Copiez-le dans l'appli du magasin – ou sur la liste de courses.",
+    orderDate: "Jour de livraison",
+    orderSaveDate: "Retenir le jour de livraison",
+    orderSaved: (d) => (d ? "Jour de livraison retenu – ce jour-là un rappel pour ranger arrive (blueprint « delivery day »)." : "Aucun jour de livraison retenu."),
+    orderNone: "Rien ne sera épuisé d'ici là.",
+    orderLine: (r) => `${r.need}× ${r.name}`,
+    orderWhy: (r) => (r.reason === "min" ? `encore ${r.count}, stock minimum` : r.lasts_days === 0 ? "déjà épuisé" : `tient encore ${r.lasts_days} ${r.lasts_days === 1 ? "jour" : "jours"}`),
+    orderCopy: "📋 Copier",
+    orderCopied: "Liste copiée.",
+    orderList: "🛒 Sur la liste de courses",
+    orderListed: (n) => `${n} mis sur la liste de courses.`,
   },
   nl: {
     title: "Boodschappen",
@@ -229,6 +268,19 @@ const TEXT = {
     needName: "Vul een naam in.",
     needWhen: "Kies weekdagen of „elke … dagen”.",
     when: (e, days) => (e.weekdays && e.weekdays.length ? e.weekdays.map((d) => days[d]).join(", ") : `elke ${e.every_days} dagen`),
+    order: "📦 Bestelling voorbereiden",
+    orderTitle: "📦 Bestelling voorbereiden",
+    orderIntro: "Wat vóór de volgende levering op raakt (naar verbruik) of onder de minimumvoorraad is. Kopieer het naar de app van de winkel – of zet het op de boodschappenlijst.",
+    orderDate: "Leverdag",
+    orderSaveDate: "Leverdag onthouden",
+    orderSaved: (d) => (d ? "Leverdag onthouden – op die dag komt een herinnering om op te bergen (blueprint „delivery day”)." : "Geen leverdag onthouden."),
+    orderNone: "Tot dan raakt niets op.",
+    orderLine: (r) => `${r.need}× ${r.name}`,
+    orderWhy: (r) => (r.reason === "min" ? `nog ${r.count}, minimumvoorraad` : r.lasts_days === 0 ? "al op" : `gaat nog ${r.lasts_days} ${r.lasts_days === 1 ? "dag" : "dagen"} mee`),
+    orderCopy: "📋 Kopiëren",
+    orderCopied: "Lijst gekopieerd.",
+    orderList: "🛒 Op de boodschappenlijst",
+    orderListed: (n) => `${n} op de boodschappenlijst gezet.`,
   },
 };
 
@@ -442,6 +494,65 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
     return box;
   };
 
+  /** 6.6 (#176, #177): what runs out before the next delivery – copy it, or onto the shopping list; the delivery day. */
+  proto.openOrder = async function openOrder(day = null) {
+    const hass = this._hass;
+    const t = shoppingTexts(hass);
+    let data = { items: [], text: "", date: null, saved: null };
+    try {
+      data = await hass.callWS({ type: `${DOMAIN}/order_prepare`, ...(day ? { date: day } : {}) });
+    } catch {
+      /* empty */
+    }
+    const date = el("input");
+    date.type = "date";
+    date.dataset.f = "order-date";
+    date.value = data.date || "";
+    date.setAttribute("aria-label", t.orderDate);
+    date.addEventListener("change", () => this.openOrder(date.value || null));
+    const status = el("p", "hint");
+    status.setAttribute("role", "status");
+    const remember = button("link", t.orderSaveDate, async () => {
+      const res = await hass.callWS({ type: `${DOMAIN}/delivery_set`, date: date.value || null });
+      status.textContent = t.orderSaved(res.date);
+    });
+    remember.dataset.role = "order-remember";
+    const list = el("ul", "orderlist");
+    for (const r of data.items || []) {
+      const li = el("li", "", t.orderLine(r));
+      li.append(el("span", "sub", ` · ${t.orderWhy(r)}`));
+      list.append(li);
+    }
+    const copy = button("", t.orderCopy, async () => {
+      try {
+        await navigator.clipboard.writeText(data.text);
+        status.textContent = t.orderCopied;
+      } catch {
+        status.textContent = data.text;
+      }
+    });
+    copy.dataset.role = "order-copy";
+    const toList = button("primary", t.orderList, async () => {
+      toList.disabled = true;
+      try {
+        const res = await hass.callWS({ type: `${DOMAIN}/order_to_list`, names: (data.items || []).map((r) => r.name) });
+        status.textContent = t.orderListed((res.added || []).length);
+      } catch (err) {
+        status.textContent = (err && err.message) || t.noList;
+        toList.disabled = false;
+      }
+    });
+    toList.dataset.role = "order-list";
+    const has = (data.items || []).length > 0;
+    const actions = el("div", "buttons");
+    actions.append(button("cancel", t.close, () => this._closeDialog()), ...(has ? [copy, toList] : []));
+    const dateRow = el("div", "putfilters");
+    dateRow.append(el("span", "", t.orderDate), date, remember);
+    this._form.replaceChildren(el("h2", "", t.orderTitle), el("p", "hint", t.orderIntro), dateRow, has ? list : el("p", "hint", t.orderNone), status, actions);
+    this._submit = null;
+    this._overlay.hidden = false;
+  };
+
   proto.openReceipt = function openReceipt() {
     this.openItemsDialog("pack");
     const file = this._form.querySelector('[data-role="receipt-file"]');
@@ -474,7 +585,10 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
       receipt.dataset.role = "shop-receipt";
       bar.append(receipt);
     }
-    bar.append(recurring, reload);
+    // 6.6 (#176): prepare the next online order
+    const order = button("", t.order, () => this.openOrder());
+    order.dataset.role = "shop-order";
+    bar.append(order, recurring, reload);
     frag.append(bar);
     if (!data) {
       frag.append(el("p", "hint", t.loading));

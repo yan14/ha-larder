@@ -32,6 +32,7 @@ from .labels import async_setup_labels
 from .learning import async_setup_learning_websocket
 from .nfc import async_get_nfc
 from .notify_actions import async_setup_notify_actions
+from .order import async_setup_order
 from .panel import async_setup_panel, async_teardown_panel
 from .place_suggest import async_setup_place_suggest_websocket
 from .places import async_get_places, async_setup_place_websocket
@@ -103,6 +104,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_cooking_websocket(hass)
     async_setup_freezing_websocket(hass)
     async_setup_rescue_service(hass)
+    async_setup_order(hass)
     async_setup_recipe_link_websocket(hass)
     async_setup_voucher_websocket(hass)
     async_setup_notify_actions(hass)

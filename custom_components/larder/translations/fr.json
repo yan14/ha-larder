@@ -438,6 +438,10 @@
     "get_rescue_list": {
       "name": "Obtenir la liste à sauver",
       "description": "Renvoie ce qui doit partir cette semaine et n'est pas encore planifié (périme dans 7 jours, surgelés proches de la fin de leur meilleure qualité), avec un court texte pour une notification et le lien vers la proposition de semaine."
+    },
+    "get_delivery": {
+      "name": "Obtenir la livraison",
+      "description": "Si la livraison de la prochaine commande en ligne (jour saisi dans le tableau de bord) est aujourd'hui, avec titre, texte et lien pour ranger. Un jour passé est oublié."
     }
   },
   "selector": {

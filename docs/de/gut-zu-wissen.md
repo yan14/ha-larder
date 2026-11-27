@@ -102,6 +102,7 @@ Der Umschalter oben auf der Seite **Vorrat** zeigt jeweils eine Seite. Bereiche 
 | [Tägliche Zusammenfassung](kitchen.md#tägliche-zusammenfassung) | was bald abläuft, auf Wunsch eine Push je Eintrag mit den Knöpfen **Verbraucht · Weggeworfen · +2 Tage · Auf die Liste** (und **🧊 Einfrieren** für Einfrierbares), Rezeptideen, Sprachausgabe |
 | [Wochenrückblick](kitchen.md#wochenrückblick) | letzte Woche gegessen / weggeworfen (Wert), was nächste Woche abläuft, eine Rezeptidee |
 | [Angebrochenes](kitchen.md#angebrochenes) | einmal pro Woche alles Angebrochene, das bald abläuft, mit „seit … offen“ |
+| [Liefertag](kitchen.md#online-bestellung) | am Liefertag deiner Online-Bestellung, mit **Einräumen** |
 | [Retten-Liste der Woche](kitchen.md#retten-liste-der-woche) | einmal pro Woche, was diese Woche weg muss und nicht eingeplant ist, mit **In den Wochenplan** |
 | [Monatsbericht](kitchen.md#monatsbericht) | den Vormonat im Vergleich zum Monat davor |
 | [Ablaufende Medikamente](kitchen.md#ablaufende-medikamente) | Medikamente, Haushaltsartikel mit Datum und Gutscheine an gewählten Wochentagen |

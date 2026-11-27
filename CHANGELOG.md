@@ -3,6 +3,14 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 6.6.0
+
+Block 47: online shopping – without reading e-mails.
+
+- **Prepare the order** (#176): **Shopping → 📦 Prepare the order** lists what runs out before the delivery after the chosen delivery day (by consumption, delivery day + lead time) and what is below its minimum stock, with how many (packs for household items) – **📋 Copy** for the shop's app or **🛒 Onto the shopping list**. WebSocket `larder/order_prepare`, `larder/order_to_list`, `larder/delivery_set`.
+- **Delivery day** (#177): the remembered delivery day brings a push in the morning with the new blueprint **Larder – delivery day**; its button (`/larder?putaway=1`) opens put away, and afterwards the list of 6.1. A past day is forgotten. Service `larder.get_delivery`.
+- Reading invoices from e-mail (IMAP) stays in the backlog (#178, waiting for votes).
+
 ## 6.5.0
 
 Block 49: throw away less.

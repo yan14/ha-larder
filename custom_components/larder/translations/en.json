@@ -438,6 +438,10 @@
     "get_rescue_list": {
       "name": "Get rescue list",
       "description": "Returns what has to go this week and is not planned yet (expiring within 7 days, frozen food near the end of its best quality), with a short text for a push and the link to the week suggestion."
+    },
+    "get_delivery": {
+      "name": "Get delivery",
+      "description": "Whether the delivery of the next online order (day set in the dashboard) is today, with title, text and the link to put away. A day in the past is forgotten."
     }
   },
   "selector": {
