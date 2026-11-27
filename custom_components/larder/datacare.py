@@ -16,7 +16,7 @@ from homeassistant.components import websocket_api
 from homeassistant.core import HomeAssistant
 
 from .const import DOMAIN, KIND_HOUSEHOLD, KIND_MEDICINE, KIND_PACK
-from .stock import async_get_stock, pack_entries, product_key
+from .stock import async_get_stock, pack_entries, product_key, stock_overview
 
 MAX_LISTED = 20
 MIN_TAKES = 2  # used at least this often (in the remembered takes) → a minimum stock is worth it
@@ -104,11 +104,22 @@ async def ws_data_gaps(hass: HomeAssistant, connection: websocket_api.ActiveConn
         from .learning import async_get_learning  # noqa: PLC0415
 
         counts["history"] = len(await (await async_get_learning(hass)).async_suggestions())
+        # 6.12 (#269): products that look alike – suggested as a group, confirmed by hand
+        stock = await async_get_stock(hass)
+        suggestions = stock.group_suggestions([p["name"] for p in stock_overview(hass, stock.minimums, stock)])
+    else:
+        suggestions = []
     products = by_product(gaps)
     counts["products"] = len(products)
+    counts["group_suggestions"] = len(suggestions)
     connection.send_result(
         msg["id"],
-        {"counts": counts, "gaps": {k: v[:MAX_LISTED] for k, v in gaps.items()}, "products": products[:MAX_PRODUCTS]},
+        {
+            "counts": counts,
+            "gaps": {k: v[:MAX_LISTED] for k, v in gaps.items()},
+            "products": products[:MAX_PRODUCTS],
+            "group_suggestions": suggestions,
+        },
     )
 
 

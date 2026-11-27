@@ -205,6 +205,10 @@ export const STYLE = `
   .dialog { background: var(--card-background-color, #fff); color: var(--primary-text-color); border-radius: 14px; padding: 18px;
     width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; }
   /* 6.11.2: ✕ top right, sticky while the dialog scrolls, without taking space */
+  /* 6.12 (#270/#271): search in the stock view; members indented below their group */
+  .stocksearch { width: 100%; box-sizing: border-box; font: inherit; font-size: 15px; padding: 9px 12px; margin: 0 0 10px;
+    border: 1px solid var(--divider-color); border-radius: 10px; background: var(--card-background-color, #fff); color: var(--primary-text-color); }
+  .stockitem.member { margin-left: 18px; border-left: 3px solid var(--primary-color); }
   .dialog > .dialogclose { position: sticky; top: -8px; align-self: flex-end; z-index: 2; margin: -10px -8px -42px 0; width: 32px; height: 32px;
     border-radius: 50%; border: 0; padding: 0; font: inherit; font-size: 16px; line-height: 32px; cursor: pointer; flex: 0 0 auto;
     background: var(--secondary-background-color, rgba(127, 127, 127, .15)); color: var(--secondary-text-color); }

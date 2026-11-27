@@ -64,6 +64,12 @@ const TEXT = {
     tableButton: "🧭 Art für die Haltbarkeit",
     tableSource: { own: "von dir gewählt", off: "laut Open Food Facts", name: "nach dem Namen" },
     historyShow: "Vorschläge ansehen",
+    groupSuggestTitle: "📦 Gruppen-Vorschläge",
+    groupSuggestHint: "Diese Produkte sehen zusammengehörig aus. Gruppieren fasst nichts zusammen – die Produkte bleiben getrennt, die Gruppe zeigt die Summe.",
+    groupSuggestLine: (g, members) => `${g}: ${members.join(" · ")}`,
+    groupSuggestAdd: (g) => `Zur Gruppe ${g}`,
+    groupSuggestNo: "Nein",
+    groupSuggestDone: (g) => `Gruppe ${g} angelegt.`,
     more: (n) => `… und ${n} weitere`,
   },
   en: {
@@ -110,6 +116,12 @@ const TEXT = {
     tableButton: "🧭 Kind for the shelf life",
     tableSource: { own: "chosen by you", off: "from Open Food Facts", name: "by the name" },
     historyShow: "Show suggestions",
+    groupSuggestTitle: "📦 Group suggestions",
+    groupSuggestHint: "These products look like they belong together. Grouping merges nothing – the products stay separate, the group shows the total.",
+    groupSuggestLine: (g, members) => `${g}: ${members.join(" · ")}`,
+    groupSuggestAdd: (g) => `Into group ${g}`,
+    groupSuggestNo: "No",
+    groupSuggestDone: (g) => `Group ${g} created.`,
     more: (n) => `… and ${n} more`,
   },
   fr: {
@@ -156,6 +168,11 @@ const TEXT = {
     tableButton: "🧭 Type pour la conservation",
     tableSource: { own: "choisi par vous", off: "selon Open Food Facts", name: "d'après le nom" },
     historyShow: "Voir les suggestions",
+    groupSuggestTitle: "📦 Groupes suggérés",
+    groupSuggestHint: "Ces produits semblent aller ensemble. Grouper ne fusionne rien – les produits restent séparés, le groupe montre le total.",
+    groupSuggestAdd: (g) => `Dans le groupe ${g}`,
+    groupSuggestNo: "Non",
+    groupSuggestDone: (g) => `Groupe ${g} créé.`,
     more: (n) => `… et ${n} de plus`,
   },
   nl: {
@@ -202,6 +219,11 @@ const TEXT = {
     tableButton: "🧭 Soort voor de houdbaarheid",
     tableSource: { own: "door jou gekozen", off: "volgens Open Food Facts", name: "op naam" },
     historyShow: "Voorstellen bekijken",
+    groupSuggestTitle: "📦 Voorgestelde groepen",
+    groupSuggestHint: "Deze producten lijken bij elkaar te horen. Groeperen voegt niets samen – de producten blijven apart, de groep toont het totaal.",
+    groupSuggestAdd: (g) => `In groep ${g}`,
+    groupSuggestNo: "Nee",
+    groupSuggestDone: (g) => `Groep ${g} aangemaakt.`,
     more: (n) => `… en nog ${n}`,
   },
 };
@@ -356,6 +378,34 @@ export function installDataCare(Dashboard, { el, DOMAIN, listAreas }) {
     }
     if (products.length) parts.push(list);
     if ((data.counts.products || 0) > products.length) parts.push(el("p", "hint", t.more(data.counts.products - products.length)));
+    const suggestions = data.group_suggestions || [];
+    if (suggestions.length) {
+      // 6.12 (#269): groups suggested for products that look alike – nothing happens without a tap
+      const group = el("div", "datagroup");
+      group.dataset.group = "group-suggestions";
+      group.append(el("h3", "", t.groupSuggestTitle), el("p", "hint", t.groupSuggestHint));
+      for (const sg of suggestions) {
+        const row = el("div", "boughtrow groupsuggest");
+        row.dataset.key = sg.key;
+        const send = async (accept) => {
+          try {
+            const res = await hass.callWS({ type: `${DOMAIN}/group_suggestion`, key: sg.key, accept, group: sg.group, members: sg.members });
+            this._dataGaps = { ...this._dataGaps, group_suggestions: res.suggestions };
+            if (accept && this.showNotice) this.showNotice(t.groupSuggestDone(sg.group));
+            this.openDataCare();
+          } catch {
+            /* stays as it is */
+          }
+        };
+        const yes = button("primary", t.groupSuggestAdd(sg.group), () => send(true));
+        yes.dataset.role = "group-suggest-yes";
+        const no = button("", t.groupSuggestNo, () => send(false));
+        no.dataset.role = "group-suggest-no";
+        row.append(el("span", "name", t.groupSuggestLine(sg.group, sg.members)), yes, no);
+        group.append(row);
+      }
+      parts.push(group);
+    }
     if (data.counts.history) {
       // 6.3 (#175): your own shelf life from the history – the suggestions of Estimates
       const group = el("div", "datagroup");

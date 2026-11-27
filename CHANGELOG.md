@@ -3,6 +3,14 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 6.12.0
+
+Block 63: groups in the stock.
+
+- **Search in the stock view** (#270): **More → 🗃️ Stock** has a search field like the Larder page – by name, brand and group; a hit on a member shows its group too.
+- **Groups sorted in** (#271): a group is no longer a box on top but sorted into the list by its name (*Preiselbeeren* under P) with its total and minimum stock, its products indented right below it and not repeated under their own letter.
+- **Group suggestions in data care** (#269): products sharing their base word (*Vollmilch*, *Fettarme Milch* → *Milch*; *Schwartau Preiselbeeren*, *Wild-Preiselbeeren* → *Preiselbeeren*) are suggested as a group for administrators. **Into group …** groups them, **No** hides the suggestion for good; nothing is grouped or merged by itself. `group_suggestions` in `larder/data_gaps`; WebSocket `larder/group_suggestion`.
+
 ## 6.11.2
 
 - **The page scrolls like a website**: the dashboard no longer scrolls inside its own box, the page itself does; the header sticks to the top and the navigation to the bottom. So in the Home Assistant app **pull to refresh** works from anywhere at the top of a page (before only on the header), a **tap on the status bar** scrolls back to the top, and swiping on the navigation no longer stretches it. The selection bar sits right above the navigation.

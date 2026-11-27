@@ -45,7 +45,7 @@ from .consumption import async_open_prices, forecast, price_of, suggested_minimu
 from .devices import device_of, entry_of
 from .entity import kind_of
 from .estimate import async_get_estimator, storage_context
-from .product_units import SIZE_UNITS, parse_size, unit_price
+from .product_units import SIZE_UNITS, group_suggestions, parse_size, unit_price
 from .sections import OWN_PREFIX, SECTIONS, is_section, section_key, section_of, section_order
 from .shopping import any_list, async_add_to_shopping_list, shopping_list_for
 from .singleton import async_singleton
@@ -143,6 +143,7 @@ class Stock:
         self.group_minimums: dict[str, dict[str, Any]] = {}  # 6.11 (#254): group key → {"name", "min"}
         self.sizes: dict[str, dict[str, Any]] = {}  # 6.11 (#255): product → own size per piece {"amount", "unit"}
         self.steps: dict[str, float] = {}  # 6.11 (#257): product → amount per tap (−1)
+        self.group_dismissed: list[str] = []  # 6.12 (#269): group suggestions declined (group keys)
         self._unsub = None
         self._unsub_daily = None
 
@@ -171,6 +172,7 @@ class Stock:
             if isinstance(v, dict) and v.get("unit") in SIZE_UNITS and isinstance(v.get("amount"), int | float) and v["amount"] > 0
         }
         self.steps = {str(k): float(v) for k, v in (data.get("steps") or {}).items() if isinstance(v, int | float) and v > 0}
+        self.group_dismissed = [str(k) for k in data.get("group_dismissed") or [] if k]
         self.sections = {
             str(k): str(v) for k, v in (data.get("sections") or {}).items() if v in SECTIONS or v in self.own_sections
         }
@@ -233,6 +235,7 @@ class Stock:
             "group_minimums": self.group_minimums,
             "sizes": self.sizes,
             "steps": self.steps,
+            "group_dismissed": self.group_dismissed,
         }
 
     # ----- 6.11 (Block 60): groups, sizes, amount per tap -----
@@ -303,6 +306,15 @@ class Stock:
             self.steps.pop(key, None)
         self._save()
         async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
+
+    def group_suggestions(self, names: list[str]) -> list[dict[str, Any]]:
+        """#269: groups worth suggesting for these products (confirmed by hand)."""
+        return group_suggestions(names, self.group_of, list(dict.fromkeys(self.groups.values())), set(self.group_dismissed))
+
+    def dismiss_group_suggestion(self, key: str) -> None:
+        if key and key not in self.group_dismissed:
+            self.group_dismissed = [key, *self.group_dismissed][:200]
+            self._save()
 
     def step_of(self, content: str | None) -> float | None:
         return self.steps.get(product_key(content))
@@ -2217,6 +2229,31 @@ async def ws_take_step(hass: HomeAssistant, connection: websocket_api.ActiveConn
     connection.send_result(msg["id"], _stock_result(hass, stock))
 
 
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/group_suggestion",
+        vol.Required("key"): vol.All(str, vol.Length(min=1, max=80)),
+        vol.Required("accept"): bool,
+        vol.Optional("group"): vol.All(str, vol.Length(min=1, max=80)),
+        vol.Optional("members", default=list): [vol.All(str, vol.Length(min=1, max=255))],
+    }
+)
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_group_suggestion(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """#269: a group suggestion confirmed (members into the group) or declined (never suggested again)."""
+    stock = await async_get_stock(hass)
+    if msg["accept"] and msg.get("group"):
+        for name in msg["members"]:
+            stock.set_group(name, msg["group"])
+    else:
+        stock.dismiss_group_suggestion(msg["key"])
+    products = stock_overview(hass, stock.minimums, stock)
+    connection.send_result(
+        msg["id"], {"suggestions": stock.group_suggestions([p["name"] for p in products]), "groups": groups_overview(stock, products)}
+    )
+
+
 def async_setup_stock_websocket(hass: HomeAssistant) -> None:
     domain_data = hass.data.setdefault(DOMAIN, {})
     if domain_data.get(DATA_WS):
@@ -2249,6 +2286,6 @@ def async_setup_stock_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_section_own)
     websocket_api.async_register_command(hass, ws_running_low)
     websocket_api.async_register_command(hass, ws_running_low_action)
-    for command in (ws_product_group, ws_group_min, ws_product_size, ws_take_step):
+    for command in (ws_product_group, ws_group_min, ws_product_size, ws_take_step, ws_group_suggestion):
         websocket_api.async_register_command(hass, command)
     domain_data[DATA_WS] = True

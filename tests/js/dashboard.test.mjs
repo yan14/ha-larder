@@ -4770,19 +4770,36 @@ test("6.11 (Block 60): groups in the stock view, unit price, contents per piece,
   await flush();
   await flush();
   const group = $(el, ".stockgroup");
-  assert.equal(group.querySelector(".name").textContent, "Milch");
-  assert.equal(group.querySelector(".sub").textContent, "Fettarme Milch 1 · Vollmilch 1");
+  assert.equal(group.querySelector(".name").textContent, "📦 Milch");
+  assert.equal(group.querySelector(".sub").textContent, "Gruppe · 2 Produkte");
+  // 6.12 (#271): sorted in by name, members right below it
+  assert.deepEqual($$(el, ".stocklist > .stockitem").map((i) => i.dataset.group || i.dataset.key), ["milch", "fettarme milch", "vollmilch", "nudeln"]);
+  assert.ok($(el, '.stockitem.member[data-key="vollmilch"]'));
+  // 6.12 (#270): search – a member hit shows its group; the brand-free product disappears
+  const search = $(el, '[data-role="stock-search"]');
+  search.value = "voll";
+  search.dispatchEvent(new dom.window.Event("input"));
+  assert.deepEqual($$(el, ".stocklist > .stockitem").map((i) => i.dataset.group || i.dataset.key), ["milch", "vollmilch"]);
+  search.value = "milch";
+  search.dispatchEvent(new dom.window.Event("input"));
+  assert.deepEqual($$(el, ".stocklist > .stockitem").map((i) => i.dataset.group || i.dataset.key), ["milch", "fettarme milch", "vollmilch"]);
+  search.value = "xyz";
+  search.dispatchEvent(new dom.window.Event("input"));
+  assert.match($(el, ".stocklist").textContent, /Nichts gefunden/);
+  search.value = "";
+  search.dispatchEvent(new dom.window.Event("input"));
   const min = group.querySelector('[data-role="group-min"]');
   min.value = "3";
   min.dispatchEvent(new dom.window.Event("change"));
   await flush();
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/group_min`), { type: `${D}/group_min`, group: "Milch", min: 3 });
   assert.equal($(el, ".stockgroup .badge").textContent, "zu wenig");
+  assert.equal($(el, '[data-role="stock-search"]').value, "");
   const noodles = $$(el, ".stocklist .stockitem").find((i) => i.dataset.key === "nudeln");
   assert.match(noodles.textContent, /≈ 1 kg/);
   assert.match(noodles.querySelector(".price").textContent, /3,98 €\/kg/);
   assert.match(noodles.querySelector('[data-role="stock-store-prices"]').textContent, /Aldi 1,79 = 3,58 €\/kg/);
-  assert.match($$(el, ".stocklist .stockitem").find((i) => i.dataset.key === "vollmilch").textContent, /📦 Milch/);
+  assert.doesNotMatch($$(el, ".stocklist .stockitem").find((i) => i.dataset.key === "vollmilch").querySelector(".sub")?.textContent || "", /📦 Milch/);
   // product view: contents per piece, amount per tap, group (administrator); −2 takes the amount per tap
   await el.openProduct("nudeln");
   const form = $(el, "form.dialog");
@@ -4815,4 +4832,31 @@ test("6.11.2: every dialog has a ✕ in the top right corner that closes it", as
   close.click();
   assert.equal($(el, ".overlay").hidden, true);
   el.remove();
+});
+
+test("6.12 (#269): group suggestions in data care – into the group or no", async () => {
+  const hass = makeHass(DOSES);
+  const base = hass.callWS;
+  let suggestions = [{ key: "milch", group: "Milch", members: ["Fettarme Milch", "Vollmilch"], exists: false }, { key: "ketchup", group: "Ketchup", members: ["Ketchup", "Ketchup Zero"], exists: false }];
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/data_gaps`) return { counts: { products: 0, group_suggestions: suggestions.length }, gaps: {}, products: [], group_suggestions: suggestions };
+    if (msg.type === `${D}/group_suggestion`) {
+      hass.wsCalls.push(msg);
+      suggestions = suggestions.filter((sg) => sg.key !== msg.key);
+      return { suggestions, groups: [] };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await el.openDataCare();
+  const rows = () => $$(el, ".groupsuggest");
+  assert.deepEqual(rows().map((r) => r.querySelector(".name").textContent), ["Milch: Fettarme Milch · Vollmilch", "Ketchup: Ketchup · Ketchup Zero"]);
+  rows()[1].querySelector('[data-role="group-suggest-no"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/group_suggestion`), { type: `${D}/group_suggestion`, key: "ketchup", accept: false, group: "Ketchup", members: ["Ketchup", "Ketchup Zero"] });
+  rows()[0].querySelector('[data-role="group-suggest-yes"]').click();
+  await flush();
+  assert.equal(hass.wsCalls.filter((m) => m.type === `${D}/group_suggestion`)[1].accept, true);
+  assert.equal(rows().length, 0);
 });

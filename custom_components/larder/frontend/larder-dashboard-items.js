@@ -191,6 +191,9 @@ const TEXT = {
     groupPlaceholder: "z. B. Milch",
     groupHint: "Gruppe von Hand: Produkte bleiben getrennt, die Gruppe zeigt die Summe, hat einen eigenen Mindestbestand und ein Rezept mit dem Gruppennamen nimmt jedes davon.",
     groupsTitle: "📦 Gruppen",
+    groupMembers: (n) => `Gruppe · ${n} ${n === 1 ? "Produkt" : "Produkte"}`,
+    stockSearch: "🔍 Im Bestand suchen …",
+    stockNoHit: "Nichts gefunden.",
     groupOf: (g) => `📦 ${g}`,
     sizeLabel: "⚖️ Inhalt je Stück",
     sizeHint: "Was eine gezählte Packung enthält (500 g, 1 l). Leer = von der Packungsgröße gelesen.",
@@ -393,6 +396,9 @@ const TEXT = {
     groupPlaceholder: "e.g. milk",
     groupHint: "A group by hand: the products stay separate, the group shows the total, has its own minimum stock and a recipe naming the group takes any of them.",
     groupsTitle: "📦 Groups",
+    groupMembers: (n) => `Group · ${n} ${n === 1 ? "product" : "products"}`,
+    stockSearch: "🔍 Search the stock …",
+    stockNoHit: "Nothing found.",
     groupOf: (g) => `📦 ${g}`,
     sizeLabel: "⚖️ Contents per piece",
     sizeHint: "What one counted pack holds (500 g, 1 l). Empty = read from the package size.",
@@ -595,6 +601,9 @@ const TEXT = {
     groupPlaceholder: "p. ex. lait",
     groupHint: "Un groupe choisi à la main : les produits restent séparés, le groupe montre le total, a son propre stock minimum et une recette qui nomme le groupe prend n'importe lequel.",
     groupsTitle: "📦 Groupes",
+    groupMembers: (n) => `Groupe · ${n} produit${n === 1 ? "" : "s"}`,
+    stockSearch: "🔍 Chercher dans le stock …",
+    stockNoHit: "Rien trouvé.",
     sizeLabel: "⚖️ Contenu par pièce",
     sizeHint: "Ce que contient un paquet compté (500 g, 1 l). Vide = lu sur la taille du paquet.",
     sizeUnits: { g: "g", ml: "ml", pcs: "pièces" },
@@ -795,6 +804,9 @@ const TEXT = {
     groupPlaceholder: "bijv. melk",
     groupHint: "Een groep met de hand: de producten blijven apart, de groep toont het totaal, heeft een eigen minimumvoorraad en een recept met de groepsnaam neemt elk ervan.",
     groupsTitle: "📦 Groepen",
+    groupMembers: (n) => `Groep · ${n} product${n === 1 ? "" : "en"}`,
+    stockSearch: "🔍 Zoeken in de voorraad …",
+    stockNoHit: "Niets gevonden.",
     sizeLabel: "⚖️ Inhoud per stuk",
     sizeHint: "Wat één getelde verpakking bevat (500 g, 1 l). Leeg = van de verpakkingsgrootte gelezen.",
     sizeUnits: { g: "g", ml: "ml", pcs: "stuks" },
@@ -1787,48 +1799,85 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     return out;
   };
 
-  /** Groups of the stock view (6.11, #254): total, members and their own minimum stock. */
-  proto._stockGroups = function _stockGroups(groups, products) {
+  /** One group of the stock view (6.11 #254, 6.12 #271): total and its own minimum stock; the members follow below it. */
+  proto._groupRow = function _groupRow(g, shown) {
     const hass = this._hass;
     const t = itemTexts(hass);
-    const shown = new Set(products.map((p) => p.name));
-    const rows = (groups || []).filter((g) => g.members.some((m) => shown.has(m.name)) || g.min > 0);
-    if (!rows.length) return null;
-    const box = el("section", "stockgroups");
-    box.append(el("h3", "", t.groupsTitle));
-    for (const g of rows) {
-      const item = el("div", `stockitem stockgroup${g.low ? " low" : ""}`);
-      item.dataset.group = g.key;
-      const head = el("div", "stockhead");
-      head.append(el("span", "name", g.name), el("span", "count", String(g.count)));
-      if (g.low) head.append(el("span", "badge expired", g.count ? t.stockLow : t.stockNone));
-      const min = el("input");
-      min.type = "number";
-      min.min = "0";
-      min.max = "999";
-      min.inputMode = "numeric";
-      min.placeholder = "–";
-      min.value = g.min ? String(g.min) : "";
-      min.dataset.role = "group-min";
-      min.setAttribute("aria-label", `${t.stockMin} (${g.name})`);
-      min.addEventListener("change", async () => {
-        const value = Math.max(0, Math.min(999, parseInt(min.value, 10) || 0));
-        try {
-          const res = await hass.callWS({ type: `${DOMAIN}/group_min`, group: g.name, min: value });
-          this._stock = { ...this._stock, ...res };
-          this._sig = "";
-          this._update();
-        } catch {
-          this.showNotice(t.stockFailed);
-        }
-      });
-      const minWrap = el("label", "stockmin", t.stockMin);
-      minWrap.append(min);
-      head.append(minWrap);
-      item.append(head, el("div", "sub", g.members.map((m) => `${m.name} ${m.count}`).join(" · ")));
-      box.append(item);
+    const item = el("div", `stockitem stockgroup${g.low ? " low" : ""}`);
+    item.dataset.group = g.key;
+    const head = el("div", "stockhead");
+    head.append(el("span", "name", `📦 ${g.name}`), el("span", "count", String(g.count)));
+    if (g.low) head.append(el("span", "badge expired", g.count ? t.stockLow : t.stockNone));
+    const min = el("input");
+    min.type = "number";
+    min.min = "0";
+    min.max = "999";
+    min.inputMode = "numeric";
+    min.placeholder = "–";
+    min.value = g.min ? String(g.min) : "";
+    min.dataset.role = "group-min";
+    min.setAttribute("aria-label", `${t.stockMin} (${g.name})`);
+    min.addEventListener("change", async () => {
+      const value = Math.max(0, Math.min(999, parseInt(min.value, 10) || 0));
+      try {
+        const res = await hass.callWS({ type: `${DOMAIN}/group_min`, group: g.name, min: value });
+        this._stock = { ...this._stock, ...res };
+        this._sig = "";
+        this._update();
+      } catch {
+        this.showNotice(t.stockFailed);
+      }
+    });
+    const minWrap = el("label", "stockmin", t.stockMin);
+    minWrap.append(min);
+    head.append(minWrap);
+    item.append(head, el("div", "sub", t.groupMembers(shown)));
+    return item;
+  };
+
+  /**
+   * 6.12 (#270/#271): the stock list – groups sorted in by their name with their members right below,
+   * filtered by the search (name, brand, group; a hit on a member shows its group too).
+   */
+  proto._stockList = function _stockList(products, groups, query, onChanged) {
+    const t = itemTexts(this._hass);
+    const q = String(query || "").trim().toLocaleLowerCase();
+    const hit = (text) => !q || String(text || "").toLocaleLowerCase().includes(q);
+    const groupOf = new Map();
+    for (const g of groups || []) for (const m of g.members) groupOf.set(m.name, g);
+    const entries = [];
+    const members = new Map();
+    for (const p of products) {
+      const g = p.group ? groupOf.get(p.name) : null;
+      if (g) {
+        if (!members.has(g.key)) members.set(g.key, []);
+        members.get(g.key).push(p);
+      } else if (hit(p.name) || hit(p.brand)) entries.push({ name: p.name, p });
     }
-    return box;
+    for (const g of groups || []) {
+      const all = members.get(g.key) || [];
+      if (!all.length && !(g.min > 0 && this._opts.scope === "food")) continue;
+      const shown = hit(g.name) ? all : all.filter((p) => hit(p.name) || hit(p.brand));
+      if (!shown.length && !hit(g.name)) continue;
+      shown.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+      entries.push({ name: g.name, g, members: shown, total: all.length });
+    }
+    entries.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+    const list = el("div", "stocklist");
+    for (const e of entries) {
+      if (e.p) {
+        list.append(this._stockItem(e.p, onChanged));
+        continue;
+      }
+      list.append(this._groupRow(e.g, e.total));
+      for (const p of e.members) {
+        const item = this._stockItem({ ...p, group: null }, onChanged); // the group is right above it
+        item.classList.add("member");
+        list.append(item);
+      }
+    }
+    if (!entries.length && q) list.append(el("p", "note", t.stockNoHit));
+    return list;
   };
 
   /** One product of the stock (stock view and, since 5.5, the product view). `onChanged(res)` after a change. */
@@ -2015,18 +2064,29 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     }
     if (!data.shopping_list && products.some((p) => p.min > 0)) frag.append(el("p", "note warn", t.stockNoList));
     if (!products.length) frag.append(el("p", "note", t.stockEmpty));
-    const groups = this._stockGroups(data.groups, products);
-    if (groups) frag.append(groups);
-    const list = el("div", "stocklist");
-    for (const p of products) {
-      list.append(
-        this._stockItem(p, (res) => {
-          if (res && res.products) this._stock = { ...this._stock, products: res.products, ...(res.groups ? { groups: res.groups } : {}) };
-          this._sig = "";
-          if (res) this._update();
-          else this.loadStock();
-        }),
-      );
+    const onChanged = (res) => {
+      if (res && res.products) this._stock = { ...this._stock, products: res.products, ...(res.groups ? { groups: res.groups } : {}) };
+      this._sig = "";
+      if (res) this._update();
+      else this.loadStock();
+    };
+    // 6.12 (#270): search like on the Larder page; only the list is redrawn while typing
+    let list = this._stockList(products, data.groups, this._stockQuery, onChanged);
+    if (products.length) {
+      const search = el("input");
+      search.type = "search";
+      search.className = "stocksearch";
+      search.placeholder = t.stockSearch;
+      search.setAttribute("aria-label", t.stockSearch);
+      search.dataset.role = "stock-search";
+      search.value = this._stockQuery || "";
+      search.addEventListener("input", () => {
+        this._stockQuery = search.value;
+        const next = this._stockList(products, data.groups, this._stockQuery, onChanged);
+        list.replaceWith(next);
+        list = next;
+      });
+      frag.append(search);
     }
     frag.append(list);
     this._main.replaceChildren(frag);

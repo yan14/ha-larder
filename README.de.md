@@ -34,6 +34,8 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 
 ## Was ist neu?
 
+> **6.12:** **Gruppen im Bestand** – Suche im Bestand, Gruppen alphabetisch einsortiert mit ihren Produkten darunter und Gruppen-Vorschläge in der Datenpflege (nur per Bestätigung).
+>
 > **6.11:** **Produkte gruppieren & umrechnen** – Gruppen wie *Milch* über Vollmilch und Fettarmer Milch (von Hand, nichts wird zusammengelegt) mit eigenem Mindestbestand, Inhalt je Stück mit Gesamtmenge und Grundpreis (€/kg), *Kiste = 6 Flaschen* und eine Menge pro Klick (−2 Scheiben). **6.11.1:** schnellerer Start ohne Warnung *Updating state … took 0.4 seconds*. **6.11.2:** Die Seite scrollt wie eine Webseite – Herunterziehen zum Aktualisieren überall, Tippen auf die Statusleiste springt nach oben; jedes Fenster hat oben rechts ein ✕.
 >
 > **6.10:** **Einkaufsliste 2.0** – Schnell-dazu-Chips mit dem, was ihr oft kauft, Menge und Notiz je Eintrag (*2×*, *laktosefrei*), eine laufende Summe für Offenes und Korb und das Einfügen einer ganzen Liste aus dem Chat.

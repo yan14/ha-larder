@@ -82,3 +82,45 @@ def container_amount(quantity: Any, unit: Any) -> tuple[float, str] | None:
     if value <= 0:
         return None
     return (value, "g") if unit == "grams" else (value, "ml") if unit == "milliliters" else None
+
+
+_WORD = re.compile(r"[^\W\d_]+", re.UNICODE)
+MAX_SUGGESTIONS = 10
+
+
+def _words(name: str) -> list[str]:
+    return _WORD.findall(name)
+
+
+def _has_base(name: str, base: str) -> bool:
+    """The base word alone ("Wild Preiselbeeren") or at the end of a compound ("Vollmilch")."""
+    for word in _words(name):
+        low = word.casefold()
+        if low == base or (low.endswith(base) and len(low) - len(base) >= 3):
+            return True
+    return False
+
+
+def group_suggestions(names: list[str], group_of: Any, existing: list[str], dismissed: set[str]) -> list[dict[str, Any]]:
+    """#269: groups worth suggesting – products sharing their base word (the last word of one of them).
+
+    Only a suggestion: nothing is grouped until you confirm it. Products already in a group are left out;
+    a declined suggestion (its group key in `dismissed`) does not come back. `group_of(name)` → group or None.
+    """
+    free = [n for n in dict.fromkeys(names) if n and not group_of(n)]
+    existing_keys = {" ".join(g.casefold().split()): g for g in existing}
+    out: dict[str, dict[str, Any]] = {}
+    for name in free:
+        words = _words(name)
+        if not words or len(words[-1]) < 4:
+            continue
+        base = words[-1].casefold()
+        if base in out or base in dismissed:
+            continue
+        members = [n for n in free if _has_base(n, base)]
+        group = existing_keys.get(base)
+        if len(members) < (1 if group else 2):
+            continue
+        display = group or next((w for n in members for w in _words(n) if w.casefold() == base), words[-1].capitalize())
+        out[base] = {"key": base, "group": display, "members": sorted(members, key=str.casefold), "exists": bool(group)}
+    return sorted(out.values(), key=lambda s: (-len(s["members"]), s["group"].casefold()))[:MAX_SUGGESTIONS]
