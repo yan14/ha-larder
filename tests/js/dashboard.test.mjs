@@ -4625,6 +4625,8 @@ test("6.9 (#224, #227, #230, #231): shopping ⋯ menu, AI box, reason for step 1
 
 test("6.9.1 (#240): move entries without filling – selection and the fill dialog", async () => {
   const hass = makeHass(DOSES);
+  hass.entities["text.d1_fach"] = { entity_id: "text.d1_fach", device_id: "d1", platform: D, translation_key: "compartment" };
+  hass.states["text.d1_fach"] = { entity_id: "text.d1_fach", state: "Schublade 2", attributes: {} };
   const calls = [];
   hass.callWS = (base => async (msg) => {
     if (msg.type === "config/device_registry/update") {
@@ -4645,6 +4647,9 @@ test("6.9.1 (#240): move entries without filling – selection and the fill dial
   const form = el._form;
   assert.equal(form.querySelector("h2").textContent, "Umräumen");
   form.querySelector('[data-f="move-area"]').value = "kitchen";
+  form.querySelector('[data-f="move-area"]').dispatchEvent(new dom.window.Event("change"));
+  // 6.9.2 (#241): the used compartments of the area as chips
+  assert.deepEqual([...form.querySelectorAll('[data-role="compartment-chips"] .compchip')].map((c) => c.textContent), ["Schublade 2"]);
   await el._submit();
   assert.deepEqual(calls, [{ type: "config/device_registry/update", device_id: "d5", area_id: "kitchen" }]);
   // the fill dialog of an empty container offers "only move"

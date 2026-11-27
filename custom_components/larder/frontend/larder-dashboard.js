@@ -1505,8 +1505,6 @@ export class LarderDashboard extends HTMLElement {
     compartment.maxLength = 60;
     compartment.dataset.f = "move-compartment";
     compartment.placeholder = t.moveCompartmentHint;
-    const refresh = attachCompartmentChips(compartment, () => knownCompartments(hass, this._classic._devices, area.value), () => {});
-    area.addEventListener("change", refresh);
     const field = (label, control) => {
       const wrap = el("label", "", label);
       wrap.append(control);
@@ -1532,6 +1530,9 @@ export class LarderDashboard extends HTMLElement {
       error,
       buttons,
     );
+    // 6.9.2 (#241): the used compartments as chips – attached once the field is in the dialog
+    const refresh = attachCompartmentChips(compartment, () => knownCompartments(hass, this._classic._devices, area.value), () => {});
+    area.addEventListener("change", refresh);
     this._submit = async () => {
       submit.disabled = true;
       const comp = compartment.value.trim();

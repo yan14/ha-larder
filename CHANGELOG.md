@@ -3,6 +3,10 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 6.9.2
+
+- **Move: choose a compartment** (#241): **📍 Move** shows the compartments used in the chosen area as chips again (they were missing), so you can tap one instead of typing it.
+
 ## 6.9.1
 
 - **Put away by hand: bags with an NFC tag** (#239): **📥 Put the shopping away → ✍️ By hand** now asks what it is – pack, **bag**, household item or medicine – so vacuum-packed meat from the butcher becomes a bag and gets its NFC tag right after adding. A food pack already added can be turned into a bag on its card (**More → Convert to … → Bag**, renamed to the next free bag name) and then get a tag.
