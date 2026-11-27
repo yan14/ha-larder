@@ -25,6 +25,7 @@ export const STYLE = `
     text-transform: uppercase; letter-spacing: .04em; }
   section.more button.moreitem { font: inherit; font-size: 15px; text-align: left; padding: 12px 16px; border: 0; background: none;
     color: var(--primary-text-color); cursor: pointer; border-top: 1px solid var(--divider-color); }
+  section.more button.moreitem .sub { display: block; font-size: 12px; color: var(--secondary-text-color); margin-top: 2px; }
   .quick { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin: -4px 0 16px; }
   .quick button { font: inherit; font-size: 15px; padding: 12px 10px; border-radius: 12px; cursor: pointer; text-align: center;
     background: var(--card-background-color, #fff); color: var(--primary-text-color); border: 1px solid var(--divider-color); }
@@ -54,7 +55,11 @@ export const STYLE = `
   .scope { display: flex; gap: 0; margin: 0 0 12px; border: 1px solid var(--divider-color, #ddd); border-radius: 18px; overflow: hidden; }
   .scope button { flex: 1; border: 0; border-radius: 0; background: none; padding: 8px 4px; font: inherit; font-size: 14px; color: inherit; cursor: pointer;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-  .scope.compact button.on { flex: 3; }
+  .scope.compact button { display: flex; flex-direction: column; align-items: center; padding: 4px 2px; line-height: 1.15; }
+  .scope.compact button .word { font-size: 11px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .groupwrap { margin: 0 0 12px; }
+  .groupwrap .grouplabel { display: block; font-size: 12px; color: var(--secondary-text-color); margin: 0 0 4px 4px; }
+  .groupwrap .groupbar { margin: 0; }
   .scope button.on { background: var(--primary-color, #03a9f4); color: var(--text-primary-color, #fff); }
   h2.section { font-size: 18px; font-weight: 500; margin: 22px 0 10px; padding-top: 12px; border-top: 1px solid var(--divider-color, #ddd); }
   .hello + h2.section, .recall + h2.section { border-top: 0; padding-top: 0; margin-top: 4px; }
@@ -104,8 +109,8 @@ export const STYLE = `
     font: inherit; color: var(--primary-text-color); background: var(--card-background-color, #fff); border: 1px solid var(--divider-color);
     border-radius: 14px; padding: 12px 6px 10px; min-height: 104px; cursor: pointer; box-sizing: border-box; min-width: 0; }
   .tile .ico { font-size: 30px; line-height: 1.1; }
-  .tile .name { font-size: 14px; font-weight: 500; max-width: 100%; line-height: 1.2; overflow: hidden; overflow-wrap: anywhere; hyphens: auto;
-    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .tile .name { font-size: 14px; font-weight: 500; max-width: 100%; line-height: 1.2; overflow: hidden; overflow-wrap: break-word; hyphens: auto;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
   .tile .sub { font-size: 11px; color: var(--secondary-text-color); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tile .kcal { font-size: 10px; color: var(--secondary-text-color); margin-top: 2px; }
   .tile .allergen { font-size: 10px; color: var(--error-color, #c62828); font-weight: 600; margin-top: 2px; }
@@ -121,6 +126,7 @@ export const STYLE = `
   .selbar button.primary { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: var(--primary-color); }
   .bar button.on { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: var(--primary-color); }
   .badge { font-size: 11px; padding: 1px 8px; border-radius: 10px; color: #fff; white-space: nowrap; background: var(--secondary-text-color); }
+  .tile .badge { white-space: normal; text-align: center; line-height: 1.3; max-width: 100%; }
   .badge.soon { background: var(--warning-color, #ffa600); }
   .badge.expired { background: var(--error-color, #db4437); }
   .list { display: flex; flex-direction: column; gap: 8px; }
@@ -373,7 +379,7 @@ export const STYLE = `
   .datephoto { display: inline-flex; }
   .stockauto { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--secondary-text-color); margin: 4px 0; }
   /* 5.3: compartments & tags */
-  h2 .headtag { margin-left: 8px; font-size: 16px; padding: 2px 8px; border-radius: 8px; cursor: pointer;
+  h2 .headtag { margin-left: 8px; font-size: 13px; text-transform: none; letter-spacing: 0; font-weight: 400; padding: 2px 8px; border-radius: 8px; cursor: pointer;
     border: 1px solid var(--divider-color); background: none; vertical-align: middle; }
   .placesoverview { display: flex; flex-direction: column; gap: 6px; max-height: 55vh; overflow-y: auto; margin: 8px 0; }
   .placerow { display: flex; align-items: center; gap: 10px; }

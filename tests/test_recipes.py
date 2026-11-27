@@ -5,6 +5,7 @@ from datetime import timedelta
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.larder.config_flow import nest_options
 from custom_components.larder.const import DOMAIN
 from custom_components.larder.recipes import build_summary, parse_recipes
 from custom_components.larder.sections import SECTIONS
@@ -108,7 +109,7 @@ async def test_recipes_pass_the_configured_ai_entity_and_limit(hass: HomeAssista
     await _fill(hass, "A1", "Schinken", 1)
     result = await hass.config_entries.options.async_init(entry.entry_id)
     await hass.config_entries.options.async_configure(
-        result["flow_id"], {"estimate_mode": "table", "ai_task_entity": "ai_task.mein_modell"}
+        result["flow_id"], nest_options({"estimate_mode": "table", "ai_task_entity": "ai_task.mein_modell"})
     )
     calls = _fake_ai(hass, {"recipes": [RECIPE, {**RECIPE, "title": "Zwei"}, {**RECIPE, "title": "Drei"}]})
     out = await _suggest(hass, max_recipes=2)
@@ -171,7 +172,7 @@ def test_blueprint_message_appends_recipe_ideas_only_when_available(hass: HomeAs
 
 async def _options(hass: HomeAssistant, entry, **data) -> None:
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    await hass.config_entries.options.async_configure(result["flow_id"], {"estimate_mode": "table", **data})
+    await hass.config_entries.options.async_configure(result["flow_id"], nest_options({"estimate_mode": "table", **data}))
     await hass.async_block_till_done()
 
 

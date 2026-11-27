@@ -14,7 +14,7 @@ Kurze Antworten auf die häufigsten Fragen und die Regeln, nach denen Larder üb
 | ein Produkt finden | **🔍** oben auf jeder Seite: jeder Ort mit Anzahl und MHD |
 | irgendetwas scannen | **📷** oben auf jeder Seite (Home Assistant App): Strichcode, Dosen-Code oder Fach-Etikett |
 | den Einkauf einräumen | **📥 Einräumen** (Startseite) – oder beim Einkaufen im **🛒 Einkaufsmodus** abhaken |
-| einen Kassenbon lesen | **🧾 Kassenbon** (Startseite, Mehr, Einkaufsmodus) |
+| einen Kassenbon oder eine Rechnung lesen | **📥 Einkauf einräumen → 🧾 Kassenbon oder Rechnung** (Startseite, Vorrat, Einkaufen, Mehr) – erst Foto oder PDF wählen, dann prüfen |
 | sehen, was mit einem Produkt passiert ist | **📜 Verlauf** – in der Bestands-Ansicht, im Strichcode-Dialog oder **📜 Verlauf von …** auf einer Karte |
 | den Bestand mit Mindestbestand und Preisen sehen | **Mehr → 🗃️ Bestand** |
 | zählen, was wirklich da ist | **Mehr → 📋 Inventur** oder **📋 Inventur** in einem Fach |

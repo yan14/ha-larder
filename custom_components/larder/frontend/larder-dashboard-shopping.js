@@ -17,8 +17,22 @@ function pickLang(table, hass) {
   return byLang[lang] || (byLang[lang] = { ...table.en, ...table[lang] });
 }
 
+/** "→ Pantry · Shelf" for the notice after ticking off. */
+function shoppingTextsAdded(lang, r) {
+  return TEXT[lang].added(r);
+}
+
 const TEXT = {
   de: {
+    addPlaceholder: "Auf die Liste …",
+    addButton: "＋",
+    addLabel: "Auf die Einkaufsliste setzen",
+    addDone: (name) => `${name} steht auf der Liste.`,
+    addAlready: (name) => `${name} steht schon auf der Liste.`,
+    addFailed: "Konnte nicht auf die Liste gesetzt werden.",
+    tickedNotice: (name, r) => `${name} ${shoppingTextsAdded("de", r)}`,
+    undo: "Rückgängig",
+    undone: (name) => `${name} ist wieder offen.`,
     title: "Einkaufen",
     menu: "🛒 Einkaufsmodus",
     startButton: "🛒 Einkaufen",
@@ -44,6 +58,7 @@ const TEXT = {
     boughtAt: (stores) => `bisher bei ${stores}`,
     scan: "📷 Scannen",
     receipt: "🧾 Kassenbon",
+    putAway: "📥 Einräumen",
     details: "€ / MHD",
     detailsLabel: "Preis und MHD eintragen",
     price: "Preis (€)",
@@ -85,6 +100,15 @@ const TEXT = {
     orderListed: (n) => `${n} auf die Einkaufsliste gesetzt.`,
   },
   en: {
+    addPlaceholder: "Onto the list …",
+    addButton: "＋",
+    addLabel: "Put on the shopping list",
+    addDone: (name) => `${name} is on the list.`,
+    addAlready: (name) => `${name} is already on the list.`,
+    addFailed: "Could not be put on the list.",
+    tickedNotice: (name, r) => `${name} ${shoppingTextsAdded("en", r)}`,
+    undo: "Undo",
+    undone: (name) => `${name} is open again.`,
     title: "Shopping",
     menu: "🛒 Shopping mode",
     startButton: "🛒 Go shopping",
@@ -110,6 +134,7 @@ const TEXT = {
     boughtAt: (stores) => `so far at ${stores}`,
     scan: "📷 Scan",
     receipt: "🧾 Receipt",
+    putAway: "📥 Put away",
     details: "€ / date",
     detailsLabel: "Enter price and best-before date",
     price: "Price (€)",
@@ -151,6 +176,15 @@ const TEXT = {
     orderListed: (n) => `${n} put onto the shopping list.`,
   },
   fr: {
+    addPlaceholder: "Sur la liste …",
+    addButton: "＋",
+    addLabel: "Ajouter à la liste de courses",
+    addDone: (name) => `${name} est sur la liste.`,
+    addAlready: (name) => `${name} est déjà sur la liste.`,
+    addFailed: "Impossible de l'ajouter à la liste.",
+    tickedNotice: (name, r) => `${name} ${shoppingTextsAdded("fr", r)}`,
+    undo: "Annuler",
+    undone: (name) => `${name} est de nouveau ouvert.`,
     title: "Courses",
     menu: "🛒 Mode courses",
     startButton: "🛒 Faire les courses",
@@ -176,6 +210,7 @@ const TEXT = {
     boughtAt: (stores) => `jusqu'ici chez ${stores}`,
     scan: "📷 Scanner",
     receipt: "🧾 Ticket",
+    putAway: "📥 Ranger",
     details: "€ / date",
     detailsLabel: "Saisir prix et date de péremption",
     price: "Prix (€)",
@@ -217,6 +252,15 @@ const TEXT = {
     orderListed: (n) => `${n} mis sur la liste de courses.`,
   },
   nl: {
+    addPlaceholder: "Op de lijst …",
+    addButton: "＋",
+    addLabel: "Op het boodschappenlijstje zetten",
+    addDone: (name) => `${name} staat op de lijst.`,
+    addAlready: (name) => `${name} staat al op de lijst.`,
+    addFailed: "Kon niet op de lijst gezet worden.",
+    tickedNotice: (name, r) => `${name} ${shoppingTextsAdded("nl", r)}`,
+    undo: "Ongedaan maken",
+    undone: (name) => `${name} staat weer open.`,
     title: "Boodschappen",
     menu: "🛒 Winkelmodus",
     startButton: "🛒 Boodschappen doen",
@@ -242,6 +286,7 @@ const TEXT = {
     boughtAt: (stores) => `tot nu toe bij ${stores}`,
     scan: "📷 Scannen",
     receipt: "🧾 Kassabon",
+    putAway: "📥 Opbergen",
     details: "€ / datum",
     detailsLabel: "Prijs en houdbaarheidsdatum invoeren",
     price: "Prijs (€)",
@@ -395,6 +440,9 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
         this._shopDone[item.uid] = { text: t.unknown };
       } else {
         this._shopDone[item.uid] = { text: t.added(res), device_id: res.device_id, added: res.added || 1, suggest: res.suggest };
+        // 6.7 (#200): say where it went, with a way back
+        const name = res.content || item.summary;
+        this.showNotice(t.tickedNotice(name, res), { label: t.undo, run: () => this._shopUndo(item, this._shopDone[item.uid]) });
       }
     } catch {
       delete this._shopDone[item.uid];
@@ -402,6 +450,58 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
     }
     this._sig = "";
     this._update();
+  };
+
+  /** 6.7 (#200): undo a tick – back on the list, out of the stock again. */
+  proto._shopUndo = async function _shopUndo(item, done) {
+    const t = shoppingTexts(this._hass);
+    try {
+      await this._hass.callWS({
+        type: `${DOMAIN}/shopping_undo`, list: item.list, uid: item.uid,
+        ...(done && done.device_id ? { device_id: done.device_id, added: done.added || 1 } : {}),
+      });
+      delete this._shopDone[item.uid];
+      this._shopUnknown = this._shopUnknown.filter((u) => u.content !== (item.summary || "").split(" (")[0]);
+      this.showNotice(t.undone(item.summary));
+    } catch {
+      this.showNotice(t.failed);
+    }
+    this._sig = "";
+    this._update();
+  };
+
+  /** 6.7 (#200): "Onto the list …" at the top of the Shopping page. */
+  proto._shopAddRow = function _shopAddRow(t) {
+    const form = el("form", "bar search shopadd");
+    const input = el("input");
+    input.type = "text";
+    input.maxLength = 255;
+    input.placeholder = t.addPlaceholder;
+    input.setAttribute("aria-label", t.addLabel);
+    input.dataset.f = "shop-add";
+    const add = button("", t.addButton, null);
+    add.type = "submit";
+    add.dataset.role = "shop-add";
+    add.setAttribute("aria-label", t.addLabel);
+    add.title = t.addLabel;
+    form.append(input, add);
+    form.addEventListener("submit", async (ev) => {
+      ev.preventDefault();
+      const name = input.value.trim();
+      if (!name) return;
+      add.disabled = true;
+      try {
+        const res = await this._hass.callWS({ type: `${DOMAIN}/shopping_add`, item: name });
+        input.value = "";
+        this.showNotice(res && res.created === false ? t.addAlready(name) : t.addDone(name));
+        await this.loadShopping();
+      } catch {
+        this.showNotice(t.addFailed);
+      } finally {
+        add.disabled = false;
+      }
+    });
+    return form;
   };
 
   proto.shoppingSig = function shoppingSig() {
@@ -553,12 +653,6 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
     this._overlay.hidden = false;
   };
 
-  proto.openReceipt = function openReceipt() {
-    this.openItemsDialog("pack");
-    const file = this._form.querySelector('[data-role="receipt-file"]');
-    if (file) file.click();
-  };
-
   proto.canReadReceipt = function canReadReceipt() {
     return !!(this._canGenerate() && this._hass && this._hass.fetchWithAuth);
   };
@@ -580,11 +674,10 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
       scan.dataset.role = "shop-scan";
       bar.append(scan);
     }
-    if (this.canReadReceipt()) {
-      const receipt = button("", t.receipt, () => this.openReceipt());
-      receipt.dataset.role = "shop-receipt";
-      bar.append(receipt);
-    }
+    // 6.7 (#193): one way to put the shopping away
+    const putAway = button("", t.putAway, () => this.openPutAwayChoice());
+    putAway.dataset.role = "shop-putaway";
+    bar.append(putAway);
     // 6.6 (#176): prepare the next online order
     const order = button("", t.order, () => this.openOrder());
     order.dataset.role = "shop-order";
@@ -596,6 +689,7 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
       return;
     }
     frag.append(el("p", "lead", t.intro));
+    if (!data.error && data.configured !== false) frag.append(this._shopAddRow(t));
     if (!data.error) frag.append(this._storeBar(data, t));
     const all = data.items || [];
     // 5.9: at a store, what is only bought elsewhere goes to the end (folded)

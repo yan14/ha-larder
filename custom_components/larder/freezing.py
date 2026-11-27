@@ -20,11 +20,11 @@ from homeassistant.helpers import (
     area_registry as ar,
     device_registry as dr,
     entity_registry as er,
-    label_registry as lr,
 )
 from homeassistant.util import dt as dt_util
 
 from . import shelf_life
+from .area_storage import area_kind
 from .const import DATA_STOCK, DOMAIN, PACK_KINDS, larder_id
 from .devices import device_of, entry_of
 from .entity import kind_of
@@ -34,15 +34,7 @@ FREEZE_DAYS = 2
 
 
 def _storage_of_area(hass: HomeAssistant, area: ar.AreaEntry) -> str | None:
-    labels = lr.async_get(hass)
-    texts: list[str] = []
-    hint = None
-    for label_id in area.labels:
-        if label := labels.async_get_label(label_id):
-            texts.append(f"{label.name}: {label.description}" if label.description else label.name)
-            hint = hint or shelf_life.parse_label_template(label.description).get("storage")
-    storage = shelf_life.classify_storage(area.name, None, texts, hint)
-    return storage.key if storage else None
+    return area_kind(hass, area)
 
 
 def freezer_area(hass: HomeAssistant) -> str | None:

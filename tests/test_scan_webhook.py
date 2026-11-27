@@ -3,6 +3,7 @@
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
+from custom_components.larder.config_flow import nest_options
 from custom_components.larder.const import DOMAIN
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
@@ -169,5 +170,5 @@ async def test_options_flow_shows_webhook_url(hass) -> None:
     assert placeholders["webhook_path"] == f"/api/webhook/{webhook_id}"
     assert placeholders["webhook_url"].endswith(f"/api/webhook/{webhook_id}")
 
-    result = await hass.config_entries.options.async_configure(result["flow_id"], {})
+    result = await hass.config_entries.options.async_configure(result["flow_id"], nest_options({}))
     assert result["type"] is FlowResultType.CREATE_ENTRY

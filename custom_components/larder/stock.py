@@ -132,6 +132,7 @@ class Stock:
         self.buy_days: dict[str, list[int]] = {}
         self.table_rows: dict[str, dict[str, Any]] = {}  # 6.3 (#174): product → {"name", "entry"} chosen by you
         self.delivery: str | None = None  # 6.6 (#176/#177): delivery day of the next online order (ISO date)
+        self.area_storage: dict[str, str] = {}  # 6.7 (#196): area id → storage kind chosen in the dashboard
         self._unsub = None
         self._unsub_daily = None
 
@@ -166,6 +167,7 @@ class Stock:
         self.put_away_log = [r for r in data.get("put_away_log") or [] if isinstance(r, dict) and r.get("device_id")]
         self.table_rows = {str(k): v for k, v in (data.get("table_rows") or {}).items() if isinstance(v, dict) and v.get("entry")}
         self.delivery = str(data["delivery"]) if data.get("delivery") else None
+        self.area_storage = {str(k): str(v) for k, v in (data.get("area_storage") or {}).items() if v}
         self.buy_days = {
             str(k): [int(d) for d in v if isinstance(d, int | float)]
             for k, v in (data.get("buy_days") or {}).items()
@@ -200,11 +202,20 @@ class Stock:
             "buy_days": self.buy_days,
             "table_rows": self.table_rows,
             "delivery": self.delivery,
+            "area_storage": self.area_storage,
         }
 
     def set_delivery(self, day: date | None) -> None:
         """6.6: the delivery day of the next online order (None = none)."""
         self.delivery = day.isoformat() if day else None
+        self._save()
+
+    def set_area_storage(self, area_id: str, kind: str | None) -> None:
+        """6.7 (#196): the storage kind of an area (None = recognise it from name, labels and sensor)."""
+        if kind:
+            self.area_storage[area_id] = kind
+        else:
+            self.area_storage.pop(area_id, None)
         self._save()
 
     def delivery_day(self) -> date | None:
@@ -246,6 +257,19 @@ class Stock:
         oldest = (today - timedelta(days=PUT_AWAY_KEEP)).isoformat()
         self.put_away_log = [r for r in self.put_away_log if str(r.get("day")) >= oldest][-PUT_AWAY_MAX:]
         self._save()
+
+    def unlog_put_away(self, device_id: str, added: int) -> None:
+        """6.7 (#200): a tick was undone – the last put-away record of it goes (or shrinks)."""
+        for index in range(len(self.put_away_log) - 1, -1, -1):
+            record = self.put_away_log[index]
+            if record.get("device_id") == device_id:
+                left = int(record.get("added") or 1) - max(1, int(added or 1))
+                if left > 0:
+                    record["added"] = left
+                else:
+                    del self.put_away_log[index]
+                self._save()
+                return
 
     def relink_put_away(self, old_device_id: str, new_device_id: str, added: int) -> None:
         """The packs just put away got an entry of their own (date entered): the list follows them."""

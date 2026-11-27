@@ -20,6 +20,12 @@ export const STYLE = `
   .card .name { font-size: 18px; font-weight: 500; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .card a.open { font-size: 13px; color: var(--primary-color); cursor: pointer; text-decoration: none; white-space: nowrap; }
   .card .arealine { font-size: 13px; color: var(--secondary-text-color); margin-top: -6px; }
+  .card .devname { font-size: 13px; color: var(--secondary-text-color); margin-top: -8px; }
+  .card .devname[hidden] { display: none; }
+  .outcomerow { border-top: 1px solid var(--divider-color); padding-top: 10px; }
+  .outcomerow .otext.endtext { color: var(--secondary-text-color); }
+  .outcomerow button.eaten, .outcomerow button.thrown { flex: 1; min-height: 40px; }
+  details.more > a.open { display: inline-block; margin-top: 8px; }
   .row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; row-gap: 2px; column-gap: 0; }
   .row label { grid-column: 1 / -1; font-size: 13px; color: var(--secondary-text-color); }
   .row input { min-width: 0; font: inherit; color: var(--primary-text-color); background: var(--card-background-color, #fff);

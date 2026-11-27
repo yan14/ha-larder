@@ -195,6 +195,10 @@ const hass = {
       months: [["2026-06", 2, 1], ["2026-07", 4, 0], ["2026-08", 3, 1], ["2026-09", 5, 1], ["2026-10", 6, 1], ["2026-11", 3, 0]].map(([month, eaten, thrown]) => ({ month, eaten, thrown })),
       containers: { total: 10, filled: 9, empty: 1, expired: 1, soon: 3, undated: 0 } };
     if (msg.type === "larder/area_scopes") return { scopes, plan: {} };
+    if (msg.type === "larder/area_storage" || msg.type === "larder/area_storage_set") {
+      const recognised = { kitchen: null, cellar: "pantry", pantry: "pantry", freezer: "freezer" };
+      return { areas: Object.entries(areas).map(([area_id, name]) => ({ area_id, name, recognised: recognised[area_id] || null, own: area_id === "kitchen" ? "fridge" : null, sensor: false })) };
+    }
     if (msg.type === "larder/put_away") return ({
       "1": { status: "added", content: de ? "Tomaten gehackt" : "Chopped tomatoes", kind: "pack", device_id: "demo14", area: de ? "Keller" : "Basement", compartment: de ? "Regal oben" : "Top shelf", count: 6, added: 1, new_entry: false },
       "2": { status: "added", content: "Ketchup", kind: "pack", device_id: "demo12", area: de ? "Vorratskammer" : "Pantry", compartment: de ? "Schrank" : "Cupboard", count: 1, added: 1, new_entry: true },
@@ -268,6 +272,8 @@ const hass = {
       ["Bananas", "produce", false], ["Apples", "produce", false], ["Wholemeal bread", "bakery", true], ["Milk", "fridge", true], ["Gouda", "fridge", true],
       ["Penne (Barilla, 500 g)", "dry", true], ["Chopped tomatoes (Mutti, 400 g)", "dry", true], ["Crate of water", "drinks", false], ["Toilet paper (Zewa, 2 packs)", "drugstore", true],
     ]).map(([summary, section, known], i) => ({ list: "todo.einkaufen", list_name: "Einkaufen", uid: `s${i}`, summary, section, known })) };
+    if (msg.type === "larder/shopping_add") return { list: "todo.einkaufsliste", created: true };
+    if (msg.type === "larder/shopping_undo") return { removed: 1 };
     if (msg.type === "larder/shopping_check") return msg.uid === "s0" ? { status: "unknown", name: msg.summary } : { status: "added", area: de ? "Vorratskammer" : "Pantry", compartment: de ? "Regal" : "Shelf", added: 1 };
     if (msg.type === "larder/recurring") return { items: [{ key: "w", name: de ? "Wasserkiste" : "Crate of water", weekdays: [4] }, { key: "m", name: de ? "Milch" : "Milk", every_days: 3 }] };
     if (msg.type === "larder/data_gaps") return { counts: { opened_no_date: 1, no_date: 2, no_price: 3, no_place: 1, no_min: 1 }, gaps: {

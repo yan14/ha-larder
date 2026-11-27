@@ -199,6 +199,33 @@ async def async_bought_add(hass: HomeAssistant, item_id: str) -> dict[str, Any]:
     return result
 
 
+async def async_shopping_undo(
+    hass: HomeAssistant, entity_id: str, uid: str, device_id: str | None, added: int
+) -> dict[str, Any]:
+    """6.7 (#200): undo a tick – the item is open on the list again and the packs put into stock go away."""
+    from .devices import entry_of  # noqa: PLC0415
+    from .disposable import async_dispose  # noqa: PLC0415 - avoids an import cycle
+
+    await hass.services.async_call(
+        "todo", "update_item", {"entity_id": entity_id, "item": uid, "status": "needs_action"}, blocking=True
+    )
+    if not device_id:
+        return {"removed": 0}
+    pack = next((p for p in pack_entries(hass) if p["device_id"] == device_id), None)
+    if pack is None:
+        return {"removed": 0}
+    removed = max(1, min(int(added or 1), pack["count"]))
+    entry = entry_of(hass, pack["cc"])
+    if pack["count"] - removed <= 0:
+        # a new entry only for this purchase: removed without counting as used
+        await async_dispose(hass, entry.entry_id, pack["content"], remember=False)
+    else:
+        await entry.runtime_data.resettable["portions"].async_set_native_value(float(pack["count"] - removed))
+    stock = await async_get_stock(hass)
+    stock.unlog_put_away(device_id, removed)
+    return {"removed": removed}
+
+
 def _base_name(summary: str) -> str:
     return summary.split(" (", 1)[0].strip()
 
@@ -351,6 +378,41 @@ async def ws_shopping_check(hass: HomeAssistant, connection: websocket_api.Activ
         result = await async_shopping_check(hass, msg["list"], msg["uid"], msg["summary"])
     except HomeAssistantError as err:
         connection.send_error(msg["id"], "check_failed", str(err))
+        return
+    connection.send_result(msg["id"], result)
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): f"{DOMAIN}/shopping_add", vol.Required("item"): vol.All(str, vol.Length(min=1, max=255))}
+)
+@websocket_api.async_response
+async def ws_shopping_add(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """6.7 (#200): put something onto the list right on the Shopping page (its own list, else the default)."""
+    await async_get_stock(hass)
+    item = " ".join(msg["item"].split())
+    entity_id = shopping_list_for(hass, item)
+    if not entity_id:
+        connection.send_error(msg["id"], "no_list", "No shopping list set up")
+        return
+    created = await async_add_to_shopping_list(hass, entity_id, item)
+    connection.send_result(msg["id"], {"list": entity_id, "created": created})
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/shopping_undo",
+        vol.Required("list"): vol.All(str, vol.Match(r"^todo\.")),
+        vol.Required("uid"): str,
+        vol.Optional("device_id"): vol.Any(None, str),
+        vol.Optional("added", default=1): vol.All(vol.Coerce(int), vol.Range(min=1, max=999)),
+    }
+)
+@websocket_api.async_response
+async def ws_shopping_undo(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    try:
+        result = await async_shopping_undo(hass, msg["list"], msg["uid"], msg.get("device_id"), msg["added"])
+    except HomeAssistantError as err:
+        connection.send_error(msg["id"], "undo_failed", str(err))
         return
     connection.send_result(msg["id"], result)
 
@@ -573,5 +635,5 @@ def async_setup_shopping_mode_websocket(hass: HomeAssistant) -> None:
     if domain_data.get("shopping_mode_ws"):
         return
     domain_data["shopping_mode_ws"] = True
-    for command in (ws_shopping_mode, ws_shopping_check, ws_shopping_scan, ws_shopping_details, ws_receipt_add, ws_bought_add, ws_shopping_lists, ws_recurring, ws_recurring_set, ws_recurring_delete):
+    for command in (ws_shopping_mode, ws_shopping_add, ws_shopping_check, ws_shopping_undo, ws_shopping_scan, ws_shopping_details, ws_receipt_add, ws_bought_add, ws_shopping_lists, ws_recurring, ws_recurring_set, ws_recurring_delete):
         websocket_api.async_register_command(hass, command)

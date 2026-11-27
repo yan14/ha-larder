@@ -14,6 +14,7 @@ from homeassistant.config_entries import (
 )
 from homeassistant.const import CONF_NAME
 from homeassistant.core import callback
+from homeassistant.data_entry_flow import section
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.selector import (
     AreaSelector,
@@ -268,6 +269,39 @@ class LarderConfigFlow(ConfigFlow, domain=DOMAIN):
         )
 
 
+# 6.7 (#194): the settings in sections; the rare ones start folded
+OPTION_SECTIONS: dict[str, tuple[str, ...]] = {
+    "shelf_life": (CONF_ESTIMATE_MODE, CONF_OPENED_DAYS, CONF_THAWED_DAYS, CONF_SOON_DAYS, CONF_LONG_SOON_DAYS, CONF_VACUUM_DEFAULT),
+    "shopping": (CONF_TODO_ENTITY, CONF_TODO_HOUSEHOLD, CONF_TODO_PHARMACY, CONF_SHOPPING_DETAILS, CONF_STOCK_LEAD_DAYS, CONF_REORDER_SHOPPING),
+    "meal_plan": (CONF_RECIPE_DAYS, CONF_MEAL_CALENDAR, CONF_PLAN_SOURCE, CONF_PLAN_DAYS, CONF_THAW_DAYS, CONF_FREEZER_FIRST_WEEKS),
+    "notifications": (
+        CONF_CALENDAR_ENTITY, CONF_NFC_NOTIFY, CONF_REPAIR_HINTS, CONF_TEMPERATURE_WARNING,
+        CONF_RECALL_CHECK, CONF_RECALL_STATE, CONF_WATCH_ALLERGENS,
+    ),
+    "supply": (CONF_SUPPLY_CHECK, CONF_SUPPLY_PERSONS, CONF_SUPPLY_DAYS),
+    "advanced": (CONF_AI_TASK_ENTITY,),
+}
+
+
+def nest_options(flat: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    """Flat settings → one dict per section (missing keys stay missing: cleared selectors)."""
+    return {
+        name: {key: flat[key] for key in keys if key in flat}
+        for name, keys in OPTION_SECTIONS.items()
+    }
+
+
+def flatten_options(data: dict[str, Any]) -> dict[str, Any]:
+    """Section dicts → flat settings."""
+    flat: dict[str, Any] = {}
+    for key, value in data.items():
+        if key in OPTION_SECTIONS and isinstance(value, dict):
+            flat.update(value)
+        else:
+            flat[key] = value
+    return flat
+
+
 class LarderOptionsFlow(OptionsFlow):
     """Global settings: webhook URL (display only) and best-before estimate (table/AI)."""
 
@@ -278,6 +312,7 @@ class LarderOptionsFlow(OptionsFlow):
 
         errors: dict[str, str] = {}
         if user_input is not None:
+            user_input = flatten_options(user_input)
             sync = await async_get_calendar_sync(self.hass)
             calendar = user_input.get(CONF_CALENDAR_ENTITY)
             if calendar and sync.supports(calendar) is False:
@@ -300,89 +335,133 @@ class LarderOptionsFlow(OptionsFlow):
         url, path = webhook_urls(self.hass, webhook_id)
         schema = vol.Schema(
             {
-                vol.Optional(CONF_ESTIMATE_MODE, default=ESTIMATE_TABLE): SelectSelector(
-                    SelectSelectorConfig(
-                        options=ESTIMATE_MODES,
-                        translation_key=CONF_ESTIMATE_MODE,
-                        mode=SelectSelectorMode.LIST,
-                    )
+                vol.Required("shelf_life"): section(
+                    vol.Schema(
+                        {
+                        vol.Optional(CONF_ESTIMATE_MODE, default=ESTIMATE_TABLE): SelectSelector(
+                            SelectSelectorConfig(
+                                options=ESTIMATE_MODES,
+                                translation_key=CONF_ESTIMATE_MODE,
+                                mode=SelectSelectorMode.LIST,
+                            )
+                        ),
+                        vol.Optional(CONF_OPENED_DAYS, default=DEFAULT_OPENED_DAYS): NumberSelector(
+                            NumberSelectorConfig(min=1, max=30, step=1, mode=NumberSelectorMode.BOX)
+                        ),
+                        vol.Optional(CONF_THAWED_DAYS, default=DEFAULT_THAWED_DAYS): NumberSelector(
+                            NumberSelectorConfig(min=1, max=30, step=1, mode=NumberSelectorMode.BOX)
+                        ),
+                        vol.Optional(CONF_SOON_DAYS, default=SOON_DAYS): NumberSelector(
+                            NumberSelectorConfig(min=0, max=MAX_SOON_DAYS, step=1, mode=NumberSelectorMode.BOX)
+                        ),
+                        vol.Optional(CONF_LONG_SOON_DAYS, default=DEFAULT_LONG_SOON_DAYS): NumberSelector(
+                            NumberSelectorConfig(min=1, max=365, step=1, mode=NumberSelectorMode.BOX)
+                        ),
+                        vol.Optional(CONF_VACUUM_DEFAULT, default=True): BooleanSelector(),
+                        }
+                    ),
+                    {"collapsed": False},
                 ),
-                vol.Optional(CONF_OPENED_DAYS, default=DEFAULT_OPENED_DAYS): NumberSelector(
-                    NumberSelectorConfig(min=1, max=30, step=1, mode=NumberSelectorMode.BOX)
+                vol.Required("shopping"): section(
+                    vol.Schema(
+                        {
+                        vol.Optional(CONF_TODO_ENTITY): EntitySelector(
+                            EntitySelectorConfig(domain="todo")
+                        ),
+                        vol.Optional(CONF_TODO_HOUSEHOLD): EntitySelector(
+                            EntitySelectorConfig(domain="todo")
+                        ),
+                        vol.Optional(CONF_TODO_PHARMACY): EntitySelector(
+                            EntitySelectorConfig(domain="todo")
+                        ),
+                        vol.Optional(CONF_SHOPPING_DETAILS, default=True): BooleanSelector(),
+                        vol.Optional(CONF_STOCK_LEAD_DAYS, default=7): NumberSelector(
+                            NumberSelectorConfig(min=1, max=60, step=1, mode=NumberSelectorMode.BOX)
+                        ),
+                        vol.Optional(CONF_REORDER_SHOPPING, default=False): BooleanSelector(),
+                        }
+                    ),
+                    {"collapsed": False},
                 ),
-                vol.Optional(CONF_THAWED_DAYS, default=DEFAULT_THAWED_DAYS): NumberSelector(
-                    NumberSelectorConfig(min=1, max=30, step=1, mode=NumberSelectorMode.BOX)
+                vol.Required("meal_plan"): section(
+                    vol.Schema(
+                        {
+                        vol.Optional(CONF_RECIPE_DAYS, default=DEFAULT_RECIPE_DAYS): NumberSelector(
+                            NumberSelectorConfig(min=0, max=MAX_RECIPE_DAYS, step=1, mode=NumberSelectorMode.BOX)
+                        ),
+                        vol.Optional(CONF_MEAL_CALENDAR): EntitySelector(
+                            EntitySelectorConfig(domain="calendar")
+                        ),
+                        vol.Optional(CONF_PLAN_SOURCE, default="book_ai"): SelectSelector(
+                            SelectSelectorConfig(options=list(PLAN_SOURCES), translation_key=CONF_PLAN_SOURCE, mode=SelectSelectorMode.LIST)
+                        ),
+                        vol.Optional(CONF_PLAN_DAYS, default=5): NumberSelector(
+                            NumberSelectorConfig(min=1, max=14, step=1, mode=NumberSelectorMode.BOX)
+                        ),
+                        vol.Optional(CONF_THAW_DAYS, default=DEFAULT_THAW_DAYS): NumberSelector(
+                            NumberSelectorConfig(min=0, max=3, step=1, mode=NumberSelectorMode.BOX)
+                        ),
+                        vol.Optional(CONF_FREEZER_FIRST_WEEKS, default=DEFAULT_FREEZER_FIRST_WEEKS): NumberSelector(
+                            NumberSelectorConfig(min=0, max=26, step=1, mode=NumberSelectorMode.BOX, unit_of_measurement="wk")
+                        ),
+                        }
+                    ),
+                    {"collapsed": True},
                 ),
-                vol.Optional(CONF_RECIPE_DAYS, default=DEFAULT_RECIPE_DAYS): NumberSelector(
-                    NumberSelectorConfig(min=0, max=MAX_RECIPE_DAYS, step=1, mode=NumberSelectorMode.BOX)
+                vol.Required("notifications"): section(
+                    vol.Schema(
+                        {
+                        vol.Optional(CONF_CALENDAR_ENTITY): EntitySelector(
+                            EntitySelectorConfig(domain="calendar")
+                        ),
+                        vol.Optional(CONF_NFC_NOTIFY, default=True): BooleanSelector(),
+                        vol.Optional(CONF_REPAIR_HINTS, default=True): BooleanSelector(),
+                        vol.Optional(CONF_TEMPERATURE_WARNING, default=True): BooleanSelector(),
+                        vol.Optional(CONF_RECALL_CHECK, default=True): BooleanSelector(),
+                        vol.Optional(CONF_RECALL_STATE): SelectSelector(
+                            SelectSelectorConfig(options=list(RECALL_STATES), mode=SelectSelectorMode.DROPDOWN)
+                        ),
+                        vol.Optional(CONF_WATCH_ALLERGENS): SelectSelector(
+                            SelectSelectorConfig(
+                                options=list(ALLERGEN_KEYS),
+                                translation_key=CONF_WATCH_ALLERGENS,
+                                multiple=True,
+                                mode=SelectSelectorMode.DROPDOWN,
+                            )
+                        ),
+                        }
+                    ),
+                    {"collapsed": True},
                 ),
-                vol.Optional(CONF_SOON_DAYS, default=SOON_DAYS): NumberSelector(
-                    NumberSelectorConfig(min=0, max=MAX_SOON_DAYS, step=1, mode=NumberSelectorMode.BOX)
+                vol.Required("supply"): section(
+                    vol.Schema(
+                        {
+                        vol.Optional(CONF_SUPPLY_CHECK, default=True): BooleanSelector(),
+                        vol.Optional(CONF_SUPPLY_PERSONS, default=2): NumberSelector(
+                            NumberSelectorConfig(min=1, max=20, step=1, mode=NumberSelectorMode.BOX)
+                        ),
+                        vol.Optional(CONF_SUPPLY_DAYS, default=10): NumberSelector(
+                            NumberSelectorConfig(min=3, max=30, step=1, mode=NumberSelectorMode.BOX)
+                        ),
+                        }
+                    ),
+                    {"collapsed": True},
                 ),
-                vol.Optional(CONF_LONG_SOON_DAYS, default=DEFAULT_LONG_SOON_DAYS): NumberSelector(
-                    NumberSelectorConfig(min=1, max=365, step=1, mode=NumberSelectorMode.BOX)
-                ),
-                vol.Optional(CONF_VACUUM_DEFAULT, default=True): BooleanSelector(),
-                vol.Optional(CONF_NFC_NOTIFY, default=True): BooleanSelector(),
-                vol.Optional(CONF_REPAIR_HINTS, default=True): BooleanSelector(),
-                vol.Optional(CONF_TEMPERATURE_WARNING, default=True): BooleanSelector(),
-                vol.Optional(CONF_CALENDAR_ENTITY): EntitySelector(
-                    EntitySelectorConfig(domain="calendar")
-                ),
-                vol.Optional(CONF_TODO_ENTITY): EntitySelector(
-                    EntitySelectorConfig(domain="todo")
-                ),
-                vol.Optional(CONF_TODO_HOUSEHOLD): EntitySelector(
-                    EntitySelectorConfig(domain="todo")
-                ),
-                vol.Optional(CONF_TODO_PHARMACY): EntitySelector(
-                    EntitySelectorConfig(domain="todo")
-                ),
-                vol.Optional(CONF_SHOPPING_DETAILS, default=True): BooleanSelector(),
-                vol.Optional(CONF_STOCK_LEAD_DAYS, default=7): NumberSelector(
-                    NumberSelectorConfig(min=1, max=60, step=1, mode=NumberSelectorMode.BOX)
-                ),
-                vol.Optional(CONF_REORDER_SHOPPING, default=False): BooleanSelector(),
-                vol.Optional(CONF_RECALL_CHECK, default=True): BooleanSelector(),
-                vol.Optional(CONF_RECALL_STATE): SelectSelector(
-                    SelectSelectorConfig(options=list(RECALL_STATES), mode=SelectSelectorMode.DROPDOWN)
-                ),
-                vol.Optional(CONF_WATCH_ALLERGENS): SelectSelector(
-                    SelectSelectorConfig(
-                        options=list(ALLERGEN_KEYS),
-                        translation_key=CONF_WATCH_ALLERGENS,
-                        multiple=True,
-                        mode=SelectSelectorMode.DROPDOWN,
-                    )
-                ),
-                vol.Optional(CONF_MEAL_CALENDAR): EntitySelector(
-                    EntitySelectorConfig(domain="calendar")
-                ),
-                vol.Optional(CONF_THAW_DAYS, default=DEFAULT_THAW_DAYS): NumberSelector(
-                    NumberSelectorConfig(min=0, max=3, step=1, mode=NumberSelectorMode.BOX)
-                ),
-                vol.Optional(CONF_PLAN_SOURCE, default="book_ai"): SelectSelector(
-                    SelectSelectorConfig(options=list(PLAN_SOURCES), translation_key=CONF_PLAN_SOURCE, mode=SelectSelectorMode.LIST)
-                ),
-                vol.Optional(CONF_PLAN_DAYS, default=5): NumberSelector(
-                    NumberSelectorConfig(min=1, max=14, step=1, mode=NumberSelectorMode.BOX)
-                ),
-                vol.Optional(CONF_FREEZER_FIRST_WEEKS, default=DEFAULT_FREEZER_FIRST_WEEKS): NumberSelector(
-                    NumberSelectorConfig(min=0, max=26, step=1, mode=NumberSelectorMode.BOX, unit_of_measurement="wk")
-                ),
-                vol.Optional(CONF_SUPPLY_CHECK, default=True): BooleanSelector(),
-                vol.Optional(CONF_SUPPLY_PERSONS, default=2): NumberSelector(
-                    NumberSelectorConfig(min=1, max=20, step=1, mode=NumberSelectorMode.BOX)
-                ),
-                vol.Optional(CONF_SUPPLY_DAYS, default=10): NumberSelector(
-                    NumberSelectorConfig(min=3, max=30, step=1, mode=NumberSelectorMode.BOX)
-                ),
-                vol.Optional(CONF_AI_TASK_ENTITY): EntitySelector(
-                    EntitySelectorConfig(domain="ai_task")
+                vol.Required("advanced"): section(
+                    vol.Schema(
+                        {
+                        vol.Optional(CONF_AI_TASK_ENTITY): EntitySelector(
+                            EntitySelectorConfig(domain="ai_task")
+                        ),
+                        }
+                    ),
+                    {"collapsed": True},
                 ),
             }
         )
-        suggested = user_input if user_input is not None else {k: v for k, v in estimator.settings().items() if v is not None}
+        suggested = nest_options(
+            user_input if user_input is not None else {k: v for k, v in estimator.settings().items() if v is not None}
+        )
         return self.async_show_form(
             step_id="init",
             data_schema=self.add_suggested_values_to_schema(schema, suggested),

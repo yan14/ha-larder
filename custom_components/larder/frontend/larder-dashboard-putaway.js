@@ -21,6 +21,19 @@ function pickLang(table, hass) {
 
 const TEXT = {
   de: {
+    choiceTitle: "📥 Einkauf einräumen",
+    choiceIntro: "Wie möchtest du deinen Einkauf erfassen?",
+    choiceScan: "Scannen",
+    choiceScanHint: "Strichcode für Strichcode – Bekanntes kommt gleich an seinen Platz.",
+    choiceReceipt: "Kassenbon oder Rechnung",
+    choiceReceiptHint: "Foto vom Kassenbon oder PDF-Rechnung vom Online-Einkauf.",
+    choiceHand: "Von Hand",
+    choiceHandHint: "Eintippen, z. B. Obst oder Brot vom Bäcker.",
+    receiptTitle: "🧾 Kassenbon oder Rechnung lesen",
+    receiptIntro: "Larder liest Produkte, Anzahl und Preise. Danach prüfst du die Liste und trägst das MHD nach.",
+    receiptPhoto: "📷 Foto vom Kassenbon",
+    receiptPdf: "📄 PDF-Rechnung",
+    cancel: "Abbrechen",
     menu: "📝 Zuletzt eingeräumt",
     title: "Zuletzt eingeräumt",
     titleNow: "Eben eingeräumt",
@@ -53,6 +66,19 @@ const TEXT = {
     priceFailed: "Preis konnte nicht gespeichert werden.",
   },
   en: {
+    choiceTitle: "📥 Put the shopping away",
+    choiceIntro: "How do you want to add your shopping?",
+    choiceScan: "Scan",
+    choiceScanHint: "Barcode by barcode – known products go straight to their place.",
+    choiceReceipt: "Receipt or invoice",
+    choiceReceiptHint: "Photo of the receipt or PDF invoice from an online order.",
+    choiceHand: "By hand",
+    choiceHandHint: "Type it in, e.g. fruit or bread from the bakery.",
+    receiptTitle: "🧾 Read a receipt or invoice",
+    receiptIntro: "Larder reads products, counts and prices. Then you check the list and add the best-before dates.",
+    receiptPhoto: "📷 Photo of the receipt",
+    receiptPdf: "📄 PDF invoice",
+    cancel: "Cancel",
     menu: "📝 Recently put away",
     title: "Recently put away",
     titleNow: "Just put away",
@@ -85,6 +111,19 @@ const TEXT = {
     priceFailed: "The price could not be saved.",
   },
   fr: {
+    choiceTitle: "📥 Ranger les courses",
+    choiceIntro: "Comment veux-tu saisir tes courses ?",
+    choiceScan: "Scanner",
+    choiceScanHint: "Code-barres après code-barres – les produits connus vont directement à leur place.",
+    choiceReceipt: "Ticket ou facture",
+    choiceReceiptHint: "Photo du ticket ou facture PDF d'une commande en ligne.",
+    choiceHand: "À la main",
+    choiceHandHint: "Saisir, p. ex. des fruits ou du pain de la boulangerie.",
+    receiptTitle: "🧾 Lire un ticket ou une facture",
+    receiptIntro: "Larder lit les produits, quantités et prix. Ensuite tu vérifies la liste et ajoutes les dates.",
+    receiptPhoto: "📷 Photo du ticket",
+    receiptPdf: "📄 Facture PDF",
+    cancel: "Annuler",
     menu: "📝 Rangé récemment",
     title: "Rangé récemment",
     titleNow: "Juste rangé",
@@ -117,6 +156,19 @@ const TEXT = {
     priceFailed: "Le prix n'a pas pu être enregistré.",
   },
   nl: {
+    choiceTitle: "📥 Boodschappen opbergen",
+    choiceIntro: "Hoe wil je je boodschappen invoeren?",
+    choiceScan: "Scannen",
+    choiceScanHint: "Barcode na barcode – bekende producten gaan meteen naar hun plek.",
+    choiceReceipt: "Kassabon of factuur",
+    choiceReceiptHint: "Foto van de kassabon of pdf-factuur van een online bestelling.",
+    choiceHand: "Met de hand",
+    choiceHandHint: "Intypen, bv. fruit of brood van de bakker.",
+    receiptTitle: "🧾 Kassabon of factuur lezen",
+    receiptIntro: "Larder leest producten, aantallen en prijzen. Daarna controleer je de lijst en vul je de data aan.",
+    receiptPhoto: "📷 Foto van de kassabon",
+    receiptPdf: "📄 Pdf-factuur",
+    cancel: "Annuleren",
     menu: "📝 Onlangs opgeborgen",
     title: "Onlangs opgeborgen",
     titleNow: "Net opgeborgen",
@@ -195,6 +247,63 @@ export function installPutAway(Dashboard, { el, DOMAIN, listAreas }) {
     i.placeholder = label;
     i.dataset.f = f;
     return i;
+  };
+
+  const choice = (role, icon, name, hint, run) => {
+    const b = el("button", "choice");
+    b.type = "button";
+    b.dataset.role = role;
+    b.append(el("span", "ico", icon), el("span", "name", name), el("span", "sub", hint));
+    b.addEventListener("click", run);
+    return b;
+  };
+
+  /**
+   * 6.7 (#193): one way to put the shopping away – scan, receipt/invoice or by hand. Start, Shopping, Larder
+   * and More all open this; 📷 in the header stays for looking up and taking out.
+   */
+  proto.openPutAwayChoice = function openPutAwayChoice() {
+    const t = putAwayTexts(this._hass);
+    const choices = el("div", "choices");
+    choices.append(choice("putaway-scan", "📷", t.choiceScan, t.choiceScanHint, () => this.openPutAway()));
+    if (this.canReadReceipt && this.canReadReceipt()) {
+      choices.append(choice("putaway-receipt", "🧾", t.choiceReceipt, t.choiceReceiptHint, () => this.openReceipt()));
+    }
+    choices.append(choice("putaway-hand", "✍️", t.choiceHand, t.choiceHandHint, () => this.openItemsDialog("pack")));
+    const recent = button("link", t.menu, () => this.openPutAwayList());
+    recent.dataset.role = "putaway-recent";
+    const actions = el("div", "buttons");
+    actions.append(button("cancel", t.cancel, () => this._closeDialog()));
+    this._form.replaceChildren(el("h2", "", t.choiceTitle), el("p", "hint", t.choiceIntro), choices, recent, actions);
+    this._submit = null;
+    this._overlay.hidden = false;
+  };
+
+  /** 6.7 (#206): the receipt reader – photo or PDF first, then the list of packs read from it. */
+  proto.openReceipt = function openReceipt() {
+    const t = putAwayTexts(this._hass);
+    const pick = (role, label, accept) => {
+      const file = el("input");
+      file.type = "file";
+      file.accept = accept;
+      file.hidden = true;
+      file.dataset.role = `${role}-file`;
+      file.addEventListener("change", () => {
+        const picked = file.files && file.files[0];
+        file.value = "";
+        if (picked) this.openItemsDialog("pack", { receiptFile: picked });
+      });
+      const b = button("", label, () => file.click());
+      b.dataset.role = role;
+      return [b, file];
+    };
+    const choices = el("div", "buttons receiptpick");
+    choices.append(...pick("receipt-photo", t.receiptPhoto, "image/*"), ...pick("receipt-pdf", t.receiptPdf, "application/pdf,image/*"));
+    const actions = el("div", "buttons");
+    actions.append(button("cancel", t.cancel, () => this._closeDialog()));
+    this._form.replaceChildren(el("h2", "", t.receiptTitle), el("p", "hint", t.receiptIntro), choices, actions);
+    this._submit = null;
+    this._overlay.hidden = false;
   };
 
   /**

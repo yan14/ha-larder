@@ -4,6 +4,7 @@ from datetime import date, datetime, timedelta
 
 from pytest_homeassistant_custom_component.common import async_fire_time_changed
 
+from custom_components.larder.config_flow import nest_options
 from custom_components.larder.const import DOMAIN
 from homeassistant.components import calendar as ha_calendar
 from homeassistant.components.calendar import CalendarEntity, CalendarEntityFeature, CalendarEvent
@@ -66,7 +67,7 @@ async def _choose_calendar(hass: HomeAssistant, entry, entity_id: str | None) ->
     data = {"estimate_mode": "table"}
     if entity_id:
         data["calendar_entity"] = entity_id
-    await hass.config_entries.options.async_configure(result["flow_id"], data)
+    await hass.config_entries.options.async_configure(result["flow_id"], nest_options(data))
     await hass.async_block_till_done()
 
 
@@ -453,7 +454,7 @@ async def test_caldav_calendar_is_not_written_to(hass: HomeAssistant) -> None:
     await hass.data[ha_calendar.DATA_COMPONENT].async_add_entities([cal])
     assert hass.data[DOMAIN]["calendar_sync"].supports("calendar.muell") is False
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    result = await hass.config_entries.options.async_configure(result["flow_id"], {"estimate_mode": "table", "calendar_entity": "calendar.muell"})
+    result = await hass.config_entries.options.async_configure(result["flow_id"], nest_options({"estimate_mode": "table", "calendar_entity": "calendar.muell"}))
     assert result["errors"] == {"calendar_entity": "calendar_not_supported"}
     await _set(hass, "Gekochte Eier", TODAY() + timedelta(days=5))
     assert cal.server == []

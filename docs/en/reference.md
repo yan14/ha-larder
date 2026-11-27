@@ -6,7 +6,7 @@
 
 ## Settings
 
-Settings → Devices & services → **Larder** → **Configure** (on any container; the settings apply to all containers):
+Settings → Devices & services → **Larder** → **Configure** (on any container; the settings apply to all containers). Since 6.7 the form has sections – **Shelf life**, **Shopping**, **Recipes & meal plan**, **Hints & notifications**, **Emergency supply** and **Advanced** (the AI task); the last four start folded:
 
 | Setting | Default | What it does |
 |---|---|---|

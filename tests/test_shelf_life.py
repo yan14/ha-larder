@@ -5,6 +5,7 @@ from datetime import timedelta
 import pytest
 
 from custom_components.larder import shelf_life as sl
+from custom_components.larder.config_flow import nest_options
 from custom_components.larder.const import DOMAIN
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
@@ -501,7 +502,7 @@ async def test_mark_opened_shortens_or_sets(hass: HomeAssistant) -> None:
 
     # setting "days after opening"
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    await hass.config_entries.options.async_configure(result["flow_id"], {"estimate_mode": "table", "opened_days": 7})
+    await hass.config_entries.options.async_configure(result["flow_id"], nest_options({"estimate_mode": "table", "opened_days": 7}))
     await _fill(hass, "34OL", "Käse", 30)
     out = (await hass.services.async_call(DOMAIN, "mark_opened", {"entity_id": date_id}, blocking=True, return_response=True))[date_id]
     assert out["best_before"] == (today + timedelta(days=7)).isoformat()
@@ -520,7 +521,7 @@ async def test_mark_thawed_shortens_and_uses_its_own_setting(hass: HomeAssistant
     assert out["best_before"] == (today + timedelta(days=1)).isoformat() and out["shortened"] is False
     # setting "days after thawing" (independent of "after opening")
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    await hass.config_entries.options.async_configure(result["flow_id"], {"estimate_mode": "table", "thawed_days": 4})
+    await hass.config_entries.options.async_configure(result["flow_id"], nest_options({"estimate_mode": "table", "thawed_days": 4}))
     await _fill(hass, "34OL", "Chili", 90)
     out = (await hass.services.async_call(DOMAIN, "mark_thawed", {"entity_id": date_id}, blocking=True, return_response=True))[date_id]
     assert out["best_before"] == (today + timedelta(days=4)).isoformat()

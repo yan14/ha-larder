@@ -2,6 +2,7 @@
 
 from pytest_homeassistant_custom_component.common import mock_restore_cache
 
+from custom_components.larder.config_flow import nest_options
 from custom_components.larder.const import DOMAIN
 from homeassistant.components import todo as ha_todo
 from homeassistant.components.todo import TodoItem, TodoItemStatus, TodoListEntity, TodoListEntityFeature
@@ -41,7 +42,7 @@ async def _choose_list(hass: HomeAssistant, entry, entity_id: str | None) -> Non
     data = {"estimate_mode": "table"}
     if entity_id:
         data["todo_entity"] = entity_id
-    await hass.config_entries.options.async_configure(result["flow_id"], data)
+    await hass.config_entries.options.async_configure(result["flow_id"], nest_options(data))
     await hass.async_block_till_done()
 
 

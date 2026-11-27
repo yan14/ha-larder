@@ -5,6 +5,7 @@ from datetime import date, timedelta
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry, mock_restore_cache
 
+from custom_components.larder.config_flow import nest_options
 from custom_components.larder.const import DOMAIN
 from custom_components.larder.estimate import (
     StorageContext,
@@ -69,7 +70,7 @@ async def _set_mode(hass: HomeAssistant, entry, mode: str, entity: str | None = 
     user_input = {"estimate_mode": mode}
     if entity:
         user_input["ai_task_entity"] = entity
-    result = await hass.config_entries.options.async_configure(result["flow_id"], user_input)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], nest_options(user_input))
     assert result["type"] is FlowResultType.CREATE_ENTRY
 
 
@@ -78,7 +79,7 @@ async def _enable_ai(hass: HomeAssistant, entry, entity: str | None = None) -> N
     user_input = {"estimate_mode": "ai"}
     if entity:
         user_input["ai_task_entity"] = entity
-    result = await hass.config_entries.options.async_configure(result["flow_id"], user_input)
+    result = await hass.config_entries.options.async_configure(result["flow_id"], nest_options(user_input))
     assert result["type"] is FlowResultType.CREATE_ENTRY
 
 
@@ -139,7 +140,7 @@ async def test_vacuum_default_setting_applies_to_new_containers_only(hass: HomeA
 
     result = await hass.config_entries.options.async_init(entry.entry_id)
     result = await hass.config_entries.options.async_configure(
-        result["flow_id"], {"estimate_mode": "table", "vacuum_default": False}
+        result["flow_id"], nest_options({"estimate_mode": "table", "vacuum_default": False})
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
 

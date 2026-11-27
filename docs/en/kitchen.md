@@ -110,7 +110,7 @@ Since 5.7 the blueprint **Larder – opened items** sends once a week (Saturday 
 
 ### Rescue list of the week
 
-Since 6.5 the blueprint **Larder – rescue list of the week** sends once a week (Sunday 17:00 by default) a short push with everything that has to go this week and is not planned yet: what expires within 7 days, and frozen food in the last weeks of its best quality ([Freezer first](#week-suggestion)). The button **Into the meal plan** opens the week suggestion. **More → 🛟 Rescue this week** shows the same list in the dashboard, with **🧊 Freeze** for what keeps in the freezer. The service `larder.get_rescue_list` returns `count`, `items`, `title`, `summary`, `summary_short`, `button` and `url`.
+Since 6.5 the blueprint **Larder – rescue list of the week** sends once a week (Sunday 17:00 by default) a short push with everything that has to go this week and is not planned yet: what expires within 7 days, and frozen food in the last weeks of its best quality ([Freezer first](#week-suggestion)). The button **Into the meal plan** opens the week suggestion. **More → ♻️ Rescue this week** shows the same list in the dashboard, with **🧊 Freeze** for what keeps in the freezer. The service `larder.get_rescue_list` returns `count`, `items`, `title`, `summary`, `summary_short`, `button` and `url`.
 
 [![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Frescue_list.yaml)
 
@@ -191,14 +191,14 @@ The [shopping mode](#shopping-mode) shows every list by section in your order, s
 
 ### Shopping mode
 
-**🛒 Shopping** in the bar at the bottom (since 5.0, with the number of open items) shows every list Larder writes to, grouped by [store section](#store-sections) in your order. **Tick an item off** and two things happen: it is completed on its to-do list, and it goes **into stock right away** at its usual place, with brand, package and price as known and as many packs as Larder asked for (*→ Pantry · Shelf (+2)*). Items Larder does not know yet (*new – added at the end*) are collected: **＋ Add n new items** opens the pack dialog with their names, household goods (by the product databases) separately as household items. *Bought – into stock?* does not offer them again.
+**🛒 Shopping** in the bar at the bottom (since 5.0, with the number of open items) shows every list Larder writes to, grouped by [store section](#store-sections) in your order. **Tick an item off** and two things happen: it is completed on its to-do list, and it goes **into stock right away** at its usual place, with brand, package and price as known and as many packs as Larder asked for (*→ Pantry · Shelf (+2)*). Items Larder does not know yet (*new – added at the end*) are collected: **＋ Add n new items** opens the pack dialog with their names, household goods (by the product databases) separately as household items. *Bought – into stock?* does not offer them again. Since 6.7 a short notice after ticking off says where it went (*Milk → Pantry · Shelf*), with **Undo**: the item is open again and the pack is out of stock again. At the top, **Onto the list …** puts something straight on the shopping list (its own list, else the default list; nothing twice).
 
 **By store (since 5.9).** **📍 Where are you?** at the top: *Everywhere* or one of your stores (**＋** adds one; the choice is remembered on the device). At a store the page shows what you bought there before and everything without a known store; what you have only bought elsewhere so far is folded at the end (*Bought elsewhere – not at Aldi so far*). **🏪 Sections at …** gives the store its own order of sections (back to the general one with *General order*). *Everywhere* shows the cheapest store under each item (*💶 Aldi*). Where a product was bought comes from its **price**: the store read from a [receipt](containers.md#from-the-dashboard-recommended) (the AI reads it from the receipt header, you can correct it before adding), or the price entered in the shopping mode while a store is chosen. The stock view and the product view show **🏪 Prices per store**, cheapest first, and the price history names the store.
 
 Since 4.11:
 - **📷 Scan** (Home Assistant app): scan the barcode in the store. The matching item on the list is ticked off and put into stock; a known product that is not on the list goes into stock anyway (*Scanned, not on the list*); an unknown one is collected with its name from Open Food Facts.
 - **€ / date** next to a ticked-off item: enter the **price** (goes into the price history) and the **best-before date**. If the pack joined an entry with more packs, it gets an entry of its own, so the others keep their date.
-- **🧾 Receipt** reads a receipt instead (see [Packs](containers.md#bags-and-packs)).
+- **📥 Put away** opens the three ways to put things away, among them **🧾 Receipt or invoice**; reads a receipt instead (see [Packs](containers.md#bags-and-packs)).
 
 ### Online order
 

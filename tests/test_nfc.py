@@ -4,6 +4,7 @@ from datetime import timedelta
 
 from pytest_homeassistant_custom_component.common import MockConfigEntry, async_capture_events
 
+from custom_components.larder.config_flow import nest_options
 from custom_components.larder.const import DOMAIN
 from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import device_registry as dr
@@ -121,7 +122,7 @@ async def test_notification_can_be_switched_off(hass: HomeAssistant, hass_ws_cli
     calls = _notify(hass)
     await _ws(hass, hass_ws_client, {"type": f"{DOMAIN}/nfc_link", "tag_id": "abc", "cc": "34OL"})
     result = await hass.config_entries.options.async_init(entry.entry_id)
-    await hass.config_entries.options.async_configure(result["flow_id"], {"estimate_mode": "table", "nfc_notify": False})
+    await hass.config_entries.options.async_configure(result["flow_id"], nest_options({"estimate_mode": "table", "nfc_notify": False}))
     events = async_capture_events(hass, "larder_dose_scanned")
     await _scan(hass, "abc", phone)
     assert len(events) == 1 and calls == []

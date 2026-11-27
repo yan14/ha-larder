@@ -298,13 +298,12 @@ test("inputs and buttons call the right services", async () => {
   filled.dispatchEvent(new dom.window.Event("change"));
 
   $(el, "button.now").click();
-  $(el, "button.empty").click();
-  // first the question, then empty; without WebSocket the button is simply pressed
+  // 6.7 (#199): "Eaten" / "Thrown away" right at the bottom of a filled card; without WebSocket the button is pressed
   assert.equal($(el, ".outcomerow").hidden, false);
+  assert.equal($(el, "button.empty").hidden, true);
   assert.equal(hass.calls.length, 4);
   $(el, "button.eaten").click();
   await new Promise((r) => setTimeout(r, 0));
-  assert.equal($(el, ".outcomerow").hidden, true);
 
   assert.deepEqual(hass.calls[0], {
     domain: "text",
@@ -819,8 +818,6 @@ test("'Empty container' clears the estimate hint, the vacuum switch stays untouc
     ws.push(msg);
     return {};
   };
-  $(el, "button.empty").click();
-  assert.equal($(el, ".tip").textContent, "");
   $(el, "button.thrown").click();
   await flush();
   assert.deepEqual(hass.calls, []);
@@ -1150,7 +1147,10 @@ test("5.0: slim card – big actions on top, the rest under More; −1 of a pack
   const hass = adminHass([{ id: "d1", name: "Packung 1", content: "Tomaten", portions: 3, unit: "pieces", product: { kind: "pack" } }]);
   const el = mount(hass);
   const card = $(el, ".card");
-  assert.deepEqual([...card.querySelectorAll(".bigactions > button")].map((b) => b.className), ["take", "openpack", "empty", "move"]);
+  // 6.7 (#199): emptying moved to the bottom, "Open device" under More
+  assert.deepEqual([...card.querySelectorAll(".bigactions > button")].map((b) => b.className), ["take", "openpack", "move"]);
+  assert.equal(card.querySelector(".outcomerow").hidden, false);
+  assert.ok(card.querySelector("details.more > a.open"));
   assert.ok(card.querySelector("details.more .minrow"));
   assert.ok(card.querySelector("details.more details.nutrition"));
   assert.equal(card.querySelector("details.more > summary").textContent, "Mehr");

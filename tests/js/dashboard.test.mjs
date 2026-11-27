@@ -171,7 +171,8 @@ test("Start: greeting, only containers expiring soon, help buttons", async () =>
   assert.equal($(el, ".hello").textContent, "Hallo Yan");
   assert.match($(el, ".lead").textContent, /bald verbraucht/);
   assert.deepEqual(names(el), ["Chili", "Lachs", "Reis"]); // expired first, then by days left
-  assert.deepEqual($$(el, "main .tile .badge").map((b) => b.textContent), ["abgelaufen (1 T)", "1 T", "3 T"]);
+  // 6.7 (#198): plain words
+  assert.deepEqual($$(el, "main .tile .badge").map((b) => b.textContent), ["seit gestern abgelaufen", "morgen", "in 3 Tagen"]);
   assert.ok($(el, '[data-role="recipes"]'));
   assert.equal($$(el, "nav button").length, 5);
   assert.deepEqual($$(el, "nav button").map((b) => b.textContent), ["🏠Start", "🥫Vorrat", "🛒Einkaufen", "📖Rezepte", "⋯Mehr"]);
@@ -239,7 +240,7 @@ test("Larder: tiles with symbol, name, container and days left; an empty contain
   const lachs = $$(el, "main .tile").find((t) => t.dataset.id === "d1");
   assert.equal(lachs.querySelector(".ico").textContent, "🐟");
   assert.equal(lachs.querySelector(".sub").textContent, "Dose 1");
-  assert.ok(lachs.querySelector(".badge").textContent === "1 T");
+  assert.ok(lachs.querySelector(".badge").textContent === "morgen");
   const empty = $$(el, "main .tile").find((t) => t.dataset.id === "d5");
   assert.ok(empty.classList.contains("empty"));
   assert.equal(empty.querySelector(".badge"), null);
@@ -297,7 +298,7 @@ test("Larder: switch between tiles and list", async () => {
   await flush();
   assert.equal($$(el, "main .tiles").length, 0);
   assert.equal($$(el, "main .row").length, 5);
-  assert.equal($$(el, "main .row .sub")[0].textContent, "Dose 3 · Keller");
+  assert.equal($$(el, "main .row .sub")[0].textContent, "Dose 3 · 📍 Keller");
   assert.equal(JSON.parse(dom.window.localStorage.getItem("larder.dashboard")).mode, "list");
 });
 
@@ -317,7 +318,9 @@ test("Larder: a filled container opens the detail view, an empty one the fill di
   assert.equal($(el, "nav").hidden, true);
   assert.equal($(el, "main").hidden, true);
   // the embedded card shows exactly this container
-  assert.equal($(el._classic, "h1").textContent, "Dose 1");
+  assert.equal($(el._classic, "h1").textContent, "Lachs"); // 6.7 (#202): titled by its contents
+  assert.equal($(el._classic, ".card .name").textContent, "Lachs");
+  assert.equal($(el._classic, ".card .devname").textContent, "Dose 1");
   assert.equal($el_cards(el._classic).length, 1);
 
   $(el._classic, "#back").click();
@@ -704,8 +707,8 @@ test("recipes: period from the settings, changeable and can be switched off", as
   await go(el, "recipes");
   const period = () => $(el, '[data-role="period"]');
   assert.equal(period().value, "default");
-  assert.equal(period().options[0].textContent, "Standard (5 Tage)");
-  assert.equal(period().options[period().options.length - 1].textContent, "Alle Dosen (kein Zeitraum)");
+  assert.equal(period().options[0].textContent, "Was in 5 Tagen abläuft"); // 6.7 (#207)
+  assert.equal(period().options[period().options.length - 1].textContent, "Alles, egal wann es abläuft");
 
   const calls = () => hass.wsCalls.filter((m) => m.type === "call_service").map((m) => m.service_data);
   $(el, '[data-role="generate"]').click();
@@ -890,8 +893,8 @@ test("single scan (📷): opens known containers, adds unknown Zwilling codes", 
   el._classic.openAddDialog = (code) => added.push(code);
   el._classic.openFillDialog = (id) => filled.push(id);
 
-  // 5.0: one scan button in the header on every page, and a quick action on the start page
-  assert.ok($(el, '.quick [data-role="quick-scan"]'));
+  // 5.0: one scan button in the header on every page (6.7, #193: no second one on the start page)
+  assert.equal($(el, '.quick [data-role="quick-scan"]'), null);
   assert.equal($(el, "#scan").hidden, false);
   $(el, '[data-role="scan-one"]').click();
   assert.equal(sent[0].type, "bar_code/scan");
@@ -1115,7 +1118,10 @@ test("compartment: in tile and list, searchable, sorted by area", async () => {
   await flush();
   await go(el, "containers");
   const tile = $(el, 'main .tile[data-id="d1"]');
-  assert.equal(tile.querySelector(".sub").textContent, "Dose 1 · Schublade 2");
+  // 6.7 (#204): the compartment marked on a line of its own
+  assert.equal(tile.querySelector(".sub").textContent, "Dose 1");
+  assert.equal(tile.querySelector(".sub.place").textContent, "📍 Schublade 2");
+  assert.equal(tile.title, "Lachs"); // 6.7 (#203): the full name as tooltip
   const search = $(el, '[data-role="search"]');
   search.value = "schublade 1";
   search.dispatchEvent(new Event("input"));
@@ -1129,7 +1135,7 @@ test("compartment: in tile and list, searchable, sorted by area", async () => {
   el._update();
   await flush();
   const subs = $$(el, "main .row .sub").map((n) => n.textContent);
-  assert.ok(subs.indexOf("Dose 2 · Küche · Schublade 1") < subs.indexOf("Dose 1 · Küche · Schublade 2"));
+  assert.ok(subs.indexOf("Dose 2 · 📍 Küche · Schublade 1") < subs.indexOf("Dose 1 · 📍 Küche · Schublade 2"));
 });
 
 test("kcal on the tile and in the list (per portion before per 100 g)", async () => {
@@ -1461,10 +1467,13 @@ test(`view "Cards": all details via the classic card, with filter and sorting`, 
   await flush();
   await go(el, "containers");
   const mode = () => $(el, '[data-role="mode"]');
-  assert.equal(mode().getAttribute("aria-label"), "Liste");
+  // 6.7 (#195): the button names the current view, the label the next one
+  assert.equal(mode().textContent, "▦ Kacheln");
+  assert.equal(mode().getAttribute("aria-label"), "Ansicht wechseln: Liste");
   mode().click(); // → list
   await flush();
-  assert.equal(mode().getAttribute("aria-label"), "Karten mit allen Details");
+  assert.equal(mode().textContent, "☰ Liste");
+  assert.equal(mode().getAttribute("aria-label"), "Ansicht wechseln: Karten mit allen Details");
   mode().click(); // → cards
   await flush();
   assert.equal(el._classic.getAttribute("show"), "cards");
@@ -1500,7 +1509,7 @@ test("More (5.0, was ⋮): sections, remembered estimates (administrators only) 
   assert.equal($(el, "h1").textContent, "Mehr");
   assert.deepEqual($$(el, "section.more h3").map((h) => h.textContent), ["Alltag", "Überblick", "Einrichtung"]);
   assert.deepEqual($$(el, 'section.more[data-section="overview"] button').map((b) => b.dataset.role), ["menu-stock", "menu-stats", "menu-rescue", "menu-supply", "menu-datacare"]);
-  assert.equal($(el, '[data-role="menu-estimates"]').textContent, "📋 Gemerkte Schätzungen");
+  assert.equal($(el, '[data-role="menu-estimates"] span').textContent, "🧠 Haltbarkeiten (gelernt)"); // 6.7 (#201)
   $(el, '[data-role="menu-estimates"]').click();
   await flush();
   await flush();
@@ -2989,8 +2998,10 @@ test("Put away (4.3): scan one product after another, unknown ones are added at 
   hass.auth = { external: { config: { hasBarCodeScanner: true }, _commandHandler: () => true, addCommandHandler(h) { handler = h; }, fireMessage: (m) => sent.push(m) } };
   const el = mount(hass);
   await flush();
-  $(el, '[data-role="putaway"]').click(); // start page
+  $(el, '[data-role="putaway"]').click(); // start page: one button, three ways inside (6.7, #193)
   const form = $(el, "form.dialog");
+  assert.equal(form.querySelector("h2").textContent, "📥 Einkauf einräumen");
+  $(el, '[data-role="putaway-scan"]').click();
   assert.equal(form.querySelector("h2").textContent, "Einräumen");
   assert.equal(sent.at(-1).type, "bar_code/scan");
   for (const code of ["4000000000001", "4000000000001", "4000000000002", "5000000000002", "6000000000003", "5000000000002"]) {
@@ -3347,6 +3358,11 @@ test("How long something has been expired (4.10.2): days, months, years", async 
   assert.deepEqual([3, 59, 90, 800].map((n) => TEXTS.de.expiredSince(n)), ["3 T", "59 T", "3 Mon.", "2 J."]);
   assert.deepEqual([3, 90, 800].map((n) => TEXTS.en.expiredSince(n)), ["3 d", "3 mo", "2 y"]);
   assert.deepEqual([12, 59, 60, 400, 1556].map((n) => TEXTS.de.daysShort(n)), ["12 T", "59 T", "2 Mon.", "13 Mon.", "4 J."]);
+  // 6.7 (#198): the dashboard in plain words
+  assert.deepEqual([1, 3, 20, 45, 400, 800].map((n) => TEXTS.de.daysLong(n)), ["morgen", "in 3 Tagen", "in 2 Wochen", "in 6 Wochen", "in 13 Monaten", "in 2 Jahren"]);
+  assert.deepEqual([1, 5, 35].map((n) => TEXTS.de.expiredLong(TEXTS.de.sinceLong(n))), ["seit gestern abgelaufen", "seit 5 Tagen abgelaufen", "seit 5 Wochen abgelaufen"]);
+  assert.deepEqual([1, 5].map((n) => TEXTS.en.expiredLong(TEXTS.en.sinceLong(n))), ["expired yesterday", "expired 5 days ago"]);
+  assert.equal(TEXTS.en.daysLong(30), "in 4 weeks");
   const panelStrings = await import("../../custom_components/larder/frontend/larder-panel-strings.js");
   const de = panelStrings.STRINGS.de;
   assert.deepEqual([1, 5, 90].map((n) => de.expiredSince(n)), ["seit gestern abgelaufen", "seit 5 Tagen abgelaufen", "seit 3 Monaten abgelaufen"]);
@@ -3368,13 +3384,16 @@ test("Shopping mode (4.11): scan ticks off, price and date, scanned extras, rece
   })(hass.callWS);
   const el = mount(hass);
   await flush();
-  // receipt on the start page
-  assert.equal($(el, '[data-role="start-receipt"]').textContent, "🧾 Kassenbon");
+  // 6.7 (#193): receipt inside the one put-away button on the start page and the shopping page
+  $(el, '[data-role="putaway"]').click();
+  assert.ok($(el, '[data-role="putaway-receipt"]'));
+  el._closeDialog();
   await go(el, "start");
   el.setView("shopping");
   await flush();
   await flush();
-  assert.ok($(el, '[data-role="shop-receipt"]'));
+  assert.ok($(el, '[data-role="shop-putaway"]'));
+  assert.equal($(el, '[data-role="shop-receipt"]'), null);
   assert.equal(await el._shopScan("1"), "Senf → Vorrat · Schrank");
   assert.equal($(el, '[data-uid="u2"]').classList.contains("done"), true);
   assert.equal(await el._shopScan("2"), "Ketchup → Küche");
@@ -3402,7 +3421,15 @@ test("Data care (4.12): monthly box on the start page, ⋮ dialog, opened since 
     if (msg.type === `${D}/data_gaps`) return {
       counts: { opened_no_date: 0, no_date: 1, no_price: 2, no_place: 0, no_min: 0 },
       gaps: { opened_no_date: [], no_date: [{ device_id: "p1", content: "Ketchup", place: "Küche" }], no_price: [{ device_id: "p1", content: "Ketchup", place: "" }, { device_id: "d1", content: "Lachs", place: "" }], no_place: [], no_min: [] },
+      products: [
+        { content: "Ketchup", kind: "pack", device_id: "p1", place: "Küche", area_id: "kitchen", compartment: "", missing: ["no_date", "no_price"], ids: { no_date: ["p1"], no_price: ["p1"] } },
+        { content: "Lachs", kind: "container", device_id: "d1", place: "", missing: ["no_price"], ids: { no_price: ["d1"] } },
+      ],
     };
+    if ([`${D}/price_set`, `${D}/put_away_save`, `${D}/stock_min`].includes(msg.type)) {
+      hass.wsCalls.push(msg);
+      return {};
+    }
     return base(msg);
   })(hass.callWS);
   dom.window.localStorage.clear();
@@ -3416,23 +3443,28 @@ test("Data care (4.12): monthly box on the start page, ⋮ dialog, opened since 
   assert.match($(el, 'main .tile[data-id="p1"]').textContent, /🫙 offen seit 12\.11\./);
   box.querySelector('[data-role="datacare-show"]').click();
   await flush();
-  const form = $(el, "form.dialog");
-  assert.deepEqual([...form.querySelectorAll("[data-group]")].map((g) => g.dataset.group), ["no_date", "no_price"]);
-  form.querySelector('[data-group="no_price"] [data-id="d1"]').click();
+  let form = $(el, "form.dialog");
+  // 6.7 (#197): one line per product with everything that is missing, one dialog to fill it in
+  assert.deepEqual([...form.querySelectorAll('[data-role="datacare-product"] .sub')].map((n) => n.textContent), ["fehlt: MHD · Preis", "fehlt: Preis"]);
+  form.querySelector('[data-role="datacare-product"][data-id="p1"]').click();
+  form = $(el, "form.dialog");
+  assert.equal(form.querySelector("h2").textContent, "Ketchup");
+  assert.ok(form.querySelector('[data-f="gap-price"]'));
+  assert.ok(form.querySelector('[data-f="gap-date"]'));
+  assert.equal(form.querySelector('[data-f="gap-area"]'), null);
+  form.querySelector('[data-f="gap-price"]').value = "2,49";
+  form.querySelector('[data-f="gap-date"]').value = "2027-01-31";
+  form.querySelector('[data-role="gap-save"]').click();
+  await flush();
+  await flush();
+  assert.deepEqual(hass.wsCalls.filter((m) => [`${D}/price_set`, `${D}/put_away_save`].includes(m.type)), [
+    { type: `${D}/price_set`, content: "Ketchup", price: 2.49 },
+    { type: `${D}/put_away_save`, rows: [{ device_id: "p1", added: 999, best_before: "2027-01-31" }] },
+  ]);
+  // back in the list; the card is one tap away
+  $(el, "form.dialog").querySelector('[data-role="datacare-product"][data-id="d1"]').click();
+  $(el, "form.dialog").querySelector('[data-role="gap-card"]').click();
   assert.equal(el._detail, "d1");
-  // 6.1 (#170): a pack without a price opens its product view, where the price can be entered
-  let opened = null;
-  el.openProduct = (content) => (opened = content);
-  el.openDataCare();
-  await flush();
-  const gap = $(el, "form.dialog").querySelector('[data-group="no_price"] [data-id="p1"]');
-  el._dataGaps.gaps.no_price[0].kind = "pack";
-  el.openDataCare();
-  await flush();
-  $(el, "form.dialog").querySelector('[data-group="no_price"] [data-id="p1"]').click();
-  assert.ok(gap);
-  assert.equal(opened, "Ketchup");
-  delete el.openProduct;
   el._closeDetail && el._closeDetail();
   // not again this month
   const again = mount(hass);
@@ -4195,6 +4227,7 @@ test("6.3: data care – unknown to the table opens the kind dialog, history sug
     if (msg.type === `${D}/data_gaps`) return {
       counts: { opened_no_date: 0, no_date: 0, no_price: 0, no_place: 0, no_min: 0, no_table: 1, history: 2 },
       gaps: { opened_no_date: [], no_date: [], no_price: [], no_place: [], no_min: [], no_table: [{ device_id: "p9", content: "Zaubertrank", kind: "pack", place: "" }] },
+      products: [{ content: "Zaubertrank", kind: "pack", device_id: "p9", place: "", missing: ["no_table"], ids: { no_table: ["p9"] } }],
     };
     if (msg.type === `${D}/table_rows`) return { rows: [{ id: "dish", name: "Gericht / Reste" }, { id: "juice", name: "Saft / Smoothie" }], current: null, source: null };
     if (msg.type === `${D}/table_row_set`) {
@@ -4207,9 +4240,10 @@ test("6.3: data care – unknown to the table opens the kind dialog, history sug
   await flush();
   await el.openDataCare();
   let form = $(el, "form.dialog");
-  assert.deepEqual([...form.querySelectorAll("[data-group]")].map((g) => g.dataset.group), ["no_table", "history"]);
+  assert.deepEqual([...form.querySelectorAll("[data-group]")].map((g) => g.dataset.group), ["products", "history"]);
   assert.match(form.querySelector('[data-group="history"]').textContent, /Vorschläge aus eurem Verlauf \(eure Haltbarkeit\) \(2\)/);
-  form.querySelector('[data-group="no_table"] [data-id="p9"]').click();
+  form.querySelector('[data-role="datacare-product"][data-id="p9"]').click();
+  $(el, "form.dialog").querySelector('[data-role="table-row"]').click();
   await flush();
   form = $(el, "form.dialog");
   assert.equal(form.querySelector("h2").textContent, "Art für die Haltbarkeit");
@@ -4337,4 +4371,113 @@ test("6.6: prepare the order – list, copy, onto the shopping list, remember th
   await flush();
   assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/order_to_list`, names: ["Milch"] });
   assert.match(form.textContent, /1 auf die Einkaufsliste gesetzt/);
+});
+
+test("Block 53 (#193, #206): one way to put the shopping away; the receipt reader asks for photo or PDF first", async () => {
+  const hass = makeHass(DOSES);
+  const posted = [];
+  hass.fetchWithAuth = async (url, opts) => {
+    posted.push([url, opts.body.get("file").name]);
+    return { ok: true, json: async () => ({ store: "REWE", items: [{ name: "Milch", count: 2, price: 1.19 }] }) };
+  };
+  const el = mount(hass);
+  await flush();
+  $(el, '[data-role="putaway"]').click();
+  const form = $(el, "form.dialog");
+  assert.deepEqual([...form.querySelectorAll(".choice")].map((b) => b.dataset.role), ["putaway-scan", "putaway-receipt", "putaway-hand"]);
+  assert.ok(form.querySelector('[data-role="putaway-recent"]'));
+  $(el, '[data-role="putaway-receipt"]').click();
+  assert.equal(form.querySelector("h2").textContent, "🧾 Kassenbon oder Rechnung lesen");
+  assert.equal(form.querySelector('[data-role="receipt-pdf-file"]').accept, "application/pdf,image/*");
+  // a picked PDF opens the pack list with the products read from it – no empty row first
+  const file = form.querySelector('[data-role="receipt-pdf-file"]');
+  const pdf = new File(["%PDF"], "rewe.pdf", { type: "application/pdf" });
+  Object.defineProperty(file, "files", { value: [pdf], configurable: true });
+  file.dispatchEvent(new dom.window.Event("change"));
+  await flush();
+  await flush();
+  assert.equal(form.querySelector("h2").textContent, "🧾 Vom Kassenbon / der Rechnung");
+  assert.deepEqual(posted, [["/api/larder/receipt_photo", "rewe.pdf"]]);
+  const rows = [...form.querySelectorAll('[data-i="content"]')].map((i) => i.value);
+  assert.deepEqual(rows, ["Milch"]);
+  assert.equal(form.querySelector('[data-f="receipt-store"]').value, "REWE");
+  // More and the shopping page open the same choice
+  el._closeDialog();
+  await go(el, "more");
+  assert.equal($(el, '[data-role="menu-receipt"]'), null);
+  $(el, '[data-role="menu-putaway"]').click();
+  assert.equal($(el, "form.dialog h2").textContent, "📥 Einkauf einräumen");
+});
+
+test("Block 53 (#195, #205): words on the Larder buttons, 'Grouped by', the compartment heading button", async () => {
+  const hass = makeHass(DOSES);
+  const el = mount(hass);
+  await flush();
+  await go(el, "containers");
+  assert.equal($(el, ".groupwrap .grouplabel").textContent, "Gruppiert nach:");
+  assert.deepEqual($$(el, ".groupbar button").map((b) => b.textContent), ["Nichts", "📍 Bereich", "🗄️ Fach", "🏷️ Kategorie"]);
+  assert.equal($(el, '[data-role="add"]').textContent, "＋ Neu");
+  assert.equal($(el, '[data-role="select"]').textContent, "☑ Auswählen");
+  el._opts.sort = "place";
+  el._sig = "";
+  el._update();
+  assert.equal($(el, '[data-role="group-place"]').textContent, "🏷 Fach öffnen");
+});
+
+test("Block 53 (#196): the area dialog shows the recognised storage kind and saves your choice", async () => {
+  const hass = makeHass(DOSES);
+  const calls = [];
+  hass.callWS = (base => async (msg) => {
+    if (msg.type === `${D}/area_storage`) return { areas: [{ area_id: "kitchen", name: "Küche", recognised: null, own: null }, { area_id: "cellar", name: "Keller", recognised: "pantry", own: null }] };
+    if (msg.type === `${D}/area_storage_set`) {
+      calls.push(msg);
+      return { areas: [] };
+    }
+    return base(msg);
+  })(hass.callWS);
+  const el = mount(hass);
+  await flush();
+  await el.loadAreaStorage();
+  const { TEXTS } = await import("../../custom_components/larder/frontend/larder-dashboard-strings.js");
+  assert.equal(el._storageText("cellar", TEXTS.de), "🗄️ Vorrat (ungekühlt)");
+  assert.equal(el._storageText("kitchen", TEXTS.de), "❓ Lagerart nicht erkannt");
+  await el.openAreaDialog("kitchen");
+  const form = $(el, "form.dialog");
+  const storage = form.querySelector('[data-f="storage"]');
+  assert.equal(storage.options[0].textContent, "Automatisch (nicht erkannt)");
+  storage.value = "fridge";
+  await el._submitArea(hass.areas.kitchen, []);
+  assert.deepEqual(calls, [{ type: `${D}/area_storage_set`, area_id: "kitchen", kind: "fridge" }]);
+});
+
+test("Block 53 (#200): onto the list on the Shopping page; a tick can be undone", async () => {
+  const hass = makeHass(DOSES);
+  hass.callWS = (base => async (msg) => {
+    if ([`${D}/shopping_add`, `${D}/shopping_undo`, `${D}/shopping_check`].includes(msg.type)) hass.wsCalls.push(msg);
+    if (msg.type === `${D}/shopping_mode`) return { order: ["dry"], items: [{ list: "todo.einkaufen", list_name: "Einkaufen", uid: "u1", summary: "Senf", section: "dry", known: true }] };
+    if (msg.type === `${D}/shopping_add`) return { list: "todo.einkaufen", created: true };
+    if (msg.type === `${D}/shopping_check`) return { status: "added", content: "Senf", area: "Vorrat", compartment: "Schrank", device_id: "p7", added: 1 };
+    if (msg.type === `${D}/shopping_undo`) return { removed: 1 };
+    return base(msg);
+  })(hass.callWS);
+  const el = mount(hass);
+  await flush();
+  el.setView("shopping");
+  await flush();
+  await flush();
+  const input = $(el, '[data-f="shop-add"]');
+  input.value = "Milch";
+  $(el, "form.shopadd").dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
+  await flush();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/shopping_add`), { type: `${D}/shopping_add`, item: "Milch" });
+  $(el, '[data-uid="u1"] [data-role="shop-check"]').click();
+  await flush();
+  await flush();
+  assert.match($(el, ".notice").textContent, /Senf → Vorrat · Schrank/);
+  $(el, '[data-role="notice-action"]').click();
+  await flush();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/shopping_undo`), { type: `${D}/shopping_undo`, list: "todo.einkaufen", uid: "u1", device_id: "p7", added: 1 });
+  assert.equal($(el, '[data-uid="u1"]').classList.contains("done"), false);
 });

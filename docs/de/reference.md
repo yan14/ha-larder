@@ -6,7 +6,7 @@
 
 ## Einstellungen
 
-Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** (bei einer beliebigen Dose; die Einstellungen gelten für alle Dosen):
+Einstellungen → Geräte & Dienste → **Larder** → **Konfigurieren** (bei einer beliebigen Dose; die Einstellungen gelten für alle Dosen). Seit 6.7 ist das Formular in Abschnitte geteilt – **Haltbarkeit (MHD)**, **Einkaufen**, **Rezepte & Wochenplan**, **Hinweise & Benachrichtigungen**, **Notvorrat** und **Erweitert** (die KI-Aufgabe); die letzten vier sind zugeklappt:
 
 | Einstellung | Standard | Wirkung |
 |---|---|---|

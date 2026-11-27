@@ -26,12 +26,12 @@ from homeassistant.helpers import (
     area_registry as ar,
     device_registry as dr,
     entity_registry as er,
-    label_registry as lr,
 )
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from . import shelf_life
+from .area_storage import area_kind
 from .const import DOMAIN, larder_id, pick
 from .devices import device_of
 from .estimate import storage_context
@@ -72,18 +72,7 @@ def storage_kind(hass: HomeAssistant, cc: str) -> str | None:
 
 def fridge_area(hass: HomeAssistant) -> str | None:
     """The one fridge area (by name or label), else None."""
-    found = []
-    labels = lr.async_get(hass)
-    for area in ar.async_get(hass).async_list_areas():
-        texts: list[str] = []
-        hint = None
-        for label_id in area.labels:
-            if label := labels.async_get_label(label_id):
-                texts.append(f"{label.name}: {label.description}" if label.description else label.name)
-                hint = hint or shelf_life.parse_label_template(label.description).get("storage")
-        storage = shelf_life.classify_storage(area.name, None, texts, hint)
-        if storage and storage.key == shelf_life.FRIDGE:
-            found.append(area.id)
+    found = [a.id for a in ar.async_get(hass).async_list_areas() if area_kind(hass, a) == shelf_life.FRIDGE]
     return found[0] if len(found) == 1 else None
 
 

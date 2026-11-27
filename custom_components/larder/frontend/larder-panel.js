@@ -493,6 +493,13 @@ function fillUnitSelect(select, state, t) {
   if (select.value !== value) select.value = value;
 }
 
+/** 6.7 (#202): "Salmon" instead of "Dose 1"; an empty one is "Empty · Dose 1". */
+function cardTitle(hass, dev, t) {
+  const text = (hass.states || {})[dev.entities && dev.entities.text];
+  const content = text && isValidState(text) ? String(text.state).trim() : "";
+  return content || `${t.emptyTitle} · ${dev.name}`;
+}
+
 class DoseCard {
   constructor(panel, deviceId) {
     this._panel = panel;
@@ -504,6 +511,7 @@ class DoseCard {
     el.className = "card";
     el.innerHTML = `
       <div class="head"><span class="name"></span><a class="open"></a></div>
+      <div class="devname"></div>
       <div class="arealine"></div>
       <div class="bigactions"></div>
       <div class="takerow" hidden><span class="ttext"></span><button class="teaten" type="button"></button><button class="tthrown" type="button"></button><button class="tcancel" type="button"></button></div>
@@ -557,11 +565,16 @@ class DoseCard {
     this.el = el;
     this.q = (sel) => el.querySelector(sel);
     // 5.0 (#119): the frequent actions as big buttons at the top, everything rarely needed under "More"
-    this.q(".bigactions").append(...["button.take", "button.openpack", "button.empty", "button.move"].map((sel) => this.q(sel)));
+    // 6.7 (#199): emptying is no longer the biggest button at the top – "Eaten" and "Thrown away" sit at the bottom
+    this.q(".bigactions").append(...["button.take", "button.openpack", "button.move"].map((sel) => this.q(sel)));
+    this.q("button.empty").hidden = true;
+    this.q(".otext").classList.add("endtext");
     const more = this.q("details.more");
     for (const sel of [".filledrow", ".estimaterow", ".vacrow", ".shoprow", ".flexrow", ".homerow", ".sizerow", ".minrow", ".replrow", ".listrow", ".sectionrow", "details.nutrition", "select.convert"]) {
       more.append(this.q(sel));
     }
+    // "Open device" leads into Home Assistant – under More, not next to the title
+    more.append(this.q("a.open"));
     this.inputs = {
       content: this.q('[data-f="content"]'),
       bestBefore: this.q('[data-f="bestBefore"]'),
@@ -713,7 +726,7 @@ class DoseCard {
     });
     this.q("button.eaten").addEventListener("click", () => this._empty("eaten"));
     this.q("button.thrown").addEventListener("click", () => this._empty("thrown"));
-    this.q("button.ocancel").addEventListener("click", () => (this.q(".outcomerow").hidden = true));
+    this.q("button.ocancel").hidden = true;
     this.q("details.history").addEventListener("toggle", () => {
       if (this.q("details.history").open) this.loadHistory();
     });
@@ -883,7 +896,6 @@ class DoseCard {
 
   /** Empty the container and record what happened to the content (without history: just press the button). */
   async _empty(outcome) {
-    this.q(".outcomerow").hidden = true;
     const hass = this._panel.hass;
     if (!hass || !this.ids.button) return;
     try {
@@ -942,8 +954,14 @@ class DoseCard {
     this.ids = dev.entities;
     const states = hass.states || {};
 
-    this.q(".name").textContent = dev.name;
-    this.q(".name").title = dev.name;
+    // 6.7 (#202): titled by its contents, the container's name small below; empty: "Empty · Dose 1"
+    // (in the dashboard; the classic panel keeps the container names it is sorted by)
+    const title = this._panel.hasAttribute("embedded") ? cardTitle(hass, dev, t) : dev.name;
+    this.q(".name").textContent = title;
+    this.q(".name").title = title;
+    const devName = this.q(".devname");
+    devName.textContent = title === dev.name || title.endsWith(` · ${dev.name}`) ? "" : dev.name;
+    devName.hidden = !devName.textContent;
     const open = this.q("a.open");
     open.textContent = t.openDevice;
     const admin = isAdmin(hass);
@@ -1019,7 +1037,7 @@ class DoseCard {
     this.q("button.thawed").textContent = t.thawed;
     this.q('[data-l="quantity"]').textContent = t.quantity;
     this.q("button.empty").textContent = t.emptyContainer;
-    this.q(".otext").textContent = t.outcomeQuestion;
+    this.q(".otext").textContent = t.outcomeEnd;
     this.q("button.eaten").textContent = t.eaten;
     this.q("button.thrown").textContent = t.thrown;
     this.q("button.ocancel").textContent = t.cancel;
@@ -1344,6 +1362,9 @@ class DoseCard {
     this.q(".estimaterow").classList.toggle("visible", showEstimate || !!this._tip);
     this.q("button.estimate").style.display = showEstimate || this._estimating ? "" : "none";
     this.q("button.empty").disabled = !ok(btn);
+    this.q("button.eaten").disabled = !ok(btn);
+    this.q("button.thrown").disabled = !ok(btn);
+    this.q(".outcomerow").hidden = !(ok(btn) && hasContent);
 
     const badge = this.q(".badge");
     badge.className = "badge";
@@ -2886,7 +2907,7 @@ class LarderPanel extends HTMLElement {
     this._checkPendingFill();
 
     const t = strings(hass);
-    this._title.textContent = only ? (this._arranged[0] || {}).name || t.title : t.title;
+    this._title.textContent = only && this._arranged[0] ? cardTitle(hass, this._arranged[0], t) : t.title;
     this._count.textContent = t.count(this._devices.length);
     this._updateToolbar(t);
     this._addBtn.textContent = `+ ${t.addContainer}`;

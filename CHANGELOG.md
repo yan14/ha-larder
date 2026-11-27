@@ -3,6 +3,22 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 6.7.0
+
+Block 53: clearer for newcomers – from the newcomer UX test.
+
+- **One way to put the shopping away** (#193): Start, Larder, Shopping and More have one button **📥 Put the shopping away** with three ways inside: **📷 Scan**, **🧾 Receipt or invoice**, **✍️ By hand**, plus *Recently put away*. The 📷 in the header stays for looking up and taking out; the second scan button on the start page is gone.
+- **Receipt reader asks first** (#206): *Receipt or invoice* opens its own dialog – **📷 Photo of the receipt** or **📄 PDF invoice** – and then the list with the products read from it, no empty row first.
+- **Settings in sections** (#194): the settings form is split into *Shelf life*, *Shopping*, *Recipes & meal plan*, *Hints & notifications*, *Emergency supply* and *Advanced*; the last four start folded.
+- **Words on the buttons** (#195): *Grouped by: Nothing · Area · Compartment · Category* instead of a ☰ that meant grouping; **＋ New**, **☑ Select**, **✏️ Edit** and the view button with its name (**▦ Tiles**, **☰ List**, **🗂 Cards**); with four sides the scope switch shows the word under each symbol.
+- **Storage kind of each area** (#196, #208): editing areas shows what Larder recognised (*❄️ Fridge*, *🥶 Freezer* … or *❓ not recognised*); the area dialog has **Storage kind** – automatic or your choice – which counts like a label `Storage: …` for estimates, freezing and what goes first. *Storage kind (label)* is now *Larder label*, *Used for* is now **For**. WebSocket `larder/area_storage`, `larder/area_storage_set`.
+- **Data care per product** (#197): one line per product with everything missing (*missing: best-before · price · area/compartment*) and one dialog to fill in exactly that; `products` in `larder/data_gaps`.
+- **Plain wording for days** (#198, #207): *tomorrow*, *in 3 days*, *in 2 months*, *expired yesterday* instead of *1 d* or *expired (1 d)*; recipes say *What expires within 3 days* instead of *Default (3 days)*.
+- **Safer container card** (#199, #202): the card and its header are titled by the contents (*Salmon*, *Dose 1* small below; empty: *Empty · Dose 1*); **😋 Eaten · 🗑 Thrown away** sit at the bottom instead of a big *Empty container* at the top; *Open device* moved under More.
+- **Onto the list and undo on the Shopping page** (#200): **Onto the list …** at the top adds an item (its own list, else the default, nothing twice); after ticking off a short *Milk → Pantry · Shelf* with **Undo** puts it back on the list and takes the pack out of stock again. WebSocket `larder/shopping_add`, `larder/shopping_undo`.
+- **Own icons in More** (#201): ♻️ Rescue this week, 🔄 Import from Grocy, 🧠 Shelf lives (learned) with a short description – no second 🛟, 📋 or 📥.
+- **Tiles** (#203, #204, #205): names get up to three lines with proper hyphenation and the full name as tooltip; the compartment shows as **📍 compartment** on its own line (and 📍 in the list); the compartment heading's button reads **🏷 Open compartment**.
+
 ## 6.6.1
 
 - **Repair hints say what and where** (#192): *Filled containers without a best-before date* listed only generic names (*Dose HA-7VDCL64Z*). Every line now shows the **contents**, the container, the **area and compartment** and a link **open** that jumps straight to it in the dashboard. After *Estimate*, a second step lists what the estimate did not know – with the same links – instead of just closing. The fields of *Assign areas* and *Empty expired containers* show the contents too.

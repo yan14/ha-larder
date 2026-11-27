@@ -227,68 +227,109 @@
     "step": {
       "init": {
         "title": "Instellingen",
-        "description": "**Schatting van de houdbaarheid**\nBepaalt hoe de knop „Houdbaarheid schatten” in het dashboard en de dienst werken. De ingebouwde tabel werkt zonder AI-dienst en zonder internet. AI gebruikt de dienst die je hebt ingesteld onder Instellingen → Apparaten en diensten → „AI Task”; alleen de inhoud, de naam van de ruimte met haar aanwijzingen (temperatuursensor, labelbeschrijving), vacuüm ja/nee en de vuldatum worden verstuurd. Waarden die je zelf hebt gecorrigeerd, winnen altijd.\n\n**Scan-webhook**\nVul deze URL **één keer** in de iOS-opdracht in. Ze is geheim: wie haar kent, kan dozen opvragen.\n\n`{webhook_url}`\n\nAlleen het pad: `{webhook_path}`\n\nDe README van het project beschrijft de opdracht.",
-        "data": {
-          "estimate_mode": "Schatting van de houdbaarheid",
-          "ai_task_entity": "AI-taak (leeg = standaard van Home Assistant)",
-          "opened_days": "Houdbaarheid na openen (dagen)",
-          "thawed_days": "Tijd na ontdooien (dagen)",
-          "calendar_entity": "Agenda voor houdbaarheidsdata (optioneel)",
-          "vacuum_default": "Vacuüm als standaard voor nieuwe dozen",
-          "nfc_notify": "NFC: telefoon melden",
-          "repair_hints": "Reparatiemeldingen",
-          "temperature_warning": "Temperatuurwaarschuwing",
-          "todo_entity": "Boodschappenlijst (levensmiddelen)",
-          "todo_household": "Boodschappenlijst voor huishouden (optioneel)",
-          "todo_pharmacy": "Boodschappenlijst voor medicijnen (optioneel)",
-          "meal_calendar": "Agenda voor het weekmenu",
-          "thaw_days": "Ontdooien: dagen vooraf",
-          "recipe_days": "Periode voor receptideeën (dagen)",
-          "soon_days": "„Verloopt binnenkort” vanaf (dagen)",
-          "long_soon_days": "„Verloopt binnenkort” voor medicijnen, huishouden en bonnen (dagen)",
-          "shopping_details": "Merk en verpakking op de boodschappenlijst",
-          "watch_allergens": "Allergenen in het huishouden (optioneel)",
-          "stock_lead_days": "Voorraad: dagen tot de volgende boodschappen",
-          "reorder_shopping": "Bijna op: meteen op de boodschappenlijst",
-          "recall_check": "Terugroepacties (lebensmittelwarnung.de)",
-          "recall_state": "Terugroepacties: alleen voor deze Duitse deelstaat",
-          "plan_source": "Weekvoorstel: bron",
-          "plan_days": "Weekvoorstel: dagen",
-          "freezer_first_weeks": "Diepvries eerst: weken vóór het einde van de beste kwaliteit",
-          "supply_check": "Controle noodvoorraad",
-          "supply_persons": "Personen in het huishouden (noodvoorraad)",
-          "supply_days": "Dagen noodvoorraad"
-        },
-        "data_description": {
-          "vacuum_default": "Nieuwe dozen beginnen met de schakelaar „Vacuüm” aan of uit. Bestaande dozen houden hun waarde. Zet hem uit als de meeste dozen niet vacuüm zijn.",
-          "estimate_mode": "Toont de knop „Houdbaarheid schatten” in het dashboard, behalve bij Uit.",
-          "ai_task_entity": "Alleen nodig als er meer dan één AI-dienst is ingesteld en een AI-optie is gekozen.",
-          "opened_days": "Alleen als noch de tabel (waarden na openen van de USDA FoodKeeper) noch de AI de inhoud op die plek kent: „Geopend” en „Openen” verkorten de datum tot hoogstens zoveel dagen vanaf vandaag.",
-          "thawed_days": "De knop „Ontdooid” in het dashboard verkort de datum tot hoogstens zoveel dagen vanaf vandaag. Ontdooid voedsel niet opnieuw invriezen.",
-          "calendar_entity": "Schrijft de datum van elke doos als hele-dag-afspraak in deze agenda (maken, verplaatsen, verwijderen). De agenda moet afspraken kunnen maken en verwijderen, bijv. Google of „Local Calendar” (niet CalDAV, dat niet kan verwijderen). Leeg = uit.",
-          "nfc_notify": "Als iemand een gekoppelde tag scant, krijgt zijn telefoon (Companion-app) een melding. Tikken opent de doos in het dashboard.",
-          "repair_hints": "Toont onder Instellingen → Systeem → Reparaties meldingen voor dozen zonder ruimte, gevulde dozen zonder datum en dozen die minstens 7 dagen verlopen zijn.",
-          "temperature_warning": "Waarschuwt (reparatiemelding en gebeurtenis larder_temperature_warning) als een bewaarplek met temperatuursensor te warm blijft: vriezer boven −12 °C gedurende 30 minuten, koelkast boven 8 °C of 0 °C-lade boven 6 °C gedurende 60 minuten.",
-          "todo_entity": "Een takenlijst van Home Assistant (bijv. „Boodschappenlijst”, Todoist, Bring!). Alles wat Larder op de boodschappenlijst zet, komt hier: geleegde dozen met de schakelaar „Boodschappenlijst”, minimumvoorraad, bijna op, ingrediënten van het weekmenu (niet dubbel). Losse producten kunnen op hun kaart een andere lijst krijgen. Leeg = uit.",
-          "todo_household": "Een eigen takenlijst voor huishoudartikelen (bijv. „Drogist”). Leeg = dezelfde lijst als voor levensmiddelen. Losse producten kunnen op hun kaart een andere lijst krijgen.",
-          "todo_pharmacy": "Een eigen takenlijst voor medicijnen (bijv. „Apotheek”). Leeg = dezelfde lijst als voor levensmiddelen.",
-          "meal_calendar": "Optioneel: geplande gerechten verschijnen daar als hele-dag-afspraak „🍽 …”. Zonder agenda staan ze alleen in het dashboard.",
-          "thaw_days": "Hoeveel dagen voor de geplande dag de samenvatting aan dozen in de vriezer herinnert (0 = op de dag zelf).",
-          "recipe_days": "Receptideeën „met restjes” gebruiken dozen die binnen zoveel dagen verlopen (0 = alleen vandaag). In het dashboard kun je de periode per aanvraag wijzigen of uitzetten.",
-          "soon_days": "Vanaf zoveel resterende dagen geldt een doos als „verloopt binnenkort” (aanwijzing in het dashboard, filter, sensorstatus en standaard voor het overzicht).",
-          "long_soon_days": "Medicijnen en huishoudartikelen met een datum (bijv. zonnebrand) gelden zoveel dagen vooraf als „verloopt binnenkort” en staan in hun deel van de startpagina. Ze horen niet bij de dagelijkse samenvatting.",
-          "shopping_details": "Als merk of verpakkingsgrootte van een doos bekend is (bijv. na een barcodescan), komt die bij het legen met de inhoud op de lijst: „Havermout (Kölln, 500 g)”.",
-          "watch_allergens": "Dozen waarvan allergenen of inhoud overeenkomen, krijgen een ⚠ op kaart en tegel; receptideeën laten ze weg en vermijden deze ingrediënten. Alleen een aanwijzing, geen garantie.",
-          "stock_lead_days": "Voor de voorgestelde minimumvoorraad: zoveel verpakkingen als in deze tijd op gaan.",
-          "reorder_shopping": "Als een product met minimumvoorraad volgens de voorspelling nog maar de „dagen tot de volgende boodschappen” meegaat, toont de startpagina het onder „Bijna op” (gebeurtenis larder_running_low). Aan: het komt ook meteen op de boodschappenlijst (één keer, niet dubbel).",
-          "recall_check": "Vergelijkt elke 6 uur de openbare terugroepacties van het Duitse portaal lebensmittelwarnung.de met merk en inhoud van je dozen, zakjes en verpakkingen. Treffers verschijnen op de startpagina en de kaart; gebeurtenis larder_recall voor meldingen. Alleen de openbare feed wordt opgehaald, er wordt niets verstuurd.",
-          "recall_state": "Leeg = waarschuwingen voor alle Duitse deelstaten.",
-          "plan_source": "Waar de gerechten voor „Week voorstellen” in het weekmenu vandaan komen. De AI heeft een ingestelde AI-taak nodig.",
-          "plan_days": "Larder stelt gerechten voor zoveel dagen vanaf vandaag voor (dagen die al een plan hebben, worden overgeslagen).",
-          "freezer_first_weeks": "Ingevroren voedsel waarvan de beste kwaliteit binnen zoveel weken eindigt, komt eerst in het weekvoorstel en de receptideeën – na wat binnenkort in de koelkast verloopt. 0 = uit.",
-          "supply_check": "Toont onder ⋮ → 🛟 Noodvoorraad wat ontbreekt volgens het advies van het Duitse Bundesamt für Bevölkerungsschutz (BBK).",
-          "supply_persons": "De noodvoorraadcontrole rekent voor zoveel personen.",
-          "supply_days": "Het BBK adviseert een voorraad voor 10 dagen."
+        "description": "**Scan-webhook**\nVul deze URL **één keer** in de iOS-opdracht in. Ze is geheim: wie haar kent, kan dozen opvragen.\n\n`{webhook_url}`\n\nAlleen het pad: `{webhook_path}`\n\nDe README van het project beschrijft de opdracht.",
+        "sections": {
+          "shelf_life": {
+            "name": "Houdbaarheid (THT)",
+            "data": {
+              "estimate_mode": "Schatting van de houdbaarheid",
+              "opened_days": "Houdbaarheid na openen (dagen)",
+              "thawed_days": "Tijd na ontdooien (dagen)",
+              "soon_days": "„Verloopt binnenkort” vanaf (dagen)",
+              "long_soon_days": "„Verloopt binnenkort” voor medicijnen, huishouden en bonnen (dagen)",
+              "vacuum_default": "Vacuüm als standaard voor nieuwe dozen"
+            },
+            "data_description": {
+              "estimate_mode": "Toont de knop „Houdbaarheid schatten” in het dashboard, behalve bij Uit.",
+              "opened_days": "Alleen als noch de tabel (waarden na openen van de USDA FoodKeeper) noch de AI de inhoud op die plek kent: „Geopend” en „Openen” verkorten de datum tot hoogstens zoveel dagen vanaf vandaag.",
+              "thawed_days": "De knop „Ontdooid” in het dashboard verkort de datum tot hoogstens zoveel dagen vanaf vandaag. Ontdooid voedsel niet opnieuw invriezen.",
+              "soon_days": "Vanaf zoveel resterende dagen geldt een doos als „verloopt binnenkort” (aanwijzing in het dashboard, filter, sensorstatus en standaard voor het overzicht).",
+              "long_soon_days": "Medicijnen en huishoudartikelen met een datum (bijv. zonnebrand) gelden zoveel dagen vooraf als „verloopt binnenkort” en staan in hun deel van de startpagina. Ze horen niet bij de dagelijkse samenvatting.",
+              "vacuum_default": "Nieuwe dozen beginnen met de schakelaar „Vacuüm” aan of uit. Bestaande dozen houden hun waarde. Zet hem uit als de meeste dozen niet vacuüm zijn."
+            },
+            "description": "Bepaalt hoe de knop „Houdbaarheid schatten” in het dashboard en de dienst werken. De ingebouwde tabel werkt zonder AI-dienst en zonder internet. AI gebruikt de dienst die je hebt ingesteld onder Instellingen → Apparaten en diensten → „AI Task”; alleen de inhoud, de naam van de ruimte met haar aanwijzingen (temperatuursensor, labelbeschrijving), vacuüm ja/nee en de vuldatum worden verstuurd. Waarden die je zelf hebt gecorrigeerd, winnen altijd."
+          },
+          "shopping": {
+            "name": "Boodschappen",
+            "data": {
+              "todo_entity": "Boodschappenlijst (levensmiddelen)",
+              "todo_household": "Boodschappenlijst voor huishouden (optioneel)",
+              "todo_pharmacy": "Boodschappenlijst voor medicijnen (optioneel)",
+              "shopping_details": "Merk en verpakking op de boodschappenlijst",
+              "stock_lead_days": "Voorraad: dagen tot de volgende boodschappen",
+              "reorder_shopping": "Bijna op: meteen op de boodschappenlijst"
+            },
+            "data_description": {
+              "todo_entity": "Een takenlijst van Home Assistant (bijv. „Boodschappenlijst”, Todoist, Bring!). Alles wat Larder op de boodschappenlijst zet, komt hier: geleegde dozen met de schakelaar „Boodschappenlijst”, minimumvoorraad, bijna op, ingrediënten van het weekmenu (niet dubbel). Losse producten kunnen op hun kaart een andere lijst krijgen. Leeg = uit.",
+              "todo_household": "Een eigen takenlijst voor huishoudartikelen (bijv. „Drogist”). Leeg = dezelfde lijst als voor levensmiddelen. Losse producten kunnen op hun kaart een andere lijst krijgen.",
+              "todo_pharmacy": "Een eigen takenlijst voor medicijnen (bijv. „Apotheek”). Leeg = dezelfde lijst als voor levensmiddelen.",
+              "shopping_details": "Als merk of verpakkingsgrootte van een doos bekend is (bijv. na een barcodescan), komt die bij het legen met de inhoud op de lijst: „Havermout (Kölln, 500 g)”.",
+              "stock_lead_days": "Voor de voorgestelde minimumvoorraad: zoveel verpakkingen als in deze tijd op gaan.",
+              "reorder_shopping": "Als een product met minimumvoorraad volgens de voorspelling nog maar de „dagen tot de volgende boodschappen” meegaat, toont de startpagina het onder „Bijna op” (gebeurtenis larder_running_low). Aan: het komt ook meteen op de boodschappenlijst (één keer, niet dubbel)."
+            }
+          },
+          "meal_plan": {
+            "name": "Recepten & weekmenu",
+            "data": {
+              "recipe_days": "Periode voor receptideeën (dagen)",
+              "meal_calendar": "Agenda voor het weekmenu",
+              "plan_source": "Weekvoorstel: bron",
+              "plan_days": "Weekvoorstel: dagen",
+              "thaw_days": "Ontdooien: dagen vooraf",
+              "freezer_first_weeks": "Diepvries eerst: weken vóór het einde van de beste kwaliteit"
+            },
+            "data_description": {
+              "recipe_days": "Receptideeën „met restjes” gebruiken dozen die binnen zoveel dagen verlopen (0 = alleen vandaag). In het dashboard kun je de periode per aanvraag wijzigen of uitzetten.",
+              "meal_calendar": "Optioneel: geplande gerechten verschijnen daar als hele-dag-afspraak „🍽 …”. Zonder agenda staan ze alleen in het dashboard.",
+              "plan_source": "Waar de gerechten voor „Week voorstellen” in het weekmenu vandaan komen. De AI heeft een ingestelde AI-taak nodig.",
+              "plan_days": "Larder stelt gerechten voor zoveel dagen vanaf vandaag voor (dagen die al een plan hebben, worden overgeslagen).",
+              "thaw_days": "Hoeveel dagen voor de geplande dag de samenvatting aan dozen in de vriezer herinnert (0 = op de dag zelf).",
+              "freezer_first_weeks": "Ingevroren voedsel waarvan de beste kwaliteit binnen zoveel weken eindigt, komt eerst in het weekvoorstel en de receptideeën – na wat binnenkort in de koelkast verloopt. 0 = uit."
+            }
+          },
+          "notifications": {
+            "name": "Meldingen & notificaties",
+            "data": {
+              "calendar_entity": "Agenda voor houdbaarheidsdata (optioneel)",
+              "nfc_notify": "NFC: telefoon melden",
+              "repair_hints": "Reparatiemeldingen",
+              "temperature_warning": "Temperatuurwaarschuwing",
+              "recall_check": "Terugroepacties (lebensmittelwarnung.de)",
+              "recall_state": "Terugroepacties: alleen voor deze Duitse deelstaat",
+              "watch_allergens": "Allergenen in het huishouden (optioneel)"
+            },
+            "data_description": {
+              "calendar_entity": "Schrijft de datum van elke doos als hele-dag-afspraak in deze agenda (maken, verplaatsen, verwijderen). De agenda moet afspraken kunnen maken en verwijderen, bijv. Google of „Local Calendar” (niet CalDAV, dat niet kan verwijderen). Leeg = uit.",
+              "nfc_notify": "Als iemand een gekoppelde tag scant, krijgt zijn telefoon (Companion-app) een melding. Tikken opent de doos in het dashboard.",
+              "repair_hints": "Toont onder Instellingen → Systeem → Reparaties meldingen voor dozen zonder ruimte, gevulde dozen zonder datum en dozen die minstens 7 dagen verlopen zijn.",
+              "temperature_warning": "Waarschuwt (reparatiemelding en gebeurtenis larder_temperature_warning) als een bewaarplek met temperatuursensor te warm blijft: vriezer boven −12 °C gedurende 30 minuten, koelkast boven 8 °C of 0 °C-lade boven 6 °C gedurende 60 minuten.",
+              "recall_check": "Vergelijkt elke 6 uur de openbare terugroepacties van het Duitse portaal lebensmittelwarnung.de met merk en inhoud van je dozen, zakjes en verpakkingen. Treffers verschijnen op de startpagina en de kaart; gebeurtenis larder_recall voor meldingen. Alleen de openbare feed wordt opgehaald, er wordt niets verstuurd.",
+              "recall_state": "Leeg = waarschuwingen voor alle Duitse deelstaten.",
+              "watch_allergens": "Dozen waarvan allergenen of inhoud overeenkomen, krijgen een ⚠ op kaart en tegel; receptideeën laten ze weg en vermijden deze ingrediënten. Alleen een aanwijzing, geen garantie."
+            }
+          },
+          "supply": {
+            "name": "Noodvoorraad",
+            "data": {
+              "supply_check": "Controle noodvoorraad",
+              "supply_persons": "Personen in het huishouden (noodvoorraad)",
+              "supply_days": "Dagen noodvoorraad"
+            },
+            "data_description": {
+              "supply_check": "Toont onder ⋮ → 🛟 Noodvoorraad wat ontbreekt volgens het advies van het Duitse Bundesamt für Bevölkerungsschutz (BBK).",
+              "supply_persons": "De noodvoorraadcontrole rekent voor zoveel personen.",
+              "supply_days": "Het BBK adviseert een voorraad voor 10 dagen."
+            }
+          },
+          "advanced": {
+            "name": "Geavanceerd",
+            "data": {
+              "ai_task_entity": "AI-taak (leeg = standaard van Home Assistant)"
+            },
+            "data_description": {
+              "ai_task_entity": "Alleen nodig als er meer dan één AI-dienst is ingesteld en een AI-optie is gekozen."
+            }
+          }
         }
       }
     },

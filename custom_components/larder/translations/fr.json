@@ -227,68 +227,109 @@
     "step": {
       "init": {
         "title": "Paramètres",
-        "description": "**Estimation de la date**\nDétermine le fonctionnement du bouton « Estimer la date » du tableau de bord et du service. Le tableau intégré fonctionne sans service d'IA et sans internet. L'IA utilise le service configuré sous Paramètres → Appareils et services → « AI Task » ; seuls le contenu, le nom de la pièce avec ses indications (capteur de température, description d'étiquette), sous vide oui/non et la date de remplissage sont envoyés. Les valeurs que vous avez corrigées vous-même l'emportent toujours.\n\n**Webhook de scan**\nSaisissez cette URL **une seule fois** dans le raccourci iOS. Elle est secrète : quiconque la connaît peut consulter les boîtes.\n\n`{webhook_url}`\n\nChemin seul : `{webhook_path}`\n\nLe README du projet explique le raccourci.",
-        "data": {
-          "estimate_mode": "Estimation de la date",
-          "ai_task_entity": "Tâche IA (vide = celle par défaut de Home Assistant)",
-          "opened_days": "Conservation après ouverture (jours)",
-          "thawed_days": "Délai après décongélation (jours)",
-          "calendar_entity": "Calendrier pour les dates (facultatif)",
-          "vacuum_default": "Sous vide par défaut pour les nouvelles boîtes",
-          "nfc_notify": "NFC : notifier le téléphone",
-          "repair_hints": "Indications de réparation",
-          "temperature_warning": "Alerte de température",
-          "todo_entity": "Liste de courses (alimentation)",
-          "todo_household": "Liste de courses pour l'entretien (facultatif)",
-          "todo_pharmacy": "Liste de courses pour les médicaments (facultatif)",
-          "meal_calendar": "Calendrier pour le plan de repas",
-          "thaw_days": "Décongélation : jours à l'avance",
-          "recipe_days": "Période pour les idées de recettes (jours)",
-          "soon_days": "« Bientôt périmé » à partir de (jours)",
-          "long_soon_days": "« Bientôt périmé » pour médicaments, entretien et bons (jours)",
-          "shopping_details": "Marque et conditionnement sur la liste de courses",
-          "watch_allergens": "Allergènes dans le foyer (facultatif)",
-          "stock_lead_days": "Stock : jours jusqu'aux prochaines courses",
-          "reorder_shopping": "Bientôt épuisé : ajouter tout de suite à la liste de courses",
-          "recall_check": "Rappels de produits (lebensmittelwarnung.de)",
-          "recall_state": "Rappels : seulement pour ce Land allemand",
-          "plan_source": "Proposition de semaine : source",
-          "plan_days": "Proposition de semaine : jours",
-          "freezer_first_weeks": "Congélateur d'abord : semaines avant la fin de la meilleure qualité",
-          "supply_check": "Contrôle des réserves d'urgence",
-          "supply_persons": "Personnes dans le foyer (réserves d'urgence)",
-          "supply_days": "Jours de réserves d'urgence"
-        },
-        "data_description": {
-          "vacuum_default": "Les nouvelles boîtes commencent avec l'interrupteur « Sous vide » activé ou non. Les boîtes existantes gardent leur valeur. Désactivez-le si la plupart de vos boîtes ne sont pas sous vide.",
-          "estimate_mode": "Affiche le bouton « Estimer la date » dans le tableau de bord, sauf sur Désactivé.",
-          "ai_task_entity": "Nécessaire seulement si plusieurs services d'IA sont configurés et qu'une option IA est choisie.",
-          "opened_days": "Seulement si ni le tableau (valeurs après ouverture de l'USDA FoodKeeper) ni l'IA ne connaissent le contenu à cet endroit : « Ouvert » et « Entamer » raccourcissent la date à au plus autant de jours à partir d'aujourd'hui.",
-          "thawed_days": "Le bouton « Décongelé » du tableau de bord raccourcit la date à au plus autant de jours à partir d'aujourd'hui. Ne recongelez pas un aliment décongelé.",
-          "calendar_entity": "Écrit la date de chaque boîte dans ce calendrier comme événement d'une journée (créer, déplacer, supprimer). Le calendrier doit permettre de créer et de supprimer des événements, par ex. Google ou « Local Calendar » (pas CalDAV, qui ne peut pas supprimer). Vide = désactivé.",
-          "nfc_notify": "Quand quelqu'un scanne un tag lié, son téléphone (application Companion) reçoit une notification. La toucher ouvre la boîte dans le tableau de bord.",
-          "repair_hints": "Affiche sous Paramètres → Système → Réparations des indications pour les boîtes sans pièce, les boîtes remplies sans date et celles périmées depuis au moins 7 jours.",
-          "temperature_warning": "Avertit (indication de réparation et événement larder_temperature_warning) quand un lieu de stockage avec capteur de température reste trop chaud : congélateur au-dessus de −12 °C pendant 30 minutes, réfrigérateur au-dessus de 8 °C ou tiroir 0 °C au-dessus de 6 °C pendant 60 minutes.",
-          "todo_entity": "Une liste de tâches de Home Assistant (par ex. « Liste de courses », Todoist, Bring!). Tout ce que Larder met sur la liste de courses y va : boîtes vidées avec l'interrupteur « Liste de courses », stock minimum, bientôt épuisé, ingrédients du plan de repas (pas en double). Certains produits peuvent avoir une autre liste sur leur carte. Vide = désactivé.",
-          "todo_household": "Une liste de tâches propre aux articles d'entretien (par ex. « Droguerie »). Vide = la même liste que pour l'alimentation. Certains produits peuvent avoir une autre liste sur leur carte.",
-          "todo_pharmacy": "Une liste de tâches propre aux médicaments (par ex. « Pharmacie »). Vide = la même liste que pour l'alimentation.",
-          "meal_calendar": "Facultatif : les plats prévus y apparaissent comme événement d'une journée « 🍽 … ». Sans calendrier, ils ne sont que dans le tableau de bord.",
-          "thaw_days": "Combien de jours avant le jour prévu le résumé rappelle les boîtes au congélateur (0 = le jour même).",
-          "recipe_days": "Les idées de recettes « avec les restes » utilisent les boîtes qui périment dans ce nombre de jours (0 = aujourd'hui seulement). Dans le tableau de bord, vous pouvez changer la période pour une demande ou la désactiver.",
-          "soon_days": "À partir de ce nombre de jours restants, une boîte est « bientôt périmée » (indication dans le tableau de bord, filtre, statut du capteur et valeur par défaut de l'aperçu).",
-          "long_soon_days": "Les médicaments et articles d'entretien avec une date (par ex. crème solaire) sont « bientôt périmés » autant de jours avant et apparaissent dans leur section de la page d'accueil. Ils ne font pas partie du résumé quotidien.",
-          "shopping_details": "Si la marque ou le conditionnement d'une boîte est connu (par ex. après un scan de code-barres), il va sur la liste avec le contenu au moment de vider : « Flocons d'avoine (Kölln, 500 g) ».",
-          "watch_allergens": "Les boîtes dont les allergènes ou le contenu correspondent reçoivent un ⚠ sur la carte et la tuile ; les idées de recettes les laissent de côté et évitent ces ingrédients. Simple indication, sans garantie.",
-          "stock_lead_days": "Pour le stock minimum proposé : autant de paquets que ce qui est consommé pendant cette période.",
-          "reorder_shopping": "Quand un produit avec stock minimum ne durera plus que les « jours jusqu'aux prochaines courses » selon la prévision, la page d'accueil l'affiche sous « Bientôt épuisé » (événement larder_running_low). Activé, il va aussi tout de suite sur la liste de courses (une fois, pas en double).",
-          "recall_check": "Toutes les 6 heures, compare les rappels publics du portail allemand lebensmittelwarnung.de avec la marque et le contenu de vos boîtes, sachets et paquets. Les correspondances apparaissent sur la page d'accueil et la carte ; événement larder_recall pour les notifications. Seul le flux public est récupéré, rien n'est envoyé.",
-          "recall_state": "Vide = alertes pour tous les Länder allemands.",
-          "plan_source": "D'où viennent les plats de « Proposer la semaine » du plan de repas. L'IA nécessite une tâche IA configurée.",
-          "plan_days": "Larder propose des plats pour ce nombre de jours à partir d'aujourd'hui (les jours déjà planifiés sont sautés).",
-          "freezer_first_weeks": "Les produits congelés dont la meilleure qualité se termine dans ce nombre de semaines passent en premier dans la proposition de semaine et les idées de recettes – après ce qui périme bientôt au réfrigérateur. 0 = désactivé.",
-          "supply_check": "Affiche sous ⋮ → 🛟 Réserves d'urgence ce qui manque selon la recommandation de l'office fédéral allemand de protection civile (BBK).",
-          "supply_persons": "Le contrôle des réserves d'urgence calcule pour ce nombre de personnes.",
-          "supply_days": "Le BBK recommande des réserves pour 10 jours."
+        "description": "**Webhook de scan**\nSaisissez cette URL **une seule fois** dans le raccourci iOS. Elle est secrète : quiconque la connaît peut consulter les boîtes.\n\n`{webhook_url}`\n\nChemin seul : `{webhook_path}`\n\nLe README du projet explique le raccourci.",
+        "sections": {
+          "shelf_life": {
+            "name": "Conservation (DLC)",
+            "data": {
+              "estimate_mode": "Estimation de la date",
+              "opened_days": "Conservation après ouverture (jours)",
+              "thawed_days": "Délai après décongélation (jours)",
+              "soon_days": "« Bientôt périmé » à partir de (jours)",
+              "long_soon_days": "« Bientôt périmé » pour médicaments, entretien et bons (jours)",
+              "vacuum_default": "Sous vide par défaut pour les nouvelles boîtes"
+            },
+            "data_description": {
+              "estimate_mode": "Affiche le bouton « Estimer la date » dans le tableau de bord, sauf sur Désactivé.",
+              "opened_days": "Seulement si ni le tableau (valeurs après ouverture de l'USDA FoodKeeper) ni l'IA ne connaissent le contenu à cet endroit : « Ouvert » et « Entamer » raccourcissent la date à au plus autant de jours à partir d'aujourd'hui.",
+              "thawed_days": "Le bouton « Décongelé » du tableau de bord raccourcit la date à au plus autant de jours à partir d'aujourd'hui. Ne recongelez pas un aliment décongelé.",
+              "soon_days": "À partir de ce nombre de jours restants, une boîte est « bientôt périmée » (indication dans le tableau de bord, filtre, statut du capteur et valeur par défaut de l'aperçu).",
+              "long_soon_days": "Les médicaments et articles d'entretien avec une date (par ex. crème solaire) sont « bientôt périmés » autant de jours avant et apparaissent dans leur section de la page d'accueil. Ils ne font pas partie du résumé quotidien.",
+              "vacuum_default": "Les nouvelles boîtes commencent avec l'interrupteur « Sous vide » activé ou non. Les boîtes existantes gardent leur valeur. Désactivez-le si la plupart de vos boîtes ne sont pas sous vide."
+            },
+            "description": "Détermine le fonctionnement du bouton « Estimer la date » du tableau de bord et du service. Le tableau intégré fonctionne sans service d'IA et sans internet. L'IA utilise le service configuré sous Paramètres → Appareils et services → « AI Task » ; seuls le contenu, le nom de la pièce avec ses indications (capteur de température, description d'étiquette), sous vide oui/non et la date de remplissage sont envoyés. Les valeurs que vous avez corrigées vous-même l'emportent toujours."
+          },
+          "shopping": {
+            "name": "Courses",
+            "data": {
+              "todo_entity": "Liste de courses (alimentation)",
+              "todo_household": "Liste de courses pour l'entretien (facultatif)",
+              "todo_pharmacy": "Liste de courses pour les médicaments (facultatif)",
+              "shopping_details": "Marque et conditionnement sur la liste de courses",
+              "stock_lead_days": "Stock : jours jusqu'aux prochaines courses",
+              "reorder_shopping": "Bientôt épuisé : ajouter tout de suite à la liste de courses"
+            },
+            "data_description": {
+              "todo_entity": "Une liste de tâches de Home Assistant (par ex. « Liste de courses », Todoist, Bring!). Tout ce que Larder met sur la liste de courses y va : boîtes vidées avec l'interrupteur « Liste de courses », stock minimum, bientôt épuisé, ingrédients du plan de repas (pas en double). Certains produits peuvent avoir une autre liste sur leur carte. Vide = désactivé.",
+              "todo_household": "Une liste de tâches propre aux articles d'entretien (par ex. « Droguerie »). Vide = la même liste que pour l'alimentation. Certains produits peuvent avoir une autre liste sur leur carte.",
+              "todo_pharmacy": "Une liste de tâches propre aux médicaments (par ex. « Pharmacie »). Vide = la même liste que pour l'alimentation.",
+              "shopping_details": "Si la marque ou le conditionnement d'une boîte est connu (par ex. après un scan de code-barres), il va sur la liste avec le contenu au moment de vider : « Flocons d'avoine (Kölln, 500 g) ».",
+              "stock_lead_days": "Pour le stock minimum proposé : autant de paquets que ce qui est consommé pendant cette période.",
+              "reorder_shopping": "Quand un produit avec stock minimum ne durera plus que les « jours jusqu'aux prochaines courses » selon la prévision, la page d'accueil l'affiche sous « Bientôt épuisé » (événement larder_running_low). Activé, il va aussi tout de suite sur la liste de courses (une fois, pas en double)."
+            }
+          },
+          "meal_plan": {
+            "name": "Recettes & menu de la semaine",
+            "data": {
+              "recipe_days": "Période pour les idées de recettes (jours)",
+              "meal_calendar": "Calendrier pour le plan de repas",
+              "plan_source": "Proposition de semaine : source",
+              "plan_days": "Proposition de semaine : jours",
+              "thaw_days": "Décongélation : jours à l'avance",
+              "freezer_first_weeks": "Congélateur d'abord : semaines avant la fin de la meilleure qualité"
+            },
+            "data_description": {
+              "recipe_days": "Les idées de recettes « avec les restes » utilisent les boîtes qui périment dans ce nombre de jours (0 = aujourd'hui seulement). Dans le tableau de bord, vous pouvez changer la période pour une demande ou la désactiver.",
+              "meal_calendar": "Facultatif : les plats prévus y apparaissent comme événement d'une journée « 🍽 … ». Sans calendrier, ils ne sont que dans le tableau de bord.",
+              "plan_source": "D'où viennent les plats de « Proposer la semaine » du plan de repas. L'IA nécessite une tâche IA configurée.",
+              "plan_days": "Larder propose des plats pour ce nombre de jours à partir d'aujourd'hui (les jours déjà planifiés sont sautés).",
+              "thaw_days": "Combien de jours avant le jour prévu le résumé rappelle les boîtes au congélateur (0 = le jour même).",
+              "freezer_first_weeks": "Les produits congelés dont la meilleure qualité se termine dans ce nombre de semaines passent en premier dans la proposition de semaine et les idées de recettes – après ce qui périme bientôt au réfrigérateur. 0 = désactivé."
+            }
+          },
+          "notifications": {
+            "name": "Alertes & notifications",
+            "data": {
+              "calendar_entity": "Calendrier pour les dates (facultatif)",
+              "nfc_notify": "NFC : notifier le téléphone",
+              "repair_hints": "Indications de réparation",
+              "temperature_warning": "Alerte de température",
+              "recall_check": "Rappels de produits (lebensmittelwarnung.de)",
+              "recall_state": "Rappels : seulement pour ce Land allemand",
+              "watch_allergens": "Allergènes dans le foyer (facultatif)"
+            },
+            "data_description": {
+              "calendar_entity": "Écrit la date de chaque boîte dans ce calendrier comme événement d'une journée (créer, déplacer, supprimer). Le calendrier doit permettre de créer et de supprimer des événements, par ex. Google ou « Local Calendar » (pas CalDAV, qui ne peut pas supprimer). Vide = désactivé.",
+              "nfc_notify": "Quand quelqu'un scanne un tag lié, son téléphone (application Companion) reçoit une notification. La toucher ouvre la boîte dans le tableau de bord.",
+              "repair_hints": "Affiche sous Paramètres → Système → Réparations des indications pour les boîtes sans pièce, les boîtes remplies sans date et celles périmées depuis au moins 7 jours.",
+              "temperature_warning": "Avertit (indication de réparation et événement larder_temperature_warning) quand un lieu de stockage avec capteur de température reste trop chaud : congélateur au-dessus de −12 °C pendant 30 minutes, réfrigérateur au-dessus de 8 °C ou tiroir 0 °C au-dessus de 6 °C pendant 60 minutes.",
+              "recall_check": "Toutes les 6 heures, compare les rappels publics du portail allemand lebensmittelwarnung.de avec la marque et le contenu de vos boîtes, sachets et paquets. Les correspondances apparaissent sur la page d'accueil et la carte ; événement larder_recall pour les notifications. Seul le flux public est récupéré, rien n'est envoyé.",
+              "recall_state": "Vide = alertes pour tous les Länder allemands.",
+              "watch_allergens": "Les boîtes dont les allergènes ou le contenu correspondent reçoivent un ⚠ sur la carte et la tuile ; les idées de recettes les laissent de côté et évitent ces ingrédients. Simple indication, sans garantie."
+            }
+          },
+          "supply": {
+            "name": "Réserve d'urgence",
+            "data": {
+              "supply_check": "Contrôle des réserves d'urgence",
+              "supply_persons": "Personnes dans le foyer (réserves d'urgence)",
+              "supply_days": "Jours de réserves d'urgence"
+            },
+            "data_description": {
+              "supply_check": "Affiche sous ⋮ → 🛟 Réserves d'urgence ce qui manque selon la recommandation de l'office fédéral allemand de protection civile (BBK).",
+              "supply_persons": "Le contrôle des réserves d'urgence calcule pour ce nombre de personnes.",
+              "supply_days": "Le BBK recommande des réserves pour 10 jours."
+            }
+          },
+          "advanced": {
+            "name": "Avancé",
+            "data": {
+              "ai_task_entity": "Tâche IA (vide = celle par défaut de Home Assistant)"
+            },
+            "data_description": {
+              "ai_task_entity": "Nécessaire seulement si plusieurs services d'IA sont configurés et qu'une option IA est choisie."
+            }
+          }
         }
       }
     },

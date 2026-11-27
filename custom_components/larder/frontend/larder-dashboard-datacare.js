@@ -21,6 +21,22 @@ const GROUPS = ["opened_no_date", "no_date", "no_price", "no_place", "no_min", "
 
 const TEXT = {
   de: {
+    introProducts: "Pro Produkt steht, was noch fehlt. Antippen und alles in einem Schritt nachtragen – Leeres bleibt einfach offen.",
+    missing: { opened_no_date: "Datum seit dem Öffnen", no_date: "MHD", no_price: "Preis", no_place: "Bereich/Fach", no_min: "Mindestbestand", no_table: "Art für die Haltbarkeit" },
+    missingLine: (list) => `fehlt: ${list}`,
+    fillIntro: "Nur ausfüllen, was du weißt – Leeres bleibt offen.",
+    fieldPrice: "Preis pro Packung (€)",
+    fieldDate: "MHD",
+    fieldOpened: "Geöffnet – haltbar bis",
+    fieldArea: "Bereich",
+    fieldCompartment: "Fach",
+    fieldMin: "Mindestbestand (Packungen)",
+    noArea: "Kein Bereich",
+    save: "Speichern",
+    saved: (name) => `${name}: gespeichert.`,
+    nothing: "Nichts eingetragen.",
+    openCard: "Karte öffnen",
+    back: "Zurück",
     menu: "🧹 Datenpflege",
     title: "Datenpflege",
     boxTitle: "🧹 Datenpflege",
@@ -51,6 +67,22 @@ const TEXT = {
     more: (n) => `… und ${n} weitere`,
   },
   en: {
+    introProducts: "Each product shows what is still missing. Tap it and fill in everything in one step – anything left empty simply stays open.",
+    missing: { opened_no_date: "date since opening", no_date: "best-before", no_price: "price", no_place: "area/compartment", no_min: "minimum stock", no_table: "kind for the shelf life" },
+    missingLine: (list) => `missing: ${list}`,
+    fillIntro: "Only fill in what you know – empty fields stay open.",
+    fieldPrice: "Price per pack (€)",
+    fieldDate: "Best before",
+    fieldOpened: "Opened – keeps until",
+    fieldArea: "Area",
+    fieldCompartment: "Compartment",
+    fieldMin: "Minimum stock (packs)",
+    noArea: "No area",
+    save: "Save",
+    saved: (name) => `${name}: saved.`,
+    nothing: "Nothing entered.",
+    openCard: "Open the card",
+    back: "Back",
     menu: "🧹 Data care",
     title: "Data care",
     boxTitle: "🧹 Data care",
@@ -81,6 +113,22 @@ const TEXT = {
     more: (n) => `… and ${n} more`,
   },
   fr: {
+    introProducts: "Pour chaque produit, ce qui manque encore. Touchez-le et complétez tout en une fois – ce qui reste vide reste simplement ouvert.",
+    missing: { opened_no_date: "date depuis l'ouverture", no_date: "date de péremption", no_price: "prix", no_place: "pièce/compartiment", no_min: "stock minimum", no_table: "type pour la conservation" },
+    missingLine: (list) => `manque : ${list}`,
+    fillIntro: "Remplis seulement ce que tu sais – le reste reste ouvert.",
+    fieldPrice: "Prix par paquet (€)",
+    fieldDate: "Date de péremption",
+    fieldOpened: "Ouvert – se conserve jusqu'au",
+    fieldArea: "Pièce",
+    fieldCompartment: "Compartiment",
+    fieldMin: "Stock minimum (paquets)",
+    noArea: "Aucune pièce",
+    save: "Enregistrer",
+    saved: (name) => `${name} : enregistré.`,
+    nothing: "Rien saisi.",
+    openCard: "Ouvrir la fiche",
+    back: "Retour",
     menu: "🧹 Entretien des données",
     title: "Entretien des données",
     boxTitle: "🧹 Entretien des données",
@@ -111,6 +159,22 @@ const TEXT = {
     more: (n) => `… et ${n} de plus`,
   },
   nl: {
+    introProducts: "Per product staat wat nog ontbreekt. Tik erop en vul alles in één keer aan – wat leeg blijft, blijft gewoon open.",
+    missing: { opened_no_date: "datum sinds openen", no_date: "houdbaarheid", no_price: "prijs", no_place: "ruimte/vak", no_min: "minimumvoorraad", no_table: "soort voor de houdbaarheid" },
+    missingLine: (list) => `ontbreekt: ${list}`,
+    fillIntro: "Vul alleen in wat je weet – lege velden blijven open.",
+    fieldPrice: "Prijs per verpakking (€)",
+    fieldDate: "Houdbaar tot",
+    fieldOpened: "Geopend – houdbaar tot",
+    fieldArea: "Ruimte",
+    fieldCompartment: "Vak",
+    fieldMin: "Minimumvoorraad (verpakkingen)",
+    noArea: "Geen ruimte",
+    save: "Opslaan",
+    saved: (name) => `${name}: opgeslagen.`,
+    nothing: "Niets ingevuld.",
+    openCard: "Kaart openen",
+    back: "Terug",
     menu: "🧹 Gegevensonderhoud",
     title: "Gegevensonderhoud",
     boxTitle: "🧹 Gegevensonderhoud",
@@ -146,11 +210,17 @@ export function dataCareTexts(hass) {
   return pickLang(TEXT, hass);
 }
 
+/** "1,99" or "1.99 €" → 1.99 (null when empty or not a number). */
+function parsePrice(text) {
+  const value = Number(String(text || "").replace(/[^0-9,.]/g, "").replace(",", "."));
+  return Number.isFinite(value) && value > 0 ? Math.round(value * 100) / 100 : null;
+}
+
 function month(now = new Date()) {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
 }
 
-export function installDataCare(Dashboard, { el, DOMAIN }) {
+export function installDataCare(Dashboard, { el, DOMAIN, listAreas }) {
   const proto = Dashboard.prototype;
   const button = (cls, text, onClick) => {
     const b = el("button", cls, text);
@@ -258,56 +328,44 @@ export function installDataCare(Dashboard, { el, DOMAIN }) {
     return b;
   };
 
-  /** All gaps, grouped; tapping an entry opens its card. */
+  /** 6.7 (#197): one line per product with everything that is missing; tapping it opens one dialog. */
   proto.openDataCare = async function openDataCare() {
     const hass = this._hass;
     const t = dataCareTexts(hass);
     if (!this._dataGaps) await this.loadDataGaps();
-    const data = this._dataGaps || { counts: {}, gaps: {} };
+    const data = this._dataGaps || { counts: {}, gaps: {}, products: [] };
+    const products = data.products || [];
     const parts = [el("h2", "", t.title)];
     if (!this._dataGapTotal()) parts.push(el("p", "hint", t.none));
-    else parts.push(el("p", "hint", t.intro));
-    for (const key of GROUPS) {
-      const rows = (data.gaps && data.gaps[key]) || [];
-      if (key === "history" && data.counts.history) {
-        // 6.3 (#175): your own shelf life from the history – the suggestions of Estimates
-        const group = el("div", "datagroup");
-        group.dataset.group = key;
-        const show = button("link", t.historyShow, () => {
-          this._closeDialog();
-          this.setView("estimates");
-        });
-        show.dataset.role = "datacare-history";
-        group.append(el("h3", "", `${t.groups[key]} (${data.counts[key]})`), show);
-        parts.push(group);
-        continue;
-      }
-      if (!rows.length) continue;
+    else parts.push(el("p", "hint", t.introProducts));
+    const list = el("div", "datagroup");
+    list.dataset.group = "products";
+    for (const p of products) {
+      const line = el("button", "row dataproduct");
+      line.type = "button";
+      line.dataset.id = p.device_id || "";
+      line.dataset.role = "datacare-product";
+      const text = el("span", "text");
+      text.append(
+        el("span", "name", p.place ? `${p.content} · ${p.place}` : p.content),
+        el("span", "sub", t.missingLine(p.missing.map((g) => t.missing[g] || g).join(" · "))),
+      );
+      line.append(text);
+      line.addEventListener("click", () => this.openGapFill(p));
+      list.append(line);
+    }
+    if (products.length) parts.push(list);
+    if ((data.counts.products || 0) > products.length) parts.push(el("p", "hint", t.more(data.counts.products - products.length)));
+    if (data.counts.history) {
+      // 6.3 (#175): your own shelf life from the history – the suggestions of Estimates
       const group = el("div", "datagroup");
-      group.dataset.group = key;
-      group.append(el("h3", "", `${t.groups[key]} (${data.counts[key]})`));
-      for (const r of rows) {
-        const line = button("link", r.place ? `${r.content} · ${r.place}` : r.content, () => {
-          // 6.1 (#170): a missing price is entered in the product view (for all its packs)
-          if (key === "no_price" && r.kind && this.openProduct) {
-            this.openProduct(r.content);
-            return;
-          }
-          // 6.3 (#174): unknown to the table – choose the kind
-          if (key === "no_table") {
-            this.openTableRow(r.content, () => {
-              this._dataGaps = null;
-              this.openDataCare();
-            });
-            return;
-          }
-          this._closeDialog();
-          this.openDetail(r.device_id);
-        });
-        line.dataset.id = r.device_id;
-        group.append(line);
-      }
-      if (data.counts[key] > rows.length) group.append(el("p", "hint", t.more(data.counts[key] - rows.length)));
+      group.dataset.group = "history";
+      const show = button("link", t.historyShow, () => {
+        this._closeDialog();
+        this.setView("estimates");
+      });
+      show.dataset.role = "datacare-history";
+      group.append(el("h3", "", `${t.groups.history} (${data.counts.history})`), show);
       parts.push(group);
     }
     const buttons = el("div", "buttons");
@@ -316,5 +374,111 @@ export function installDataCare(Dashboard, { el, DOMAIN }) {
     this._form.replaceChildren(...parts);
     this._submit = null;
     this._overlay.hidden = false;
+  };
+
+  /** 6.7 (#197): everything missing for one product in one dialog. */
+  proto.openGapFill = function openGapFill(p) {
+    const hass = this._hass;
+    const t = dataCareTexts(hass);
+    const has = (gap) => p.missing.includes(gap);
+    const ids = (gap) => (p.ids && p.ids[gap]) || (p.device_id ? [p.device_id] : []);
+    const field = (label, control) => {
+      const wrap = el("label", "", label);
+      wrap.append(control);
+      return wrap;
+    };
+    const input = (type, f) => {
+      const i = el("input");
+      i.type = type;
+      i.dataset.f = f;
+      return i;
+    };
+    const parts = [el("h2", "", p.content), el("p", "hint", t.fillIntro)];
+    let price = null;
+    let date = null;
+    let area = null;
+    let compartment = null;
+    let minimum = null;
+    if (has("no_price")) {
+      price = input("text", "gap-price");
+      price.inputMode = "decimal";
+      parts.push(field(t.fieldPrice, price));
+    }
+    if (has("no_date") || has("opened_no_date")) {
+      date = input("date", "gap-date");
+      parts.push(field(has("opened_no_date") ? t.fieldOpened : t.fieldDate, date));
+    }
+    if (has("no_place")) {
+      area = el("select");
+      area.dataset.f = "gap-area";
+      for (const a of [{ id: "", name: t.noArea }, ...(listAreas ? listAreas(hass, this._classic && this._classic.larderLabel) : [])]) {
+        const o = el("option", "", a.name);
+        o.value = a.id;
+        area.append(o);
+      }
+      area.value = p.area_id || "";
+      compartment = input("text", "gap-compartment");
+      compartment.maxLength = 60;
+      compartment.value = p.compartment || "";
+      parts.push(field(t.fieldArea, area), field(t.fieldCompartment, compartment));
+    }
+    if (has("no_min")) {
+      minimum = input("number", "gap-min");
+      minimum.min = "0";
+      minimum.max = "99";
+      minimum.inputMode = "numeric";
+      parts.push(field(t.fieldMin, minimum));
+    }
+    if (has("no_table")) {
+      parts.push(this._tableRowButton(p.content, () => {
+        this._dataGaps = null;
+        this.openDataCare();
+      }));
+    }
+    const status = el("p", "hint");
+    status.setAttribute("role", "status");
+    const back = button("cancel", t.back, () => this.openDataCare());
+    const card = button("link", t.openCard, () => {
+      this._closeDialog();
+      this.openDetail(p.device_id);
+    });
+    card.dataset.role = "gap-card";
+    const save = button("submit", t.save, async () => {
+      const calls = [];
+      const value = price ? parsePrice(price.value) : null;
+      if (value) calls.push({ type: `${DOMAIN}/price_set`, content: p.content, price: value });
+      const rows = new Map();
+      const row = (id) => rows.get(id) || rows.set(id, { device_id: id, added: 999 }).get(id);
+      if (date && date.value) for (const id of [...ids("no_date"), ...ids("opened_no_date")]) row(id).best_before = date.value;
+      if (area && (area.value !== (p.area_id || "") || compartment.value.trim() !== (p.compartment || ""))) {
+        for (const id of ids("no_place")) Object.assign(row(id), { area_id: area.value || null, compartment: compartment.value.trim() });
+      }
+      if (rows.size) calls.push({ type: `${DOMAIN}/put_away_save`, rows: [...rows.values()] });
+      if (minimum && minimum.value !== "" && Number(minimum.value) > 0) calls.push({ type: `${DOMAIN}/stock_min`, content: p.content, min: Number(minimum.value) });
+      if (!calls.length) {
+        status.textContent = t.nothing;
+        return;
+      }
+      save.disabled = true;
+      try {
+        for (const msg of calls) await hass.callWS(msg);
+        if (this.showNotice) this.showNotice(t.saved(p.content));
+        this._dataGaps = null;
+        await this.openDataCare();
+      } catch (err) {
+        status.textContent = (err && err.message) || t.tableFailed;
+        save.disabled = false;
+      }
+    });
+    save.dataset.role = "gap-save";
+    const buttons = el("div", "buttons");
+    buttons.append(back, save);
+    if (p.device_id) parts.push(card);
+    parts.push(status, buttons);
+    this._form.replaceChildren(...parts);
+    this._submit = null;
+    this._overlay.hidden = false;
+    const first = this._form.querySelector("input, select");
+    if (first) first.focus();
   };
 }

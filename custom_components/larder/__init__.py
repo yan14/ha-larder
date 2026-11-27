@@ -12,6 +12,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import area_registry as ar, device_registry as dr
 
 from . import shelf_life
+from .area_storage import async_setup_area_storage_websocket
 from .calendar_sync import async_get_calendar_sync, async_setup_calendar_service
 from .const import CONF_AREA, CONF_CC, CONF_INITIAL, CONF_SOURCE, DOMAIN, MAIN_UNIQUE_ID, PLATFORMS, SOURCE_MAIN
 from .content_photo import async_setup_content_photo
@@ -100,6 +101,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_grocy_websocket(hass)
     async_setup_put_away_websocket(hass)
     async_setup_place_suggest_websocket(hass)
+    async_setup_area_storage_websocket(hass)
     async_setup_table_rows_websocket(hass)
     async_setup_cooking_websocket(hass)
     async_setup_freezing_websocket(hass)

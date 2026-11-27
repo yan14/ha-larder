@@ -29,6 +29,7 @@ from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util
 
 from . import shelf_life
+from .area_storage import own_hint
 from .const import (
     CONF_AI_TASK_ENTITY,
     CONF_CALENDAR_ENTITY,
@@ -199,6 +200,10 @@ def storage_context(hass: HomeAssistant, cc: str) -> StorageContext:
             storage_hint = storage_hint or template.get("storage")
             if (days := shelf_life.parse_duration(template.get("max_storage"))) is not None:
                 limits.append(days)
+    # 6.7 (#196): the kind chosen in the dashboard counts like a label "Storage: …"
+    if (own := own_hint(hass, area.id)) is not None:
+        storage_hint = own
+        hints.append(f"storage kind set by the user: {own}")
     return StorageContext(
         area.name,
         hints,

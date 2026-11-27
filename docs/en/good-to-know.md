@@ -14,7 +14,7 @@ Short answers to the questions that come up most, and the rules Larder follows e
 | find a product | **🔍** at the top of every page: every place with count and date |
 | scan anything | **📷** at the top of every page (Home Assistant app): barcode, container code or compartment label |
 | put the shopping away | **📥 Put away** (start page) – or tick it off in the **🛒 Shopping** mode while shopping |
-| read a receipt | **🧾 Receipt** (start page, More, shopping mode) |
+| read a receipt or invoice | **📥 Put the shopping away → 🧾 Receipt or invoice** (start page, Larder, Shopping, More) – choose photo or PDF first, then check |
 | see what a product did over time | **📜 History** – in the stock view, the barcode dialog, or **📜 History of …** on a card |
 | see the stock with minimum stock and prices | **More → 🗃️ Stock** |
 | count what is really there | **More → 📋 Stocktake**, or **📋 Stocktake** in a compartment |

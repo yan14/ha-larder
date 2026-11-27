@@ -227,68 +227,109 @@
     "step": {
       "init": {
         "title": "Einstellungen",
-        "description": "**MHD-Schätzung**\nLegt fest, wie der Button „MHD schätzen“ im Dashboard und der Service arbeiten. Die eingebaute Tabelle funktioniert ohne KI-Dienst und ohne Internet. Eine KI nutzt den Dienst, den du unter Einstellungen → Geräte & Dienste → „AI Task“ eingerichtet hast; dorthin gehen nur Inhalt, Bereichsname mit Hinweisen (Temperatursensor, Label-Beschreibung), Vakuum ja/nein und Befüll-Datum. Vom Nutzer korrigierte Werte gelten immer zuerst.\n\n**Scan-Webhook**\nTrage diese URL **einmalig** im iOS-Kurzbefehl ein. Sie ist geheim: Wer sie kennt, kann Dosen abfragen.\n\n`{webhook_url}`\n\nNur der Pfad: `{webhook_path}`\n\nDie Anleitung zum Kurzbefehl steht in der README des Projekts.",
-        "data": {
-          "estimate_mode": "MHD-Schätzung",
-          "ai_task_entity": "KI-Aufgabe (leer = Standard von Home Assistant)",
-          "opened_days": "Haltbarkeit nach dem Öffnen (Tage)",
-          "thawed_days": "Haltbarkeit nach dem Auftauen (Tage)",
-          "calendar_entity": "Kalender für das MHD (optional)",
-          "vacuum_default": "Vakuum-Vorbelegung für neue Dosen",
-          "nfc_notify": "NFC: Handy benachrichtigen",
-          "repair_hints": "Reparaturhinweise",
-          "temperature_warning": "Temperaturwarnung",
-          "todo_entity": "Einkaufsliste (Lebensmittel)",
-          "todo_household": "Einkaufsliste für Haushaltsartikel (optional)",
-          "todo_pharmacy": "Einkaufsliste für Medikamente (optional)",
-          "meal_calendar": "Kalender für den Wochenplan",
-          "thaw_days": "Auftauen: Tage vorher",
-          "recipe_days": "Zeitraum für Rezeptideen (Tage)",
-          "soon_days": "„Läuft bald ab“ ab (Tage)",
-          "long_soon_days": "„Läuft bald ab“ für Medikamente, Haushalt und Gutscheine (Tage)",
-          "shopping_details": "Marke und Packung mit auf die Einkaufsliste",
-          "watch_allergens": "Allergene im Haushalt (optional)",
-          "stock_lead_days": "Vorrat: Tage bis zum nächsten Einkauf",
-          "reorder_shopping": "Bald leer: gleich auf die Einkaufsliste",
-          "recall_check": "Rückrufwarnungen (lebensmittelwarnung.de)",
-          "recall_state": "Rückrufwarnungen: nur für dieses Bundesland",
-          "plan_source": "Wochenplan-Vorschlag: Quelle",
-          "plan_days": "Wochenplan-Vorschlag: Tage",
-          "freezer_first_weeks": "Tiefkühl vorziehen: Wochen vor Ende der besten Qualität",
-          "supply_check": "Notvorrat-Check",
-          "supply_persons": "Personen im Haushalt (Notvorrat)",
-          "supply_days": "Tage Notvorrat"
-        },
-        "data_description": {
-          "vacuum_default": "Neue Dosen starten mit eingeschaltetem oder ausgeschaltetem Schalter „Vakuum“. Bestehende Dosen behalten ihren Wert. Schalte es aus, wenn die meisten deiner Boxen nicht vakuumiert sind.",
-          "estimate_mode": "Zeigt im Dashboard den Button „MHD schätzen“, außer bei „Aus“.",
-          "ai_task_entity": "Nur nötig, wenn du mehrere KI-Dienste eingerichtet hast und eine KI-Stufe gewählt ist.",
-          "opened_days": "Nur wenn weder die Tabelle (Werte nach dem Öffnen von USDA FoodKeeper) noch die KI den Inhalt am Lagerort kennt: „Geöffnet“ und „Anbrechen“ kürzen das MHD auf höchstens so viele Tage ab heute.",
-          "thawed_days": "Der Button „Aufgetaut“ im Dashboard kürzt das MHD auf höchstens so viele Tage ab heute. Aufgetautes nicht wieder einfrieren.",
-          "calendar_entity": "Schreibt das MHD jeder Dose als Ganztags-Termin in diesen Kalender (anlegen, verschieben, löschen). Der Kalender muss Termine anlegen und löschen können, z. B. Google oder „Lokaler Kalender“ (nicht CalDAV, das nicht löschen kann). Leer lassen = aus.",
-          "nfc_notify": "Scannt jemand einen verknüpften Tag, bekommt sein Handy (Companion-App) eine Benachrichtigung. Antippen öffnet die Dose im Dashboard.",
-          "repair_hints": "Zeigt unter Einstellungen → System → Reparaturen Hinweise zu Dosen ohne Bereich, gefüllten Dosen ohne MHD und Dosen, die seit mindestens 7 Tagen abgelaufen sind.",
-          "temperature_warning": "Warnt (Reparaturhinweis und Ereignis larder_temperature_warning), wenn ein Lagerort mit Temperatursensor zu lange zu warm ist: Gefrierschrank über −12 °C für 30 Minuten, Kühlschrank über 8 °C bzw. 0-°C-Fach über 6 °C für 60 Minuten.",
-          "todo_entity": "Eine To-do-Liste von Home Assistant (z. B. „Einkaufsliste“, Todoist, Bring!). Hierhin kommt alles, was Larder auf die Einkaufsliste setzt: geleerte Dosen mit Schalter „Einkaufsliste“, Mindestbestand, bald leer, Zutaten aus dem Wochenplan (nicht doppelt). Einzelne Produkte können auf ihrer Karte eine andere Liste bekommen. Leer = aus.",
-          "todo_household": "Eigene To-do-Liste für Haushaltsartikel (z. B. „Drogerie“). Leer = dieselbe Liste wie für Lebensmittel. Einzelne Produkte können auf ihrer Karte eine andere Liste bekommen.",
-          "todo_pharmacy": "Eigene To-do-Liste für Medikamente (z. B. „Apotheke“). Leer = dieselbe Liste wie für Lebensmittel.",
-          "meal_calendar": "Optional: geplante Gerichte erscheinen dort als ganztägiger Termin „🍽 …“. Ohne Auswahl stehen sie nur im Dashboard.",
-          "thaw_days": "Wie viele Tage vor dem geplanten Tag die Zusammenfassung an Dosen aus dem Gefrierschrank erinnert (0 = am Tag selbst).",
-          "recipe_days": "Rezeptideen „aus Resten“ berücksichtigen Dosen, die in so vielen Tagen ablaufen (0 = nur heute). Im Dashboard lässt sich der Zeitraum für einen einzelnen Aufruf ändern oder ganz abschalten.",
-          "soon_days": "Ab so vielen Resttagen gilt eine Dose als „läuft bald ab“ (Hinweis im Dashboard, Filter, Status des Sensors und Vorgabe für die Ablauf-Übersicht).",
-          "long_soon_days": "Medikamente und Haushaltsartikel mit Datum (z. B. Sonnencreme) gelten so viele Tage vorher als „läuft bald ab“ und stehen dann auf der Startseite in ihrem Abschnitt. In der täglichen Zusammenfassung tauchen sie nicht auf.",
-          "shopping_details": "Sind Marke oder Packungsgröße einer Dose bekannt (z. B. nach einem Strichcode-Scan), kommen sie beim Leeren mit auf die Liste: „Haferflocken (Kölln, 500 g)“.",
-          "watch_allergens": "Dosen, deren Allergene oder Inhalt dazu passen, bekommen ein ⚠ auf Karte und Kachel; Rezeptideen lassen sie weg und meiden diese Zutaten. Nur ein Hinweis, keine Garantie.",
-          "stock_lead_days": "Für den Vorschlag zum Mindestbestand: so viele Packungen, wie in dieser Zeit verbraucht werden.",
-          "reorder_shopping": "Reicht ein Produkt mit Mindestbestand laut Prognose nur noch die „Tage bis zum nächsten Einkauf“, steht es auf der Startseite unter „Bald leer“ (Ereignis larder_running_low). Ist das an, kommt es zusätzlich gleich auf die Einkaufsliste (einmal, nicht doppelt).",
-          "recall_check": "Gleicht alle 6 Stunden die öffentlichen Rückrufe von lebensmittelwarnung.de mit Marke und Inhalt deiner Dosen, Beutel und Packungen ab. Treffer stehen auf der Startseite und der Karte; Ereignis larder_recall für Benachrichtigungen. Abgerufen wird nur der öffentliche Feed, es werden keine Daten gesendet.",
-          "recall_state": "Leer = Warnungen für alle Bundesländer.",
-          "plan_source": "Woher die Gerichte für „Woche vorschlagen“ im Wochenplan kommen. Die KI braucht eine eingerichtete KI-Aufgabe.",
-          "plan_days": "Für so viele Tage ab heute schlägt Larder Gerichte vor (Tage, für die schon etwas geplant ist, werden übersprungen).",
-          "freezer_first_weeks": "Eingefrorenes, dessen beste Qualität in so vielen Wochen endet, kommt in Wochenvorschlag und Rezeptideen nach vorne – nach dem, was im Kühlschrank bald abläuft. 0 = aus.",
-          "supply_check": "Zeigt unter ⋮ → 🛟 Notvorrat, was laut Empfehlung des BBK (Bundesamt für Bevölkerungsschutz) für den Haushalt fehlt.",
-          "supply_persons": "Für so viele Personen rechnet der Notvorrat-Check.",
-          "supply_days": "Das BBK empfiehlt einen Vorrat für 10 Tage."
+        "description": "**Scan-Webhook**\nTrage diese URL **einmalig** im iOS-Kurzbefehl ein. Sie ist geheim: Wer sie kennt, kann Dosen abfragen.\n\n`{webhook_url}`\n\nNur der Pfad: `{webhook_path}`\n\nDie Anleitung zum Kurzbefehl steht in der README des Projekts.",
+        "sections": {
+          "shelf_life": {
+            "name": "Haltbarkeit (MHD)",
+            "data": {
+              "estimate_mode": "MHD-Schätzung",
+              "opened_days": "Haltbarkeit nach dem Öffnen (Tage)",
+              "thawed_days": "Haltbarkeit nach dem Auftauen (Tage)",
+              "soon_days": "„Läuft bald ab“ ab (Tage)",
+              "long_soon_days": "„Läuft bald ab“ für Medikamente, Haushalt und Gutscheine (Tage)",
+              "vacuum_default": "Vakuum-Vorbelegung für neue Dosen"
+            },
+            "data_description": {
+              "estimate_mode": "Zeigt im Dashboard den Button „MHD schätzen“, außer bei „Aus“.",
+              "opened_days": "Nur wenn weder die Tabelle (Werte nach dem Öffnen von USDA FoodKeeper) noch die KI den Inhalt am Lagerort kennt: „Geöffnet“ und „Anbrechen“ kürzen das MHD auf höchstens so viele Tage ab heute.",
+              "thawed_days": "Der Button „Aufgetaut“ im Dashboard kürzt das MHD auf höchstens so viele Tage ab heute. Aufgetautes nicht wieder einfrieren.",
+              "soon_days": "Ab so vielen Resttagen gilt eine Dose als „läuft bald ab“ (Hinweis im Dashboard, Filter, Status des Sensors und Vorgabe für die Ablauf-Übersicht).",
+              "long_soon_days": "Medikamente und Haushaltsartikel mit Datum (z. B. Sonnencreme) gelten so viele Tage vorher als „läuft bald ab“ und stehen dann auf der Startseite in ihrem Abschnitt. In der täglichen Zusammenfassung tauchen sie nicht auf.",
+              "vacuum_default": "Neue Dosen starten mit eingeschaltetem oder ausgeschaltetem Schalter „Vakuum“. Bestehende Dosen behalten ihren Wert. Schalte es aus, wenn die meisten deiner Boxen nicht vakuumiert sind."
+            },
+            "description": "Legt fest, wie der Button „MHD schätzen“ im Dashboard und der Service arbeiten. Die eingebaute Tabelle funktioniert ohne KI-Dienst und ohne Internet. Eine KI nutzt den Dienst, den du unter Einstellungen → Geräte & Dienste → „AI Task“ eingerichtet hast; dorthin gehen nur Inhalt, Bereichsname mit Hinweisen (Temperatursensor, Label-Beschreibung), Vakuum ja/nein und Befüll-Datum. Vom Nutzer korrigierte Werte gelten immer zuerst."
+          },
+          "shopping": {
+            "name": "Einkaufen",
+            "data": {
+              "todo_entity": "Einkaufsliste (Lebensmittel)",
+              "todo_household": "Einkaufsliste für Haushaltsartikel (optional)",
+              "todo_pharmacy": "Einkaufsliste für Medikamente (optional)",
+              "shopping_details": "Marke und Packung mit auf die Einkaufsliste",
+              "stock_lead_days": "Vorrat: Tage bis zum nächsten Einkauf",
+              "reorder_shopping": "Bald leer: gleich auf die Einkaufsliste"
+            },
+            "data_description": {
+              "todo_entity": "Eine To-do-Liste von Home Assistant (z. B. „Einkaufsliste“, Todoist, Bring!). Hierhin kommt alles, was Larder auf die Einkaufsliste setzt: geleerte Dosen mit Schalter „Einkaufsliste“, Mindestbestand, bald leer, Zutaten aus dem Wochenplan (nicht doppelt). Einzelne Produkte können auf ihrer Karte eine andere Liste bekommen. Leer = aus.",
+              "todo_household": "Eigene To-do-Liste für Haushaltsartikel (z. B. „Drogerie“). Leer = dieselbe Liste wie für Lebensmittel. Einzelne Produkte können auf ihrer Karte eine andere Liste bekommen.",
+              "todo_pharmacy": "Eigene To-do-Liste für Medikamente (z. B. „Apotheke“). Leer = dieselbe Liste wie für Lebensmittel.",
+              "shopping_details": "Sind Marke oder Packungsgröße einer Dose bekannt (z. B. nach einem Strichcode-Scan), kommen sie beim Leeren mit auf die Liste: „Haferflocken (Kölln, 500 g)“.",
+              "stock_lead_days": "Für den Vorschlag zum Mindestbestand: so viele Packungen, wie in dieser Zeit verbraucht werden.",
+              "reorder_shopping": "Reicht ein Produkt mit Mindestbestand laut Prognose nur noch die „Tage bis zum nächsten Einkauf“, steht es auf der Startseite unter „Bald leer“ (Ereignis larder_running_low). Ist das an, kommt es zusätzlich gleich auf die Einkaufsliste (einmal, nicht doppelt)."
+            }
+          },
+          "meal_plan": {
+            "name": "Rezepte & Wochenplan",
+            "data": {
+              "recipe_days": "Zeitraum für Rezeptideen (Tage)",
+              "meal_calendar": "Kalender für den Wochenplan",
+              "plan_source": "Wochenplan-Vorschlag: Quelle",
+              "plan_days": "Wochenplan-Vorschlag: Tage",
+              "thaw_days": "Auftauen: Tage vorher",
+              "freezer_first_weeks": "Tiefkühl vorziehen: Wochen vor Ende der besten Qualität"
+            },
+            "data_description": {
+              "recipe_days": "Rezeptideen „aus Resten“ berücksichtigen Dosen, die in so vielen Tagen ablaufen (0 = nur heute). Im Dashboard lässt sich der Zeitraum für einen einzelnen Aufruf ändern oder ganz abschalten.",
+              "meal_calendar": "Optional: geplante Gerichte erscheinen dort als ganztägiger Termin „🍽 …“. Ohne Auswahl stehen sie nur im Dashboard.",
+              "plan_source": "Woher die Gerichte für „Woche vorschlagen“ im Wochenplan kommen. Die KI braucht eine eingerichtete KI-Aufgabe.",
+              "plan_days": "Für so viele Tage ab heute schlägt Larder Gerichte vor (Tage, für die schon etwas geplant ist, werden übersprungen).",
+              "thaw_days": "Wie viele Tage vor dem geplanten Tag die Zusammenfassung an Dosen aus dem Gefrierschrank erinnert (0 = am Tag selbst).",
+              "freezer_first_weeks": "Eingefrorenes, dessen beste Qualität in so vielen Wochen endet, kommt in Wochenvorschlag und Rezeptideen nach vorne – nach dem, was im Kühlschrank bald abläuft. 0 = aus."
+            }
+          },
+          "notifications": {
+            "name": "Hinweise & Benachrichtigungen",
+            "data": {
+              "calendar_entity": "Kalender für das MHD (optional)",
+              "nfc_notify": "NFC: Handy benachrichtigen",
+              "repair_hints": "Reparaturhinweise",
+              "temperature_warning": "Temperaturwarnung",
+              "recall_check": "Rückrufwarnungen (lebensmittelwarnung.de)",
+              "recall_state": "Rückrufwarnungen: nur für dieses Bundesland",
+              "watch_allergens": "Allergene im Haushalt (optional)"
+            },
+            "data_description": {
+              "calendar_entity": "Schreibt das MHD jeder Dose als Ganztags-Termin in diesen Kalender (anlegen, verschieben, löschen). Der Kalender muss Termine anlegen und löschen können, z. B. Google oder „Lokaler Kalender“ (nicht CalDAV, das nicht löschen kann). Leer lassen = aus.",
+              "nfc_notify": "Scannt jemand einen verknüpften Tag, bekommt sein Handy (Companion-App) eine Benachrichtigung. Antippen öffnet die Dose im Dashboard.",
+              "repair_hints": "Zeigt unter Einstellungen → System → Reparaturen Hinweise zu Dosen ohne Bereich, gefüllten Dosen ohne MHD und Dosen, die seit mindestens 7 Tagen abgelaufen sind.",
+              "temperature_warning": "Warnt (Reparaturhinweis und Ereignis larder_temperature_warning), wenn ein Lagerort mit Temperatursensor zu lange zu warm ist: Gefrierschrank über −12 °C für 30 Minuten, Kühlschrank über 8 °C bzw. 0-°C-Fach über 6 °C für 60 Minuten.",
+              "recall_check": "Gleicht alle 6 Stunden die öffentlichen Rückrufe von lebensmittelwarnung.de mit Marke und Inhalt deiner Dosen, Beutel und Packungen ab. Treffer stehen auf der Startseite und der Karte; Ereignis larder_recall für Benachrichtigungen. Abgerufen wird nur der öffentliche Feed, es werden keine Daten gesendet.",
+              "recall_state": "Leer = Warnungen für alle Bundesländer.",
+              "watch_allergens": "Dosen, deren Allergene oder Inhalt dazu passen, bekommen ein ⚠ auf Karte und Kachel; Rezeptideen lassen sie weg und meiden diese Zutaten. Nur ein Hinweis, keine Garantie."
+            }
+          },
+          "supply": {
+            "name": "Notvorrat",
+            "data": {
+              "supply_check": "Notvorrat-Check",
+              "supply_persons": "Personen im Haushalt (Notvorrat)",
+              "supply_days": "Tage Notvorrat"
+            },
+            "data_description": {
+              "supply_check": "Zeigt unter ⋮ → 🛟 Notvorrat, was laut Empfehlung des BBK (Bundesamt für Bevölkerungsschutz) für den Haushalt fehlt.",
+              "supply_persons": "Für so viele Personen rechnet der Notvorrat-Check.",
+              "supply_days": "Das BBK empfiehlt einen Vorrat für 10 Tage."
+            }
+          },
+          "advanced": {
+            "name": "Erweitert",
+            "data": {
+              "ai_task_entity": "KI-Aufgabe (leer = Standard von Home Assistant)"
+            },
+            "data_description": {
+              "ai_task_entity": "Nur nötig, wenn du mehrere KI-Dienste eingerichtet hast und eine KI-Stufe gewählt ist."
+            }
+          }
         }
       }
     },

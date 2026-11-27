@@ -194,6 +194,7 @@ const TEXT = {
     receiptJoined: (n) => (n === 1 ? "1 bekanntes Produkt an seinen üblichen Ort gelegt." : `${n} bekannte Produkte an ihren üblichen Ort gelegt.`),
     receiptBusy: "Kassenbon wird gelesen …",
     receiptDone: (n) => `${n} Produkt(e) vom Kassenbon übernommen. Bitte prüfen und das MHD ergänzen.`,
+    receiptTitle: "🧾 Vom Kassenbon / der Rechnung",
     receiptFailed: "Kein Kassenbon und keine Rechnung erkannt.",
     moveTitle: "Verschieben / aufteilen",
     moveCount: (n) => `Wie viele? (von ${n})`,
@@ -377,6 +378,7 @@ const TEXT = {
     receiptJoined: (n) => (n === 1 ? "1 known product put at its usual place." : `${n} known products put at their usual place.`),
     receiptBusy: "Reading the receipt …",
     receiptDone: (n) => `${n} product(s) taken from the receipt. Please check them and add the best-before dates.`,
+    receiptTitle: "🧾 From the receipt / invoice",
     receiptFailed: "No receipt or invoice was recognised.",
     moveTitle: "Move / split",
     moveCount: (n) => `How many? (of ${n})`,
@@ -560,6 +562,7 @@ const TEXT = {
     receiptJoined: (n) => (n === 1 ? "1 produit connu rangé à sa place habituelle." : `${n} produits connus rangés à leur place habituelle.`),
     receiptBusy: "Lecture du ticket …",
     receiptDone: (n) => `${n} produit(s) repris du ticket. Vérifiez-les et ajoutez les dates de péremption.`,
+    receiptTitle: "🧾 D'après le ticket / la facture",
     receiptFailed: "Aucun ticket ni facture reconnu.",
     moveTitle: "Déplacer / partager",
     moveCount: (n) => `Combien ? (sur ${n})`,
@@ -743,6 +746,7 @@ const TEXT = {
     receiptJoined: (n) => (n === 1 ? "1 bekend product op de vaste plek gezet." : `${n} bekende producten op hun vaste plek gezet.`),
     receiptBusy: "Kassabon wordt gelezen …",
     receiptDone: (n) => `${n} product(en) van de kassabon overgenomen. Controleer ze en vul de houdbaarheidsdata aan.`,
+    receiptTitle: "🧾 Van de kassabon / factuur",
     receiptFailed: "Geen kassabon of factuur herkend.",
     moveTitle: "Verplaatsen / splitsen",
     moveCount: (n) => `Hoeveel? (van ${n})`,
@@ -1758,7 +1762,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       const bar = el("div", "bar");
       const scan = button("", t.codeScan, () => this.scanToTake());
       scan.dataset.role = "stock-scan";
-      const putAway = button("", `📥 ${t.putAway}`, () => this.openPutAway());
+      const putAway = button("", `📥 ${t.putAway}`, () => this.openPutAwayChoice());
       putAway.dataset.role = "stock-putaway";
       bar.append(el("span", "grow"), putAway, scan);
       frag.append(bar);
@@ -2076,6 +2080,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       extras.push(scan);
     }
     let receiptStore = null;
+    let startReceipt = null;
     if (!bag && !hh && !med && this._canGenerate() && hass.fetchWithAuth) {
       // take a photo of the receipt: the AI suggests products with their count
       const file = el("input");
@@ -2093,9 +2098,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       receiptStore.setAttribute("aria-label", t.receiptStore);
       receiptStore.dataset.f = "receipt-store";
       receiptStore.hidden = true;
-      file.addEventListener("change", async () => {
-        const photo = file.files && file.files[0];
-        file.value = "";
+      const readReceipt = async (photo) => {
         if (!photo) return;
         status.hidden = false;
         status.textContent = t.receiptBusy;
@@ -2130,8 +2133,15 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
         } finally {
           receipt.disabled = false;
         }
+      };
+      file.addEventListener("change", () => {
+        const photo = file.files && file.files[0];
+        file.value = "";
+        readReceipt(photo);
       });
       extras.push(receipt, file, receiptStore);
+      // 6.7 (#206): picked in the receipt dialog first, read right away
+      if (preset && preset.receiptFile) startReceipt = () => readReceipt(preset.receiptFile);
     }
     const more = button("link", t.more, () => addRow().querySelector('[data-i="content"]').focus());
     more.dataset.role = "item-more";
@@ -2150,7 +2160,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     error.setAttribute("role", "alert");
     const submit = button("submit", t.create, null, "submit");
     form.replaceChildren(
-      el("h2", "", bag ? t.titleBag : hh ? t.titleHousehold : med ? t.titleMedicine : t.titlePack),
+      el("h2", "", startReceipt ? t.receiptTitle : bag ? t.titleBag : hh ? t.titleHousehold : med ? t.titleMedicine : t.titlePack),
       field(t.area, area),
       field(t.compartment, compartment),
       ...(shopList ? [field(t.shopList, shopList)] : []),
@@ -2249,7 +2259,8 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       }
     };
     this._overlay.hidden = false;
-    rows.querySelector('[data-i="content"]').focus();
+    if (startReceipt) startReceipt();
+    else rows.querySelector('[data-i="content"]').focus();
   };
 
   /** After creating: label the bags (NFC stickers one after another or print labels). */

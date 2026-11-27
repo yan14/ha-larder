@@ -1,6 +1,8 @@
 /** Cards and dialogs (larder-panel.js): texts (German and English). */
 export const STRINGS = {
   de: {
+    emptyTitle: "Leer",
+    outcomeEnd: "Inhalt ist weg?",
     placeSame: "📍 Vorschlag: wo das Gleiche schon liegt",
     placeBefore: "📍 Vorschlag: wo es zuletzt lag",
     placeFree: "📍 Vorschlag: das Fach mit dem wenigsten darin",
@@ -230,6 +232,8 @@ export const STRINGS = {
     estOff: "Die MHD-Schätzung ist ausgeschaltet. Die Einträge bleiben erhalten.",
   },
   en: {
+    emptyTitle: "Empty",
+    outcomeEnd: "Contents gone?",
     placeSame: "📍 Suggested: where the same is already",
     placeBefore: "📍 Suggested: where it was last time",
     placeFree: "📍 Suggested: the compartment with the least in it",
@@ -458,6 +462,8 @@ export const STRINGS = {
     estOff: "Best-before estimates are switched off. The entries are kept.",
   },
   fr: {
+    emptyTitle: "Vide",
+    outcomeEnd: "Contenu terminé ?",
     placeSame: "📍 Suggestion : là où se trouve déjà le même",
     placeBefore: "📍 Suggestion : là où il était la dernière fois",
     placeFree: "📍 Suggestion : le compartiment le moins rempli",
@@ -684,6 +690,8 @@ export const STRINGS = {
     estOff: "Les estimations de date sont désactivées. Les entrées sont conservées.",
   },
   nl: {
+    emptyTitle: "Leeg",
+    outcomeEnd: "Inhoud op?",
     placeSame: "📍 Voorstel: waar hetzelfde al ligt",
     placeBefore: "📍 Voorstel: waar het de vorige keer lag",
     placeFree: "📍 Voorstel: het vak met het minste erin",
