@@ -528,7 +528,7 @@
         "step": {
           "area": {
             "title": "Assign areas",
-            "description": "Choose the area each container stands in. Containers left empty stay without an area."
+            "description": "Choose the area each container stands in. Containers left empty stay without an area.\n\n{containers}\n\n**open** jumps straight to the container in the dashboard."
           }
         },
         "abort": {
@@ -560,7 +560,7 @@
         "step": {
           "empty": {
             "title": "Empty expired containers",
-            "description": "The ticked containers are emptied and recorded as thrown away in the history.",
+            "description": "The ticked containers are emptied and recorded as thrown away in the history.\n\n{containers}\n\n**open** jumps straight to the container in the dashboard if you would rather check it there.",
             "data": {
               "containers": "Containers"
             }

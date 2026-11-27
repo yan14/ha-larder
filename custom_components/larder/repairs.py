@@ -93,7 +93,12 @@ class LarderFixFlow(RepairsFlow):
                         devices.async_update_device(device.id, area_id=area_id)
             return await self._done()
         schema = vol.Schema({vol.Optional(label): AreaSelector() for label in labels.values()})
-        return self.async_show_form(step_id="area", data_schema=schema)
+        # 6.8 (#211): contents, place and a link per entry, like the best-before hint
+        return self.async_show_form(
+            step_id="area",
+            data_schema=schema,
+            description_placeholders={"containers": describe_items(self.hass, self._items(), self.hass.config.language or "en")},
+        )
 
     async def async_step_estimate(self, user_input: dict[str, Any] | None = None) -> data_entry_flow.FlowResult:
         items = self._items()
@@ -148,7 +153,11 @@ class LarderFixFlow(RepairsFlow):
                 history.pop_pending(cc)
             return await self._done()
         schema = vol.Schema({vol.Optional("containers", default=list(labels)): cv.multi_select(labels)})
-        return self.async_show_form(step_id="empty", data_schema=schema)
+        return self.async_show_form(
+            step_id="empty",
+            data_schema=schema,
+            description_placeholders={"containers": describe_items(self.hass, self._items(), self.hass.config.language or "en")},
+        )
 
 
 async def async_create_fix_flow(

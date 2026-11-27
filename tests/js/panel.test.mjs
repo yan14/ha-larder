@@ -1709,7 +1709,8 @@ test("fill container: content is required, saving sets entities and estimates th
   $(el, 'form.fillform [data-f="vacuum"]').checked = false;
   $(el, 'form.fillform [data-f="quantity"]').value = "5";
   $(el, 'form.fillform [data-f="unit"]').value = "slices";
-  $(el, 'form.fillform [data-f="filledAt"]').value = "2026-11-09T11:00";
+  // 6.8 (#220): the day only; a past day counts as noon
+  $(el, 'form.fillform [data-f="filledAt"]').value = "2026-11-09";
   form.dispatchEvent(new dom.window.Event("submit", { cancelable: true }));
   await flush();
 
@@ -1718,7 +1719,7 @@ test("fill container: content is required, saving sets entities and estimates th
     { domain: "switch", service: "turn_off", data: { entity_id: "switch.d1_vacuum" } },
     { domain: "number", service: "set_value", data: { entity_id: "number.d1_portionen", value: 5 } },
     { domain: "select", service: "select_option", data: { entity_id: "select.d1_einheit", option: "slices" } },
-    { domain: "datetime", service: "set_value", data: { entity_id: "datetime.d1_befuellt", datetime: "2026-11-09T10:00:00.000Z" } },
+    { domain: "datetime", service: "set_value", data: { entity_id: "datetime.d1_befuellt", datetime: "2026-11-09T11:00:00.000Z" } },
   ]);
   assert.equal($(el, ".overlay.fill").hidden, true);
   const est = hass.wsCalls.find((m) => m.type === "call_service");
@@ -2365,4 +2366,32 @@ test("5.4: the panel skips foreign state changes", () => {
   assert.equal(updates, 0);
   el.hass = { ...hass1, states: { ...hass1.states, "text.d1_inhalt": { entity_id: "text.d1_inhalt", state: "Gulasch", attributes: {} } } };
   assert.equal(updates, 1);
+});
+
+test("6.8 (#217–#221): fill dialog – vacuum question once, date only, hints, barcode button", async () => {
+  const hass = adminHass([{ id: "d1", name: "Dose 1", content: "" }]);
+  const calls = [];
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === "larder/settings") return { vacuum_asked: false, vacuum_default: true };
+    if (msg.type === "larder/vacuum_answer") {
+      calls.push(msg);
+      return { vacuum_default: msg.has_sealer, changed: 0 };
+    }
+    return base ? base(msg) : {};
+  };
+  hass.auth = { external: { config: { hasBarCodeScanner: true } } };
+  const el = mount(hass);
+  el.openFillDialog("d1");
+  await flush();
+  const form = $(el, "form.fillform");
+  assert.equal(form.querySelector('[data-w="vacask"]').hidden, false);
+  assert.equal(form.querySelector('[data-f="filledAt"]').type, "date");
+  assert.match(form.querySelector('[data-f="filledAt"]').value, /^\d{4}-\d{2}-\d{2}$/);
+  assert.equal(form.querySelector('[data-f="quantity"]').placeholder, "z. B. 2 – optional");
+  form.querySelector("button.vacno").click();
+  await flush();
+  assert.deepEqual(calls, [{ type: "larder/vacuum_answer", has_sealer: false }]);
+  assert.equal(form.querySelector('[data-f="vacuum"]').checked, false);
+  assert.equal(form.querySelector('[data-w="vacask"]').hidden, true);
 });

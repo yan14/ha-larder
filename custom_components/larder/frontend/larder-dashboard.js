@@ -68,6 +68,8 @@ const LONG_PRESS_MS = 500;
 const GROUP_VIEWS = ["containers", "areas", "compartments", "categories"];
 const ALL_VIEWS = [...VIEWS, "areas", "compartments", "categories", "estimates", "stats", "stock", "stocktake", "supply"];
 const MODES = ["grid", "list", "cards"];
+// 6.8 (#209): boxes shown open on the start page below the tiles
+const START_OPEN_BOXES = 2;
 const STORAGE_ICONS = { fridge: "❄️", zero: "🧊", freezer: "🥶", pantry: "🗄️" };
 const VIEW_ICONS = { start: "🏠", containers: "🥫", shopping: "🛒", recipes: "📖", more: "⋯", areas: "📍", compartments: "🗄️", categories: "🏷️" };
 
@@ -1749,17 +1751,28 @@ export class LarderDashboard extends HTMLElement {
     } else {
       const mode = this._selecting && this._opts.mode === "cards" ? "grid" : this._opts.mode;
       const grouped = ["area", "place", "category"].includes(this._opts.sort);
+      // 6.8 (#215): empty containers after the contents (stable order otherwise)
+      const filledFirst = (items) => [...items.filter((r) => r.content !== ""), ...items.filter((r) => r.content === "")];
       const container = (items) => {
         const box = el("div", mode === "grid" ? "tiles" : "list");
-        for (const row of items) box.append(mode === "grid" ? this._tile(row, t) : this._listRow(row, t));
+        for (const row of filledFirst(items)) box.append(mode === "grid" ? this._tile(row, t) : this._listRow(row, t));
         return box;
       };
       if (mode === "cards" && this._opts.scope !== "voucher") {
         // all details: the cards of the classic view, in this order and with these filters
         this._classicShow = "cards";
-        this._classicIds = rows.map((r) => r.id).join(",");
+        this._classicIds = filledFirst(rows).map((r) => r.id).join(",");
       } else if (!grouped || mode === "cards") {
-        frag.append(container(rows));
+        const filled = rows.filter((r) => r.content !== "");
+        const empty = rows.filter((r) => r.content === "");
+        if (filled.length) frag.append(container(filled));
+        if (empty.length) {
+          // a row of their own, so they do not stand between the food
+          const head = el("h2", "emptyhead", t.emptyHead(empty.length));
+          head.dataset.role = "empty-head";
+          if (filled.length) frag.append(head);
+          frag.append(container(empty));
+        }
       } else {
         const keyOf = (r) =>
           this._opts.sort === "area"
@@ -1890,7 +1903,16 @@ export class LarderDashboard extends HTMLElement {
       }
       frag.append(box);
     }
-    if (loose) frag.append(el("p", "note", t.compartmentsLoose(loose)));
+    if (loose) {
+      // 6.8 (#216): with a link to the areas instead of "see Areas"
+      const note = el("p", "note", `${t.compartmentsLoose(loose)} `);
+      const link = el("button", "link", t.compartmentsLooseLink);
+      link.type = "button";
+      link.dataset.role = "loose-areas";
+      link.addEventListener("click", () => this.setView("areas"));
+      note.append(link);
+      frag.append(note);
+    }
     this._main.replaceChildren(frag);
   }
 
@@ -2293,6 +2315,14 @@ export class LarderDashboard extends HTMLElement {
     const box = el("section", "stat start");
     box.dataset.role = "get-started";
     box.append(el("h3", "", t.startTitle));
+    // 6.8 (#212): what Larder is, and what container, bag and pack mean
+    const intro = el("p", "hint", t.startIntro);
+    const how = el("button", "link", t.startHow);
+    how.type = "button";
+    how.dataset.role = "start-how";
+    how.addEventListener("click", () => this.openHowItWorks());
+    intro.append(" ", how);
+    box.append(intro);
     t.startSteps.forEach(([title, hint, label], i) => {
       const row = el("div", "boughtrow");
       row.dataset.step = String(i + 1);
@@ -2300,7 +2330,38 @@ export class LarderDashboard extends HTMLElement {
       const text = el("span", "name");
       text.append(el("span", "", `${done[i] ? "✅" : `${i + 1}.`} ${title}`), el("span", "sub", hint));
       row.append(text);
-      if (admin || i === 2) {
+      // 6.8 (#213): the shopping list is chosen right in the step
+      const lists = i === 1 && admin && !done[i] ? todoLists(this._hass) : null;
+      if (lists && lists.length) {
+        const pick = el("select");
+        pick.dataset.role = "start-list";
+        pick.setAttribute("aria-label", title);
+        const first = el("option", "", t.startListPick);
+        first.value = "";
+        pick.append(first, ...lists.map((l) => {
+          const o = el("option", "", l.name);
+          o.value = l.id;
+          return o;
+        }));
+        pick.addEventListener("change", async () => {
+          if (!pick.value) return;
+          pick.disabled = true;
+          try {
+            await this._hass.callWS({ type: `${DOMAIN}/shopping_list_set`, entity_id: pick.value });
+            this.showNotice(t.startListSaved(pick.selectedOptions[0].textContent));
+            this._listChosen = true;
+            this._sig = "";
+            this._update();
+          } catch (err) {
+            this.showNotice((err && err.message) || String(err));
+            pick.disabled = false;
+          }
+        });
+        row.append(pick);
+      } else if (lists) {
+        text.append(el("span", "sub", t.startListNone));
+      }
+      if ((admin || i === 2) && !(lists && lists.length)) {
         const btn = el("button", done[i] ? "" : "primary", label);
         btn.type = "button";
         btn.dataset.role = `start-${i + 1}`;
@@ -2340,45 +2401,52 @@ export class LarderDashboard extends HTMLElement {
     if (soon.length) {
       frag.append(el("p", "lead", t.soonTitle));
       const box = el("div", "tiles");
-      for (const row of soon) box.append(this._tile(row, t, { showArea: true }));
+      // 6.8 (#210): eaten / freeze right at the tile
+      for (const row of soon) box.append(this._soonTile(row, t));
       frag.append(box);
+      if (this._freezable === undefined) this.loadFreezable();
     } else {
       frag.append(el("p", "lead", t.soonNone(rows.length ? rows[0].soon : SOON_DAYS)));
     }
     const recall = this._recallBox();
     if (recall) frag.insertBefore(recall, frag.childNodes[1] || null);
-    const low = this._lowBox((item) => !isHh(item));
-    if (low) frag.append(low);
-    const bought = this._boughtBox((item) => !isHh(item));
-    if (bought) frag.append(bought);
-    const again = this._againBox();
-    if (again) frag.append(again);
-    const opened = this._openedBox(t, rows.filter((r) => !isHh(r)));
-    if (opened) frag.append(opened);
-    const thaw = this._thawBox(t);
-    if (thaw) frag.append(thaw);
-    const planned = this._plannedBox(t, false);
-    if (planned) frag.append(planned);
+    // 6.8 (#209): the two most urgent boxes stay open, everything else folds into one line with counters
+    const boxes = [
+      ["thaw", this._thawBox(t)],
+      ["low", this._lowBox((item) => !isHh(item))],
+      ["bought", this._boughtBox((item) => !isHh(item))],
+      ["planned", this._plannedBox(t, false)],
+      ["opened", this._openedBox(t, rows.filter((r) => !isHh(r)))],
+      ["again", this._againBox()],
+    ].filter(([, node]) => node);
+    const open = boxes.slice(0, START_OPEN_BOXES);
+    const folded = boxes.slice(START_OPEN_BOXES).map(([key, node]) => [key, [node]]);
+    for (const [, node] of open) frag.append(node);
     for (const other of others) {
+      const parts = [];
       const head = el("h2", "section", `${{ pharmacy: "💊", voucher: "🎟️" }[other.scope] || "🧻"} ${t.scopes[other.scope]}`);
       head.dataset.role = `${other.scope}-section`;
-      frag.append(head);
+      parts.push(head);
       if (other.soon.length) {
-        frag.append(el("p", "lead", t.soonOther));
+        parts.push(el("p", "lead", t.soonOther));
         const box = el("div", "tiles");
         box.dataset.role = `${other.scope}-soon`;
         for (const row of other.soon) box.append(this._tile(row, t, { showArea: true }));
-        frag.append(box);
+        parts.push(box);
       }
-      if (other.replace) frag.append(other.replace);
-      if (other.low) frag.append(other.low);
-      if (other.bought) frag.append(other.bought);
-      if (!other.soon.length && !other.low && !other.bought && !other.replace) frag.append(el("p", "lead", { pharmacy: t.pharmacyFine, voucher: t.voucherFine }[other.scope] || t.householdFine));
+      if (other.replace) parts.push(other.replace);
+      if (other.low) parts.push(other.low);
+      if (other.bought) parts.push(other.bought);
+      if (!other.soon.length && !other.low && !other.bought && !other.replace) parts.push(el("p", "lead", { pharmacy: t.pharmacyFine, voucher: t.voucherFine }[other.scope] || t.householdFine));
+      // something due soon or running low in the household stays open; a quiet section folds
+      if (other.soon.length || other.low || other.replace) frag.append(...parts);
+      else folded.push([other.scope, parts]);
     }
     const month = this._monthTile(t);
-    if (month) frag.append(month);
+    if (month) folded.push(["month", [month]]);
     const care = this._dataCareBox();
-    if (care) frag.append(care);
+    if (care) folded.push(["datacare", [care]]);
+    if (folded.length) frag.append(this._startMore(t, folded));
     const help = el("div", "help");
     const show = el("button", "", t.helpContainers);
     show.type = "button";
@@ -2389,7 +2457,80 @@ export class LarderDashboard extends HTMLElement {
     this._main.replaceChildren(frag);
   }
 
-  /** 5.0 (#117): the frequent actions at the top of the start page: scan, put away, receipt, recipe idea. */
+  /** 6.8 (#209): the rest of the start page in one folded block; the summary names what is inside. */
+  _startMore(t, folded) {
+    const details = el("details", "startmore");
+    details.dataset.role = "start-more";
+    details.open = !!this._opts.startMoreOpen;
+    const names = folded.map(([key]) => t.startMoreNames[key] || key);
+    const summary = el("summary", "");
+    summary.append(el("span", "", t.startMore(folded.length)), el("span", "sub", names.join(" · ")));
+    details.append(summary);
+    for (const [, nodes] of folded) details.append(...nodes);
+    details.addEventListener("toggle", () => {
+      if (!!this._opts.startMoreOpen === details.open) return;
+      this._opts.startMoreOpen = details.open;
+      saveOptions(this._opts);
+    });
+    return details;
+  }
+
+  /** 6.8 (#210): which entries can go into the freezer right now (for 🧊 on the start tiles). */
+  async loadFreezable() {
+    this._freezable = null;
+    try {
+      const res = await this._hass.callWS({ type: `${DOMAIN}/freezable` });
+      this._freezable = new Set((res && res.device_ids) || []);
+    } catch {
+      this._freezable = new Set();
+    }
+    this._sig = "";
+    this._update();
+  }
+
+  /** A start page tile with 😋 Eaten (and 🧊 Freeze when it keeps in the freezer) below it. */
+  _soonTile(row, t) {
+    const wrap = el("div", "soontile");
+    wrap.dataset.id = row.id;
+    wrap.append(this._tile(row, t, { showArea: true }));
+    const acts = el("div", "tileacts");
+    const act = (role, label, title, run) => {
+      const b = el("button", "", label);
+      b.type = "button";
+      b.dataset.role = role;
+      b.title = title;
+      b.setAttribute("aria-label", `${title}: ${row.content}`);
+      b.addEventListener("click", async (ev) => {
+        ev.stopPropagation();
+        b.disabled = true;
+        try {
+          await run();
+        } catch {
+          this.showNotice(t.tileActionFailed);
+          b.disabled = false;
+        }
+      });
+      acts.append(b);
+    };
+    const pack = ["pack", "household", "medicine"].includes(row.kind);
+    // expired: thrown away is the likelier answer
+    const outcome = row.days !== null && row.days < 0 && !row.frozen ? "thrown" : "eaten";
+    const label = outcome === "thrown" ? t.tileThrown : t.tileEaten;
+    act(`tile-${outcome}`, `${outcome === "thrown" ? "🗑" : "😋"} ${label}`, label, async () => {
+      await this._hass.callWS(pack ? { type: `${DOMAIN}/pack_take`, device_id: row.id, outcome } : { type: `${DOMAIN}/empty`, device_id: row.id, outcome });
+      this.showNotice((outcome === "thrown" ? t.tileThrownDone : t.tileEatenDone)(row.content));
+    });
+    if (this._freezable && this._freezable.has(row.id)) {
+      act("tile-freeze", `🧊 ${t.tileFreeze}`, t.tileFreeze, async () => {
+        await this._hass.callWS({ type: `${DOMAIN}/freeze`, device_id: row.id });
+        this._freezable.delete(row.id);
+        this.showNotice(t.tileFrozen(row.content));
+      });
+    }
+    wrap.append(acts);
+    return wrap;
+  }
+
   /** 📥 Import from Grocy (6.0, #163): address + API key → preview with the places → import. */
   openGrocyImport() {
     const hass = this._hass;

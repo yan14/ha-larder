@@ -22,6 +22,11 @@ const UNITS = ["portions", "pieces", "slices", "grams", "milliliters"];
 
 const TEXT = {
   de: {
+    howTitle: "So funktioniert Larder",
+    howIntro: "Alles, was du lagerst, ist ein Eintrag mit Inhalt, Ort und MHD. Larder schätzt das MHD, sortiert nach Ablauf und setzt Leeres auf die Einkaufsliste. Es gibt diese Arten:",
+    howEnd: "Tipp: Einfach anfangen – mit ＋ Hinzufügen oder 📥 Einkauf einräumen. Bereiche und Einstellungen lassen sich jederzeit ändern.",
+    putAwayName: "Ohne Strichcode: Name, z. B. Bananen",
+    putAwayAddName: "Name hinzufügen",
     addTitle: "Was möchtest du anlegen?",
     kindContainer: "Dose",
     kindContainerHint: "Wiederverwendbar, mit QR-Code oder NFC-Tag",
@@ -138,7 +143,7 @@ const TEXT = {
     putAwayHint: "Gekaufte Produkte nacheinander scannen: bekannte kommen als Packung an ihren gewohnten Ort, unbekannte legst du am Ende gesammelt an.",
     putAwayScan: "Scannen",
     putAwayCode: "Strichcode eingeben",
-    putAwayAddCode: "Einräumen",
+    putAwayAddCode: "Hinzufügen",
     putAwayAdded: "Eingeräumt",
     putAwayNow: (n) => `jetzt ${n}`,
     putAwayDate: "Preis/MHD",
@@ -206,6 +211,11 @@ const TEXT = {
     units: { portions: "Portionen", pieces: "Stück", slices: "Scheiben", grams: "Gramm", milliliters: "Milliliter" },
   },
   en: {
+    howTitle: "How Larder works",
+    howIntro: "Everything you store is an entry with contents, place and best-before date. Larder estimates the date, sorts by expiry and puts what runs out on the shopping list. There are these kinds:",
+    howEnd: "Tip: just start – with ＋ Add or 📥 Put the shopping away. Areas and settings can be changed any time.",
+    putAwayName: "No barcode: name, e.g. bananas",
+    putAwayAddName: "Add name",
     addTitle: "What do you want to add?",
     kindContainer: "Container",
     kindContainerHint: "Reusable, with a QR code or NFC tag",
@@ -322,7 +332,7 @@ const TEXT = {
     putAwayHint: "Scan the bought products one after another: known ones go to their usual place as a pack, unknown ones you add together at the end.",
     putAwayScan: "Scan",
     putAwayCode: "Enter barcode",
-    putAwayAddCode: "Put away",
+    putAwayAddCode: "Add",
     putAwayAdded: "Put away",
     putAwayNow: (n) => `now ${n}`,
     putAwayDate: "Price/date",
@@ -390,6 +400,11 @@ const TEXT = {
     units: { portions: "portions", pieces: "pieces", slices: "slices", grams: "grams", milliliters: "milliliters" },
   },
   fr: {
+    howTitle: "Comment fonctionne Larder",
+    howIntro: "Tout ce que tu stockes est une entrée avec contenu, lieu et date. Larder estime la date, trie par péremption et met ce qui manque sur la liste de courses. Il y a ces types :",
+    howEnd: "Astuce : commence simplement – avec ＋ Ajouter ou 📥 Ranger les courses. Pièces et réglages se changent à tout moment.",
+    putAwayName: "Sans code-barres : nom, p. ex. bananes",
+    putAwayAddName: "Ajouter le nom",
     addTitle: "Que voulez-vous ajouter ?",
     kindContainer: "Boîte",
     kindContainerHint: "Réutilisable, avec code QR ou tag NFC",
@@ -506,7 +521,7 @@ const TEXT = {
     putAwayHint: "Scannez les produits achetés l'un après l'autre : les connus vont à leur place habituelle comme paquet, les inconnus s'ajoutent ensemble à la fin.",
     putAwayScan: "Scanner",
     putAwayCode: "Saisir le code-barres",
-    putAwayAddCode: "Ranger",
+    putAwayAddCode: "Ajouter",
     putAwayAdded: "Rangé",
     putAwayNow: (n) => `maintenant ${n}`,
     putAwayDate: "Prix/date",
@@ -574,6 +589,11 @@ const TEXT = {
     units: { portions: "portions", pieces: "pièces", slices: "tranches", grams: "grammes", milliliters: "millilitres" },
   },
   nl: {
+    howTitle: "Zo werkt Larder",
+    howIntro: "Alles wat je bewaart is een item met inhoud, plek en houdbaarheidsdatum. Larder schat de datum, sorteert op houdbaarheid en zet wat op is op het boodschappenlijstje. Er zijn deze soorten:",
+    howEnd: "Tip: begin gewoon – met ＋ Toevoegen of 📥 Boodschappen opbergen. Ruimtes en instellingen kun je altijd wijzigen.",
+    putAwayName: "Zonder barcode: naam, bv. bananen",
+    putAwayAddName: "Naam toevoegen",
     addTitle: "Wat wil je toevoegen?",
     kindContainer: "Doos",
     kindContainerHint: "Herbruikbaar, met QR-code of NFC-tag",
@@ -690,7 +710,7 @@ const TEXT = {
     putAwayHint: "Scan de gekochte producten na elkaar: bekende gaan als verpakking naar hun vaste plek, onbekende voeg je aan het eind samen toe.",
     putAwayScan: "Scannen",
     putAwayCode: "Barcode invoeren",
-    putAwayAddCode: "Opbergen",
+    putAwayAddCode: "Toevoegen",
     putAwayAdded: "Opgeborgen",
     putAwayNow: (n) => `nu ${n}`,
     putAwayDate: "Prijs/datum",
@@ -1187,8 +1207,10 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
         message = t.putAwayDoneOne(res.content, placeOf(res));
       } else {
         const digits = res.code || value;
-        if (!state.unknown.some((u) => u.code === digits)) state.unknown.push({ ...res, code: digits });
-        message = t.putAwayUnknownOne(res.name || digits);
+        const label = res.name || content || digits;
+        const same = (u) => (digits ? u.code === digits : !u.code && (u.name || "").toLowerCase() === label.toLowerCase());
+        if (!state.unknown.some(same)) state.unknown.push({ ...res, code: digits, name: label });
+        message = t.putAwayUnknownOne(label);
       }
       status.textContent = message;
       render();
@@ -1210,7 +1232,30 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     });
     const manual = el("div", "putcode");
     manual.append(code, add);
-    const parts = [el("h2", "", t.putAway), el("p", "hint", t.putAwayHint), manual];
+    // 6.8 (#223): fruit, bread from the bakery … – by name, no barcode needed
+    const name = el("input");
+    name.type = "text";
+    name.maxLength = 120;
+    name.dataset.f = "putaway-name";
+    name.placeholder = t.putAwayName;
+    name.setAttribute("aria-label", t.putAwayName);
+    const addName = button("", t.putAwayAddName, async () => {
+      const value = name.value.trim();
+      if (!value) return;
+      await handle(null, value);
+      name.value = "";
+      name.focus();
+    });
+    addName.dataset.role = "putaway-add-name";
+    name.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        addName.click();
+      }
+    });
+    const byName = el("div", "putcode");
+    byName.append(name, addName);
+    const parts = [el("h2", "", t.putAway), el("p", "hint", t.putAwayHint), manual, byName];
     const canScan = this._classic._hasBarcodeScanner && this._classic._hasBarcodeScanner();
     if (canScan) {
       const scan = button("primary", `📷 ${t.putAwayScan}`, () => {
@@ -1879,6 +1924,27 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     const wrap = el("label", "", label);
     wrap.append(control);
     return wrap;
+  };
+
+  /** 6.8 (#212): a short explanation for the first start – what an entry is and the kinds of entries. */
+  proto.openHowItWorks = function openHowItWorks() {
+    const t = itemTexts(this._hass);
+    const list = el("div", "howlist");
+    for (const [icon, name, hint] of [
+      ["🥡", t.kindContainer, t.kindContainerHint],
+      ["🛍", t.kindBag, t.kindBagHint],
+      ["📦", t.kindPack, t.kindPackHint],
+      ["🧻", t.kindHousehold, t.kindHouseholdHint],
+      ["💊", t.kindMedicine, t.kindMedicineHint],
+      ["🎟️", t.kindVoucher, t.kindVoucherHint],
+    ]) {
+      const row = el("div", "choice static");
+      row.append(el("span", "ico", icon), el("span", "name", name), el("span", "sub", hint));
+      list.append(row);
+    }
+    this._form.replaceChildren(el("h2", "", t.howTitle), el("p", "hint", t.howIntro), list, el("p", "hint", t.howEnd), buttonsRow(button("submit", t.done, () => this._closeDialog())));
+    this._submit = null;
+    this._overlay.hidden = false;
   };
 
   /** "＋": container (administrators only), bag, pack or household item. */

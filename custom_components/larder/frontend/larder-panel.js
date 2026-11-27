@@ -256,6 +256,13 @@ function isValidState(st) {
 const pad = (n) => String(n).padStart(2, "0");
 
 /** ISO timestamp -> value for <input type="datetime-local"> (local time). */
+/** 6.8 (#220): the stored-on day → a time: now for today, else noon of that day (local time). */
+export function filledFromDay(day, now = new Date()) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(day || ""))) return new Date(day);
+  const today = toLocalInputValue(now.toISOString()).slice(0, 10);
+  return day === today ? now : new Date(`${day}T12:00`);
+}
+
 export function toLocalInputValue(iso) {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return "";
@@ -1438,16 +1445,18 @@ class LarderPanel extends HTMLElement {
       <div class="overlay fill" hidden>
         <form class="dialog fillform" novalidate>
           <h2></h2>
-          <label class="field"><span data-l="content"></span><span class="contentline"><input type="text" data-f="content" maxlength="255" list="zs-contents" autocomplete="off"><button type="button" class="barcode" hidden>EAN</button><button type="button" class="photo" hidden>📷</button><input type="file" class="photofile" accept="image/*" capture="environment" hidden></span><datalist id="zs-contents"></datalist><datalist id="zs-sizes"></datalist></label>
+          <label class="field"><span data-l="content"></span><span class="contentline"><input type="text" data-f="content" maxlength="255" list="zs-contents" autocomplete="off"><button type="button" class="barcode" hidden></button><button type="button" class="photo" hidden>📷</button><input type="file" class="photofile" accept="image/*" capture="environment" hidden></span><datalist id="zs-contents"></datalist><datalist id="zs-sizes"></datalist></label>
           <div class="hint barcodestatus" role="status" hidden></div>
           <label class="field" data-w="area" hidden><span data-l="area"></span><select data-f="area"></select></label>
           <label class="field" data-w="compartment" hidden><span data-l="compartment"></span><input type="text" data-f="compartment" maxlength="60" autocomplete="off"></label>
           <label class="field" data-w="boxsize" hidden><span data-l="boxSize"></span><input type="text" data-f="boxSize" maxlength="20" list="zs-sizes" autocomplete="off"></label>
           <label class="field" data-w="quantity"><span data-l="quantity"></span><span class="qty"><input type="number" data-f="quantity" min="0" max="9999" step="1" inputmode="numeric"><select data-f="unit"></select></span></label>
           <label class="check" data-w="vacuum"><input type="checkbox" data-f="vacuum"><span data-l="vacuum"></span></label>
+          <div class="vacask" data-w="vacask" hidden><span data-l="vacuumAsk"></span><button type="button" class="vacyes" data-l="vacuumYes"></button><button type="button" class="vacno" data-l="vacuumNo"></button></div>
           <label class="check" data-w="shopping"><input type="checkbox" data-f="shopping"><span data-l="shopping"></span></label>
-          <label class="field"><span data-l="filledAt"></span><input type="datetime-local" data-f="filledAt"></label>
+          <label class="field"><span data-l="filledAt"></span><input type="date" data-f="filledAt"></label>
           <label class="field"><span data-l="bestBefore"></span><input type="date" data-f="bestBefore"></label>
+          <div class="hint" data-w="bbhint" data-l="fillBestBeforeHint" hidden></div>
           <label class="check" data-w="estimate"><input type="checkbox" data-f="estimate" checked><span data-l="fillEstimate"></span></label>
           <div class="error" role="alert"></div>
           <div class="buttons"><button type="button" class="cancel"></button><button type="submit" class="submit"></button></div>
@@ -1496,6 +1505,18 @@ class LarderPanel extends HTMLElement {
       if (ev.target === this._fillOverlay) this.closeFillDialog();
     });
     this._fillForm.querySelector("button.cancel").addEventListener("click", () => this.closeFillDialog());
+    // 6.8 (#217): the answer sets the preset; without a sealer the empty containers lose the tick
+    for (const [cls, has] of [["button.vacyes", true], ["button.vacno", false]]) {
+      this._fillForm.querySelector(cls).addEventListener("click", async () => {
+        this._fillForm.querySelector('[data-w="vacask"]').hidden = true;
+        this._fillForm.querySelector('[data-f="vacuum"]').checked = has;
+        try {
+          await this._hass.callWS({ type: `${DOMAIN}/vacuum_answer`, has_sealer: has });
+        } catch {
+          /* asked again next time */
+        }
+      });
+    }
     this._fillForm.querySelector("button.barcode").addEventListener("click", () => this.scanBarcode());
     // 6.2 (#160): suggest the compartment once the contents are known
     this._fillForm.querySelector('[data-f="content"]').addEventListener("change", () => this._suggestPlace && this._suggestPlace());
@@ -1980,6 +2001,7 @@ class LarderPanel extends HTMLElement {
     f("content").placeholder = t.fillPlaceholder;
     const barcode = this._fillForm.querySelector("button.barcode");
     barcode.hidden = !this._hasBarcodeScanner();
+    barcode.textContent = t.barcodeShort; // 6.8 (#219): "Barcode" instead of "EAN"
     barcode.title = t.barcode;
     barcode.setAttribute("aria-label", t.barcode);
     const photo = this._fillForm.querySelector("button.photo");
@@ -1993,6 +2015,7 @@ class LarderPanel extends HTMLElement {
     const quantity = states[dev.entities.number];
     const nQuantity = isValidState(quantity) ? Number(quantity.state) : 0;
     f("quantity").value = nQuantity > 0 ? String(nQuantity) : "";
+    f("quantity").placeholder = t.quantityHint; // 6.8 (#221): what goes in, and that it is optional
     fillUnitSelect(f("unit"), states[dev.entities.select], t);
     f("unit").style.display = states[dev.entities.select] ? "" : "none";
     this._fillForm.querySelector('[data-w="quantity"]').hidden = !quantity || quantity.state === "unavailable";
@@ -2016,6 +2039,17 @@ class LarderPanel extends HTMLElement {
     this._syncSizeList();
     f("vacuum").checked = !!vac && vac.state === "on";
     this._fillForm.querySelector('[data-w="vacuum"]').hidden = !vac || vac.state === "unavailable";
+    // 6.8 (#217): ask once whether the household has a vacuum sealer instead of ticking vacuum for everyone
+    const ask = this._fillForm.querySelector('[data-w="vacask"]');
+    ask.hidden = true;
+    if (vac && isAdmin(hass) && hass.callWS) {
+      hass
+        .callWS({ type: `${DOMAIN}/settings` })
+        .then((res) => {
+          if (res && res.vacuum_asked === false && !this._fillOverlay.hidden) ask.hidden = false;
+        })
+        .catch(() => {});
+    }
     // area only for containers with a variable storage place (and only for administrators, who may change areas)
     const flexible = devs.filter((d) => {
       const st = states[d.entities.flexible];
@@ -2058,10 +2092,13 @@ class LarderPanel extends HTMLElement {
     const shop = states[dev.entities.shopping];
     f("shopping").checked = !!shop && shop.state === "on";
     this._fillForm.querySelector('[data-w="shopping"]').hidden = !hasShoppingList(shop) || shop.state === "unavailable";
-    f("filledAt").value = !many && isValidState(dt) ? toLocalInputValue(dt.state) : toLocalInputValue(new Date().toISOString());
+    // 6.8 (#220): the day only – the time of day does not matter for the date
+    f("filledAt").value = (!many && isValidState(dt) ? toLocalInputValue(dt.state) : toLocalInputValue(new Date().toISOString())).slice(0, 10);
     f("bestBefore").value = !many && isValidState(date) ? date.state : "";
     const canEstimate = !!(date && date.attributes && date.attributes.estimates) && date.state !== "unavailable";
     this._fillForm.querySelector('[data-w="estimate"]').hidden = !canEstimate;
+    // 6.8 (#218): how an empty date and the estimate go together
+    this._fillForm.querySelector('[data-w="bbhint"]').hidden = !canEstimate;
     f("estimate").checked = true;
     this._fillForm.querySelector(".error").textContent = "";
     this._fillOverlay.hidden = false;
@@ -2259,7 +2296,7 @@ class LarderPanel extends HTMLElement {
       shopping: f("shopping").checked,
       quantity: parseQuantity(f("quantity").value),
       unit: f("unit").value,
-      filled: new Date(f("filledAt").value),
+      filled: filledFromDay(f("filledAt").value),
       bestBefore: f("bestBefore").value,
       area: this._fillForm.querySelector('[data-w="area"]').hidden ? undefined : f("area").value,
       compartment: this._fillForm.querySelector('[data-w="compartment"]').hidden ? undefined : f("compartment").value.trim(),

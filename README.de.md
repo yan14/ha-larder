@@ -33,6 +33,8 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 
 ## Was ist neu?
 
+> **6.8:** **ruhigere Startseite, leichteres Befüllen** – die Startseite zeigt die zwei dringendsten Kästen und klappt den Rest ein, *Gegessen* / *Einfrieren* direkt an den Kacheln, Reparatur-Hinweise mit Links, eine kurze Erklärung und die Einkaufsliste gleich in den ersten Schritten, die Vakuum-Frage einmal und Einräumen per Name für Ware ohne Strichcode.
+>
 > **6.7:** **klarer für Neulinge** – ein Knopf *Einkauf einräumen* mit Scannen, Kassenbon/Rechnung und von Hand, Einstellungen in Abschnitten, Wörter auf den Knöpfen, die Lagerart jedes Bereichs, Datenpflege je Produkt, Tage in Worten (*morgen*, *in 3 Tagen*), Karten mit dem Inhalt als Titel und *Gegessen / Weggeworfen* unten, dazu *Auf die Liste* mit *Rückgängig* beim Einkaufen.
 >
 > **6.6:** **Online-Einkauf** – *Bestellung vorbereiten* listet, was bis zur nächsten Lieferung ausgeht (kopieren oder auf die Liste), und am **Liefertag** öffnet eine Push das Einräumen. **6.6.1:** Reparatur-Hinweise zeigen Inhalt, Ort und einen Link zu jeder Dose.

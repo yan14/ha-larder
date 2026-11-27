@@ -19,8 +19,9 @@ function pickLang(table, hass) {
 
 const TEXT = {
   de: {
-    free: (list) => `Frei: ${list}`,
-    freeNone: "Frei: keine Behälter",
+    // 6.8 (#214): say what is free
+    free: (list) => `Leere Dosen: ${list}`,
+    freeNone: "Leere Dosen: keine",
     sizesTitle: "Behältergrößen",
     sizesIntro: "Feste Größen stellst du auf der Karte einer Dose ein. Hier trägst du die losen Behälter ein, auf die Deckel mit variabler Größe passen.",
     sizesLoose: "Lose Behälter",
@@ -65,8 +66,8 @@ const TEXT = {
     },
   },
   en: {
-    free: (list) => `Free: ${list}`,
-    freeNone: "Free: no containers",
+    free: (list) => `Empty containers: ${list}`,
+    freeNone: "Empty containers: none",
     sizesTitle: "Container sizes",
     sizesIntro: "Set fixed sizes on the card of a container. Here you enter the loose boxes that lids with a variable size fit on.",
     sizesLoose: "Loose boxes",
@@ -111,8 +112,8 @@ const TEXT = {
     },
   },
   fr: {
-    free: (list) => `Libres : ${list}`,
-    freeNone: "Libres : aucune boîte",
+    free: (list) => `Boîtes vides : ${list}`,
+    freeNone: "Boîtes vides : aucune",
     sizesTitle: "Tailles des boîtes",
     sizesIntro: "Les tailles fixes se règlent sur la fiche d'une boîte. Ici, vous saisissez les boîtes en vrac sur lesquelles s'adaptent les couvercles de taille variable.",
     sizesLoose: "Boîtes en vrac",
@@ -157,8 +158,8 @@ const TEXT = {
     },
   },
   nl: {
-    free: (list) => `Vrij: ${list}`,
-    freeNone: "Vrij: geen dozen",
+    free: (list) => `Lege dozen: ${list}`,
+    freeNone: "Lege dozen: geen",
     sizesTitle: "Doosgroottes",
     sizesIntro: "Vaste groottes stel je in op de kaart van een doos. Hier voer je de losse dozen in waar deksels met wisselende grootte op passen.",
     sizesLoose: "Losse dozen",

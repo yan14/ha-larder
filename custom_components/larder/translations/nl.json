@@ -528,7 +528,7 @@
         "step": {
           "area": {
             "title": "Ruimtes toewijzen",
-            "description": "Kies de ruimte waarin elke doos staat. Dozen die leeg blijven, blijven zonder ruimte."
+            "description": "Kies de ruimte waarin elke doos staat. Dozen die leeg blijven, blijven zonder ruimte.\n\n{containers}\n\n**openen** springt direct naar de doos in het dashboard."
           }
         },
         "abort": {
@@ -560,7 +560,7 @@
         "step": {
           "empty": {
             "title": "Verlopen dozen legen",
-            "description": "De aangevinkte dozen worden geleegd en als weggegooid in de geschiedenis gezet.",
+            "description": "De aangevinkte dozen worden geleegd en als weggegooid in de geschiedenis gezet.\n\n{containers}\n\n**openen** springt direct naar de doos in het dashboard als je daar liever kijkt.",
             "data": {
               "containers": "Dozen"
             }

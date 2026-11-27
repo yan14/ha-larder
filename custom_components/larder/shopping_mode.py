@@ -398,6 +398,26 @@ async def ws_shopping_add(hass: HomeAssistant, connection: websocket_api.ActiveC
     connection.send_result(msg["id"], {"list": entity_id, "created": created})
 
 
+@websocket_api.require_admin
+@websocket_api.websocket_command(
+    {vol.Required("type"): f"{DOMAIN}/shopping_list_set", vol.Required("entity_id"): vol.All(str, vol.Match(r"^todo\."))}
+)
+@websocket_api.async_response
+async def ws_shopping_list_set(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """6.8 (#213): choose the shopping list right in the first steps (same setting as in Configure)."""
+    from homeassistant.helpers.dispatcher import async_dispatcher_send  # noqa: PLC0415
+
+    from .const import CONF_TODO_ENTITY, SIGNAL_SETTINGS_CHANGED  # noqa: PLC0415
+    from .estimate import async_get_estimator  # noqa: PLC0415
+
+    if hass.states.get(msg["entity_id"]) is None:
+        connection.send_error(msg["id"], "not_found", "Unknown to-do list")
+        return
+    await (await async_get_estimator(hass)).async_update_settings({CONF_TODO_ENTITY: msg["entity_id"]})
+    async_dispatcher_send(hass, SIGNAL_SETTINGS_CHANGED)
+    connection.send_result(msg["id"], {"entity_id": msg["entity_id"]})
+
+
 @websocket_api.websocket_command(
     {
         vol.Required("type"): f"{DOMAIN}/shopping_undo",
@@ -635,5 +655,5 @@ def async_setup_shopping_mode_websocket(hass: HomeAssistant) -> None:
     if domain_data.get("shopping_mode_ws"):
         return
     domain_data["shopping_mode_ws"] = True
-    for command in (ws_shopping_mode, ws_shopping_add, ws_shopping_check, ws_shopping_undo, ws_shopping_scan, ws_shopping_details, ws_receipt_add, ws_bought_add, ws_shopping_lists, ws_recurring, ws_recurring_set, ws_recurring_delete):
+    for command in (ws_shopping_mode, ws_shopping_add, ws_shopping_list_set, ws_shopping_check, ws_shopping_undo, ws_shopping_scan, ws_shopping_details, ws_receipt_add, ws_bought_add, ws_shopping_lists, ws_recurring, ws_recurring_set, ws_recurring_delete):
         websocket_api.async_register_command(hass, command)

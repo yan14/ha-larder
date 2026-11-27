@@ -77,6 +77,10 @@ export const STYLE = `
   .dialog button.choice .ico { grid-row: 1 / 3; font-size: 26px; align-self: center; }
   .dialog button.choice .name { font-size: 16px; }
   .dialog button.choice .sub { font-size: 12px; color: var(--secondary-text-color); }
+  .dialog .howlist { display: flex; flex-direction: column; gap: 6px; }
+  .dialog .howlist .choice { display: grid; grid-template-columns: 36px 1fr; column-gap: 10px; padding: 6px 4px; }
+  .dialog .howlist .ico { grid-row: 1 / 3; font-size: 24px; align-self: center; }
+  .dialog .howlist .sub { font-size: 12px; color: var(--secondary-text-color); }
   .dialog .itemrows { display: flex; flex-direction: column; gap: 10px; max-height: 45vh; overflow: auto; }
   .dialog .itemrow { display: flex; flex-direction: column; gap: 6px; padding-bottom: 10px; border-bottom: 1px solid var(--divider-color); }
   .dialog .itemrow.household::before { content: "🧻"; font-size: 12px; color: var(--secondary-text-color); }
@@ -126,6 +130,15 @@ export const STYLE = `
   .selbar button.primary { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: var(--primary-color); }
   .bar button.on { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: var(--primary-color); }
   .badge { font-size: 11px; padding: 1px 8px; border-radius: 10px; color: #fff; white-space: nowrap; background: var(--secondary-text-color); }
+  .soontile { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .soontile > .tile { flex: 1; }
+  .tileacts { display: flex; flex-direction: column; gap: 4px; }
+  .tileacts button { font: inherit; font-size: 12px; padding: 5px 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--primary-color); border-radius: 10px; border: 1px solid var(--divider-color); background: none; cursor: pointer; }
+  details.startmore { margin: 16px 0 8px; border: 1px solid var(--divider-color); border-radius: 12px; padding: 0 12px; }
+  details.startmore > summary { cursor: pointer; padding: 10px 0; list-style: none; }
+  details.startmore > summary::before { content: "▸ "; }
+  details.startmore[open] > summary::before { content: "▾ "; }
+  details.startmore > summary .sub { display: block; font-size: 12px; color: var(--secondary-text-color); }
   .tile .badge { white-space: normal; text-align: center; line-height: 1.3; max-width: 100%; }
   .badge.soon { background: var(--warning-color, #ffa600); }
   .badge.expired { background: var(--error-color, #db4437); }

@@ -3,6 +3,21 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 6.8.0
+
+Blocks 54 and 55: a calmer start page, filling and putting away without stumbling – from the newcomer UX test.
+
+- **Shorter start page** (#209): below the tiles the two most urgent boxes stay open; everything else – quiet sections like *Household*, the month tile, data care – folds into **n more sections**, naming what is inside. The device remembers whether it is open.
+- **Act right on the tiles** (#210): every *use soon* tile has **😋 Eaten** (expired ones **🗑 Thrown away**) and, when it keeps in the freezer, **🧊 Freeze**. WebSocket `larder/freezable`.
+- **Repair hints with links** (#211): *Assign areas* and *Empty expired containers* list every entry with contents, place and **open**, like the best-before hint.
+- **First start explained** (#212): one sentence on what Larder does and **How it works** – container, bag, pack, household item, medicine and voucher in one view.
+- **Shopping list in step 2** (#213): the list is picked right in *Get started* instead of a hint at *Configure*. WebSocket `larder/shopping_list_set` (administrators).
+- **Empty containers** (#214, #215): *Empty containers: 3 × 1 l* instead of *Free: …*; empty containers stand after the food, in a row of their own.
+- **Link to the areas** (#216): *14 entries without a compartment* in the compartments view links to the areas.
+- **Vacuum asked once** (#217): the fill dialog asks **Do you have a vacuum sealer?** once per household; *No* turns the preset off and removes the tick from empty containers (filled ones keep theirs). WebSocket `larder/vacuum_answer`, `vacuum_asked` in `larder/settings`.
+- **Fill dialog** (#218–#221): a hint *Leave it empty – Larder estimates*, **Barcode** instead of *EAN*, *stored on* as a date only, and an example in the amount field (*e.g. 2 – optional*).
+- **Putting away** (#222, #223): the button next to the barcode field says **Add**; goods without a barcode (fruit, bakery bread) go in by name.
+
 ## 6.7.0
 
 Block 53: clearer for newcomers – from the newcomer UX test.

@@ -278,4 +278,9 @@ export const STYLE = `
   .comprow button.placetag[hidden] { display: none; }
   .nfcrow { flex-wrap: wrap; }
   .nfcrow button[hidden] { display: none; }
+  .vacask { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; padding: 6px 10px; border-radius: 8px;
+    background: var(--secondary-background-color, #f3f3f3); }
+  .vacask[hidden] { display: none; }
+  .vacask span { flex: 1 1 100%; }
+  .vacask button { font: inherit; padding: 4px 14px; border-radius: 8px; border: 1px solid var(--divider-color); background: none; color: var(--primary-color); cursor: pointer; }
 `;

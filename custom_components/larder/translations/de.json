@@ -528,7 +528,7 @@
         "step": {
           "area": {
             "title": "Bereiche zuweisen",
-            "description": "Wähle für jede Dose den Bereich, in dem sie steht. Leer gelassene Dosen bleiben ohne Bereich."
+            "description": "Wähle für jede Dose den Bereich, in dem sie steht. Leer gelassene Dosen bleiben ohne Bereich.\n\n{containers}\n\nÜber **öffnen** springst du direkt zur Dose im Dashboard."
           }
         },
         "abort": {
@@ -560,7 +560,7 @@
         "step": {
           "empty": {
             "title": "Abgelaufene Dosen leeren",
-            "description": "Die angehakten Dosen werden geleert und im Verlauf als weggeworfen eingetragen.",
+            "description": "Die angehakten Dosen werden geleert und im Verlauf als weggeworfen eingetragen.\n\n{containers}\n\nÜber **öffnen** springst du direkt zur Dose im Dashboard, falls du lieber dort nachsiehst.",
             "data": {
               "containers": "Dosen"
             }

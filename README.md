@@ -33,6 +33,8 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 ## What's new
 
+> **6.8:** **calmer start page and easier filling** – the start page keeps the two most urgent boxes open and folds the rest, *Eaten* / *Freeze* right on the tiles, repair hints with links, a short explanation and the shopping list in the first steps, the vacuum question once, and putting away by name for goods without a barcode.
+>
 > **6.7:** **clearer for newcomers** – one *Put the shopping away* button with scan, receipt/invoice and by hand, settings in sections, words on the buttons, the storage kind of each area, data care per product, plain days (*tomorrow*, *in 3 days*), cards titled by their contents with *Eaten / Thrown away* at the bottom, and *Onto the list* with *Undo* on the Shopping page.
 >
 > **6.6:** **online shopping** – *Prepare the order* lists what runs out before the next delivery (copy it or onto the list), and a push on the **delivery day** opens put away. **6.6.1:** repair hints show contents, place and a link to each container.

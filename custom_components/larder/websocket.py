@@ -9,9 +9,10 @@ import voluptuous as vol
 from homeassistant.components import websocket_api
 from homeassistant.core import Event, HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError, Unauthorized
-from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers import config_validation as cv, entity_registry as er
+from homeassistant.helpers.dispatcher import async_dispatcher_send
 
-from .const import DOMAIN, EVENT_DOSE_SCANNED, KIND_BAG
+from .const import CONF_CC, CONF_VACUUM_DEFAULT, DOMAIN, EVENT_DOSE_SCANNED, KIND_BAG, SIGNAL_SETTINGS_CHANGED
 from .devices import device_of
 from .disposable import DATA_RETIRED, retired_text
 from .entity import kind_of
@@ -20,6 +21,7 @@ from .nfc import async_get_nfc
 from .qr import parse_qr
 from .sections import section_order
 from .shopping import any_list
+from .stock import async_get_stock
 
 DATA_WS_REGISTERED = "websocket_registered"
 
@@ -38,6 +40,7 @@ def async_setup_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_delete)
     websocket_api.async_register_command(hass, ws_contents)
     websocket_api.async_register_command(hass, ws_settings)
+    websocket_api.async_register_command(hass, ws_vacuum_answer)
     websocket_api.async_register_command(hass, ws_resolve_code)
     websocket_api.async_register_command(hass, ws_scan_session)
     websocket_api.async_register_command(hass, ws_report_scan)
@@ -226,8 +229,41 @@ async def ws_settings(
             "shopping_list": any_list(hass),
             "supply_check": bool(estimator.supply_check),
             "section_order": section_order(hass),
+            # 6.8 (#217): ask once whether there is a vacuum sealer, instead of ticking vacuum for everyone
+            "vacuum_asked": (await async_get_stock(hass)).vacuum_asked,
         },
     )
+
+
+@websocket_api.require_admin
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/vacuum_answer", vol.Required("has_sealer"): bool})
+@websocket_api.async_response
+async def ws_vacuum_answer(
+    hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]
+) -> None:
+    """6.8 (#217): the answer sets the preset for new containers; without a sealer, empty containers lose the tick."""
+    estimator = await async_get_estimator(hass)
+    await estimator.async_update_settings({CONF_VACUUM_DEFAULT: msg["has_sealer"]})
+    stock = await async_get_stock(hass)
+    stock.vacuum_asked = True
+    stock.save_now()
+    changed = 0
+    if not msg["has_sealer"]:
+        registry = er.async_get(hass)
+        for entry in hass.config_entries.async_entries(DOMAIN):
+            cc = entry.data.get(CONF_CC)
+            if not cc:
+                continue
+            switch = registry.async_get_entity_id("switch", DOMAIN, f"{cc}_vacuum")
+            content = registry.async_get_entity_id("text", DOMAIN, f"{cc}_content")
+            state = hass.states.get(switch) if switch else None
+            filled = hass.states.get(content) if content else None
+            # only empty containers: what is stored keeps what it was stored with
+            if state is not None and state.state == "on" and (filled is None or not (filled.state or "").strip() or filled.state in ("unknown", "unavailable")):
+                await hass.services.async_call("switch", "turn_off", {"entity_id": switch}, blocking=True)
+                changed += 1
+    async_dispatcher_send(hass, SIGNAL_SETTINGS_CHANGED)
+    connection.send_result(msg["id"], {"vacuum_default": msg["has_sealer"], "changed": changed})
 
 
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/resolve_code", vol.Required("code"): str})

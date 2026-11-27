@@ -133,6 +133,7 @@ class Stock:
         self.table_rows: dict[str, dict[str, Any]] = {}  # 6.3 (#174): product → {"name", "entry"} chosen by you
         self.delivery: str | None = None  # 6.6 (#176/#177): delivery day of the next online order (ISO date)
         self.area_storage: dict[str, str] = {}  # 6.7 (#196): area id → storage kind chosen in the dashboard
+        self.vacuum_asked = False  # 6.8 (#217): the household was asked whether it has a vacuum sealer
         self._unsub = None
         self._unsub_daily = None
 
@@ -168,6 +169,7 @@ class Stock:
         self.table_rows = {str(k): v for k, v in (data.get("table_rows") or {}).items() if isinstance(v, dict) and v.get("entry")}
         self.delivery = str(data["delivery"]) if data.get("delivery") else None
         self.area_storage = {str(k): str(v) for k, v in (data.get("area_storage") or {}).items() if v}
+        self.vacuum_asked = bool(data.get("vacuum_asked"))
         self.buy_days = {
             str(k): [int(d) for d in v if isinstance(d, int | float)]
             for k, v in (data.get("buy_days") or {}).items()
@@ -203,6 +205,7 @@ class Stock:
             "table_rows": self.table_rows,
             "delivery": self.delivery,
             "area_storage": self.area_storage,
+            "vacuum_asked": self.vacuum_asked,
         }
 
     def set_delivery(self, day: date | None) -> None:

@@ -293,7 +293,10 @@ test("Larder: groups by area and compartment", async () => {
 test("Larder: switch between tiles and list", async () => {
   const el = mount(makeHass(DOSES));
   await go(el, "containers");
-  assert.equal($$(el, "main .tiles").length, 1);
+  // 6.8 (#215): the empty container in a row of its own at the end
+  assert.equal($$(el, "main .tiles").length, 2);
+  assert.equal($(el, '[data-role="empty-head"]').textContent, "🫙 Leer (1)");
+  assert.equal($$(el, "main .tiles").at(-1).querySelector(".tile").dataset.id, "d5");
   $(el, '[data-role="mode"]').click();
   await flush();
   assert.equal($$(el, "main .tiles").length, 0);
@@ -2513,7 +2516,7 @@ test("larder: free containers per size; the container sizes dialog saves loose c
   await flush();
   await go(el, "containers");
   await flush();
-  assert.equal($(el, '[data-role="free-sizes"]').textContent, "Frei: 3 × 1 l");
+  assert.equal($(el, '[data-role="free-sizes"]').textContent, "Leere Dosen: 3 × 1 l"); // 6.8 (#214)
   $(el, '[data-role="free-sizes"]').click();
   await flush();
   const form = $(el, "form.dialog");
@@ -3053,7 +3056,9 @@ test("Pharmacy (4.4): third tab, own section on the start page with the longer w
   await flush();
   await flush();
   const heads = $$(el, "main h2.section").map((h) => h.textContent);
-  assert.deepEqual(heads, ["🍎 Lebensmittel", "🧻 Haushalt", "💊 Apotheke"]);
+  // 6.8 (#209): a quiet household section folds into "more" at the end
+  assert.deepEqual(heads, ["🍎 Lebensmittel", "💊 Apotheke", "🧻 Haushalt"]);
+  assert.ok($(el, '[data-role="start-more"] [data-role="household-section"]'));
   assert.deepEqual([...$(el, '[data-role="pharmacy-soon"]').querySelectorAll(".name")].map((n) => n.textContent), ["Ibuprofen 400"]);
   // the food list does not show medicines
   assert.ok(!$$(el, "main .tiles:not([data-role]) .name").map((n) => n.textContent).includes("Ibuprofen 400"));
@@ -4480,4 +4485,93 @@ test("Block 53 (#200): onto the list on the Shopping page; a tick can be undone"
   await flush();
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/shopping_undo`), { type: `${D}/shopping_undo`, list: "todo.einkaufen", uid: "u1", device_id: "p7", added: 1 });
   assert.equal($(el, '[data-uid="u1"]').classList.contains("done"), false);
+});
+
+test("6.8 (#212, #213): first start explains Larder and picks the shopping list in step 2", async () => {
+  const hass = makeHass([]);
+  hass.states["todo.einkaufen"] = { entity_id: "todo.einkaufen", state: "0", attributes: { friendly_name: "Einkaufsliste" } };
+  const base = hass.callWS;
+  const calls = [];
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/settings`) return { recipe_days: 3, shopping_list: false };
+    if (msg.type === `${D}/shopping_list_set`) {
+      calls.push(msg);
+      return { entity_id: msg.entity_id };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await flush();
+  const box = $(el, '[data-role="get-started"]');
+  assert.match(box.querySelector(".hint").textContent, /Larder merkt sich/);
+  const pick = box.querySelector('[data-role="start-list"]');
+  assert.deepEqual([...pick.options].map((o) => o.textContent), ["Liste wählen …", "Einkaufsliste"]);
+  assert.equal(box.querySelector('[data-role="start-2"]'), null);
+  pick.value = "todo.einkaufen";
+  pick.dispatchEvent(new dom.window.Event("change"));
+  await flush();
+  assert.deepEqual(calls, [{ type: `${D}/shopping_list_set`, entity_id: "todo.einkaufen" }]);
+  assert.equal($(el, '[data-role="get-started"] [data-step="2"]').classList.contains("done"), true);
+  $(el, '[data-role="start-how"]').click();
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelector("h2").textContent, "So funktioniert Larder");
+  assert.equal(form.querySelectorAll(".howlist .choice").length, 6);
+});
+
+test("6.8 (#209, #210): start page – two boxes open, the rest folded; eaten / freeze on the tiles", async () => {
+  const hass = makeHass(DOSES);
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/freezable`) return { device_ids: ["d1"] };
+    if ([`${D}/empty`, `${D}/freeze`].includes(msg.type)) {
+      hass.wsCalls.push(msg);
+      return {};
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await flush();
+  const lachs = $(el, '.soontile[data-id="d1"]');
+  assert.deepEqual([...lachs.querySelectorAll(".tileacts button")].map((b) => b.textContent), ["😋 Gegessen", "🧊 Einfrieren"]);
+  // expired: thrown away is offered instead
+  assert.equal($(el, '.soontile[data-id="d3"] .tileacts button').textContent, "🗑 Weggeworfen");
+  lachs.querySelector('[data-role="tile-freeze"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/freeze`, device_id: "d1" });
+  $(el, '.soontile[data-id="d3"] [data-role="tile-thrown"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/empty`, device_id: "d3", outcome: "thrown" });
+  const more = $(el, '[data-role="start-more"]');
+  if (more) assert.match(more.querySelector("summary").textContent, /weitere/);
+});
+
+test("6.8 (#216, #223): link to the areas for loose entries; put away by name", async () => {
+  const hass = makeHass(DOSES);
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/put_away`) {
+      hass.wsCalls.push(msg);
+      return { status: "unknown", code: null, name: null };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  el.openPutAway();
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelector('[data-role="putaway-add"]').textContent, "Hinzufügen");
+  form.querySelector('[data-f="putaway-name"]').value = "Bauernbrot";
+  form.querySelector('[data-role="putaway-add-name"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/put_away`, content: "Bauernbrot" });
+  assert.match(form.querySelector(".putrow.unknown").textContent, /Bauernbrot/);
+  el._closeDialog();
+  await go(el, "compartments");
+  const link = $(el, '[data-role="loose-areas"]');
+  assert.ok(link);
+  link.click();
+  await flush();
+  assert.equal(el._view, "areas");
 });

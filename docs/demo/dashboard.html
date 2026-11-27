@@ -272,6 +272,7 @@ const hass = {
       ["Bananas", "produce", false], ["Apples", "produce", false], ["Wholemeal bread", "bakery", true], ["Milk", "fridge", true], ["Gouda", "fridge", true],
       ["Penne (Barilla, 500 g)", "dry", true], ["Chopped tomatoes (Mutti, 400 g)", "dry", true], ["Crate of water", "drinks", false], ["Toilet paper (Zewa, 2 packs)", "drugstore", true],
     ]).map(([summary, section, known], i) => ({ list: "todo.einkaufen", list_name: "Einkaufen", uid: `s${i}`, summary, section, known })) };
+    if (msg.type === "larder/freezable") return { device_ids: ["demo01"] };
     if (msg.type === "larder/shopping_add") return { list: "todo.einkaufsliste", created: true };
     if (msg.type === "larder/shopping_undo") return { removed: 1 };
     if (msg.type === "larder/shopping_check") return msg.uid === "s0" ? { status: "unknown", name: msg.summary } : { status: "added", area: de ? "Vorratskammer" : "Pantry", compartment: de ? "Regal" : "Shelf", added: 1 };

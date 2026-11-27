@@ -136,9 +136,23 @@ async def ws_freeze(hass: HomeAssistant, connection: websocket_api.ActiveConnect
     connection.send_result(msg["id"], result)
 
 
+@websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/freezable"})
+@websocket_api.async_response
+async def ws_freezable(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """6.8 (#210): which entries can go into the freezer now – for 🧊 on the start page tiles."""
+    from .expiry import collect_expiring  # noqa: PLC0415 - avoids an import cycle
+
+    ids = []
+    for item in collect_expiring(hass, days=FREEZE_DAYS, include_expired=False, vouchers=False):
+        if freezable(hass, item) and (device := device_of(hass, item["cc"])) is not None:
+            ids.append(device.id)
+    connection.send_result(msg["id"], {"device_ids": ids})
+
+
 def async_setup_freezing_websocket(hass: HomeAssistant) -> None:
     domain_data = hass.data.setdefault(DOMAIN, {})
     if domain_data.get("freezing_ws"):
         return
     domain_data["freezing_ws"] = True
     websocket_api.async_register_command(hass, ws_freeze)
+    websocket_api.async_register_command(hass, ws_freezable)

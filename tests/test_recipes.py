@@ -229,10 +229,10 @@ async def test_settings_websocket(hass: HomeAssistant, hass_ws_client) -> None:
     entry = await _setup(hass, "AAAA")
     client = await hass_ws_client(hass)
     await client.send_json({"id": 1, "type": "larder/settings"})
-    assert (await client.receive_json())["result"] == {**{"recipe_days": 3, "soon_days": 3, "vacuum_default": True, "shopping_list": False}, "supply_check": True, "section_order": list(SECTIONS)}
+    assert (await client.receive_json())["result"] == {**{"recipe_days": 3, "soon_days": 3, "vacuum_default": True, "shopping_list": False}, "supply_check": True, "section_order": list(SECTIONS), "vacuum_asked": False}
     await _options(hass, entry, recipe_days=0)
     await client.send_json({"id": 2, "type": "larder/settings"})
-    assert (await client.receive_json())["result"] == {**{"recipe_days": 0, "soon_days": 3, "vacuum_default": True, "shopping_list": False}, "supply_check": True, "section_order": list(SECTIONS)}
+    assert (await client.receive_json())["result"] == {**{"recipe_days": 0, "soon_days": 3, "vacuum_default": True, "shopping_list": False}, "supply_check": True, "section_order": list(SECTIONS), "vacuum_asked": False}
 
 
 async def test_soon_days_setting_changes_status_attribute_and_overview(hass: HomeAssistant) -> None:

@@ -528,7 +528,7 @@
         "step": {
           "area": {
             "title": "Attribuer des pièces",
-            "description": "Choisissez la pièce où se trouve chaque boîte. Les boîtes laissées vides restent sans pièce."
+            "description": "Choisissez la pièce où se trouve chaque boîte. Les boîtes laissées vides restent sans pièce.\n\n{containers}\n\n**ouvrir** mène directement à la boîte dans le tableau de bord."
           }
         },
         "abort": {
@@ -560,7 +560,7 @@
         "step": {
           "empty": {
             "title": "Vider les boîtes périmées",
-            "description": "Les boîtes cochées sont vidées et notées comme jetées dans l'historique.",
+            "description": "Les boîtes cochées sont vidées et notées comme jetées dans l'historique.\n\n{containers}\n\n**ouvrir** mène directement à la boîte dans le tableau de bord si tu préfères vérifier là-bas.",
             "data": {
               "containers": "Boîtes"
             }
