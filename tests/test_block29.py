@@ -21,6 +21,7 @@ class ShopTodo(TodoListEntity):
     _attr_has_entity_name = False
     _attr_supported_features = (
         TodoListEntityFeature.CREATE_TODO_ITEM | TodoListEntityFeature.UPDATE_TODO_ITEM | TodoListEntityFeature.MOVE_TODO_ITEM
+        | TodoListEntityFeature.DELETE_TODO_ITEM
     )
 
     def __init__(self, entity_id: str) -> None:
@@ -38,6 +39,10 @@ class ShopTodo(TodoListEntity):
         for own in self._attr_todo_items:
             if own.uid == item.uid:
                 own.status = item.status or own.status
+        self.async_write_ha_state()
+
+    async def async_delete_todo_items(self, uids: list[str]) -> None:
+        self._attr_todo_items = [i for i in self._attr_todo_items if i.uid not in uids]
         self.async_write_ha_state()
 
     async def async_move_todo_item(self, uid: str, previous_uid: str | None = None) -> None:

@@ -3,6 +3,10 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 6.9.3
+
+- **Strike items off the shopping list** (#242): **✕** next to an item on the Shopping page removes it from its list – not bought, nothing goes into stock (Home Assistant's `todo.remove_item`, works with every list that can delete items). **Undo** in the notice puts it back on the same list; a product with a minimum stock says that it comes back when it runs low. WebSocket `larder/shopping_remove`; `larder/shopping_add` takes an optional `list`.
+
 ## 6.9.2
 
 - **Move: choose a compartment** (#241): **📍 Move** shows the compartments used in the chosen area as chips again (they were missing), so you can tap one instead of typing it.

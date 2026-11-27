@@ -24,6 +24,9 @@ function shoppingTextsAdded(lang, r) {
 
 const TEXT = {
   de: {
+    removeLabel: "Streichen – nicht mehr nötig",
+    removed: (name) => `${name} gestrichen.`,
+    removedMinimum: "Er hat einen Mindestbestand und kommt wieder auf die Liste, wenn er knapp wird.",
     storeAdd: "＋ Geschäft",
     moreButton: "Mehr",
     moreTitle: "Weitere Aktionen",
@@ -103,6 +106,9 @@ const TEXT = {
     orderListed: (n) => `${n} auf die Einkaufsliste gesetzt.`,
   },
   en: {
+    removeLabel: "Strike off – not needed any more",
+    removed: (name) => `${name} struck off.`,
+    removedMinimum: "It has a minimum stock and comes back onto the list when it runs low.",
     storeAdd: "＋ Store",
     moreButton: "More",
     moreTitle: "More actions",
@@ -182,6 +188,9 @@ const TEXT = {
     orderListed: (n) => `${n} put onto the shopping list.`,
   },
   fr: {
+    removeLabel: "Rayer – plus nécessaire",
+    removed: (name) => `${name} rayé.`,
+    removedMinimum: "Il a un stock minimum et revient sur la liste quand il manque.",
     storeAdd: "＋ Magasin",
     moreButton: "Plus",
     moreTitle: "Autres actions",
@@ -261,6 +270,9 @@ const TEXT = {
     orderListed: (n) => `${n} mis sur la liste de courses.`,
   },
   nl: {
+    removeLabel: "Doorstrepen – niet meer nodig",
+    removed: (name) => `${name} doorgestreept.`,
+    removedMinimum: "Het heeft een minimumvoorraad en komt terug op de lijst als het opraakt.",
     storeAdd: "＋ Winkel",
     moreButton: "Meer",
     moreTitle: "Meer acties",
@@ -526,6 +538,35 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
       delete this._shopDone[item.uid];
       this.showNotice(t.failed);
     }
+    this._sig = "";
+    this._update();
+  };
+
+  /** 6.9.3 (#242): strike an item off its list; Undo puts it back on the same list. */
+  proto._shopRemove = async function _shopRemove(item) {
+    const t = shoppingTexts(this._hass);
+    let res;
+    try {
+      res = await this._hass.callWS({ type: `${DOMAIN}/shopping_remove`, list: item.list, uid: item.uid, summary: item.summary });
+    } catch (err) {
+      this.showNotice((err && err.message) || t.failed);
+      return;
+    }
+    if (this._shopping && Array.isArray(this._shopping.items)) {
+      this._shopping = { ...this._shopping, items: this._shopping.items.filter((i) => i.uid !== item.uid) };
+    }
+    this._shopSeen = undefined; // our own change: no reload needed
+    this.showNotice(t.removed(item.summary) + (res && res.minimum ? ` ${t.removedMinimum}` : ""), {
+      label: t.undo,
+      run: async () => {
+        try {
+          await this._hass.callWS({ type: `${DOMAIN}/shopping_add`, item: item.summary, list: item.list });
+          await this.loadShopping({ keep: true });
+        } catch {
+          this.showNotice(t.failed);
+        }
+      },
+    });
     this._sig = "";
     this._update();
   };
@@ -814,6 +855,14 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
       const sub = [done && done.text, where, lists.size > 1 ? item.list_name : null].filter(Boolean).join(" · ");
       if (sub) text.append(el("span", "sub", sub));
       row.append(check, text);
+      // 6.9.3 (#242): strike it off – not needed any more, nothing goes into stock
+      if (!done) {
+        const strike = button("strike", "✕", () => this._shopRemove(item));
+        strike.dataset.role = "shop-remove";
+        strike.title = t.removeLabel;
+        strike.setAttribute("aria-label", `${t.removeLabel}: ${item.summary}`);
+        row.append(strike);
+      }
       if (done && done.device_id) {
         if (done.details) text.append(el("span", "sub", done.details));
         const details = button("link", t.details, () => this._shopDetails(done, row));

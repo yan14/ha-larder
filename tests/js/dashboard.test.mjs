@@ -4671,3 +4671,27 @@ test("6.9.1 (#239): by hand opens the kinds, so a bag can get its NFC tag", asyn
   assert.ok($(el, '[data-role="add-bag"]'));
   assert.ok($(el, '[data-role="add-pack"]'));
 });
+
+test("6.9.3 (#242): strike an item off the shopping list, undo puts it back", async () => {
+  const hass = makeHass(DOSES);
+  hass.callWS = (base => async (msg) => {
+    if ([`${D}/shopping_remove`, `${D}/shopping_add`].includes(msg.type)) hass.wsCalls.push(msg);
+    if (msg.type === `${D}/shopping_mode`) return { order: ["dry"], items: [{ list: "todo.einkaufen", list_name: "Einkaufen", uid: "u1", summary: "Senf", section: "dry", known: true }] };
+    if (msg.type === `${D}/shopping_remove`) return { removed: true, minimum: true };
+    if (msg.type === `${D}/shopping_add`) return { list: "todo.einkaufen", created: true };
+    return base(msg);
+  })(hass.callWS);
+  const el = mount(hass);
+  await flush();
+  el.setView("shopping");
+  await flush();
+  await flush();
+  $(el, '[data-uid="u1"] [data-role="shop-remove"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/shopping_remove`), { type: `${D}/shopping_remove`, list: "todo.einkaufen", uid: "u1", summary: "Senf" });
+  assert.equal($(el, '[data-uid="u1"]'), null);
+  assert.match($(el, ".notice").textContent, /Senf gestrichen\. Er hat einen Mindestbestand/);
+  $(el, '[data-role="notice-action"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/shopping_add`), { type: `${D}/shopping_add`, item: "Senf", list: "todo.einkaufen" });
+});

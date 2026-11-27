@@ -383,14 +383,18 @@ async def ws_shopping_check(hass: HomeAssistant, connection: websocket_api.Activ
 
 
 @websocket_api.websocket_command(
-    {vol.Required("type"): f"{DOMAIN}/shopping_add", vol.Required("item"): vol.All(str, vol.Length(min=1, max=255))}
+    {
+        vol.Required("type"): f"{DOMAIN}/shopping_add",
+        vol.Required("item"): vol.All(str, vol.Length(min=1, max=255)),
+        vol.Optional("list"): vol.All(str, vol.Match(r"^todo\.")),  # 6.9.3: back onto the list it was struck from
+    }
 )
 @websocket_api.async_response
 async def ws_shopping_add(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
     """6.7 (#200): put something onto the list right on the Shopping page (its own list, else the default)."""
     await async_get_stock(hass)
     item = " ".join(msg["item"].split())
-    entity_id = shopping_list_for(hass, item)
+    entity_id = msg.get("list") if msg.get("list") and hass.states.get(msg["list"]) else shopping_list_for(hass, item)
     if not entity_id:
         connection.send_error(msg["id"], "no_list", "No shopping list set up")
         return
@@ -416,6 +420,30 @@ async def ws_shopping_list_set(hass: HomeAssistant, connection: websocket_api.Ac
     await (await async_get_estimator(hass)).async_update_settings({CONF_TODO_ENTITY: msg["entity_id"]})
     async_dispatcher_send(hass, SIGNAL_SETTINGS_CHANGED)
     connection.send_result(msg["id"], {"entity_id": msg["entity_id"]})
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/shopping_remove",
+        vol.Required("list"): vol.All(str, vol.Match(r"^todo\.")),
+        vol.Required("uid"): str,
+        vol.Optional("summary", default=""): vol.All(str, vol.Length(max=255)),
+    }
+)
+@websocket_api.async_response
+async def ws_shopping_remove(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """6.9.3 (#242): strike an item off – not bought, nothing goes into stock (Home Assistant's todo.remove_item)."""
+    stock = await async_get_stock(hass)
+    try:
+        await hass.services.async_call(
+            "todo", "remove_item", {"entity_id": msg["list"], "item": msg["uid"]}, blocking=True
+        )
+    except HomeAssistantError as err:
+        connection.send_error(msg["id"], "remove_failed", str(err))
+        return
+    content = _base_name(msg["summary"]) if msg["summary"] else ""
+    minimum = bool(content and stock.minimum(content))
+    connection.send_result(msg["id"], {"removed": True, "minimum": minimum})
 
 
 @websocket_api.websocket_command(
@@ -655,5 +683,5 @@ def async_setup_shopping_mode_websocket(hass: HomeAssistant) -> None:
     if domain_data.get("shopping_mode_ws"):
         return
     domain_data["shopping_mode_ws"] = True
-    for command in (ws_shopping_mode, ws_shopping_add, ws_shopping_list_set, ws_shopping_check, ws_shopping_undo, ws_shopping_scan, ws_shopping_details, ws_receipt_add, ws_bought_add, ws_shopping_lists, ws_recurring, ws_recurring_set, ws_recurring_delete):
+    for command in (ws_shopping_mode, ws_shopping_add, ws_shopping_list_set, ws_shopping_check, ws_shopping_remove, ws_shopping_undo, ws_shopping_scan, ws_shopping_details, ws_receipt_add, ws_bought_add, ws_shopping_lists, ws_recurring, ws_recurring_set, ws_recurring_delete):
         websocket_api.async_register_command(hass, command)

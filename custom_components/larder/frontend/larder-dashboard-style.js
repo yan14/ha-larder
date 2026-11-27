@@ -130,6 +130,7 @@ export const STYLE = `
   .selbar button.primary { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: var(--primary-color); }
   .bar button.on { background: var(--primary-color); color: var(--text-primary-color, #fff); border-color: var(--primary-color); }
   .badge { font-size: 11px; padding: 1px 8px; border-radius: 10px; color: #fff; white-space: nowrap; background: var(--secondary-text-color); }
+  .boughtrow button.strike { margin-left: auto; border: 0; background: none; color: var(--secondary-text-color); font-size: 18px; padding: 4px 8px; cursor: pointer; }
   .soontile { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
   .soontile > .tile { flex: 1; }
   .tileacts { display: flex; flex-direction: column; gap: 4px; }
