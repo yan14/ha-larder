@@ -668,6 +668,17 @@ def _part_match(part: str, text: str) -> tuple[bool, bool]:
     return bool(word_start.search(text)), False
 
 
+def warm_up() -> None:
+    """6.11.1: compile the keyword patterns once, in the executor at setup.
+
+    Compiled lazily they took up to a second on a Raspberry Pi with the first state of a content entity
+    ("Updating state … took 0.4 seconds"); afterwards a lookup takes well under a millisecond.
+    """
+    for text in ("warm up", "aufwärmen"):
+        find_entry(text)
+        category_for(text)
+
+
 def _keyword_score(keyword: str, text: str) -> tuple[bool, bool, int] | None:
     """(weak, at the end of a word, length) of the match, or None."""
     weak = keyword.startswith("~")

@@ -92,3 +92,12 @@ async def test_crate_of_bottles_on_the_list(hass: HomeAssistant) -> None:
     hass.config.language = "de"
     text, buy = _shopping_entry(hass, {"name": "Wasser", "kind": "pack", "pack_size": 6}, 12, 2, False)
     assert (text, buy) == ("Wasser (2 Packungen)", 2)
+
+
+async def test_keyword_patterns_compiled_at_setup(hass: HomeAssistant) -> None:
+    """6.11.1: the first state of a content entity does not compile the shelf-life patterns in the event loop."""
+    from custom_components.larder import shelf_life  # noqa: PLC0415
+
+    shelf_life._KEYWORD_RES.clear()  # noqa: SLF001
+    await _setup(hass, "AAAA")
+    assert len(shelf_life._KEYWORD_RES) > 500  # noqa: SLF001

@@ -51,6 +51,7 @@ from .repair_hints import async_get_repairs
 from .rescue import async_setup_rescue_service
 from .scan import async_setup_webhook, async_teardown_webhook
 from .shopping_mode import async_setup_shopping_mode_websocket
+from .singleton import async_singleton
 from .sizes import async_get_sizes, async_setup_sizes_websocket
 from .stats import async_setup_statistics
 from .stock import async_get_stock, async_setup_stock_websocket
@@ -68,6 +69,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     entry.runtime_data = LarderRuntime()
     async_invalidate_entries(hass)  # 5.4: index ID → entry
     shelf_life.set_default_language(hass.config.language)  # 6.2 (#172): words of the system language first
+    # 6.11.1: the shelf-life keyword patterns compiled once outside the event loop (else the first state is slow)
+    await async_singleton(hass, "shelf_life_warm", lambda: _async_warm_up(hass))
     await async_get_estimator(hass)
     async_setup_websocket(hass)
     async_setup_services(hass)
@@ -128,6 +131,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     _async_apply_initial_area(hass, entry)
     _async_ensure_main(hass)
+    return True
+
+
+async def _async_warm_up(hass: HomeAssistant) -> bool:
+    await hass.async_add_executor_job(shelf_life.warm_up)
     return True
 
 

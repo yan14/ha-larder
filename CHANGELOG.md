@@ -3,6 +3,10 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 6.11.1
+
+- **Faster first states after a restart**: the keyword patterns of the shelf-life table are now compiled once at setup outside the event loop. Before, the first content entity compiled them while writing its state, which on a Raspberry Pi could take about half a second and logged *Updating state for text.…_inhalt took 0.4 seconds*.
+
 ## 6.11.0
 
 Block 60: group and convert products.
