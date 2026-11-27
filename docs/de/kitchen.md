@@ -41,6 +41,12 @@ Die Seite **Rezepte** ist dein eigenes Rezeptbuch (liegt in Home Assistant unter
 
 **Rezept aus Foto oder Datei** (📷, Administratoren): Fotografiere ein Rezept aus einem Kochbuch oder von einer Karte, wähle bis zu vier Fotos (z. B. zwei Seiten) oder ein PDF. Die KI liest das Rezept, übersetzt es bei Bedarf in deine Sprache und öffnet es zum **Prüfen**; gespeichert wird erst, wenn du auf *Speichern* tippst. Dafür muss die gewählte KI-Aufgabe Anhänge unterstützen (z. B. Anthropic, OpenAI, Google). Fotos werden vor dem Hochladen verkleinert, liegen nur während des Lesens kurz im Medienordner von Home Assistant (`media/larder/recipe_photos`) und werden danach gelöscht. Gesendet wird nur das Foto bzw. die Datei, an den KI-Dienst, den du gewählt hast.
 
+**Kochen mit dem Vorrat** (seit 6.4):
+
+- **🍳 Gekocht** an einem Rezept aus dem Buch zeigt, was Larder aus dem Vorrat nimmt – je Zutat die Dose oder Packung mit dem frühesten MHD (Salz, Pfeffer, Wasser und Öl gelten als immer da). Auswahl ändern oder *nicht aus dem Vorrat* wählen, dann **Aus dem Vorrat nehmen**: eine Packung weniger, eine Portion einer Dose mit mehreren, sonst wird die Dose als gegessen geleert. *Gekocht* im Wochenplan macht dasselbe.
+- Danach bietet **🥡 Reste einlagern?** die leeren Dosen an; ein Tipp öffnet den Füll-Dialog mit dem Gericht als Inhalt und geschätztem MHD.
+- Die Sortierung **Passt zum Vorrat** stellt die Rezepte nach vorne, deren Zutaten da sind – ganz ohne KI – mit *✓ 3/4 da · 1 läuft bald ab · fehlt: Sahne*.
+
 **Rezept aus einem Link** (🔗, Administratoren, seit 6.0): Füge die Adresse einer Rezeptseite ein. Die meisten Rezeptseiten enthalten das Rezept maschinenlesbar (schema.org *Recipe*); Larder liest daraus Titel, Portionen, Zeit, Zutaten und Schritte – ganz ohne KI – und öffnet es zum Prüfen, der Link zur Quelle bleibt erhalten. Zutaten, die du im Bestand hast, bekommen ein ✓. Seiten ohne diese Daten werden nicht erraten; dann 📷 mit einem Screenshot nutzen.
 
 ## Tägliche Zusammenfassung

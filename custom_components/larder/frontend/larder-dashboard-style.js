@@ -227,6 +227,11 @@ export const STYLE = `
   .placetag button { font: inherit; padding: 6px 12px; border-radius: 8px; cursor: pointer; border: 1px solid var(--divider-color); background: none; color: inherit; }
   .datagroup button.link { display: block; text-align: left; padding: 6px 0; }
   .datagroup h3 { margin: 14px 0 2px; }
+  .cooklist { display: flex; flex-direction: column; gap: 6px; }
+  .cookrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .cookrow .line { flex: 1 1 140px; }
+  .cookrow select { font: inherit; padding: 4px 6px; border-radius: 8px; border: 1px solid var(--divider-color); background: none; color: inherit; max-width: 100%; }
+  .recipe .fit { font-size: 12px; color: var(--secondary-text-color); margin: -4px 0 6px; }
   .dialog .putedit { flex-direction: column; align-items: stretch; }
   .putfields { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
   .putfields input, .putfields select, .priceedit input { font: inherit; padding: 6px 8px; border-radius: 8px; border: 1px solid var(--divider-color); background: none; color: inherit; min-width: 0; }

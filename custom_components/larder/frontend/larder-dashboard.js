@@ -235,7 +235,7 @@ function loadOptions() {
       mode: MODES.includes(raw.mode) ? raw.mode : "grid",
       sort: ["date", "area", "place", "name", "category"].includes(raw.sort) ? raw.sort : "date",
       areaSort: ["name", "count", "soon"].includes(raw.areaSort) ? raw.areaSort : "name",
-      recipeSort: ["newest", "name"].includes(raw.recipeSort) ? raw.recipeSort : "newest",
+      recipeSort: ["newest", "name", "fit"].includes(raw.recipeSort) ? raw.recipeSort : "newest",
       recipePeriod: RECIPE_PERIODS.includes(raw.recipePeriod) ? raw.recipePeriod : "default",
       recipeServings: Number.isInteger(raw.recipeServings) && raw.recipeServings >= 0 && raw.recipeServings <= 12 ? raw.recipeServings : 0,
       labelLayout: LABEL_LAYOUTS[raw.labelLayout] ? raw.labelLayout : "3x8",
@@ -2709,6 +2709,12 @@ export class LarderDashboard extends HTMLElement {
     const h = el("h3", "", recipe.title);
     if (recipe.minutes) h.append(el("span", "meta", t.minutes(recipe.minutes)));
     node.append(h);
+    const fit = suggestion === null && this._opts.recipeSort === "fit" && this._cookRanking && this._cookRanking.get(recipe.id);
+    if (fit) {
+      const line = el("div", "sub fit", t.fitLine(fit));
+      line.dataset.role = "recipe-fit";
+      node.append(line);
+    }
     const ingredients = suggestion !== null ? [...(recipe.uses || []), ...(recipe.extra_ingredients || [])] : recipe.ingredients || [];
     const steps = recipe.steps || [];
     const expanded = suggestion !== null || this._openRecipe === recipe.id;
@@ -2762,6 +2768,14 @@ export class LarderDashboard extends HTMLElement {
       plan.dataset.role = "plan";
       plan.addEventListener("click", () => this.openPlanDialog(recipe, suggestion !== null));
       actions.append(plan);
+      if (suggestion === null && recipe.id) {
+        // 6.4 (#136): cooked – takes the ingredients from the stock
+        const cook = el("button", "", t.cook);
+        cook.type = "button";
+        cook.dataset.role = "cook";
+        cook.addEventListener("click", () => this.openCookDialog(recipe));
+        actions.append(cook);
+      }
       if (!isAdmin(this._hass)) {
         node.append(actions);
         return node;
@@ -2834,11 +2848,12 @@ export class LarderDashboard extends HTMLElement {
     const bar = el("div", "bar");
     bar.append(
       this._select(
-        [["newest", t.sortNewest], ["name", t.sortName]],
+        [["newest", t.sortNewest], ["name", t.sortName], ["fit", t.sortFit]],
         this._opts.recipeSort,
         (value) => {
           this._opts.recipeSort = value;
           saveOptions(this._opts);
+          if (value === "fit") this.loadCookRanking();
           this._sig = "";
           this._update();
         },
@@ -2943,9 +2958,132 @@ export class LarderDashboard extends HTMLElement {
     const lang = this._lang();
     let list = [...(this._recipes || [])];
     if (this._opts.recipeSort === "name") list.sort((a, b) => a.title.localeCompare(b.title, lang, { sensitivity: "base" }));
+    if (this._opts.recipeSort === "fit") {
+      // 6.4 (#138): what can be cooked from the stock, without AI – fitting ones first, the rest after
+      if (!this._cookRanking) this.loadCookRanking();
+      const rank = this._cookRanking || new Map();
+      const order = [...rank.keys()];
+      list.sort((a, b) => (rank.has(a.id) ? order.indexOf(a.id) : 1e6) - (rank.has(b.id) ? order.indexOf(b.id) : 1e6));
+      if (this._cookRanking && !rank.size && list.length) frag.append(el("p", "note", t.fitNone));
+    }
     if (!list.length) frag.append(el("p", "note", t.recipesEmpty));
     for (const recipe of list) frag.append(this._recipeNode(recipe, t));
     this._main.replaceChildren(frag);
+  }
+
+  /** 6.4 (#138): recipes of the book ranked by what is in stock. */
+  async loadCookRanking() {
+    if (this._cookRankingBusy || !this._hass || !this._hass.callWS) return;
+    this._cookRankingBusy = true;
+    try {
+      const res = await this._hass.callWS({ type: `${DOMAIN}/cook_ranking` });
+      this._cookRanking = new Map((res.recipes || []).map((r) => [r.recipe_id, r]));
+    } catch {
+      this._cookRanking = new Map();
+    } finally {
+      this._cookRankingBusy = false;
+    }
+    this._sig = "";
+    this._update();
+  }
+
+  /** 6.4 (#136): cooked from the recipe book – check what is taken from the stock, then take it. */
+  async openCookDialog(recipe) {
+    const hass = this._hass;
+    const t = texts(hass);
+    let data;
+    try {
+      data = await hass.callWS({ type: `${DOMAIN}/cook_check`, recipe_id: recipe.id });
+    } catch {
+      this.showNotice(t.cookFailed);
+      return;
+    }
+    const lang = this._lang();
+    const selects = [];
+    const list = el("div", "cooklist");
+    for (const ing of data.ingredients || []) {
+      const row = el("div", "cookrow");
+      row.append(el("span", "line", ing.line));
+      if (ing.staple) {
+        row.append(el("span", "sub", t.cookStaple));
+      } else if (ing.matches.length) {
+        const select = el("select");
+        select.dataset.f = "cook-pick";
+        const none = el("option", "", t.cookNot);
+        none.value = "";
+        select.append(none);
+        for (const m of ing.matches) {
+          const date = m.best_before ? new Date(`${m.best_before}T00:00:00`).toLocaleDateString(lang, { day: "numeric", month: "short" }) : null;
+          const o = el("option", "", [`${m.frozen ? "🧊 " : ""}${m.content}`, m.area, date].filter(Boolean).join(" · "));
+          o.value = m.device_id;
+          select.append(o);
+        }
+        select.value = ing.pick || "";
+        selects.push(select);
+        row.append(select);
+      } else {
+        row.append(el("span", "sub", t.cookNot));
+      }
+      list.append(row);
+    }
+    const status = el("p", "hint");
+    const take = el("button", "submit", t.cookTake);
+    take.type = "button";
+    take.dataset.role = "cook-take";
+    take.addEventListener("click", async () => {
+      const ids = [...new Set(selects.map((s) => s.value).filter(Boolean))];
+      take.disabled = true;
+      let res = { emptied: 0, taken: 0 };
+      try {
+        if (ids.length) res = await hass.callWS({ type: `${DOMAIN}/cook_done`, device_ids: ids, recipe_id: recipe.id });
+      } catch {
+        status.textContent = t.cookFailed;
+        take.disabled = false;
+        return;
+      }
+      if (ids.length) this.showNotice(t.cookDone(res));
+      this._cookRanking = null;
+      this.openLeftovers(recipe.title);
+    });
+    const cancel = el("button", "cancel", t.close || "✕");
+    cancel.type = "button";
+    cancel.addEventListener("click", () => this._closeDialog());
+    const buttons = el("div", "buttons");
+    buttons.append(cancel, take);
+    const parts = [el("h2", "", t.cookTitle(recipe.title)), el("p", "hint", selects.length ? t.cookIntro : t.cookNone), list, status, buttons];
+    this._form.replaceChildren(...parts);
+    this._submit = null;
+    this._overlay.hidden = false;
+  }
+
+  /** 6.4 (#137): after cooking – the leftovers straight into an empty container (fill dialog prefilled). */
+  openLeftovers(title) {
+    const t = texts(this._hass);
+    const empties = this._rows().filter((r) => r.kind === "container" && r.content === "");
+    const parts = [el("h2", "", t.leftTitle), el("p", "hint", empties.length ? t.leftIntro(title) : t.leftNone)];
+    const chips = el("div", "chips");
+    for (const row of empties.slice(0, 12)) {
+      const chip = el("button", "chip", row.name);
+      chip.type = "button";
+      chip.dataset.id = row.id;
+      chip.dataset.role = "leftover-container";
+      chip.addEventListener("click", () => {
+        this._closeDialog();
+        this._classic.openFillDialog(row.id, { content: title });
+      });
+      chips.append(chip);
+    }
+    if (empties.length) parts.push(chips);
+    const no = el("button", "cancel", t.leftNo);
+    no.type = "button";
+    no.dataset.role = "leftover-no";
+    no.addEventListener("click", () => this._closeDialog());
+    const buttons = el("div", "buttons");
+    buttons.append(no);
+    parts.push(buttons);
+    this._form.replaceChildren(...parts);
+    this._submit = null;
+    this._overlay.hidden = false;
   }
 
   /** Words of everything in stock (contents with at least 4 letters), for ✓ next to recipe ingredients. */
@@ -3112,6 +3250,7 @@ export class LarderDashboard extends HTMLElement {
         try {
           const res = await this._hass.callWS({ type: `${DOMAIN}/plan_cooked`, plan_id: plan.id });
           this.showNotice(t.planCookedDone(res || {}));
+          this.openLeftovers(plan.title); // 6.4 (#137)
         } catch {
           this.showNotice(t.planFailed);
         }

@@ -182,38 +182,15 @@ class MealPlan:
 
     async def async_cooked(self, plan_id: str) -> dict[str, int] | None:
         """Dish cooked: empty the used containers (eaten) or take one portion if there are several."""
-        from .history import async_get_history
 
         plan = self.get(plan_id)
         if plan is None:
             return None
-        registry = er.async_get(self.hass)
-        history = await async_get_history(self.hass)
-        emptied = taken = 0
-        for cc in plan.get("ccs", []):
-            if not _state(self.hass, "text", cc, "content"):
-                continue
-            try:
-                quantity = int(float(_state(self.hass, "number", cc, "portions") or 0))
-            except ValueError:
-                quantity = 0
-            unit = _state(self.hass, "select", cc, "unit") or "portions"
-            number_id = registry.async_get_entity_id("number", DOMAIN, f"{cc}_portions")
-            if quantity > 1 and unit in ("portions", "pieces", "slices") and number_id:
-                await self.hass.services.async_call(
-                    "number", "set_value", {"entity_id": number_id, "value": quantity - 1}, blocking=True
-                )
-                taken += 1
-                continue
-            button = registry.async_get_entity_id("button", DOMAIN, f"{cc}_empty_container")
-            if button:
-                history.set_pending(cc, "eaten")
-                try:
-                    await self.hass.services.async_call("button", "press", {"entity_id": button}, blocking=True)
-                    emptied += 1
-                except HomeAssistantError:
-                    _LOGGER.debug("Leeren von %s nicht möglich", cc, exc_info=True)
-                history.pop_pending(cc)
+        # 6.4: the same as "Cooked" on a recipe – packs count as consumption
+        from .cooking import async_use_up  # noqa: PLC0415 - avoids an import cycle
+
+        result = await async_use_up(self.hass, list(plan.get("ccs", [])))
+        emptied, taken = result["emptied"], result["taken"]
         plan["cooked"] = dt_util.now().isoformat(timespec="seconds")
         self._save()
         return {"emptied": emptied, "taken": taken}

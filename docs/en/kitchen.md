@@ -41,6 +41,12 @@ The **Recipes** page is your own recipe book (stored in Home Assistant, `.storag
 
 **Recipe from a photo or file** (📷, administrators): take a photo of a recipe from a cookbook or a card, pick up to four photos (for example two pages) or a PDF. The AI reads the recipe, translates it into your language if needed and opens it for you to **check**; nothing is saved until you tap *Save*. The selected AI task must support attachments (for example Anthropic, OpenAI, Google). Photos are shrunk before uploading, are kept in Home Assistant's media folder (`media/larder/recipe_photos`) only while they are read and are deleted afterwards. Only the photo or file is sent, to the AI service you chose.
 
+**Cooking with the stock** (since 6.4):
+
+- **🍳 Cooked** on a recipe of the book shows what Larder takes from the stock – per ingredient the container or pack with the earliest date (salt, pepper, water and oil count as always there). Change a pick or choose *not from the stock*, then **Take from the stock**: a pack less, a portion of a container with several, else the container is emptied as eaten. *Cooked* in the meal plan does the same.
+- Afterwards **🥡 Store the leftovers?** offers the empty containers; one tap opens the fill dialog with the dish as contents and the date estimated.
+- Sort **Fits the stock** puts the recipes first whose ingredients are there – without AI – with *✓ 3/4 there · 1 expiring soon · missing: cream*.
+
 **Recipe from a link** (🔗, administrators, since 6.0): paste the address of a recipe page. Most recipe sites embed the recipe in a machine-readable form (schema.org *Recipe*); Larder reads title, servings, time, ingredients and steps from it – no AI needed – and opens it to check, with the source link kept. Ingredients you have in stock get a ✓. Pages without that data are not guessed; use 📷 with a screenshot instead.
 
 ## Daily summary

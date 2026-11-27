@@ -4225,3 +4225,54 @@ test("6.3: data care – unknown to the table opens the kind dialog, history sug
   assert.equal(view, "estimates");
   delete el.setView;
 });
+
+// ---------- Block 37 (6.4): cooking with the stock ----------
+
+test("6.4: cooked from the recipe book – check the picks, take them, then leftovers into an empty container", async () => {
+  const hass = makeHass(DOSES, { recipes: [{ id: "r1", title: "Lachs-Pasta", ingredients: ["Lachs", "Nudeln", "Salz"], steps: ["Kochen"], source: "manual" }] });
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/cook_check`) return { title: "Lachs-Pasta", ingredients: [
+      { line: "Lachs", staple: false, matches: [{ device_id: "d1", content: "Lachs", area: "Küche", best_before: "2026-11-28" }], pick: "d1" },
+      { line: "Nudeln", staple: false, matches: [], pick: null },
+      { line: "Salz", staple: true, matches: [], pick: null },
+    ] };
+    if (msg.type === `${D}/cook_done`) {
+      hass.wsCalls.push(msg);
+      return { emptied: 1, taken: 0 };
+    }
+    if (msg.type === `${D}/cook_ranking`) return { recipes: [{ recipe_id: "r1", title: "Lachs-Pasta", have: 1, total: 2, soon: 1, missing: ["Nudeln"] }] };
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await go(el, "recipes");
+  $(el, "main .recipe h3").click();
+  await flush();
+  $(el, '.recipe [data-role="cook"]').click();
+  await flush();
+  let form = $(el, "form.dialog");
+  assert.equal(form.querySelector("h2").textContent, "Gekocht: Lachs-Pasta");
+  assert.equal(form.querySelectorAll('[data-f="cook-pick"]').length, 1);
+  assert.equal(form.querySelector('[data-f="cook-pick"]').value, "d1");
+  assert.match(form.textContent, /immer da/);
+  let filled = null;
+  el._classic.openFillDialog = (id, preset) => (filled = [id, preset]);
+  form.querySelector('[data-role="cook-take"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/cook_done`, device_ids: ["d1"], recipe_id: "r1" });
+  form = $(el, "form.dialog");
+  assert.equal(form.querySelector("h2").textContent, "🥡 Reste einlagern?");
+  const chip = form.querySelector('[data-role="leftover-container"]');
+  if (chip) {
+    chip.click();
+    assert.deepEqual(filled[1], { content: "Lachs-Pasta" });
+  }
+  // what fits the stock: sorted and with a line
+  el._opts.recipeSort = "fit";
+  el._sig = "";
+  el._update();
+  await flush();
+  await flush();
+  assert.match($(el, '.recipe [data-role="recipe-fit"]').textContent, /✓ 1\/2 da · 1 läuft bald ab · fehlt: Nudeln/);
+});

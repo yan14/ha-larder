@@ -3,6 +3,14 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 6.4.0
+
+Block 37: cooking with the stock.
+
+- **🍳 Cooked on a recipe** (#136): Larder shows per ingredient the container or pack it would take (earliest date first; salt, pepper, water and oil count as always there); after checking, a pack less, a portion of a container with several, else the container is emptied as eaten. *Cooked* in the meal plan uses the same and now counts packs as consumption. WebSocket `larder/cook_check`, `larder/cook_done`.
+- **Leftovers into a container** (#137): after cooking (recipe or meal plan) **🥡 Store the leftovers?** offers the empty containers; the fill dialog opens with the dish as contents and the date estimated.
+- **What can I cook?** (#138): sort **Fits the stock** on the recipes page ranks the recipe book by the share of ingredients in stock and what expires soon – without AI – with *✓ 3/4 there · 1 expiring soon · missing: cream*. WebSocket `larder/cook_ranking`.
+
 ## 6.3.0
 
 Block 48: better recognition.

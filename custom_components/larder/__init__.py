@@ -15,6 +15,7 @@ from . import shelf_life
 from .calendar_sync import async_get_calendar_sync, async_setup_calendar_service
 from .const import CONF_AREA, CONF_CC, CONF_INITIAL, CONF_SOURCE, DOMAIN, MAIN_UNIQUE_ID, PLATFORMS, SOURCE_MAIN
 from .content_photo import async_setup_content_photo
+from .cooking import async_setup_cooking_websocket
 from .datacare import async_setup_datacare_websocket
 from .date_photo import async_setup_date_photo
 from .devices import async_invalidate_entries, device_of
@@ -97,6 +98,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_put_away_websocket(hass)
     async_setup_place_suggest_websocket(hass)
     async_setup_table_rows_websocket(hass)
+    async_setup_cooking_websocket(hass)
     async_setup_recipe_link_websocket(hass)
     async_setup_voucher_websocket(hass)
     async_setup_notify_actions(hass)
