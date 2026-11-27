@@ -72,7 +72,7 @@ REPLACE_AHEAD = 7  # "replace soon": due within this many days
 
 RECENT_MAX = 12
 EVENT_AUTO_REORDER = f"{DOMAIN}_auto_reorder"
-RECENT_PRODUCT_KEYS = ("brand", "package", "ean", "price", "pack_size", "piece", "kcal_100g", "kcal_portion", "nutri_score", "allergens")
+RECENT_PRODUCT_KEYS = ("brand", "package", "ean", "price", "pack_size", "piece", "kcal_100g", "kcal_portion", "nutri_score", "allergens", "table")
 
 
 STORAGE_PLACES = ("fridge", "freezer", "pantry")
@@ -130,6 +130,7 @@ class Stock:
         self.put_away_log: list[dict[str, Any]] = []
         # 6.1 (#168): product → days between putting away and the best-before date, last BUY_DAYS purchases
         self.buy_days: dict[str, list[int]] = {}
+        self.table_rows: dict[str, dict[str, Any]] = {}  # 6.3 (#174): product → {"name", "entry"} chosen by you
         self._unsub = None
         self._unsub_daily = None
 
@@ -162,6 +163,7 @@ class Stock:
             if isinstance(v, dict)
         }
         self.put_away_log = [r for r in data.get("put_away_log") or [] if isinstance(r, dict) and r.get("device_id")]
+        self.table_rows = {str(k): v for k, v in (data.get("table_rows") or {}).items() if isinstance(v, dict) and v.get("entry")}
         self.buy_days = {
             str(k): [int(d) for d in v if isinstance(d, int | float)]
             for k, v in (data.get("buy_days") or {}).items()
@@ -194,7 +196,30 @@ class Stock:
             "store_prices": self.store_prices,
             "put_away_log": self.put_away_log,
             "buy_days": self.buy_days,
+            "table_rows": self.table_rows,
         }
+
+    # ----- 6.3: the row of the shelf-life table per product (#173, #174) -----
+
+    def set_table_row(self, content: str, entry_id: str | None) -> None:
+        """The row chosen for exactly this product (None = recognised again)."""
+        key = product_key(content)
+        if not key:
+            return
+        if entry_id:
+            self.table_rows[key] = {"name": " ".join(content.split()), "entry": entry_id}
+        else:
+            self.table_rows.pop(key, None)
+        self._save()
+        async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
+
+    def table_row(self, content: str | None, product: dict[str, Any] | None = None) -> tuple[str | None, str | None]:
+        """(row, where from): chosen by you ("own") before Open Food Facts ("off"); (None, None) = by the name."""
+        if (own := self.table_rows.get(product_key(content))) is not None:
+            return own["entry"], "own"
+        if product and product.get("table"):
+            return str(product["table"]), "off"
+        return None, None
 
     # ----- 6.1: putting away, then finishing price, date and place (#167, #168) -----
 
@@ -672,6 +697,7 @@ def pack_entries(hass: HomeAssistant, exclude: set[str] | None = None) -> list[d
                 "price": attrs.get("price"),
                 "price_source": attrs.get("price_source"),
                 "store": attrs.get("store"),
+                "table": attrs.get("table"),
                 "kind": kind_of(entry),
                 "pack_size": max(1, int(attrs.get("pack_size") or 1)),
                 "piece": attrs.get("piece"),

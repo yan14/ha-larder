@@ -1692,6 +1692,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       item.append(line);
     }
     if (inProduct && this._priceEditor) item.append(this._priceEditor(p, onChanged)); // 6.1 (#170): price editable here
+    if (inProduct && this._tableRowButton && scopeOfKind(p.kind) === "food") item.append(this._tableRowButton(p.name, () => onChanged({}))); // 6.3 (#174)
     if (inProduct && scopeOfKind(p.kind) === "food") item.append(...this._ownValues(p, onChanged));
     if (!inProduct) item.append(this._historyLink(p.name, "stock-history"));
     const places = el("div", "places");

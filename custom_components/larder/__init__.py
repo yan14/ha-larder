@@ -50,6 +50,7 @@ from .sizes import async_get_sizes, async_setup_sizes_websocket
 from .stats import async_setup_statistics
 from .stock import async_get_stock, async_setup_stock_websocket
 from .supply import async_setup_supply_websocket
+from .table_rows import async_setup_table_rows_websocket
 from .temperature import async_get_temperature_watch
 from .voucher_photo import async_setup_voucher_photo
 from .vouchers import async_get_vouchers, async_setup_voucher_websocket
@@ -95,6 +96,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_grocy_websocket(hass)
     async_setup_put_away_websocket(hass)
     async_setup_place_suggest_websocket(hass)
+    async_setup_table_rows_websocket(hass)
     async_setup_recipe_link_websocket(hass)
     async_setup_voucher_websocket(hass)
     async_setup_notify_actions(hass)

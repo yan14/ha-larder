@@ -299,15 +299,22 @@ class LarderBestBefore(DateEntity, LarderResettable):
             own = await self._own_storage(content_state, filled, apply)
             if own is not None:
                 return own
+            content = (
+                content_state.state
+                if content_state is not None and content_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE)
+                else ""
+            )
+            from .stock import async_get_stock  # noqa: PLC0415
+
+            # 6.3 (#173/#174): the row chosen for the product, by you or from Open Food Facts
+            row, _ = (await async_get_stock(self.hass)).table_row(content, dict(content_state.attributes) if content_state else None)
             estimate = await estimator.async_estimate(
-                content=content_state.state
-                if content_state is not None
-                and content_state.state not in (STATE_UNKNOWN, STATE_UNAVAILABLE)
-                else "",
+                content=content,
                 context=storage_context(self.hass, self._cc),
                 vacuum=vacuum_state is None or vacuum_state.state != "off",
                 filled=filled,
                 language=language,
+                entry_id=row,
             )
             best = estimate_best_before(filled, estimate.days)
             if apply:

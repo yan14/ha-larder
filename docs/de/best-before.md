@@ -35,6 +35,10 @@ So wird eine Dose zugeordnet:
 
 Die Werte sind bewusst vorsichtig gewählt. Es sind Faustwerte für zu Hause, **keine Garantie für Lebensmittelsicherheit**. Bei gekauften Produkten ist das aufgedruckte MHD verlässlicher. Schreibe „gekocht“ oder „geöffnet“ in den Inhalt, wenn es darauf ankommt. Ein Wert passt nicht oder ein Lebensmittel fehlt? Die Einträge stehen in `custom_components/larder/shelf_life.py`; Issues und Pull Requests sind willkommen.
 
+### Welche Zeile zählt
+
+Seit 6.3 in dieser Reihenfolge: **deine Wahl** für genau dieses Produkt (Datenpflege *Unbekannt in der Haltbarkeitstabelle* oder **🧭 Art für die Haltbarkeit** in der Produktansicht) → die **Kategorien und Labels von Open Food Facts** eines gescannten Produkts (*Fleischersatz*, *Pflanzendrinks*, *Konfitüren* …; ein *vegan*-Label macht eine „Salami“ pflanzlich) → der **Name** (Stichwörter). Ähnliche Produkte teilen sich nie eine Wahl.
+
 ## KI (optional)
 
 Der KI-Modus nutzt die Funktion **AI Task** von Home Assistant und arbeitet deshalb mit dem KI-Dienst, den du dort eingerichtet hast (zum Beispiel Anthropic, OpenAI, Google oder ein lokales Ollama).

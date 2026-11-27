@@ -24,7 +24,7 @@ MIN_TAKES = 2  # used at least this often (in the remembered takes) → a minimu
 
 def data_gaps(hass: HomeAssistant, stock) -> dict[str, list[dict[str, Any]]]:
     """Gaps per kind: {"no_price": [...], "no_date": [...], "opened_no_date": [...], "no_place": [...], "no_min": [...]}."""
-    gaps: dict[str, list[dict[str, Any]]] = {k: [] for k in ("no_price", "no_date", "opened_no_date", "no_place", "no_min")}
+    gaps: dict[str, list[dict[str, Any]]] = {k: [] for k in ("no_price", "no_date", "opened_no_date", "no_place", "no_min", "no_table")}
     seen_price: set[str] = set()
     takes: dict[str, int] = {}
     for take in stock.takes:
@@ -52,6 +52,10 @@ def data_gaps(hass: HomeAssistant, stock) -> dict[str, list[dict[str, Any]]]:
         ):
             seen_min.add(key)
             gaps["no_min"].append(row)
+    # 6.3 (#174): food the shelf-life table does not recognise – one tap picks the row
+    from .table_rows import unknown_products  # noqa: PLC0415 - avoids an import cycle
+
+    gaps["no_table"] = unknown_products(hass, stock)
     for rows in gaps.values():
         rows.sort(key=lambda r: r["content"].casefold())
     return gaps
@@ -61,10 +65,13 @@ def data_gaps(hass: HomeAssistant, stock) -> dict[str, list[dict[str, Any]]]:
 @websocket_api.async_response
 async def ws_data_gaps(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
     gaps = data_gaps(hass, await async_get_stock(hass))
-    connection.send_result(
-        msg["id"],
-        {"counts": {k: len(v) for k, v in gaps.items()}, "gaps": {k: v[:MAX_LISTED] for k, v in gaps.items()}},
-    )
+    counts = {k: len(v) for k, v in gaps.items()}
+    if connection.user is not None and connection.user.is_admin:
+        # 6.3 (#175): your own shelf life from the history (estimates suggestions) – found here, not only in Estimates
+        from .learning import async_get_learning  # noqa: PLC0415
+
+        counts["history"] = len(await (await async_get_learning(hass)).async_suggestions())
+    connection.send_result(msg["id"], {"counts": counts, "gaps": {k: v[:MAX_LISTED] for k, v in gaps.items()}})
 
 
 def async_setup_datacare_websocket(hass: HomeAssistant) -> None:

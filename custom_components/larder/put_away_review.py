@@ -45,11 +45,14 @@ def suggest_best_before(
         return {"best_before": (start + timedelta(days=days)).isoformat(), "days": days, "source": "history"}
     if kind != KIND_PACK:
         return None
-    entry = shelf_life.find_entry(content)
-    if entry is None or not (entry.perishable or entry.cat in TABLE_CATEGORIES):
+    pack = next((p for p in pack_entries(hass) if p["device_id"] == device_id), None)
+    if pack is None:
         return None
-    cc = next((p["cc"] for p in pack_entries(hass) if p["device_id"] == device_id), None)
-    if cc is None:
+    cc = pack["cc"]
+    # 6.3: the row chosen for the product (by you or from Open Food Facts) before the name
+    row, _ = stock.table_row(content, {"table": pack.get("table")})
+    entry = shelf_life.entry_by_id(row) or shelf_life.find_entry(content)
+    if entry is None or not (entry.perishable or entry.cat in TABLE_CATEGORIES):
         return None
     context = storage_context(hass, cc)
     try:
@@ -61,6 +64,7 @@ def suggest_best_before(
             vacuum=False,
             language=hass.config.language or "en",
             storage_hint=context.storage_hint,
+            entry_id=entry.id,
         )
     except (shelf_life.TableNoMatch, shelf_life.TableUnknownStorage, shelf_life.TableUnsuitable):
         return None

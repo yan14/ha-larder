@@ -59,6 +59,7 @@ PRODUCT_FIELDS: dict[str, type] = {
     "pack_size": float,  # household items: pieces per pack (e.g. 8 rolls)
     "piece": str,  # household items: name of one piece (e.g. "Rollen")
     "pao": float,  # cosmetics and medicines: keeps this many months after opening (the jar symbol "12M")
+    "table": str,  # 6.3 (#173): row of the shelf-life table from Open Food Facts (categories, labels)
 }
 _MAX_TEXT = 500
 
@@ -116,15 +117,17 @@ class LarderContent(TextEntity, LarderResettable):
     def extra_state_attributes(self) -> dict[str, Any]:
         """Category (for categories and icons in the dashboard) and, if present, product data."""
         value = self._attr_native_value or ""
+        stock = self.hass.data.get(DOMAIN, {}).get(DATA_STOCK)
+        # 6.3 (#173/#174): the row chosen for the product (by you or from Open Food Facts) decides the category
+        row = stock.table_row(value, self._product)[0] if stock is not None and value else self._product.get("table")
         category = (
-            ("voucher" if self._kind == KIND_VOUCHER else household_category(value) if self._kind == KIND_HOUSEHOLD else medicine_category(value) if self._kind == KIND_MEDICINE else category_for(value))
+            ("voucher" if self._kind == KIND_VOUCHER else household_category(value) if self._kind == KIND_HOUSEHOLD else medicine_category(value) if self._kind == KIND_MEDICINE else category_for(value, row))
             if value
             else None
         )
         attrs: dict[str, Any] = {"category": category, "kind": self._kind, **self._product}
         estimator = self.hass.data.get(DOMAIN, {}).get(DATA_ESTIMATOR)
         watched = getattr(estimator, "watch_allergens", None)
-        stock = self.hass.data.get(DOMAIN, {}).get(DATA_STOCK)
         if value and stock is not None and (own := stock.lists.get(product_key(value))):
             attrs["shopping_list"] = own  # own shopping list of the product (else the default list)
         if self._kind == KIND_VOUCHER:

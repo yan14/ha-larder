@@ -141,7 +141,7 @@ def cache_key(content: str, area_name: str | None, vacuum: bool) -> str:
 def parse_key(key: str) -> tuple[str, str, bool]:
     """Read (content, area, vacuum) back from a cache key."""
     content, area, vacuum = key.rsplit("|", 2)
-    return content, area, vacuum.split("#", 1)[0] == "vacuum"  # 6.2: "#fr" = for another language
+    return content, area, vacuum.split("#", 1)[0].split("@", 1)[0] == "vacuum"  # 6.2: "#fr" another language, 6.3: "@row"
 
 
 def _clamp(value: Any, default: int, low: int, high: int) -> int:
@@ -525,9 +525,11 @@ class Estimator:
         await self._store.async_save(self._data())
 
     async def async_estimate(
-        self, *, content: str, context: StorageContext, vacuum: bool, filled: date, language: str | None = None
+        self, *, content: str, context: StorageContext, vacuum: bool, filled: date, language: str | None = None,
+        entry_id: str | None = None,
     ) -> Estimate:
-        """`language`: of the person asking (6.2, #172: the dashboard sends it); else the system language."""
+        """`language`: of the person asking (6.2, #172: the dashboard sends it); else the system language.
+        `entry_id` (6.3): the table row chosen for the product (by you or from Open Food Facts)."""
         if not self.enabled:
             raise EstimateError("estimates_disabled")
         if not content.strip():
@@ -539,6 +541,8 @@ class Estimator:
         if language and (lang := str(language).lower()[:2]) != str(self.hass.config.language or "").lower()[:2]:
             # 6.2 (#172): the same word can mean something else in another language ("Pommes")
             key = f"{key}#{lang}"
+        if entry_id:
+            key = f"{key}@{entry_id}"  # 6.3: another row, another value
         hit = self._cache.get(key)
         if hit is not None and hit.get("source") == "table" and hit.get("table_version") != shelf_life.TABLE_VERSION:
             # table or detection was improved: look up again (own corrections stay)
@@ -546,7 +550,7 @@ class Estimator:
         if hit is not None and self._is_stale(hit):
             # old AI estimate: estimate again; if that fails the old value still applies
             try:
-                return await self._async_estimate_fresh(key, content, context, vacuum, filled, language)
+                return await self._async_estimate_fresh(key, content, context, vacuum, filled, language, entry_id)
             except EstimateError as err:
                 if err.translation_key not in _KEEP_OLD_ON:
                     raise
@@ -566,7 +570,7 @@ class Estimator:
                 str(hit.get("basis", "")),
                 hit.get("origin"),
             )
-        return await self._async_estimate_fresh(key, content, context, vacuum, filled, language)
+        return await self._async_estimate_fresh(key, content, context, vacuum, filled, language, entry_id)
 
     async def async_estimate_opened(self, *, content: str, context: StorageContext) -> Estimate:
         """Shelf life after opening a bought product, counted from today (5.5).
@@ -620,7 +624,8 @@ class Estimator:
         return (dt_util.now().date() - created).days >= AI_REFRESH_DAYS
 
     async def _async_estimate_fresh(
-        self, key: str, content: str, context: StorageContext, vacuum: bool, filled: date, language: str | None = None
+        self, key: str, content: str, context: StorageContext, vacuum: bool, filled: date, language: str | None = None,
+        entry_id: str | None = None,
     ) -> Estimate:
         """Estimate without a remembered value: table and/or AI, depending on the mode."""
         language = language or self.hass.config.language
@@ -634,6 +639,7 @@ class Estimator:
                     vacuum=vacuum,
                     language=language,
                     storage_hint=context.storage_hint,
+                    entry_id=entry_id,
                 )
             except shelf_life.TableUnsuitable as err:
                 # Never pass on to the AI: the table says "do not store here" on purpose.

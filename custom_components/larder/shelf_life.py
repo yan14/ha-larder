@@ -696,12 +696,56 @@ def split_items(content: str) -> list[str]:
     return parts
 
 
-def category_for(content: str) -> str | None:
-    """Category of the container; "mixed" for contents of different kinds."""
+def entry_by_id(entry_id: str | None) -> Entry | None:
+    """6.3 (#173/#174): a row chosen for a product (by you or from Open Food Facts)."""
+    return next((e for e in ENTRIES if e.id == entry_id), None) if entry_id else None
+
+
+def category_for(content: str, entry_id: str | None = None) -> str | None:
+    """Category of the container; "mixed" for contents of different kinds. `entry_id`: the row chosen for it."""
+    if (chosen := entry_by_id(entry_id)) is not None:
+        return chosen.cat
     cats = {e.cat for e in (find_entry(p) for p in split_items(content)) if e is not None}
     if not cats:
         return None
     return cats.pop() if len(cats) == 1 else MIXED
+
+
+# 6.3 (#173): Open Food Facts categories (English taxonomy, most specific last) → row of the table
+OFF_CATEGORIES: dict[str, str] = {
+    "meat-analogues": "tofu", "meat-alternatives": "tofu", "plant-based-meat-alternatives": "tofu",
+    "vegetarian-sausages": "tofu", "vegan-sausages": "tofu", "tofu": "tofu", "tempeh": "tofu", "seitan": "tofu",
+    "falafels": "falafel_hummus", "hummus": "falafel_hummus",
+    "plant-based-milk-alternatives": "milk", "plant-milks": "milk", "milks": "milk", "oat-based-drinks": "milk",
+    "soy-milks": "milk", "almond-milks": "milk",
+    "plant-based-yogurt-alternatives": "yogurt", "yogurts": "yogurt", "fresh-cheeses": "soft_cheese",
+    "plant-based-cream-alternatives": "cream", "creams": "cream", "butters": "butter", "margarines": "butter",
+    "cheeses": "soft_cheese", "hard-cheeses": "hard_cheese", "eggs": "egg",
+    "ground-meats": "ground_meat", "minced-meats": "ground_meat", "poultries": "poultry", "chickens": "poultry",
+    "sausages": "deli", "hams": "deli", "cold-cuts": "deli", "bacons": "bacon", "meats": "meat",
+    "fishes": "fish", "smoked-fishes": "smoked_fish", "smoked-salmons": "smoked_fish", "canned-fishes": "canned_fish",
+    "ketchup": "ketchup", "mayonnaises": "mayonnaise", "mustards": "mustard", "soy-sauces": "soy_sauce",
+    "barbecue-sauces": "bbq_sauce", "hot-sauces": "hot_sauce", "salad-dressings": "dressing", "pestos": "pesto_dip",
+    "jams": "jam", "fruit-preserves": "jam", "marmalades": "jam", "cranberry-sauces": "jam", "honeys": "stable",
+    "breads": "bread", "cakes": "cake", "biscuits": "cookies", "crisps": "chips", "chocolates": "chocolate",
+    "pastas": "pasta", "rices": "rice_raw", "flours": "flour", "breakfast-cereals": "cereal", "legumes": "legumes",
+    "nuts": "nuts", "nut-butters": "nut_butter", "peanut-butters": "nut_butter", "dried-fruits": "dried_fruit",
+    "teas": "tea", "coffees": "coffee", "fruit-juices": "juice", "juices": "juice", "vegetable-oils": "oil",
+    "olive-oils": "oil", "soups": "soup", "prepared-meals": "dish", "pizzas": "dish",
+}
+_VEGAN_LABELS = ("en:vegan", "en:vegetarian")
+
+
+def entry_from_off(categories: list[str] | None, labels: list[str] | None = None) -> str | None:
+    """Row of the table from the categories and labels of Open Food Facts (None if nothing fits)."""
+    entry_id = None
+    for tag in reversed(list(categories or [])):
+        if str(tag).startswith("en:") and (found := OFF_CATEGORIES.get(str(tag)[3:])):
+            entry_id = found
+            break
+    if entry_id in _MEAT_LIKE and any(label in _VEGAN_LABELS for label in labels or []):
+        entry_id = "tofu"  # a vegan or vegetarian "salami" keeps like tofu & co.
+    return entry_id
 
 
 DEFAULT_LANGUAGE: str | None = None  # 6.2: the system language, set when Larder starts
@@ -991,8 +1035,11 @@ def lookup(
     language: str,
     storage_hint: str | None = None,
     opened: bool = False,
+    entry_id: str | None = None,
 ) -> TableResult:
     """Calculate the shelf life from the table or raise a matching exception.
+
+    `entry_id` (6.3): the row chosen for this product (by you or from Open Food Facts) instead of the name.
 
     `opened`: shelf life after opening a bought product (OPENED, counted from today).
 
@@ -1001,9 +1048,9 @@ def lookup(
     unknown one could spoil first).
     """
     items = split_items(content)
-    if len(items) <= 1:
+    if len(items) <= 1 or entry_by_id(entry_id) is not None:
         return _lookup_one(content, area_name=area_name, temperature_c=temperature_c, label_texts=label_texts,
-                           vacuum=vacuum, language=language, storage_hint=storage_hint, opened=opened)
+                           vacuum=vacuum, language=language, storage_hint=storage_hint, opened=opened, entry_id=entry_id)
     results = [
         (item, _lookup_one(item, area_name=area_name, temperature_c=temperature_c, label_texts=label_texts,
                            vacuum=vacuum, language=language, storage_hint=storage_hint, opened=opened))
@@ -1031,9 +1078,10 @@ def _lookup_one(
     language: str,
     storage_hint: str | None = None,
     opened: bool = False,
+    entry_id: str | None = None,
 ) -> TableResult:
     lang = _lang(language)
-    entry = find_entry(content, language)
+    entry = entry_by_id(entry_id) or find_entry(content, language)
     if entry is None:
         raise TableNoMatch
     storage = classify_storage(area_name, temperature_c, label_texts, storage_hint)

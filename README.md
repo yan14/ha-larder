@@ -33,6 +33,8 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 ## What's new
 
+> **6.3:** **better recognition** – scanned products use the **Open Food Facts categories and labels** (vegan, plant milk, jam …), unknown products get their kind with **one tap in data care**, and your own shelf life from the history shows up there too.
+>
 > **6.2:** **freezer first** – frozen food near the end of its best quality comes into the week suggestion and recipe ideas, a **compartment suggestion** (where the same is, where it was last time) and recognition in **your own language**.
 >
 > **6.1:** **finishing the shopping** – after putting away one list for price, best-before date and place, the date **suggested from your last purchase**, online invoices as **PDF** (REWE online) and the price editable in the product view. **6.1.1:** vegan salami, veggie mince & co. are recognised as plant-based.

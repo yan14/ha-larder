@@ -112,7 +112,7 @@ For automations there are also [overview sensors](reference.md#overview-sensors)
 
 ### Data care
 
-Once a month, while something is missing, the start page shows **🧹 Data care** (✕ hides it until next month; **More → 🧹 Data care** shows it any time): opened packs without a date, packs without a best-before date, products without a price, entries without an area or compartment, and products used often but without a minimum stock. Tapping an entry opens its card, where you fill it in. With complete data, statistics, *lasts about …*, shopping suggestions and the stock value get more accurate. Opened packs show **🫙 opened 12 Nov** on their tile, so it is clear why the date is shorter than printed.
+Once a month, while something is missing, the start page shows **🧹 Data care** (✕ hides it until next month; **More → 🧹 Data care** shows it any time): opened packs without a date, packs without a best-before date, products without a price, entries without an area or compartment, and products used often but without a minimum stock. Since 6.3 also food the [shelf-life table](best-before.md#which-row-counts) does not recognise (tap it and choose the kind, e.g. *Juice / smoothie*) and the **suggestions from your history** (*thrown away before the date* / *eaten long after it*, accept them in Estimates). Tapping an entry opens its card, where you fill it in. With complete data, statistics, *lasts about …*, shopping suggestions and the stock value get more accurate. Opened packs show **🫙 opened 12 Nov** on their tile, so it is clear why the date is shorter than printed.
 
 <p align="center"><img src="../images/dashboard-datacare-en.png" width="250" alt="Data care"></p>
 

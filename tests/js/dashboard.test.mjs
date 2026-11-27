@@ -4185,3 +4185,43 @@ test("6.2: compartment suggestion in the add dialog – filled while untouched, 
   await flush();
   assert.equal(comp.value, "Oben");
 });
+
+// ---------- Block 48 (6.3) ----------
+
+test("6.3: data care – unknown to the table opens the kind dialog, history suggestions lead to Estimates", async () => {
+  const hass = makeHass(DOSES);
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/data_gaps`) return {
+      counts: { opened_no_date: 0, no_date: 0, no_price: 0, no_place: 0, no_min: 0, no_table: 1, history: 2 },
+      gaps: { opened_no_date: [], no_date: [], no_price: [], no_place: [], no_min: [], no_table: [{ device_id: "p9", content: "Zaubertrank", kind: "pack", place: "" }] },
+    };
+    if (msg.type === `${D}/table_rows`) return { rows: [{ id: "dish", name: "Gericht / Reste" }, { id: "juice", name: "Saft / Smoothie" }], current: null, source: null };
+    if (msg.type === `${D}/table_row_set`) {
+      hass.wsCalls.push(msg);
+      return { entry: msg.entry };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await el.openDataCare();
+  let form = $(el, "form.dialog");
+  assert.deepEqual([...form.querySelectorAll("[data-group]")].map((g) => g.dataset.group), ["no_table", "history"]);
+  assert.match(form.querySelector('[data-group="history"]').textContent, /Vorschläge aus eurem Verlauf \(eure Haltbarkeit\) \(2\)/);
+  form.querySelector('[data-group="no_table"] [data-id="p9"]').click();
+  await flush();
+  form = $(el, "form.dialog");
+  assert.equal(form.querySelector("h2").textContent, "Art für die Haltbarkeit");
+  form.querySelector('[data-f="table-row"]').value = "juice";
+  form.querySelector('[data-role="table-row-save"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/table_row_set`, content: "Zaubertrank", entry: "juice" });
+  // history: to Estimates
+  await el.openDataCare();
+  let view = null;
+  el.setView = (v) => (view = v);
+  $(el, "form.dialog").querySelector('[data-role="datacare-history"]').click();
+  assert.equal(view, "estimates");
+  delete el.setView;
+});

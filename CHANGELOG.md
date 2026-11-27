@@ -3,6 +3,15 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 6.3.0
+
+Block 48: better recognition.
+
+- **Open Food Facts categories and labels** (#173): a scanned product keeps the shelf-life row its categories point to (*meat analogues* → plant-based, *plant milks* → milk, *jams*, *canned fish* …); a *vegan* or *vegetarian* label turns a "salami" or "sausage" into plant-based. Stored with the product (`table`), it decides the estimate, the icon and the store section; the name is only the fallback.
+- **Choose the kind yourself** (#174): data care lists food the table does not recognise – tap it and pick the kind (e.g. *Juice / smoothie*); the product view has **🧭 Kind for the shelf life**. Remembered for exactly this product, before Open Food Facts and the name. WebSocket `larder/table_rows`, `larder/table_row_set`.
+- **Your shelf life from the history in data care** (#175): the suggestions from Estimates (*thrown away before the date* / *eaten long after it*) are counted in data care with a link to accept them.
+- Remembered estimates are kept per chosen row.
+
 ## 6.2.0
 
 Block 44: freezer first, compartment suggestion, the user's language.

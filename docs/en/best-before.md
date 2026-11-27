@@ -35,6 +35,10 @@ How a container is matched:
 
 The values are deliberately cautious. They are rules of thumb for the home, **not a food-safety guarantee**. For bought products the printed best-before date is more reliable. Write "cooked" or "opened" into the contents if it matters. Spotted a value that is off or a food that is missing? Entries are listed in `custom_components/larder/shelf_life.py`; issues and pull requests are welcome.
 
+### Which row counts
+
+Since 6.3, in this order: **your choice** for exactly this product (data care *Unknown to the shelf-life table* or **🧭 Kind for the shelf life** in the product view) → the **categories and labels of Open Food Facts** of a scanned product (*meat analogues*, *plant milks*, *jams* …; a *vegan* label makes a "salami" plant-based) → the **name** (keywords). Similar products never share a choice.
+
 ## AI (optional)
 
 The AI mode uses the **AI Task** feature of Home Assistant, so it works with whichever AI service you have set up there (for example Anthropic, OpenAI, Google or a local Ollama).

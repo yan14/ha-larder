@@ -22,7 +22,7 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .const import DOMAIN, larder_id
 from .devices import entry_of
 from .household import household_category
-from .shelf_life import category_for
+from .shelf_life import category_for, entry_from_off
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -31,7 +31,7 @@ DATA_CACHE = "product_cache"
 API = "https://world.openfoodfacts.org/api/v2/product/{code}.json"
 FIELDS = (
     "product_name,product_name_de,product_name_en,generic_name,generic_name_de,brands,quantity,"
-    "nutriments,nutriscore_grade,allergens_tags,serving_size"
+    "nutriments,nutriscore_grade,allergens_tags,serving_size,categories_tags,labels_tags"
 )
 # sibling databases of Open Food Facts (same API): cosmetics, other consumer products, pet food
 SIBLINGS = (
@@ -190,13 +190,16 @@ async def async_lookup(hass: HomeAssistant, code: str) -> dict[str, Any]:
             details["package"] = package
         if food:
             details.update(nutrition(product or {}, language))
+            # 6.3 (#173): the categories and labels of Open Food Facts choose the row of the shelf-life table
+            if table := entry_from_off((product or {}).get("categories_tags"), (product or {}).get("labels_tags")):
+                details["table"] = table
         result = {
             "found": True,
             "code": code,
             "name": name,
             "brand": brand,
             "quantity": package,
-            "category": category_for(name) if food else household_category(name),
+            "category": category_for(name, details.get("table")) if food else household_category(name),
             "product_type": product_type,  # food, beauty, product or petfood
             "product": details,
         }

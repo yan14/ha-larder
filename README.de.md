@@ -33,6 +33,8 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 
 ## Was ist neu?
 
+> **6.3:** **bessere Erkennung** – gescannte Produkte nutzen die **Kategorien und Labels von Open Food Facts** (vegan, Pflanzendrink, Konfitüre …), unbekannte Produkte bekommen ihre Art mit **einem Tipp in der Datenpflege**, und eure Haltbarkeit aus dem Verlauf taucht dort ebenfalls auf.
+>
 > **6.2:** **Tiefkühl zuerst** – Eingefrorenes kurz vor Ende der besten Qualität kommt in Wochenvorschlag und Rezeptideen, ein **Fach-Vorschlag** (wo das Gleiche liegt, wo es zuletzt lag) und die Erkennung in **deiner Sprache**.
 >
 > **6.1:** **Einkauf nacharbeiten** – nach dem Einräumen eine Liste für Preis, MHD und Ort, das MHD **vorgeschlagen vom letzten Kauf**, Online-Rechnungen als **PDF** (REWE online) und der Preis in der Produktansicht änderbar. **6.1.1:** vegane Salami, Veggie-Hack & Co. werden als pflanzlich erkannt.

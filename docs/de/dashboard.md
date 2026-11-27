@@ -112,7 +112,7 @@ Für Automationen gibt es außerdem [Übersichts-Sensoren](reference.md#übersic
 
 ### Datenpflege
 
-Einmal im Monat, solange etwas fehlt, zeigt die Startseite **🧹 Datenpflege** (✕ blendet es bis zum nächsten Monat aus; **Mehr → 🧹 Datenpflege** zeigt es jederzeit): angebrochene Packungen ohne Datum, Packungen ohne MHD, Produkte ohne Preis, Einträge ohne Bereich oder Fach und oft verbrauchte Produkte ohne Mindestbestand. Antippen öffnet die Karte, dort trägst du es nach. Mit vollständigen Daten werden Statistik, *reicht noch …*, Einkaufsvorschläge und der Bestandswert genauer. Angebrochene Packungen zeigen auf der Kachel **🫙 offen seit 12.11.**, damit klar ist, warum das Datum kürzer ist als aufgedruckt.
+Einmal im Monat, solange etwas fehlt, zeigt die Startseite **🧹 Datenpflege** (✕ blendet es bis zum nächsten Monat aus; **Mehr → 🧹 Datenpflege** zeigt es jederzeit): angebrochene Packungen ohne Datum, Packungen ohne MHD, Produkte ohne Preis, Einträge ohne Bereich oder Fach und oft verbrauchte Produkte ohne Mindestbestand. Seit 6.3 auch Lebensmittel, die die [Haltbarkeitstabelle](best-before.md#welche-zeile-zählt) nicht erkennt (antippen und die Art wählen, z. B. *Saft / Smoothie*), und die **Vorschläge aus eurem Verlauf** (*vor dem Datum weggeworfen* / *lange danach noch gegessen*, in den Schätzungen übernehmen). Antippen öffnet die Karte, dort trägst du es nach. Mit vollständigen Daten werden Statistik, *reicht noch …*, Einkaufsvorschläge und der Bestandswert genauer. Angebrochene Packungen zeigen auf der Kachel **🫙 offen seit 12.11.**, damit klar ist, warum das Datum kürzer ist als aufgedruckt.
 
 <p align="center"><img src="../images/dashboard-datacare-de.png" width="250" alt="Datenpflege"></p>
 
