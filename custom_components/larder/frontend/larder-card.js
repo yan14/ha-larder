@@ -656,6 +656,7 @@ export function placeRows(hass, config = {}, now = new Date()) {
       count: ["pack", "household", "medicine"].includes(kind) || ["pieces", "portions"].includes(unit) ? count : null,
       days: valid(date) ? daysUntil(date.state, now) : null,
       compartment,
+      step: Number(text.attributes && text.attributes.take_step) || 0, // 6.11 (#257): amount per tap
     });
   }
   return rows.sort((a, b) => (a.days ?? 99999) - (b.days ?? 99999) || a.content.localeCompare(b.content));
@@ -723,7 +724,7 @@ export class LarderPlaceCard extends HTMLElement {
         ${rows
           .map(
             (r) => `<div class="row" data-id="${escHtml(r.id)}"><span class="ico">${r.icon}</span><span class="text"><div class="name">${escHtml(r.content)}${r.count && r.count > 1 ? ` · ${r.count}` : ""}</div><div class="sub${r.days !== null && r.days < 0 ? " expired" : ""}">${escHtml([when(r.days), this._config.compartment ? null : r.compartment].filter(Boolean).join(" · "))}</div></span>${
-              ["pack", "household", "medicine"].includes(r.kind) ? `<button type="button" data-take="${escHtml(r.id)}">${t.placeTake}</button>` : ""
+              ["pack", "household", "medicine"].includes(r.kind) ? `<button type="button" data-take="${escHtml(r.id)}">${r.step > 1 ? `−${r.step}` : t.placeTake}</button>` : ""
             }</div>`,
           )
           .join("")}

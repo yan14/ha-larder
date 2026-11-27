@@ -2395,3 +2395,22 @@ test("6.8 (#217–#221): fill dialog – vacuum question once, date only, hints,
   assert.equal(form.querySelector('[data-f="vacuum"]').checked, false);
   assert.equal(form.querySelector('[data-w="vacask"]').hidden, true);
 });
+
+test("6.11 (#257): amount per tap – −2 slices, −100 g for grams", async () => {
+  const hass = adminHass([{ id: "d1", name: "A", content: "Toast", portions: 6, unit: "slices" }]);
+  hass.states["text.d1_inhalt"] = { ...hass.states["text.d1_inhalt"], attributes: { ...hass.states["text.d1_inhalt"].attributes, take_step: 2 } };
+  const el = mount(hass);
+  const take = $(el, ".card button.take");
+  assert.equal(take.textContent, "−2");
+  take.click();
+  assert.deepEqual(hass.calls, [{ domain: "number", service: "set_value", data: { entity_id: "number.d1_portionen", value: 4 } }]);
+  document.body.innerHTML = "";
+  const grams = adminHass([{ id: "d1", name: "A", content: "Reis", portions: 500, unit: "grams" }]);
+  grams.states["text.d1_inhalt"] = { ...grams.states["text.d1_inhalt"], attributes: { ...grams.states["text.d1_inhalt"].attributes, take_step: 100 } };
+  const el2 = mount(grams);
+  const take2 = $(el2, ".card button.take");
+  assert.equal(take2.hidden, false);
+  assert.equal(take2.textContent, "−100 g");
+  take2.click();
+  assert.deepEqual(grams.calls, [{ domain: "number", service: "set_value", data: { entity_id: "number.d1_portionen", value: 400 } }]);
+});

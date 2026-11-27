@@ -187,6 +187,18 @@ const TEXT = {
     receiptStore: "Laden (vom Kassenbon)",
     storePrices: "Preise je Laden",
     storeCheapest: "günstigster",
+    groupLabel: "📦 Gehört zu",
+    groupPlaceholder: "z. B. Milch",
+    groupHint: "Gruppe von Hand: Produkte bleiben getrennt, die Gruppe zeigt die Summe, hat einen eigenen Mindestbestand und ein Rezept mit dem Gruppennamen nimmt jedes davon.",
+    groupsTitle: "📦 Gruppen",
+    groupOf: (g) => `📦 ${g}`,
+    sizeLabel: "⚖️ Inhalt je Stück",
+    sizeHint: "Was eine gezählte Packung enthält (500 g, 1 l). Leer = von der Packungsgröße gelesen.",
+    sizeUnits: { g: "g", ml: "ml", pcs: "Stück" },
+    stepLabel: "➖ Menge pro Klick",
+    stepHint: "So viel nimmt −1 (z. B. 2 Scheiben). Leer = eins.",
+    amountAbout: (a) => `≈ ${a}`,
+    perUnit: { kg: "kg", l: "l", piece: "Stück" },
     openedAfter: "🔓 Nach dem Öffnen verbrauchen innerhalb von",
     openedAfterUnit: "Tagen",
     openedAfterHint: "Steht auf der Packung (📷 liest es). Gilt nur für genau dieses Produkt und vor der Tabelle.",
@@ -377,6 +389,18 @@ const TEXT = {
     receiptStore: "Store (from the receipt)",
     storePrices: "Prices per store",
     storeCheapest: "cheapest",
+    groupLabel: "📦 Belongs to",
+    groupPlaceholder: "e.g. milk",
+    groupHint: "A group by hand: the products stay separate, the group shows the total, has its own minimum stock and a recipe naming the group takes any of them.",
+    groupsTitle: "📦 Groups",
+    groupOf: (g) => `📦 ${g}`,
+    sizeLabel: "⚖️ Contents per piece",
+    sizeHint: "What one counted pack holds (500 g, 1 l). Empty = read from the package size.",
+    sizeUnits: { g: "g", ml: "ml", pcs: "pieces" },
+    stepLabel: "➖ Amount per tap",
+    stepHint: "This much is taken by −1 (e.g. 2 slices). Empty = one.",
+    amountAbout: (a) => `≈ ${a}`,
+    perUnit: { kg: "kg", l: "l", piece: "piece" },
     openedAfter: "🔓 Once opened, use within",
     openedAfterUnit: "days",
     openedAfterHint: "Printed on the pack (📷 reads it). Applies to exactly this product only, before the table.",
@@ -567,6 +591,16 @@ const TEXT = {
     receiptStore: "Magasin (d'après le ticket)",
     storePrices: "Prix par magasin",
     storeCheapest: "le moins cher",
+    groupLabel: "📦 Fait partie de",
+    groupPlaceholder: "p. ex. lait",
+    groupHint: "Un groupe choisi à la main : les produits restent séparés, le groupe montre le total, a son propre stock minimum et une recette qui nomme le groupe prend n'importe lequel.",
+    groupsTitle: "📦 Groupes",
+    sizeLabel: "⚖️ Contenu par pièce",
+    sizeHint: "Ce que contient un paquet compté (500 g, 1 l). Vide = lu sur la taille du paquet.",
+    sizeUnits: { g: "g", ml: "ml", pcs: "pièces" },
+    stepLabel: "➖ Quantité par clic",
+    stepHint: "−1 retire autant (p. ex. 2 tranches). Vide = un.",
+    perUnit: { kg: "kg", l: "l", piece: "pièce" },
     openedAfter: "🔓 Une fois ouvert, à consommer dans les",
     openedAfterUnit: "jours",
     openedAfterHint: "Imprimé sur l'emballage (📷 le lit). Vaut uniquement pour ce produit précis, avant le tableau.",
@@ -757,6 +791,16 @@ const TEXT = {
     receiptStore: "Winkel (van de kassabon)",
     storePrices: "Prijzen per winkel",
     storeCheapest: "goedkoopst",
+    groupLabel: "📦 Hoort bij",
+    groupPlaceholder: "bijv. melk",
+    groupHint: "Een groep met de hand: de producten blijven apart, de groep toont het totaal, heeft een eigen minimumvoorraad en een recept met de groepsnaam neemt elk ervan.",
+    groupsTitle: "📦 Groepen",
+    sizeLabel: "⚖️ Inhoud per stuk",
+    sizeHint: "Wat één getelde verpakking bevat (500 g, 1 l). Leeg = van de verpakkingsgrootte gelezen.",
+    sizeUnits: { g: "g", ml: "ml", pcs: "stuks" },
+    stepLabel: "➖ Hoeveelheid per tik",
+    stepHint: "Zoveel neemt −1 (bijv. 2 sneden). Leeg = één.",
+    perUnit: { kg: "kg", l: "l", piece: "stuk" },
     openedAfter: "🔓 Na openen opmaken binnen",
     openedAfterUnit: "dagen",
     openedAfterHint: "Staat op de verpakking (📷 leest het). Geldt alleen voor precies dit product, vóór de tabel.",
@@ -806,6 +850,18 @@ export function spanText(days, de, dative = false, lang = "") {
   const m = Math.round(d / 30);
   if (!de) return `${m} month${m === 1 ? "" : "s"}`;
   return `${m} ${m === 1 ? "Monat" : dative ? "Monaten" : "Monate"}`;
+}
+
+/** 6.11 (#255): 1500 g → "1,5 kg", 330 ml → "330 ml", 6 pcs → "6 Stück". */
+export function fmtAmount(amount, unit, comma, units) {
+  const n = Number(amount) || 0;
+  const num = (v) => {
+    const text = String(Math.round(v * 10) / 10);
+    return comma ? text.replace(".", ",") : text;
+  };
+  if (unit === "g") return n >= 1000 ? `${num(n / 1000)} kg` : `${num(n)} g`;
+  if (unit === "ml") return n >= 1000 ? `${num(n / 1000)} l` : `${num(n)} ml`;
+  return `${num(n)} ${(units && units.pcs) || "pcs"}`;
 }
 
 /** Amount with two decimals, in German with a comma. */
@@ -1651,6 +1707,130 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     return out;
   };
 
+  /** 6.11 (Block 60): group (administrators), contents per piece and amount per tap of one product. */
+  proto._unitSettings = function _unitSettings(p, onChanged) {
+    const hass = this._hass;
+    const t = itemTexts(hass);
+    const out = [];
+    const send = async (msg) => {
+      try {
+        onChanged(await hass.callWS({ ...msg, content: p.name }));
+      } catch {
+        this.showNotice(t.stockFailed);
+      }
+    };
+    if (isAdmin(hass)) {
+      const group = el("input");
+      group.type = "text";
+      group.maxLength = 80;
+      group.placeholder = t.groupPlaceholder;
+      group.value = p.group || "";
+      group.dataset.role = "product-group";
+      const known = [...new Set(((this._stock && this._stock.groups) || []).map((g) => g.name))];
+      if (known.length) {
+        const list = el("datalist");
+        list.id = `larder-groups-${Math.random().toString(36).slice(2, 8)}`;
+        for (const name of known) {
+          const o = el("option");
+          o.value = name;
+          list.append(o);
+        }
+        group.setAttribute("list", list.id);
+        out.push(list);
+      }
+      group.addEventListener("change", () => send({ type: `${DOMAIN}/product_group`, group: group.value.trim() || null }));
+      const wrap = el("label", "stockmin productgroup", t.groupLabel);
+      wrap.append(group);
+      out.push(wrap, el("p", "hint", t.groupHint));
+    }
+    const amount = el("input");
+    amount.type = "number";
+    amount.min = "0";
+    amount.step = "any";
+    amount.inputMode = "decimal";
+    amount.dataset.role = "product-size";
+    const own = p.size && p.size.source === "own";
+    amount.value = own ? String(p.size.amount) : "";
+    amount.placeholder = p.size && !own ? String(p.size.amount) : "–";
+    const unit = el("select");
+    unit.dataset.role = "product-size-unit";
+    for (const u of ["g", "ml", "pcs"]) {
+      const o = el("option", "", t.sizeUnits[u]);
+      o.value = u;
+      unit.append(o);
+    }
+    unit.value = (p.size && p.size.unit) || "g";
+    const sendSize = () => {
+      const value = parseFloat(String(amount.value).replace(",", "."));
+      send({ type: `${DOMAIN}/product_size`, amount: value > 0 ? value : null, unit: value > 0 ? unit.value : null });
+    };
+    amount.addEventListener("change", sendSize);
+    unit.addEventListener("change", () => amount.value && sendSize());
+    const sizeWrap = el("label", "stockmin productsize", t.sizeLabel);
+    sizeWrap.append(amount, unit);
+    out.push(sizeWrap, el("p", "hint", t.sizeHint));
+    const step = el("input");
+    step.type = "number";
+    step.min = "0";
+    step.step = "any";
+    step.inputMode = "decimal";
+    step.placeholder = "1";
+    step.dataset.role = "take-step";
+    step.value = p.step ? String(p.step) : "";
+    step.addEventListener("change", () => {
+      const value = parseFloat(String(step.value).replace(",", "."));
+      send({ type: `${DOMAIN}/take_step`, step: value > 0 ? value : null });
+    });
+    const stepWrap = el("label", "stockmin takestep", t.stepLabel);
+    stepWrap.append(step);
+    out.push(stepWrap, el("p", "hint", t.stepHint));
+    return out;
+  };
+
+  /** Groups of the stock view (6.11, #254): total, members and their own minimum stock. */
+  proto._stockGroups = function _stockGroups(groups, products) {
+    const hass = this._hass;
+    const t = itemTexts(hass);
+    const shown = new Set(products.map((p) => p.name));
+    const rows = (groups || []).filter((g) => g.members.some((m) => shown.has(m.name)) || g.min > 0);
+    if (!rows.length) return null;
+    const box = el("section", "stockgroups");
+    box.append(el("h3", "", t.groupsTitle));
+    for (const g of rows) {
+      const item = el("div", `stockitem stockgroup${g.low ? " low" : ""}`);
+      item.dataset.group = g.key;
+      const head = el("div", "stockhead");
+      head.append(el("span", "name", g.name), el("span", "count", String(g.count)));
+      if (g.low) head.append(el("span", "badge expired", g.count ? t.stockLow : t.stockNone));
+      const min = el("input");
+      min.type = "number";
+      min.min = "0";
+      min.max = "999";
+      min.inputMode = "numeric";
+      min.placeholder = "–";
+      min.value = g.min ? String(g.min) : "";
+      min.dataset.role = "group-min";
+      min.setAttribute("aria-label", `${t.stockMin} (${g.name})`);
+      min.addEventListener("change", async () => {
+        const value = Math.max(0, Math.min(999, parseInt(min.value, 10) || 0));
+        try {
+          const res = await hass.callWS({ type: `${DOMAIN}/group_min`, group: g.name, min: value });
+          this._stock = { ...this._stock, ...res };
+          this._sig = "";
+          this._update();
+        } catch {
+          this.showNotice(t.stockFailed);
+        }
+      });
+      const minWrap = el("label", "stockmin", t.stockMin);
+      minWrap.append(min);
+      head.append(minWrap);
+      item.append(head, el("div", "sub", g.members.map((m) => `${m.name} ${m.count}`).join(" · ")));
+      box.append(item);
+    }
+    return box;
+  };
+
   /** One product of the stock (stock view and, since 5.5, the product view). `onChanged(res)` after a change. */
   proto._stockItem = function _stockItem(p, onChanged, inProduct = false) {
     const hass = this._hass;
@@ -1690,7 +1870,9 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     const comma = /^(de|fr|nl)/.test(String(hass.language || "").toLowerCase());
     const own = p.list && (hass.states || {})[p.list];
     const listName = own ? `🛒 ${(own.attributes && own.attributes.friendly_name) || p.list}` : null;
-    const sub = [hh && p.pack_size > 1 ? t.stockPacks(packs) : null, p.brand, p.package, listName, p.earliest ? t.stockEarliest(fmtDate(hass, p.earliest)) : null].filter(Boolean).join(" · ");
+    // 6.11 (Block 60): group and total amount (count × contents per piece)
+    const total = p.size && p.amount && p.size.unit !== "pcs" ? t.amountAbout(fmtAmount(p.amount, p.size.unit, comma, t.sizeUnits)) : null;
+    const sub = [p.group ? t.groupOf(p.group) : null, p.pack_size > 1 ? t.stockPacks(packs) : null, total, p.brand, p.package, listName, p.earliest ? t.stockEarliest(fmtDate(hass, p.earliest)) : null].filter(Boolean).join(" · ");
     if (sub) item.append(el("div", "sub", sub));
     if (p.usage) {
       const line = el("div", "usage", t.usageLasts(spanText(p.usage.lasts_days, de, false, hass.language), p.usage.takes, spanText(p.usage.days, de, true, hass.language)));
@@ -1726,6 +1908,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     item.append(auto);
     if (p.price) {
       const parts = [t.priceEach(money(p.price.price, comma), p.price.source === "openprices")];
+      if (p.unit_price) parts.push(`${money(p.unit_price.price, comma)} €/${t.perUnit[p.unit_price.per]}`); // 6.11 (#256)
       if (p.value) parts.push(t.valueOf(money(p.value, comma)));
       item.append(el("div", "sub price", parts.join(" · ")));
     }
@@ -1733,7 +1916,8 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       // 5.9 (#139): last price per store, cheapest first
       const de = String(hass.language || "").toLowerCase().startsWith("de");
     const comma = /^(de|fr|nl)/.test(String(hass.language || "").toLowerCase());
-      const parts = p.store_prices.map((r, i) => `${r.store} ${money(r.price, comma)}${i === 0 && p.store_prices.length > 1 ? ` (${t.storeCheapest})` : ""}`);
+      const per = (r) => (r.unit_price ? ` = ${money(r.unit_price.price, comma)} €/${t.perUnit[r.unit_price.per]}` : ""); // 6.11 (#256)
+      const parts = p.store_prices.map((r, i) => `${r.store} ${money(r.price, comma)}${per(r)}${i === 0 && p.store_prices.length > 1 ? ` (${t.storeCheapest})` : ""}`);
       const line = el("div", "sub storeprices", `🏪 ${t.storePrices}: ${parts.join(" · ")}`);
       line.dataset.role = "stock-store-prices";
       item.append(line);
@@ -1747,6 +1931,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     if (inProduct && this._priceEditor) item.append(this._priceEditor(p, onChanged)); // 6.1 (#170): price editable here
     if (inProduct && this._tableRowButton && scopeOfKind(p.kind) === "food") item.append(this._tableRowButton(p.name, () => onChanged({}))); // 6.3 (#174)
     if (inProduct && scopeOfKind(p.kind) === "food") item.append(...this._ownValues(p, onChanged));
+    if (inProduct) item.append(...this._unitSettings(p, onChanged)); // 6.11 (Block 60)
     if (!inProduct) item.append(this._historyLink(p.name, "stock-history"));
     const places = el("div", "places");
     for (const place of p.places) {
@@ -1761,7 +1946,7 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       if (inProduct) {
         // 5.5 (#142): −1 right in the product view
         const row = el("div", "placerow");
-        const take = button("take", "−1", async () => {
+        const take = button("take", `−${String(p.step || 1).replace(".", comma ? "," : ".")}`, async () => {
           take.disabled = true;
           try {
             await hass.callWS({ type: `${DOMAIN}/pack_take`, device_id: place.device_id, outcome: "eaten" });
@@ -1830,11 +2015,13 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
     }
     if (!data.shopping_list && products.some((p) => p.min > 0)) frag.append(el("p", "note warn", t.stockNoList));
     if (!products.length) frag.append(el("p", "note", t.stockEmpty));
+    const groups = this._stockGroups(data.groups, products);
+    if (groups) frag.append(groups);
     const list = el("div", "stocklist");
     for (const p of products) {
       list.append(
         this._stockItem(p, (res) => {
-          if (res && res.products) this._stock = { ...this._stock, products: res.products };
+          if (res && res.products) this._stock = { ...this._stock, products: res.products, ...(res.groups ? { groups: res.groups } : {}) };
           this._sig = "";
           if (res) this._update();
           else this.loadStock();

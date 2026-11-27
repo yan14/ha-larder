@@ -132,6 +132,15 @@ A bag works like a container (scan it, take a portion, **Opened**, **Thawed**, r
 
 **From the shopping list back into the stock.** When you tick off an item on your shopping list that Larder put there (minimum stock or an emptied container), the start page asks **🛒 Bought – add to the stock?**. **Add to stock** puts a product that is already in stock straight at its usual place (one tap, since 5.0); only a new product opens the pack dialog with the contents, brand, count and place. **✕** drops the hint.
 
+### Groups, contents and unit price
+
+Since 6.11 in the **product view** (tap a product name in the stock view):
+
+- **📦 Belongs to** (administrators): you put products into a group by hand, e.g. *whole milk* and *low-fat milk* into the group *Milk*. The products stay separate – Larder never merges anything and groups nothing by itself. The stock view shows **📦 Groups** on top with the total and the products in it; a group has its **own minimum stock** (*at least 2 milk, any*) and then puts the group name on the shopping list – not when a product of the group is there already. A recipe asking for *milk* takes any product of the group; a line naming a product itself (*whole milk*) takes only that one. A product named exactly like the group belongs to it automatically.
+- **⚖️ Contents per piece**: what one counted pack holds (500 g, 1 l, 6 pieces). Empty, Larder reads it from the package size (Open Food Facts, e.g. *500 g* or *6 x 0.33 l*). With it the stock view shows **≈ 1 kg** in total, the price shows the **unit price** (*1.99 · 3.98 €/kg*), *Prices per store* too (*Aldi 1.79 = 3.58 €/kg*), and the recipe book warns **⚠ only 300 g there (500 g needed)** when an ingredient line starts with g/kg/ml/l and there is too little.
+- **➖ Amount per tap**: this much is taken by **−1** (e.g. 2 slices of toast; for containers in grams also *−100 g*). The button then shows **−2** or **−100 g**. *Cooked* and *Replaced* still take one.
+- **Pieces per pack** exists for food packs too since 6.11 (a crate = 6 bottles): minimum stock and the shopping list count in packs (*Water (2 packs)*), putting away adds a whole pack.
+
 ### Recall warnings
 
 <p align="center"><img src="../images/dashboard-alerts-en.png" width="250" alt="Recall warning and running low"></p>

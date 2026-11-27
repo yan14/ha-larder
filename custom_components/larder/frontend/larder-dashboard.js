@@ -10,7 +10,7 @@ const VERSION_QUERY = new URL(import.meta.url).search;
 const { attachPlaceSuggestion, areaAllows, hassChanged, scopeOfKind, setAreaScopes, todoLists, attachCompartmentChips, collectDevices, daysUntil, isLarderLabel, knownCompartments, listAreas, rememberCompartment, soonDaysOf, SOON_DAYS } = await import(
   `./larder-panel.js${VERSION_QUERY}`
 );
-const { installItems } = await import(`./larder-dashboard-items.js${VERSION_QUERY}`);
+const { installItems, fmtAmount } = await import(`./larder-dashboard-items.js${VERSION_QUERY}`);
 const { installCare } = await import(`./larder-dashboard-care.js${VERSION_QUERY}`);
 const { installCook } = await import(`./larder-dashboard-cook.js${VERSION_QUERY}`);
 const { installSupply, supplyTexts } = await import(`./larder-dashboard-supply.js${VERSION_QUERY}`);
@@ -3376,6 +3376,14 @@ export class LarderDashboard extends HTMLElement {
         select.value = ing.pick || "";
         selects.push(select);
         row.append(select);
+        if (ing.short) {
+          // 6.11 (#255): there, but too little for the recipe
+          const comma = /^(de|fr|nl)/.test(String(hass.language || "").toLowerCase());
+          const fmt = (v) => fmtAmount(v, ing.short.unit, comma);
+          const hint = el("span", "sub warn", t.cookShort(fmt(ing.short.have), fmt(ing.short.need)));
+          hint.dataset.role = "cook-short";
+          row.append(hint);
+        }
       } else {
         row.append(el("span", "sub", t.cookNot));
       }

@@ -3,6 +3,15 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 6.11.0
+
+Block 60: group and convert products.
+
+- **Parent products without merging** (#254): in the product view administrators put products into a group by hand (**📦 Belongs to**, e.g. *Milk* over *whole milk* and *low-fat milk*). The products stay separate – nothing is merged or grouped automatically. The stock view shows **📦 Groups** with the total; a group has its own minimum stock and puts the group name on the shopping list (not when a member is there already); a recipe naming the group takes any member, a line naming a member takes only that one; the meal plan's missing list counts the group too. WebSockets `larder/product_group`, `larder/group_min`; `larder/stock` returns `groups`; attribute `group` on the content entity.
+- **Contents per piece** (#255): what one counted pack holds (500 g, 1 l, 6 pieces), by hand or read from the package size (*500 g*, *6 x 0,33 l*). The stock view shows the total (*≈ 1 kg*); the recipe book warns *⚠ only 300 g there (500 g needed)* for lines starting with g/kg/ml/l. **Pieces per pack** also for food packs (a crate of 6 bottles): the shopping list counts in packs and putting away adds a whole pack. WebSocket `larder/product_size`; `size` and `amount` per product.
+- **Unit price** (#256): the price and *Prices per store* also show €/kg, €/l or €/piece when the size is known (`unit_price`).
+- **Amount per tap** (#257): per product how much −1 takes (2 slices, 100 g for containers in grams); buttons show *−2* / *−100 g*. *Cooked* and *Replaced* still take one. WebSocket `larder/take_step`; `larder/pack_take` takes an optional `amount`; attribute `take_step`.
+
 ## 6.10.0
 
 Block 58: shopping list 2.0.

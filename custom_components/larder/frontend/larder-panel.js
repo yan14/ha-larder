@@ -551,7 +551,7 @@ class DoseCard {
         <div class="nutgrid">
           <label><span data-n="brand"></span><input data-p="brand" type="text" maxlength="80"></label>
           <label><span data-n="package"></span><input data-p="package" type="text" maxlength="40"></label>
-          <label data-hh="only"><span data-n="pack_size"></span><input data-p="pack_size" type="number" min="1" max="9999" step="1" inputmode="numeric"></label>
+          <label data-hh="pack"><span data-n="pack_size"></span><input data-p="pack_size" type="number" min="1" max="9999" step="1" inputmode="numeric"></label>
           <label data-hh="only"><span data-n="piece"></span><input data-p="piece" type="text" maxlength="30"></label>
           <label data-hh="pao"><span data-n="pao"></span><input data-p="pao" type="number" min="0" max="120" step="1" inputmode="numeric"></label>
           <label data-hh="no"><span data-n="kcal_100g"></span><input data-p="kcal_100g" type="number" min="0" max="10000" step="any" inputmode="decimal"></label>
@@ -661,8 +661,10 @@ class DoseCard {
         this.q(".takerow").hidden = false;
         return;
       }
-      if (n > 1) {
-        this._call("number", "set_value", { entity_id: this.ids.number, value: n - 1 });
+      // 6.11 (#257): the product's amount per tap (2 slices, 100 g)
+      const step = this._takeStep || 1;
+      if (n > step) {
+        this._call("number", "set_value", { entity_id: this.ids.number, value: Math.round((n - step) * 10) / 10 });
         return;
       }
       this.q(".lastrow").hidden = false;
@@ -993,7 +995,8 @@ class DoseCard {
     for (const label of nut.querySelectorAll("[data-hh]")) {
       const want = label.dataset.hh;
       // "only": household items, "pao": household items and medicines, "no": food only
-      label.hidden = want === "only" ? !household : want === "pao" ? !nonFood : nonFood;
+      // "pack" (6.11, #255): pieces per pack also for food packs (a crate of 6 bottles)
+      label.hidden = want === "only" ? !household : want === "pack" ? !(household || attrs.kind === "pack") : want === "pao" ? !nonFood : nonFood;
     }
     const bits = [nonFood ? t.productDetails : t.nutrition];
     if (attrs.kcal_100g !== undefined) bits.push(`${String(attrs.kcal_100g).replace(".", decimalComma ? "," : ".")} kcal/100 g`);
@@ -1080,7 +1083,12 @@ class DoseCard {
     // −1 only for countable units (not grams/millilitres) and as long as something is there
     const countable = !unit || ["portions", "pieces", "slices"].includes(unit.state);
     const take = this.q("button.take");
-    take.hidden = !(countable && nQuantity > 0 && ok(quantity));
+    // 6.11 (#257): with an amount per tap also for grams/millilitres (−100 g)
+    const step = Number(text && text.attributes && text.attributes.take_step) || 0;
+    this._takeStep = step || 1;
+    const measured = unit && ["grams", "milliliters"].includes(unit.state);
+    take.hidden = !((countable || (measured && step)) && nQuantity > 0 && ok(quantity));
+    take.textContent = `−${String(step || 1).replace(".", /^(de|fr|nl)/.test(String(hass.language || "").toLowerCase()) ? "," : ".")}${measured && step ? (unit.state === "grams" ? " g" : " ml") : ""}`;
     take.title = t.takeOne;
     take.setAttribute("aria-label", t.takeOne);
     if (take.hidden) {

@@ -518,7 +518,8 @@ export function installCare(Dashboard, { el, isAdmin, listAreas, scopeOfKind, DO
           this.showNotice(outcome === "thrown" ? t.placeThrown(row.content) : t.placeTaken(row.content));
           setTimeout(() => this.openPlace(areaId, compartment), 300);
         };
-        const take = button("primary", t.placeTake, () => {
+        const step = Number(((states[row.dev.entities.text] || {}).attributes || {}).take_step) || 0; // 6.11 (#257)
+        const take = button("primary", step > 1 ? `−${step}` : t.placeTake, () => {
           const used = button("primary", t.placeUsed, takeAs("eaten"));
           used.dataset.role = "place-take-used";
           const thrown = button("", t.placeThrow, takeAs("thrown"));

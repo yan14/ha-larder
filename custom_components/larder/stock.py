@@ -45,6 +45,7 @@ from .consumption import async_open_prices, forecast, price_of, suggested_minimu
 from .devices import device_of, entry_of
 from .entity import kind_of
 from .estimate import async_get_estimator, storage_context
+from .product_units import SIZE_UNITS, parse_size, unit_price
 from .sections import OWN_PREFIX, SECTIONS, is_section, section_key, section_of, section_order
 from .shopping import any_list, async_add_to_shopping_list, shopping_list_for
 from .singleton import async_singleton
@@ -138,6 +139,10 @@ class Stock:
         self.vacuum_asked = False  # 6.8 (#217): the household was asked whether it has a vacuum sealer
         self.own_sections: dict[str, str] = {}  # 6.9 (#238): own store sections, key → name
         self.struck: list[str] = []  # 6.10 (#243): items struck off the shopping list, newest first
+        self.groups: dict[str, str] = {}  # 6.11 (#254): product → name of its group (parent product), by hand
+        self.group_minimums: dict[str, dict[str, Any]] = {}  # 6.11 (#254): group key → {"name", "min"}
+        self.sizes: dict[str, dict[str, Any]] = {}  # 6.11 (#255): product → own size per piece {"amount", "unit"}
+        self.steps: dict[str, float] = {}  # 6.11 (#257): product → amount per tap (−1)
         self._unsub = None
         self._unsub_daily = None
 
@@ -158,6 +163,14 @@ class Stock:
         self.intervals = {k: v for k, v in (data.get("intervals") or {}).items() if isinstance(v, dict) and v.get("weeks")}
         self.own_sections = {str(k): str(v) for k, v in (data.get("own_sections") or {}).items() if is_section(k) and v}
         self.struck = [str(s) for s in data.get("struck") or [] if s][:STRUCK_MAX]
+        self.groups = {str(k): " ".join(str(v).split()) for k, v in (data.get("groups") or {}).items() if str(v).strip()}
+        self.group_minimums = {str(k): v for k, v in (data.get("group_minimums") or {}).items() if isinstance(v, dict) and v.get("min")}
+        self.sizes = {
+            str(k): {"amount": float(v["amount"]), "unit": v["unit"]}
+            for k, v in (data.get("sizes") or {}).items()
+            if isinstance(v, dict) and v.get("unit") in SIZE_UNITS and isinstance(v.get("amount"), int | float) and v["amount"] > 0
+        }
+        self.steps = {str(k): float(v) for k, v in (data.get("steps") or {}).items() if isinstance(v, int | float) and v > 0}
         self.sections = {
             str(k): str(v) for k, v in (data.get("sections") or {}).items() if v in SECTIONS or v in self.own_sections
         }
@@ -216,7 +229,83 @@ class Stock:
             "vacuum_asked": self.vacuum_asked,
             "own_sections": self.own_sections,
             "struck": self.struck,
+            "groups": self.groups,
+            "group_minimums": self.group_minimums,
+            "sizes": self.sizes,
+            "steps": self.steps,
         }
+
+    # ----- 6.11 (Block 60): groups, sizes, amount per tap -----
+
+    def set_group(self, content: str, group: str | None) -> None:
+        """#254: put a product into a group chosen by hand (None/empty = out of its group). Never merges."""
+        key = product_key(content)
+        name = " ".join(str(group or "").split())
+        if not key:
+            return
+        if name and product_key(name) != key:
+            self.groups[key] = name
+        else:
+            self.groups.pop(key, None)
+        used = {product_key(g) for g in self.groups.values()}
+        self.group_minimums = {k: v for k, v in self.group_minimums.items() if k in used}
+        self._save()
+        async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
+
+    def group_of(self, content: str | None) -> str | None:
+        """Name of the group of a product; a product named like a group belongs to it too."""
+        key = product_key(content)
+        if not key:
+            return None
+        if key in self.groups:
+            return self.groups[key]
+        return next((g for g in self.groups.values() if product_key(g) == key), None)
+
+    def set_group_minimum(self, group: str, value: int) -> None:
+        key = product_key(group)
+        if not key:
+            return
+        if value > 0:
+            self.group_minimums[key] = {"name": " ".join(group.split()), "min": min(int(value), MAX_MIN)}
+        else:
+            self.group_minimums.pop(key, None)
+        self._save()
+        async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
+
+    def set_size(self, content: str, amount: float | None, unit: str | None) -> None:
+        """#255: own size of one piece of a product (None = read from the package size again)."""
+        key = product_key(content)
+        if not key:
+            return
+        if amount and amount > 0 and unit in SIZE_UNITS:
+            self.sizes[key] = {"amount": round(float(amount), 1), "unit": unit}
+        else:
+            self.sizes.pop(key, None)
+        self._save()
+        async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
+
+    def size_of(self, content: str | None, package: str | None = None) -> dict[str, Any] | None:
+        """{"amount", "unit", "source"}: your own value, else read from the package size."""
+        if own := self.sizes.get(product_key(content)):
+            return {**own, "source": "own"}
+        if parsed := parse_size(package):
+            return {"amount": parsed[0], "unit": parsed[1], "source": "package"}
+        return None
+
+    def set_step(self, content: str, step: float | None) -> None:
+        """#257: how much −1 takes for a product (None = one portion or piece)."""
+        key = product_key(content)
+        if not key:
+            return
+        if step and step > 0 and step != 1:
+            self.steps[key] = round(float(step), 1)
+        else:
+            self.steps.pop(key, None)
+        self._save()
+        async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
+
+    def step_of(self, content: str | None) -> float | None:
+        return self.steps.get(product_key(content))
 
     def set_delivery(self, day: date | None) -> None:
         """6.6: the delivery day of the next online order (None = none)."""
@@ -890,6 +979,19 @@ def stock_overview(hass: HomeAssistant, minimums: dict[str, dict[str, Any]], sto
                     break
                 total += count * price["price"]
             product["value"] = round(total, 2) if total is not None else None
+            # 6.11 (Block 60): group, size per piece, total amount, unit price, amount per tap
+            if group := stock.group_of(product["name"]):
+                product["group"] = group
+            if size := stock.size_of(product["name"], product.get("package")):
+                product["size"] = size
+                product["amount"] = round(product["count"] * size["amount"], 1)
+                if product.get("price") and (per := unit_price(product["price"]["price"], size, product["pack_size"])):
+                    product["unit_price"] = per
+                for row in product.get("store_prices") or []:
+                    if per := unit_price(row.get("price"), size, product["pack_size"]):
+                        row["unit_price"] = per
+            if step := stock.step_of(product["name"]):
+                product["step"] = step
         rows.append(product)
     rows.sort(key=lambda p: p["name"].casefold())
     return rows
@@ -909,7 +1011,7 @@ def _shopping_entry(hass: HomeAssistant, product: dict[str, Any], minimum: int, 
     from .household import packs_needed  # noqa: PLC0415 - avoids an import cycle
 
     size = int(product.get("pack_size") or 1)
-    if product.get("kind") == KIND_HOUSEHOLD and size > 1:
+    if size > 1:  # 6.11 (#255): also food, e.g. a crate of 6 bottles
         packs = packs_needed(minimum, count, size)
         return shopping_text(product, with_details, packs, hass.config.language or "en"), packs
     return shopping_text(product, with_details), max(1, minimum - count)
@@ -1045,8 +1147,64 @@ async def async_check_auto_reorder(hass: HomeAssistant) -> list[str]:
     return added
 
 
+def groups_overview(stock: Stock, products: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """#254: every group with its total, members and own minimum stock, alphabetically."""
+    rows: dict[str, dict[str, Any]] = {}
+
+    def row(name: str) -> dict[str, Any]:
+        key = product_key(name)
+        info = stock.group_minimums.get(key) or {}
+        return rows.setdefault(key, {"key": key, "name": name, "count": 0, "members": [], "min": int(info.get("min") or 0)})
+
+    for name in stock.groups.values():
+        row(name)
+    for product in products:
+        if group := product.get("group"):
+            target = row(group)
+            target["count"] += product["count"]
+            target["members"].append({"name": product["name"], "count": product["count"]})
+    for target in rows.values():
+        target["members"].sort(key=lambda m: m["name"].casefold())
+        target["low"] = target["min"] > 0 and target["count"] < target["min"]
+    return sorted(rows.values(), key=lambda r: r["name"].casefold())
+
+
+async def async_check_group(hass: HomeAssistant, content: str | None, exclude: set[str] | None = None) -> bool:
+    """#254: the group of a product below its own minimum: the group name onto the shopping list.
+
+    Not when a member (or the group) is on the list already; True if added.
+    """
+    stock = hass.data.get(DOMAIN, {}).get(DATA_STOCK)
+    group = stock.group_of(content) if stock is not None else None
+    key = product_key(group)
+    if not group or key not in stock.group_minimums:
+        return False
+    minimum = int(stock.group_minimums[key]["min"])
+    count = sum(item["count"] for item in pack_entries(hass, exclude) if product_key(stock.group_of(item["content"])) == key)
+    if count >= minimum:
+        return False
+    if any(product_key(stock.group_of(info.get("content"))) == key for info in stock.tracked.values()):
+        return False
+    todo = shopping_list_for(hass, group, KIND_PACK)
+    if not todo:
+        return False
+    added = await async_add_to_shopping_list(hass, todo, group)
+    if added:
+        stock.track(group, {"content": group, "product": {}, "kind": KIND_PACK, "count": max(1, minimum - count), "source": "group_minimum"}, todo)
+    return added
+
+
 async def async_check_stock(hass: HomeAssistant, content: str | None, exclude: set[str] | None = None) -> bool:
-    """Stock of a product below the minimum: onto the shopping list (not twice). True if added."""
+    """Stock of a product below the minimum: onto the shopping list (not twice). True if added.
+
+    6.11 (#254): also checks the own minimum of the product's group.
+    """
+    own = await _async_check_own_minimum(hass, content, exclude)
+    group = await async_check_group(hass, content, exclude)
+    return own or group
+
+
+async def _async_check_own_minimum(hass: HomeAssistant, content: str | None, exclude: set[str] | None = None) -> bool:
     stock = hass.data.get(DOMAIN, {}).get(DATA_STOCK)
     key = product_key(content)
     if stock is None or not key or key not in stock.minimums:
@@ -1374,8 +1532,10 @@ def _known_product(found: list[dict[str, Any]], code: str) -> dict[str, Any]:
     }
 
 
-async def async_take_one(hass: HomeAssistant, cc: str, outcome: str) -> dict[str, Any]:
+async def async_take_one(hass: HomeAssistant, cc: str, outcome: str, amount: int | None = None) -> dict[str, Any]:
     """Take one pack (or one piece of a household item): used up ("eaten") or thrown away ("thrown").
+
+    6.11 (#257): without `amount` the product's amount per tap (else one).
 
     Both count as consumption (the stock goes down either way). Thrown away also gets a history entry for this
     one pack, so statistics and the value thrown away include it; the last one empties the entry as usual.
@@ -1387,7 +1547,10 @@ async def async_take_one(hass: HomeAssistant, cc: str, outcome: str) -> dict[str
     if entry is None or source is None:
         raise HomeAssistantError(translation_domain=DOMAIN, translation_key="move_invalid")
     history = await async_get_history(hass)
-    if source["count"] <= 1:
+    stock = hass.data.get(DOMAIN, {}).get(DATA_STOCK)
+    step = amount or (stock.step_of(source["content"]) if stock is not None else None) or 1
+    step = max(1, int(round(step)))
+    if source["count"] <= step:
         button = er.async_get(hass).async_get_entity_id("button", DOMAIN, f"{cc}_empty_container")
         history.set_pending(cc, outcome)
         try:
@@ -1402,7 +1565,7 @@ async def async_take_one(hass: HomeAssistant, cc: str, outcome: str) -> dict[str
                 cc=cc,
                 name=entry.title,
                 content=source["content"],
-                quantity=1,
+                quantity=step,
                 unit="pieces",
                 area=source["area"],
                 filled_at=None,
@@ -1413,8 +1576,8 @@ async def async_take_one(hass: HomeAssistant, cc: str, outcome: str) -> dict[str
                 kind=source["kind"],
             )
         )
-    await entry.runtime_data.resettable["portions"].async_set_native_value(float(source["count"] - 1))
-    return {"left": source["count"] - 1}
+    await entry.runtime_data.resettable["portions"].async_set_native_value(float(source["count"] - step))
+    return {"left": source["count"] - step, **({"taken": step} if step != 1 else {})}
 
 
 async def async_put_away(hass: HomeAssistant, code: str, content: str | None = None, packs: int = 1) -> dict[str, Any]:
@@ -1446,7 +1609,7 @@ async def async_add_known(hass: HomeAssistant, known: dict[str, Any], packs: int
     key = product_key(known["content"])
     area_id, compartment = known.get("area_id"), known.get("compartment") or ""
     packs = max(1, int(packs or 1))
-    size = (int(known["product"].get("pack_size") or 1) if known["kind"] == KIND_HOUSEHOLD else 1) * packs
+    size = int(known["product"].get("pack_size") or 1) * packs  # 6.11 (#255): pieces per pack for every kind
     target = next(
         (
             p for p in pack_entries(hass)
@@ -1509,6 +1672,7 @@ async def ws_stock(hass: HomeAssistant, connection: websocket_api.ActiveConnecti
             "value": round(sum(valued), 2) if valued else None,
             "valued": len(valued),
             "lead_days": estimator.stock_lead_days,
+            "groups": groups_overview(stock, products),  # 6.11 (#254)
         },
     )
     # packs with a barcode but without a price: look them up in Open Prices in the background (at most 5 per call)
@@ -1745,6 +1909,7 @@ async def ws_product_list(hass: HomeAssistant, connection: websocket_api.ActiveC
         vol.Required("type"): f"{DOMAIN}/pack_take",
         vol.Required("device_id"): str,
         vol.Optional("outcome", default="eaten"): vol.In(("eaten", "thrown")),
+        vol.Optional("amount"): vol.All(vol.Coerce(int), vol.Range(min=1, max=999)),  # 6.11: else the amount per tap
     }
 )
 @websocket_api.async_response
@@ -1754,7 +1919,7 @@ async def ws_pack_take(hass: HomeAssistant, connection: websocket_api.ActiveConn
     try:
         if not cc:
             raise HomeAssistantError(translation_domain=DOMAIN, translation_key="move_invalid")
-        result = await async_take_one(hass, cc, msg["outcome"])
+        result = await async_take_one(hass, cc, msg["outcome"], msg.get("amount"))
     except HomeAssistantError as err:
         connection.send_error(msg["id"], "take_failed", str(err))
         return
@@ -1817,7 +1982,7 @@ async def ws_replaced(hass: HomeAssistant, connection: websocket_api.ActiveConne
     taken = False
     if cc is not None:
         try:
-            await async_take_one(hass, cc, "eaten")
+            await async_take_one(hass, cc, "eaten", 1)
             taken = True
         except HomeAssistantError:
             taken = False
@@ -1980,6 +2145,78 @@ async def ws_pack_move(hass: HomeAssistant, connection: websocket_api.ActiveConn
 
 
 @callback
+# ---------- 6.11 (Block 60): groups, sizes, amount per tap ----------
+
+
+def _stock_result(hass: HomeAssistant, stock: Stock) -> dict[str, Any]:
+    products = stock_overview(hass, stock.minimums, stock)
+    return {"products": products, "groups": groups_overview(stock, products)}
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/product_group",
+        vol.Required("content"): vol.All(str, vol.Length(min=1, max=255)),
+        vol.Optional("group"): vol.Any(None, vol.All(str, vol.Length(max=80))),
+    }
+)
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_product_group(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """#254: put a product into a group by hand (without `group` out of it). Products stay separate."""
+    stock = await async_get_stock(hass)
+    stock.set_group(msg["content"], msg.get("group"))
+    await async_check_group(hass, msg["content"])
+    connection.send_result(msg["id"], _stock_result(hass, stock))
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/group_min",
+        vol.Required("group"): vol.All(str, vol.Length(min=1, max=80)),
+        vol.Required("min"): vol.All(vol.Coerce(int), vol.Range(min=0, max=MAX_MIN)),
+    }
+)
+@websocket_api.async_response
+async def ws_group_min(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """#254: own minimum stock of a group (*at least 2 milk, any*)."""
+    stock = await async_get_stock(hass)
+    stock.set_group_minimum(msg["group"], msg["min"])
+    await async_check_group(hass, msg["group"])
+    connection.send_result(msg["id"], _stock_result(hass, stock))
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/product_size",
+        vol.Required("content"): vol.All(str, vol.Length(min=1, max=255)),
+        vol.Optional("amount"): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=0, max=100000))),
+        vol.Optional("unit"): vol.Any(None, vol.In(SIZE_UNITS)),
+    }
+)
+@websocket_api.async_response
+async def ws_product_size(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """#255: own size of one piece (500 g, 1000 ml, 6 pcs); without `amount` read from the package size."""
+    stock = await async_get_stock(hass)
+    stock.set_size(msg["content"], msg.get("amount"), msg.get("unit"))
+    connection.send_result(msg["id"], _stock_result(hass, stock))
+
+
+@websocket_api.websocket_command(
+    {
+        vol.Required("type"): f"{DOMAIN}/take_step",
+        vol.Required("content"): vol.All(str, vol.Length(min=1, max=255)),
+        vol.Optional("step"): vol.Any(None, vol.All(vol.Coerce(float), vol.Range(min=0, max=10000))),
+    }
+)
+@websocket_api.async_response
+async def ws_take_step(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """#257: how much −1 takes for a product; without `step` one portion or piece."""
+    stock = await async_get_stock(hass)
+    stock.set_step(msg["content"], msg.get("step"))
+    connection.send_result(msg["id"], _stock_result(hass, stock))
+
+
 def async_setup_stock_websocket(hass: HomeAssistant) -> None:
     domain_data = hass.data.setdefault(DOMAIN, {})
     if domain_data.get(DATA_WS):
@@ -2012,4 +2249,6 @@ def async_setup_stock_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_section_own)
     websocket_api.async_register_command(hass, ws_running_low)
     websocket_api.async_register_command(hass, ws_running_low_action)
+    for command in (ws_product_group, ws_group_min, ws_product_size, ws_take_step):
+        websocket_api.async_register_command(hass, command)
     domain_data[DATA_WS] = True

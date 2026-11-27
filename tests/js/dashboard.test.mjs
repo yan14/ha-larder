@@ -4738,3 +4738,65 @@ test("Block 58 (#243–#246): chips, amount and note, running total, pasting lin
   await flush();
   assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/shopping_add_many`), { type: `${D}/shopping_add_many`, items: ["Milch"] });
 });
+
+test("6.11 (Block 60): groups in the stock view, unit price, contents per piece, amount per tap", async () => {
+  const hass = makeHass(DOSES);
+  const base = hass.callWS;
+  let groups = [{ key: "milch", name: "Milch", count: 2, min: 0, low: false, members: [{ name: "Fettarme Milch", count: 1 }, { name: "Vollmilch", count: 1 }] }];
+  const products = [
+    { key: "vollmilch", name: "Vollmilch", count: 1, packs: 1, kind: "pack", pack_size: 1, min: 0, group: "Milch", places: [] },
+    { key: "fettarme milch", name: "Fettarme Milch", count: 1, packs: 1, kind: "pack", pack_size: 1, min: 0, group: "Milch", places: [] },
+    { key: "nudeln", name: "Nudeln", count: 2, packs: 2, kind: "pack", pack_size: 1, min: 0, places: [{ device_id: "n1", area: "Vorrat", compartment: "", count: 2 }],
+      size: { amount: 500, unit: "g", source: "package" }, amount: 1000, step: 2, price: { price: 1.99, source: "own" }, unit_price: { price: 3.98, per: "kg" },
+      store_prices: [{ store: "Aldi", price: 1.79, unit_price: { price: 3.58, per: "kg" } }] },
+  ];
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/stock`) return { products, groups, shopping_list: true };
+    if (msg.type === `${D}/group_min`) {
+      hass.wsCalls.push(msg);
+      groups = groups.map((g) => ({ ...g, min: msg.min, low: g.count < msg.min }));
+      return { products, groups };
+    }
+    if (msg.type === `${D}/product_history`) return { name: "Nudeln", summary: { count: 0 }, records: [], price_history: [], product: products[2] };
+    if ([`${D}/product_size`, `${D}/take_step`, `${D}/product_group`, `${D}/pack_take`].includes(msg.type)) {
+      hass.wsCalls.push(msg);
+      return { products, groups };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await go(el, "more");
+  $(el, '[data-role="menu-stock"]').click();
+  await flush();
+  await flush();
+  const group = $(el, ".stockgroup");
+  assert.equal(group.querySelector(".name").textContent, "Milch");
+  assert.equal(group.querySelector(".sub").textContent, "Fettarme Milch 1 · Vollmilch 1");
+  const min = group.querySelector('[data-role="group-min"]');
+  min.value = "3";
+  min.dispatchEvent(new dom.window.Event("change"));
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/group_min`), { type: `${D}/group_min`, group: "Milch", min: 3 });
+  assert.equal($(el, ".stockgroup .badge").textContent, "zu wenig");
+  const noodles = $$(el, ".stocklist .stockitem").find((i) => i.dataset.key === "nudeln");
+  assert.match(noodles.textContent, /≈ 1 kg/);
+  assert.match(noodles.querySelector(".price").textContent, /3,98 €\/kg/);
+  assert.match(noodles.querySelector('[data-role="stock-store-prices"]').textContent, /Aldi 1,79 = 3,58 €\/kg/);
+  assert.match($$(el, ".stocklist .stockitem").find((i) => i.dataset.key === "vollmilch").textContent, /📦 Milch/);
+  // product view: contents per piece, amount per tap, group (administrator); −2 takes the amount per tap
+  await el.openProduct("nudeln");
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelector('[data-role="product-size"]').placeholder, "500");
+  assert.equal(form.querySelector('[data-role="take-step"]').value, "2");
+  assert.equal(form.querySelector('[data-role="product-take"]').textContent, "−2");
+  const size = form.querySelector('[data-role="product-size"]');
+  size.value = "250";
+  size.dispatchEvent(new dom.window.Event("change"));
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/product_size`), { type: `${D}/product_size`, content: "Nudeln", amount: 250, unit: "g" });
+  const grp = form.querySelector('[data-role="product-group"]');
+  grp.value = "Pasta";
+  grp.dispatchEvent(new dom.window.Event("change"));
+  await flush();
+  assert.deepEqual(hass.wsCalls.find((m) => m.type === `${D}/product_group`), { type: `${D}/product_group`, content: "Nudeln", group: "Pasta" });
+});

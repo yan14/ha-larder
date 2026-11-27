@@ -23,10 +23,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import entity_registry as er
 
-from .const import DOMAIN, PACK_KINDS
+from .const import DATA_STOCK, DOMAIN, PACK_KINDS
 from .devices import device_of, entry_of
 from .entity import kind_of
 from .expiry import collect_expiring
+from .product_units import container_amount, line_amount
 from .recipe_book import async_get_recipe_book
 
 _LOGGER = logging.getLogger(__name__)
@@ -46,12 +47,25 @@ def _staple(line: str) -> bool:
 
 def stock_items(hass: HomeAssistant) -> list[dict[str, Any]]:
     """Everything filled with food (containers, bags, packs), earliest date first, without a date last."""
+    from .stock import pack_entries  # noqa: PLC0415 - avoids an import cycle
+
     items = [i for i in collect_expiring(hass, days=None, include_expired=True, include_undated=True, vouchers=False) if (i.get("content") or "").strip()]
+    stock = hass.data.get(DOMAIN, {}).get(DATA_STOCK)
+    packs = {p["cc"]: p for p in pack_entries(hass)}
     for item in items:
         device = device_of(hass, item["cc"])
         item["device_id"] = device.id if device else None
         entry = entry_of(hass, item["cc"])
         item["kind"] = kind_of(entry) if entry else None
+        if stock is not None and (group := stock.group_of(item["content"])):
+            item["group"] = group  # 6.11 (#254): a recipe asking for the group accepts every member
+        # 6.11 (#255): how much is there (containers in g/ml, packs by their size per piece)
+        if (pack := packs.get(item["cc"])) is not None:
+            size = stock.size_of(item["content"], pack.get("package")) if stock is not None else None
+            if size and size["unit"] in ("g", "ml"):
+                item["amount"] = (pack["count"] * size["amount"], size["unit"])
+        elif amount := container_amount(item.get("quantity"), item.get("unit")):
+            item["amount"] = amount
     return items
 
 
@@ -64,17 +78,24 @@ def match_ingredients(ingredients: list[str], items: list[dict[str, Any]]) -> li
     for line in ingredients:
         staple = _staple(line)
         matches = [] if staple else [i for i in items if uses_content(line, i["content"])]
+        if not staple and not matches:
+            # 6.11 (#254): only when no product is named itself, the group counts ("Milch" → every milk)
+            matches = [i for i in items if i.get("group") and uses_content(line, i["group"])]
         pick = next((m for m in matches if m["cc"] not in used), None)
         if pick is not None:
             used.add(pick["cc"])
-        out.append(
-            {
-                "line": line,
-                "staple": staple,
-                "matches": [_public(m) for m in matches[:6]],
-                "pick": pick["device_id"] if pick else None,
-            }
-        )
+        row = {
+            "line": line,
+            "staple": staple,
+            "matches": [_public(m) for m in matches[:6]],
+            "pick": pick["device_id"] if pick else None,
+        }
+        # 6.11 (#255): "500 g Mehl" with only 300 g there – only when every match has a known amount
+        if matches and (need := line_amount(line)) and all(m.get("amount") and m["amount"][1] == need[1] for m in matches):
+            have = round(sum(m["amount"][0] for m in matches), 1)
+            if have < need[0]:
+                row["short"] = {"need": need[0], "have": have, "unit": need[1]}
+        out.append(row)
     return out
 
 
@@ -109,6 +130,7 @@ def rank_recipes(recipes: list[dict[str, Any]], items: list[dict[str, Any]], soo
                 "total": len(lines),
                 "soon": soon,
                 "missing": [m["line"] for m in lines if not m["matches"]][:8],
+                "short": [m["line"] for m in lines if m.get("short")][:8],  # 6.11 (#255): there, but too little
             }
         )
     ranked.sort(key=lambda r: (-(r["have"] / r["total"]), -r["soon"], -r["have"], r["title"].casefold()))
@@ -135,7 +157,7 @@ async def async_use_up(hass: HomeAssistant, ccs: list[str]) -> dict[str, int]:
         entry = entry_of(hass, cc)
         if entry is not None and kind_of(entry) in PACK_KINDS:
             try:
-                result = await async_take_one(hass, cc, "eaten")
+                result = await async_take_one(hass, cc, "eaten", 1)
             except HomeAssistantError:
                 _LOGGER.debug("Taking from %s not possible", cc, exc_info=True)
                 continue

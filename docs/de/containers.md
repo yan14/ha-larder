@@ -132,6 +132,15 @@ Ein Beutel funktioniert wie eine Dose (scannen, Portion entnehmen, **Geöffnet**
 
 **Von der Einkaufsliste zurück in den Vorrat.** Hakst du auf der Einkaufsliste etwas ab, das Larder dort eingetragen hat (Mindestbestand oder geleerte Dose), fragt die Startseite **🛒 Eingekauft – in den Vorrat?**. **In den Vorrat** legt ein Produkt, das schon im Vorrat ist, gleich an seinen üblichen Ort (ein Tipp, seit 5.0); nur ein neues Produkt öffnet den Packungs-Dialog mit Inhalt, Marke, Anzahl und Ort. **✕** verwirft den Hinweis.
 
+### Gruppen, Inhalt und Grundpreis
+
+Seit 6.11 in der **Produktansicht** (Produktname in der Bestands-Ansicht antippen):
+
+- **📦 Gehört zu** (Administratoren): Du ordnest Produkte von Hand einer Gruppe zu, z. B. *Vollmilch* und *Fettarme Milch* der Gruppe *Milch*. Die Produkte bleiben getrennt – Larder legt nie etwas zusammen und gruppiert nichts von selbst. Die Bestands-Ansicht zeigt oben **📦 Gruppen** mit der Summe und den Produkten darin; die Gruppe hat einen **eigenen Mindestbestand** (*mindestens 2 Milch, egal welche*) und setzt dann den Gruppennamen auf die Einkaufsliste – nicht, wenn schon ein Produkt der Gruppe dort steht. Ein Rezept mit *Milch* nimmt jedes Produkt der Gruppe; nennt eine Zeile ein Produkt selbst (*Vollmilch*), gilt nur dieses. Ein Produkt, das genau wie die Gruppe heißt, gehört automatisch dazu.
+- **⚖️ Inhalt je Stück**: was eine gezählte Packung enthält (500 g, 1 l, 6 Stück). Leer liest Larder es aus der Packungsgröße (Open Food Facts, z. B. *500 g* oder *6 x 0,33 l*). Damit zeigt die Bestands-Ansicht **≈ 1 kg** gesamt, der Preis den **Grundpreis** (*1,99 € · 3,98 €/kg*), *Preise je Laden* ebenso (*Aldi 1,79 = 3,58 €/kg*), und das Rezeptbuch warnt **⚠ nur 300 g da (500 g gebraucht)**, wenn eine Zutatenzeile mit g/kg/ml/l beginnt und zu wenig da ist.
+- **➖ Menge pro Klick**: so viel nimmt **−1** (z. B. 2 Scheiben Toast, bei Dosen in Gramm auch *−100 g*). Der Knopf zeigt dann **−2** bzw. **−100 g**. *Gekocht* und *Ersetzt* nehmen weiterhin eins.
+- **Stück je Packung** gibt es seit 6.11 auch für Lebensmittel-Packungen (eine Kiste = 6 Flaschen): Mindestbestand und Einkaufsliste rechnen dann in Packungen (*Wasser (2 Packungen)*), Einräumen legt eine ganze Packung an.
+
 ### Rückrufwarnungen
 
 <p align="center"><img src="../images/dashboard-alerts-de.png" width="250" alt="Rückrufwarnung und Bald leer"></p>

@@ -20,6 +20,7 @@ Short answers to the questions that come up most, and the rules Larder follows e
 | see what I can cook | **📖 Recipes**, sorted by **Fits the stock**; **✨ AI ideas from your leftovers** with an AI |
 | see what has to go this week | **More → ♻️ Rescue this week** |
 | bring containers or packs to another place | **☑ Select → 📍 Move**, an empty container also with **Only move** in the fill dialog ([Moving](#moving)) |
+| group products (milk), contents per piece, unit price €/kg, amount per tap | product view (product name in **More → 🗃️ Stock**) ([groups and contents](containers.md#groups-contents-and-unit-price)) |
 | see which details are still missing | **More → 🧹 Data care**: per product what is missing, all in one dialog |
 | see what a product did over time | **📜 History** – in the stock view, the barcode dialog, or **📜 History of …** on a card |
 | see the stock with minimum stock and prices | **More → 🗃️ Stock** |

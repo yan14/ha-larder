@@ -146,6 +146,11 @@ class LarderContent(TextEntity, LarderResettable):
             if "price" not in self._product and (price := stock.prices.get(product_key(value))):
                 attrs["price_remembered"] = price["price"]
                 attrs["price_remembered_source"] = price.get("source")
+        if value and stock is not None and self._kind != KIND_VOUCHER:
+            if step := stock.step_of(value):
+                attrs["take_step"] = step  # 6.11 (#257): how much −1 takes
+            if group := stock.group_of(value):
+                attrs["group"] = group  # 6.11 (#254): parent product
         sizes = self.hass.data.get(DOMAIN, {}).get("sizes")
         if sizes is not None and self._kind == KIND_CONTAINER and (info := sizes.info(self._cc)):
             # container size: fixed at the container or (variable) that of the current filling

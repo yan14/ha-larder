@@ -20,6 +20,7 @@ Kurze Antworten auf die häufigsten Fragen und die Regeln, nach denen Larder üb
 | sehen, was ich kochen kann | **📖 Rezepte**, Sortierung **Passt zum Vorrat**; **✨ KI-Ideen aus deinen Resten** mit KI |
 | sehen, was diese Woche weg muss | **Mehr → ♻️ Retten diese Woche** |
 | Dosen oder Packungen an einen anderen Ort bringen | **☑ Auswählen → 📍 Umräumen**, eine leere Dose auch über **Nur umräumen** im Befüll-Dialog ([Umräumen](#umräumen)) |
+| Produkte gruppieren (Milch), Inhalt je Stück, Grundpreis €/kg, Menge pro Klick | Produktansicht (Produktname in **Mehr → 🗃️ Bestand**) ([Gruppen und Inhalt](containers.md#gruppen-inhalt-und-grundpreis)) |
 | sehen, was noch an Angaben fehlt | **Mehr → 🧹 Datenpflege**: je Produkt, was fehlt, alles in einem Dialog |
 | sehen, was mit einem Produkt passiert ist | **📜 Verlauf** – in der Bestands-Ansicht, im Strichcode-Dialog oder **📜 Verlauf von …** auf einer Karte |
 | den Bestand mit Mindestbestand und Preisen sehen | **Mehr → 🗃️ Bestand** |

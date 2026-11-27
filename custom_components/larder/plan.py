@@ -32,7 +32,7 @@ from homeassistant.util import dt as dt_util
 
 from . import shelf_life
 from .area_storage import area_kind
-from .const import DOMAIN, larder_id, pick
+from .const import DATA_STOCK, DOMAIN, larder_id, pick
 from .devices import device_of
 from .estimate import storage_context
 from .singleton import async_singleton
@@ -186,7 +186,11 @@ class MealPlan:
 
     def missing_ingredients(self, plan: dict[str, Any]) -> list[str]:
         """Ingredients of the plan that are in none of the chosen containers (rough comparison of words)."""
-        have = " ".join((_state(self.hass, "text", cc, "content") or "").casefold() for cc in plan.get("ccs", []))
+        contents = [_state(self.hass, "text", cc, "content") or "" for cc in plan.get("ccs", [])]
+        stock = self.hass.data.get(DOMAIN, {}).get(DATA_STOCK)
+        if stock is not None:  # 6.11 (#254): the group of a chosen product counts too ("Milch" for "Fettarme Milch")
+            contents += [g for c in contents if (g := stock.group_of(c))]
+        have = " ".join(c.casefold() for c in contents)
         out = []
         for item in plan.get("ingredients", []):
             words = [w for w in shelf_life.norm(item).split() if len(w) > 2 and not w.isdigit()]
