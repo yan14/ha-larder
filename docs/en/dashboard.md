@@ -135,6 +135,7 @@ At the top: the **report of the previous month** (see [Monthly report](kitchen.m
 - **In stock now**: filled, empty, expiring soon, expired (and filled without a date).
 - **Emptied**: how many were eaten and thrown away, the share thrown away, the value thrown away (packs with a price) and the average storage time until eaten.
 - **Thrown away most often**, **eaten most often** (with [several contents](containers.md#several-contents-in-one-container) each item counts) and **thrown away by area**.
+- **🗑 What you throw away most** (since 6.5): the top 5 products with how often, their value and one tip each – *lower the minimum stock* (if it has one), *freeze half of it right away* (if it keeps in the freezer), else *buy a smaller pack*.
 - **Last months** as bars: eaten (green) and thrown away (red).
 
 The numbers come from the [history](#export-and-import), so they grow as you empty containers with **Eaten** or **Thrown away**. Containers emptied without an answer count as thrown away if they had expired.

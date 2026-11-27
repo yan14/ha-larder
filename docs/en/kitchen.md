@@ -108,6 +108,14 @@ Since 5.7 the blueprint **Larder – opened items** sends once a week (Saturday 
 
 [![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fopened_reminder.yaml)
 
+### Rescue list of the week
+
+Since 6.5 the blueprint **Larder – rescue list of the week** sends once a week (Sunday 17:00 by default) a short push with everything that has to go this week and is not planned yet: what expires within 7 days, and frozen food in the last weeks of its best quality ([Freezer first](#week-suggestion)). The button **Into the meal plan** opens the week suggestion. **More → 🛟 Rescue this week** shows the same list in the dashboard, with **🧊 Freeze** for what keeps in the freezer. The service `larder.get_rescue_list` returns `count`, `items`, `title`, `summary`, `summary_short`, `button` and `url`.
+
+[![Import blueprint](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Frescue_list.yaml)
+
+**Freeze instead of throwing away** (since 6.5): something in the fridge that expires within 2 days and keeps in the freezer (the table has a freezer value) gets **🧊 Freeze** as a button in the daily summary's push per entry and in the rescue list. A tap moves it to the freezer area and gives it the freezer date of the table, counted from today.
+
 ### Medicines expiring
 
 Medicines and household items with a date (e.g. sunscreen) warn much earlier than food (60 days by default) and are therefore not part of the daily summary. A blueprint of their own reminds you on the weekdays you choose (e.g. every Monday at 9:00): push to one or more phones and, optionally, read out on Alexa (Alexa Media Player, e.g. `notify.alexa_media_kitchen` with `type: announce`). Expired ones are named with *dispose of it*. Since 4.8 it also names [vouchers](containers.md#vouchers) that expire soon, with their value (switch *Include vouchers*; expired vouchers are never named). Nothing is sent when nothing is due; running it by hand sends it anyway, as a test.

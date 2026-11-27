@@ -33,6 +33,8 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 ## What's new
 
+> **6.5:** **throw away less** – **🧊 Freeze** instead of throwing away (in the push and the dashboard), a weekly **rescue list** with *Into the meal plan*, and what you throw away most with a tip each.
+>
 > **6.4:** **cooking with the stock** – *Cooked* on a recipe takes the ingredients from the stock, leftovers go straight into an empty container, and *Fits the stock* shows what you can cook without AI.
 >
 > **6.3:** **better recognition** – scanned products use the **Open Food Facts categories and labels** (vegan, plant milk, jam …), unknown products get their kind with **one tap in data care**, and your own shelf life from the history shows up there too.

@@ -511,6 +511,10 @@ def async_setup_services(hass: HomeAssistant) -> None:
         language = hass.config.language
         items = collect_expiring(hass, call.data.get("days", soon_days(hass)), call.data["include_expired"])
         # 5.2 (#127): buttons per entry for the push (Used up · Thrown away · +2 days · On the list)
+        from .freezing import freezable  # noqa: PLC0415
+
+        # 6.5 (#179): freezable things get "🧊 Freeze" as a button
+        items = [{**item, "freezable": True} if freezable(hass, item) else item for item in items]
         items = [
             {
                 **item,

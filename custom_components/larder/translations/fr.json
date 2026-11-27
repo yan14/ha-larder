@@ -434,6 +434,10 @@
     "get_weekly_review": {
       "name": "Obtenir le bilan de la semaine",
       "description": "Renvoie les 7 derniers jours (mangé, jeté et sa valeur) et ce qui périme dans les 7 prochains jours, avec un texte et une sortie vocale prêts."
+    },
+    "get_rescue_list": {
+      "name": "Obtenir la liste à sauver",
+      "description": "Renvoie ce qui doit partir cette semaine et n'est pas encore planifié (périme dans 7 jours, surgelés proches de la fin de leur meilleure qualité), avec un court texte pour une notification et le lien vers la proposition de semaine."
     }
   },
   "selector": {

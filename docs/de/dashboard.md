@@ -135,6 +135,7 @@ Ganz oben steht der **Bericht des Vormonats** (siehe [Monatsbericht](kitchen.md#
 - **Jetzt im Vorrat**: gefüllt, leer, läuft bald ab, abgelaufen (und gefüllt ohne MHD).
 - **Geleert**: wie viel gegessen und weggeworfen wurde, den Anteil weggeworfen, den Wert des Weggeworfenen (bei Packungen mit Preis) und die durchschnittliche Lagerdauer, bis etwas gegessen wurde.
 - **Am häufigsten weggeworfen**, **am häufigsten gegessen** (bei [mehreren Inhalten](containers.md#mehrere-inhalte-in-einer-dose) zählt jeder einzeln) und **weggeworfen nach Bereich**.
+- **🗑 Was ihr am meisten wegwerft** (seit 6.5): die Top 5 mit Anzahl, Wert und je einem Tipp – *Mindestbestand senken* (wenn es einen gibt), *die Hälfte gleich einfrieren* (wenn es sich einfrieren lässt), sonst *kleinere Packung kaufen*.
 - **Letzte Monate** als Balken: gegessen (grün) und weggeworfen (rot).
 
 Die Zahlen kommen aus dem [Verlauf](#export-und-import), sie wachsen also, wenn du Dosen mit **Gegessen** oder **Weggeworfen** leerst. Ohne Angabe geleerte Dosen zählen als weggeworfen, wenn sie abgelaufen waren.

@@ -1,0 +1,92 @@
+blueprint:
+  name: Larder – rescue list of the week
+  description: >
+    Once a week (Sunday by default): a short push with everything that has to go this week and is not planned
+    yet – what expires within 7 days and frozen food near the end of its best quality – with a button
+    "Into the meal plan" that opens the week suggestion. Nothing is sent when nothing needs rescuing.
+    Retten-Liste: einmal pro Woche, was diese Woche weg muss, mit Knopf zum Wochenvorschlag.
+  domain: automation
+  source_url: https://github.com/yan14/ha-larder/blob/main/blueprints/automation/larder/rescue_list.yaml
+  input:
+    notify_action:
+      name: Push notification
+      description: >
+        Notify action(s), for example notify.mobile_app_your_iphone or a notify group.
+        Several are separated by commas.
+      selector:
+        text:
+    weekday:
+      name: Day of the week
+      default: sun
+      selector:
+        select:
+          options:
+            - label: Monday
+              value: mon
+            - label: Tuesday
+              value: tue
+            - label: Wednesday
+              value: wed
+            - label: Thursday
+              value: thu
+            - label: Friday
+              value: fri
+            - label: Saturday
+              value: sat
+            - label: Sunday
+              value: sun
+    send_time:
+      name: Time
+      default: "17:00:00"
+      selector:
+        time:
+    title:
+      name: Title
+      default: ""
+      description: Empty means the title in the language of Home Assistant.
+      selector:
+        text:
+    short:
+      name: Short version
+      description: "Only the names, without when. Kurzfassung: nur die Namen."
+      default: false
+      selector:
+        boolean:
+
+mode: single
+max_exceeded: silent
+
+variables:
+  short: !input short
+  notify_action: !input notify_action
+  title: !input title
+  push_targets: "{{ (notify_action or '') | string | lower | regex_findall('[a-z0-9_]+[.][a-z0-9_]+') }}"
+
+triggers:
+  - trigger: time
+    at: !input send_time
+
+conditions:
+  - condition: time
+    weekday: !input weekday
+
+actions:
+  - action: larder.get_rescue_list
+    response_variable: result
+  - condition: template
+    value_template: "{{ result.count > 0 }}"
+  - repeat:
+      for_each: "{{ push_targets }}"
+      sequence:
+        - action: "{{ repeat.item }}"
+          data:
+            title: "{{ title if title else result.title }}"
+            message: "{{ result.summary_short if short else result.summary }}"
+            data:
+              url: "{{ result.url }}"
+              clickAction: "{{ result.url }}"
+              actions:
+                - action: URI
+                  title: "{{ result.button }}"
+                  uri: "{{ result.url }}"
+          continue_on_error: true

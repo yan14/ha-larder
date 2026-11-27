@@ -566,6 +566,12 @@ export class LarderDashboard extends HTMLElement {
     if (!view && !open && !add && !cc && !problem && !place && !assignTag && !params.has("recipes")) return;
     window.history.replaceState(null, "", window.location.pathname);
     if (params.has("recipes")) this.setView("recipes");
+    else if (view === "recipes" && params.get("week") === "1") {
+      // 6.5 (#180): "Into the meal plan" of the rescue list – the week tab with the suggestion
+      this._recipeTab = "week";
+      this.setView("recipes");
+      if (this.openWeekSuggest) this.openWeekSuggest();
+    }
     else if (problem && ["noarea", "nodate", "longexpired"].includes(problem)) this.setView("containers", { problem });
     else if (view && ALL_VIEWS.includes(view)) this.setView(view);
     if (assignTag) {
@@ -919,6 +925,7 @@ export class LarderDashboard extends HTMLElement {
         ["menu-stock", `🗃️ ${this.stockTitle()}`, true, () => this.setView("stock")],
         ["menu-stats", `📊 ${t.menuStats}`, true, () => this.setView("stats")],
         ["menu-freezer", t.menuFreezer, this._rows().some((r) => r.frozen && r.content), () => this.openFreezer()],
+        ["menu-rescue", t.rescueMenu, true, () => this.openRescue()],
         ["menu-supply", st.menu, this._supplyCheck !== false, () => this.setView("supply")],
         ["menu-datacare", dataCareTexts(hass).menu, true, () => {
           this._dataGaps = null;
@@ -2971,6 +2978,65 @@ export class LarderDashboard extends HTMLElement {
     this._main.replaceChildren(frag);
   }
 
+  /** 6.5 (#179, #180): what has to go this week – 🧊 freeze where it keeps, or plan it into the week. */
+  async openRescue() {
+    const hass = this._hass;
+    const t = texts(hass);
+    let data = { items: [] };
+    try {
+      data = await hass.callWS({ type: `${DOMAIN}/rescue_list` });
+    } catch {
+      /* empty list */
+    }
+    const lang = this._lang();
+    const status = el("p", "hint");
+    status.setAttribute("role", "status");
+    const list = el("div", "rescuelist");
+    for (const item of data.items || []) {
+      const row = el("div", "putrow");
+      row.dataset.id = item.device_id || "";
+      const date = item.best_before ? new Date(`${item.best_before}T00:00:00`).toLocaleDateString(lang, { day: "numeric", month: "short" }) : "";
+      const text = el("span", "text");
+      text.append(el("span", "name", `${item.frozen ? "🧊 " : ""}${item.content}`), el("span", "sub", [item.area, date].filter(Boolean).join(" · ")));
+      row.append(text);
+      if (item.freezable && item.device_id) {
+        const freeze = el("button", "", t.rescueFreeze);
+        freeze.type = "button";
+        freeze.dataset.role = "rescue-freeze";
+        freeze.addEventListener("click", async () => {
+          freeze.disabled = true;
+          try {
+            const res = await hass.callWS({ type: `${DOMAIN}/freeze`, device_id: item.device_id });
+            const until = res.best_before ? new Date(`${res.best_before}T00:00:00`).toLocaleDateString(lang, { day: "numeric", month: "short", year: "numeric" }) : "";
+            status.textContent = t.rescueFrozen(item.content, until);
+            freeze.remove();
+          } catch {
+            status.textContent = t.rescueFailed;
+            freeze.disabled = false;
+          }
+        });
+        row.append(freeze);
+      }
+      list.append(row);
+    }
+    const plan = el("button", "submit", t.rescuePlan);
+    plan.type = "button";
+    plan.dataset.role = "rescue-plan";
+    plan.addEventListener("click", () => {
+      this._recipeTab = "week";
+      this.setView("recipes");
+      if (this.openWeekSuggest) this.openWeekSuggest();
+    });
+    const close = el("button", "cancel", t.close);
+    close.type = "button";
+    close.addEventListener("click", () => this._closeDialog());
+    const buttons = el("div", "buttons");
+    buttons.append(close, ...((data.items || []).length ? [plan] : []));
+    this._form.replaceChildren(el("h2", "", t.rescueTitle), el("p", "hint", (data.items || []).length ? t.rescueIntro : t.rescueNone), list, status, buttons);
+    this._submit = null;
+    this._overlay.hidden = false;
+  }
+
   /** 6.4 (#138): recipes of the book ranked by what is in stock. */
   async loadCookRanking() {
     if (this._cookRankingBusy || !this._hass || !this._hass.callWS) return;
@@ -3492,8 +3558,20 @@ export class LarderDashboard extends HTMLElement {
       }
       return box(title, list);
     };
+    // 6.5 (#181): what you throw away most – with its value and one tip each
+    const wasteTop = () => {
+      if (!st.waste_top || !st.waste_top.length) return null;
+      const list = el("ol", "rank waste");
+      list.dataset.role = "waste-top";
+      for (const item of st.waste_top) {
+        const li = el("li");
+        li.append(el("span", "name", item.content), el("span", "count", `${item.count}×${item.value ? ` · ${t.wasteValue(item.value)}` : ""}`), el("span", "sub tip", t.wasteTip[item.tip] || ""));
+        list.append(li);
+      }
+      return box(t.wasteTitle, list);
+    };
     for (const node of [
-      ranking(t.statsTopThrown, st.top_thrown, "content", "top-thrown"),
+      st.waste_top && st.waste_top.length ? wasteTop() : ranking(t.statsTopThrown, st.top_thrown, "content", "top-thrown"),
       ranking(t.statsTopEaten, st.top_eaten, "content", "top-eaten"),
       ranking(t.statsByArea, st.thrown_by_area, "area", "by-area"),
     ]) {

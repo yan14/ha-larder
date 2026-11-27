@@ -108,6 +108,14 @@ Seit 5.7 schickt der Blueprint **Larder – opened items** einmal pro Woche (Sta
 
 [![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Fopened_reminder.yaml)
 
+### Retten-Liste der Woche
+
+Seit 6.5 schickt der Blueprint **Larder – rescue list of the week** einmal pro Woche (Standard Sonntag 17:00) eine kurze Push mit allem, was diese Woche weg muss und noch nicht eingeplant ist: was in 7 Tagen abläuft und Eingefrorenes in den letzten Wochen seiner besten Qualität ([Tiefkühl zuerst](#wochenvorschlag)). Der Knopf **In den Wochenplan** öffnet den Wochenvorschlag. **Mehr → 🛟 Retten diese Woche** zeigt dieselbe Liste im Dashboard, mit **🧊 Einfrieren** für das, was sich einfrieren lässt. Der Dienst `larder.get_rescue_list` liefert `count`, `items`, `title`, `summary`, `summary_short`, `button` und `url`.
+
+[![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fyan14%2Fha-larder%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Flarder%2Frescue_list.yaml)
+
+**Einfrieren statt wegwerfen** (seit 6.5): Was im Kühlschrank in 2 Tagen abläuft und sich einfrieren lässt (die Tabelle hat einen Gefrier-Wert), bekommt in der Push je Eintrag der täglichen Zusammenfassung und in der Retten-Liste den Knopf **🧊 Einfrieren**. Ein Tipp stellt es in den Gefrierschrank-Bereich und gibt ihm das Gefrier-MHD der Tabelle, ab heute gerechnet.
+
 ### Ablaufende Medikamente
 
 Medikamente und Haushaltsartikel mit Datum (z. B. Sonnencreme) warnen viel früher als Lebensmittel (standardmäßig 60 Tage) und stehen deshalb nicht in der täglichen Zusammenfassung. Ein eigener Blueprint erinnert an den gewählten Wochentagen (z. B. jeden Montag um 9:00): Push an ein oder mehrere Handys und optional als Ansage auf Alexa (Alexa Media Player, z. B. `notify.alexa_media_kitchen` mit `type: announce`). Abgelaufene werden mit *entsorgen* genannt. Seit 4.8 nennt er auch [Gutscheine](containers.md#gutscheine), die bald ablaufen, mit ihrem Wert (Schalter *Include vouchers*; abgelaufene Gutscheine nie). Ist nichts fällig, kommt nichts; von Hand ausgeführt kommt die Nachricht trotzdem, als Test.

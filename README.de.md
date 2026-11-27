@@ -33,6 +33,8 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 
 ## Was ist neu?
 
+> **6.5:** **weniger wegwerfen** – **🧊 Einfrieren** statt wegwerfen (in der Push und im Dashboard), eine wöchentliche **Retten-Liste** mit *In den Wochenplan* und was ihr am meisten wegwerft, mit je einem Tipp.
+>
 > **6.4:** **Kochen mit dem Vorrat** – *Gekocht* an einem Rezept nimmt die Zutaten aus dem Vorrat, Reste kommen gleich in eine leere Dose, und *Passt zum Vorrat* zeigt, was du ohne KI kochen kannst.
 >
 > **6.3:** **bessere Erkennung** – gescannte Produkte nutzen die **Kategorien und Labels von Open Food Facts** (vegan, Pflanzendrink, Konfitüre …), unbekannte Produkte bekommen ihre Art mit **einem Tipp in der Datenpflege**, und eure Haltbarkeit aus dem Verlauf taucht dort ebenfalls auf.

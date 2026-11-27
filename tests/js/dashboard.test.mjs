@@ -1499,7 +1499,7 @@ test("More (5.0, was ⋮): sections, remembered estimates (administrators only) 
   await go(el, "more");
   assert.equal($(el, "h1").textContent, "Mehr");
   assert.deepEqual($$(el, "section.more h3").map((h) => h.textContent), ["Alltag", "Überblick", "Einrichtung"]);
-  assert.deepEqual($$(el, 'section.more[data-section="overview"] button').map((b) => b.dataset.role), ["menu-stock", "menu-stats", "menu-supply", "menu-datacare"]);
+  assert.deepEqual($$(el, 'section.more[data-section="overview"] button').map((b) => b.dataset.role), ["menu-stock", "menu-stats", "menu-rescue", "menu-supply", "menu-datacare"]);
   assert.equal($(el, '[data-role="menu-estimates"]').textContent, "📋 Gemerkte Schätzungen");
   $(el, '[data-role="menu-estimates"]').click();
   await flush();
@@ -4275,4 +4275,38 @@ test("6.4: cooked from the recipe book – check the picks, take them, then left
   await flush();
   await flush();
   assert.match($(el, '.recipe [data-role="recipe-fit"]').textContent, /✓ 1\/2 da · 1 läuft bald ab · fehlt: Nudeln/);
+});
+
+// ---------- Block 49 (6.5): throw away less ----------
+
+test("6.5: rescue this week – freeze what keeps, plan the rest; stats show what is thrown away most", async () => {
+  const hass = makeHass(DOSES);
+  const base = hass.callWS;
+  hass.callWS = async (msg) => {
+    if (msg.type === `${D}/rescue_list`) return { count: 2, items: [
+      { device_id: "d1", content: "Hackfleisch", area: "Kühlschrank", best_before: "2026-11-28", days_left: 1, freezable: true },
+      { device_id: "d2", content: "Gulasch", area: "Gefrierschrank", best_before: "2026-12-10", days_left: 13, frozen: true },
+    ] };
+    if (msg.type === `${D}/freeze`) {
+      hass.wsCalls.push(msg);
+      return { what: "FREEZE", content: "Hackfleisch", best_before: "2027-02-25" };
+    }
+    return base(msg);
+  };
+  const el = mount(hass);
+  await flush();
+  await el.openRescue();
+  const form = $(el, "form.dialog");
+  assert.equal(form.querySelectorAll(".rescuelist .putrow").length, 2);
+  assert.equal(form.querySelectorAll('[data-role="rescue-freeze"]').length, 1);
+  assert.match(form.textContent, /🧊 Gulasch/);
+  form.querySelector('[data-role="rescue-freeze"]').click();
+  await flush();
+  assert.deepEqual(hass.wsCalls.at(-1), { type: `${D}/freeze`, device_id: "d1" });
+  assert.match(form.textContent, /Hackfleisch eingefroren, beste Qualität bis/);
+  let week = false;
+  el.openWeekSuggest = () => (week = true);
+  form.querySelector('[data-role="rescue-plan"]').click();
+  assert.ok(week);
+  delete el.openWeekSuggest;
 });

@@ -3,6 +3,14 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 6.5.0
+
+Block 49: throw away less.
+
+- **Freeze instead of throwing away** (#179): what is in the fridge, expires within 2 days and keeps in the freezer (the table has a freezer value for its row) gets **🧊 Freeze** in the daily summary's push per entry (right after *Used up*) and in the rescue list. It moves to the freezer area (the only one, else the one with most in it) and gets the freezer date of the table from today. Action `LARDER_FREEZE_<id>`, WebSocket `larder/freeze`; entries of `get_expiring` carry `freezable`.
+- **Rescue list of the week** (#180): new blueprint **Larder – rescue list of the week** (Sunday 17:00) – what has to go this week and is not planned yet, frozen food near the end of its best quality included, with the button **Into the meal plan** (`/larder?view=recipes&week=1` opens the week suggestion). **More → 🛟 Rescue this week** in the dashboard. Service `larder.get_rescue_list`, WebSocket `larder/rescue_list`.
+- **What you throw away most** (#181): the statistics show the top 5 thrown-away products with count, value and one tip each (*lower the minimum stock*, *freeze half of it*, *buy a smaller pack*); `waste_top` in `larder.get_statistics`.
+
 ## 6.4.0
 
 Block 37: cooking with the stock.

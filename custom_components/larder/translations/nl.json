@@ -434,6 +434,10 @@
     "get_weekly_review": {
       "name": "Weekoverzicht ophalen",
       "description": "Geeft de laatste 7 dagen (opgegeten, weggegooid en de waarde daarvan) en wat de komende 7 dagen verloopt terug, met kant-en-klare tekst en spraak."
+    },
+    "get_rescue_list": {
+      "name": "Reddingslijst ophalen",
+      "description": "Geeft wat deze week op moet en nog niet gepland is (verloopt binnen 7 dagen, diepvries vlak voor het einde van de beste kwaliteit), met een korte tekst voor een melding en de link naar het weekvoorstel."
     }
   },
   "selector": {

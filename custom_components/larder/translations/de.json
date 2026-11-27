@@ -434,6 +434,10 @@
     "get_weekly_review": {
       "name": "Wochenrückblick abrufen",
       "description": "Liefert die letzten 7 Tage (gegessen, weggeworfen und dessen Wert) und was in den nächsten 7 Tagen abläuft, mit fertigem Text und Sprachausgabe."
+    },
+    "get_rescue_list": {
+      "name": "Retten-Liste abrufen",
+      "description": "Liefert, was diese Woche weg muss und noch nicht eingeplant ist (läuft in 7 Tagen ab, Eingefrorenes kurz vor Ende der besten Qualität), mit kurzem Text für eine Push und dem Link zum Wochenvorschlag."
     }
   },
   "selector": {

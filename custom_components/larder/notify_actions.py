@@ -28,17 +28,17 @@ from .devices import entry_of
 _LOGGER = logging.getLogger(__name__)
 
 PREFIX = "LARDER_"
-WHATS = ("EATEN", "THROWN", "PLUS2", "SHOP")
+WHATS = ("EATEN", "THROWN", "PLUS2", "SHOP", "FREEZE")
 ACTION_RE = re.compile(rf"^{PREFIX}({'|'.join(WHATS)})_(.+)$")
 DATA_UNSUB = "notify_actions_unsub"
 EVENT_DONE = f"{DOMAIN}_notification_action_done"
 EXTEND_DAYS = 2
 
 TITLES = {
-    "de": {"EATEN": "Verbraucht", "THROWN": "Weggeworfen", "PLUS2": "+2 Tage", "SHOP": "Auf die Liste"},
-    "en": {"EATEN": "Used up", "THROWN": "Thrown away", "PLUS2": "+2 days", "SHOP": "On the list"},
-    "fr": {"EATEN": "Consommé", "THROWN": "Jeté", "PLUS2": "+2 jours", "SHOP": "Sur la liste"},
-    "nl": {"EATEN": "Op", "THROWN": "Weggegooid", "PLUS2": "+2 dagen", "SHOP": "Op de lijst"},
+    "de": {"EATEN": "Verbraucht", "THROWN": "Weggeworfen", "PLUS2": "+2 Tage", "SHOP": "Auf die Liste", "FREEZE": "🧊 Einfrieren"},
+    "en": {"EATEN": "Used up", "THROWN": "Thrown away", "PLUS2": "+2 days", "SHOP": "On the list", "FREEZE": "🧊 Freeze"},
+    "fr": {"EATEN": "Consommé", "THROWN": "Jeté", "PLUS2": "+2 jours", "SHOP": "Sur la liste", "FREEZE": "🧊 Congeler"},
+    "nl": {"EATEN": "Op", "THROWN": "Weggegooid", "PLUS2": "+2 dagen", "SHOP": "Op de lijst", "FREEZE": "🧊 Invriezen"},
 }
 
 
@@ -47,6 +47,10 @@ def item_actions(item: dict[str, Any], language: str) -> list[dict[str, str]]:
     if item.get("kind") == "voucher" or not item.get("cc"):
         return []
     titles = pick(TITLES, language)
+    if item.get("freezable"):
+        # 6.5 (#179): freeze instead of throwing away – right after "used up" (Android shows only three)
+        whats = ["EATEN", "FREEZE", "THROWN", "PLUS2"] + (["SHOP"] if item.get("content") else [])
+        return [{"action": f"{PREFIX}{what}_{item['cc']}", "title": titles[what]} for what in whats]
     whats = ["EATEN", "THROWN", "PLUS2"] + (["SHOP"] if item.get("content") else [])
     return [{"action": f"{PREFIX}{what}_{item['cc']}", "title": titles[what]} for what in whats]
 
@@ -87,6 +91,10 @@ async def async_run_action(hass: HomeAssistant, what: str, cc: str) -> dict[str,
         finally:
             history.pop_pending(cc)
         return {"what": what, "content": content}
+    if what == "FREEZE":
+        from .freezing import async_freeze  # noqa: PLC0415
+
+        return await async_freeze(hass, cc)
     if what == "PLUS2":
         date_id = _entity(hass, "date", cc, "best_before")
         date_state = hass.states.get(date_id) if date_id else None

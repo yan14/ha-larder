@@ -24,6 +24,7 @@ from .entity import LarderConfigEntry, LarderRuntime, is_main
 from .estimate import async_get_estimator
 from .expiry import async_setup_services
 from .export import async_setup_export
+from .freezing import async_setup_freezing_websocket
 from .grocy import async_setup_grocy_websocket
 from .history import async_setup_history_websocket
 from .household import async_setup_household_websocket
@@ -45,6 +46,7 @@ from .recipe_link import async_setup_recipe_link_websocket
 from .recipe_photo import async_setup_recipe_photo
 from .recipes import async_setup_recipe_service
 from .repair_hints import async_get_repairs
+from .rescue import async_setup_rescue_service
 from .scan import async_setup_webhook, async_teardown_webhook
 from .shopping_mode import async_setup_shopping_mode_websocket
 from .sizes import async_get_sizes, async_setup_sizes_websocket
@@ -99,6 +101,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: LarderConfigEntry) -> bo
     async_setup_place_suggest_websocket(hass)
     async_setup_table_rows_websocket(hass)
     async_setup_cooking_websocket(hass)
+    async_setup_freezing_websocket(hass)
+    async_setup_rescue_service(hass)
     async_setup_recipe_link_websocket(hass)
     async_setup_voucher_websocket(hass)
     async_setup_notify_actions(hass)

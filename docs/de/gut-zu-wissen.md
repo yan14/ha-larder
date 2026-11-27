@@ -99,9 +99,10 @@ Der Umschalter oben auf der Seite **Vorrat** zeigt jeweils eine Seite. Bereiche 
 
 | Blueprint | Schickt |
 |---|---|
-| [Tägliche Zusammenfassung](kitchen.md#tägliche-zusammenfassung) | was bald abläuft, auf Wunsch eine Push je Eintrag mit den Knöpfen **Verbraucht · Weggeworfen · +2 Tage · Auf die Liste**, Rezeptideen, Sprachausgabe |
+| [Tägliche Zusammenfassung](kitchen.md#tägliche-zusammenfassung) | was bald abläuft, auf Wunsch eine Push je Eintrag mit den Knöpfen **Verbraucht · Weggeworfen · +2 Tage · Auf die Liste** (und **🧊 Einfrieren** für Einfrierbares), Rezeptideen, Sprachausgabe |
 | [Wochenrückblick](kitchen.md#wochenrückblick) | letzte Woche gegessen / weggeworfen (Wert), was nächste Woche abläuft, eine Rezeptidee |
 | [Angebrochenes](kitchen.md#angebrochenes) | einmal pro Woche alles Angebrochene, das bald abläuft, mit „seit … offen“ |
+| [Retten-Liste der Woche](kitchen.md#retten-liste-der-woche) | einmal pro Woche, was diese Woche weg muss und nicht eingeplant ist, mit **In den Wochenplan** |
 | [Monatsbericht](kitchen.md#monatsbericht) | den Vormonat im Vergleich zum Monat davor |
 | [Ablaufende Medikamente](kitchen.md#ablaufende-medikamente) | Medikamente, Haushaltsartikel mit Datum und Gutscheine an gewählten Wochentagen |
 | [Bald leer und Rückrufe](kitchen.md#bald-leer-und-rückrufe) | bald leer, Rückrufwarnungen, Wechsel fällig |

@@ -144,6 +144,7 @@ get_statistics:
           mode: box
 
 get_weekly_review:
+get_rescue_list:
 get_monthly_report:
   fields:
     month:

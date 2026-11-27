@@ -55,6 +55,43 @@ def record_value(records: list[dict[str, Any]]) -> tuple[float | None, int]:
     return (round(total, 2) if priced else None), priced
 
 
+WASTE_TOP = 5
+
+
+def waste_top(hass: HomeAssistant, wasted: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """6.5 (#181): the products thrown away most, with their value and one tip each:
+    "min" (it has a minimum stock: lower it), "freeze" (keeps in the freezer: freeze half), else "smaller" (smaller pack).
+    Exactly one product per entry (similar products are not merged)."""
+    from . import shelf_life  # noqa: PLC0415
+    from .const import DATA_STOCK  # noqa: PLC0415
+    from .stock import product_key  # noqa: PLC0415
+
+    stock = hass.data.get(DOMAIN, {}).get(DATA_STOCK)
+    groups: dict[str, list[dict[str, Any]]] = {}
+    names: dict[str, str] = {}
+    for r in wasted:
+        content = (r.get("content") or "").strip()
+        if not content:
+            continue
+        key = product_key(content)
+        groups.setdefault(key, []).append(r)
+        names.setdefault(key, content)
+    out = []
+    for key, items in sorted(groups.items(), key=lambda kv: (-len(kv[1]), names[kv[0]].casefold()))[:WASTE_TOP]:
+        content = names[key]
+        value, _priced = record_value(items)
+        row = stock.table_row(content, items[-1].get("product"))[0] if stock is not None else None
+        entry = shelf_life.entry_by_id(row) or shelf_life.find_entry(content)
+        if stock is not None and stock.minimum(content):
+            tip = "min"
+        elif entry is not None and entry.days.get(shelf_life.FREEZER) is not None:
+            tip = "freeze"
+        else:
+            tip = "smaller"
+        out.append({"content": content, "count": len(items), "value": value, "tip": tip})
+    return out
+
+
 def build_statistics(hass: HomeAssistant, records: list[dict[str, Any]], days: int | None = None) -> dict[str, Any]:
     today = dt_util.now().date()
     since = today - timedelta(days=days) if days else None
@@ -113,6 +150,7 @@ def build_statistics(hass: HomeAssistant, records: list[dict[str, Any]], days: i
         "thrown_value": thrown_value,
         "thrown_priced": thrown_priced,
         "top_thrown": top(wasted),
+        "waste_top": waste_top(hass, wasted),
         "top_eaten": top(eaten),
         "thrown_by_area": [{"area": a, "count": n} for a, n in by_area.most_common() if a],
         "months": months,
