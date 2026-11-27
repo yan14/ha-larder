@@ -231,6 +231,8 @@ async def ws_settings(
             "section_order": section_order(hass),
             # 6.8 (#217): ask once whether there is a vacuum sealer, instead of ticking vacuum for everyone
             "vacuum_asked": (await async_get_stock(hass)).vacuum_asked,
+            # 6.9 (#238): names of the own store sections
+            "own_sections": dict((await async_get_stock(hass)).own_sections),
         },
     )
 

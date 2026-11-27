@@ -12,7 +12,7 @@ const DOMAIN = "larder";
 const VERSION_QUERY = new URL(import.meta.url).search;
 
 const { STRINGS } = await import(`./larder-panel-strings.js${VERSION_QUERY}`);
-const { SECTION_NAMES } = await import(`./larder-dashboard-supply.js${VERSION_QUERY}`);
+const { SECTION_NAMES, ownSections, setOwnSections } = await import(`./larder-dashboard-supply.js${VERSION_QUERY}`);
 export { STRINGS };
 
 // ----- Suggesting compartments -----
@@ -1294,7 +1294,21 @@ class DoseCard {
     this.q('[data-l="section"]').textContent = t.section;
     if (!sectionRow.hidden) {
       const lang = String(hass.language || "en").toLowerCase().slice(0, 2);
-      const names = { ...SECTION_NAMES.en, ...(SECTION_NAMES[lang] || {}) };
+      // 6.9 (#238): the own sections, loaded once when a card shows its section
+      if (!this._panel._ownSectionsLoaded && hass.callWS && !this._panel.hasAttribute("embedded")) {
+        this._panel._ownSectionsLoaded = true;
+        hass
+          .callWS({ type: `${DOMAIN}/settings` })
+          .then((res) => {
+            if (res && res.own_sections && Object.keys(res.own_sections).length) {
+              setOwnSections(res.own_sections);
+              this._panel._update();
+            }
+          })
+          .catch(() => {});
+      }
+      const own = Object.fromEntries(Object.entries(ownSections()).map(([k, v]) => [k, `🏷️ ${v}`]));
+      const names = { ...SECTION_NAMES.en, ...(SECTION_NAMES[lang] || {}), ...own };
       const select = this.q('[data-f="section"]');
       const suggested = sAttrs.section_own ? "" : sAttrs.section;
       const sig = JSON.stringify([names, suggested, t.sectionAuto]);

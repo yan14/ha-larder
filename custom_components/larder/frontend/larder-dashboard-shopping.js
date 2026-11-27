@@ -24,6 +24,9 @@ function shoppingTextsAdded(lang, r) {
 
 const TEXT = {
   de: {
+    storeAdd: "＋ Geschäft",
+    moreButton: "Mehr",
+    moreTitle: "Weitere Aktionen",
     addPlaceholder: "Auf die Liste …",
     addButton: "＋",
     addLabel: "Auf die Einkaufsliste setzen",
@@ -41,7 +44,7 @@ const TEXT = {
     noList: "Wähle zuerst eine Einkaufsliste in den Einstellungen.",
     check: "Abhaken",
     added: (r) => `→ ${[r.area, r.compartment].filter(Boolean).join(" · ") || "Vorrat"}${r.added > 1 ? ` (+${r.added})` : ""}`,
-    unknown: "neu – wird am Ende angelegt",
+    unknown: "unbekannt – unten anlegen",
     loading: "Einkaufslisten werden geladen …",
     loadFailed: (msg) => `Die Einkaufslisten konnten nicht geladen werden${msg ? `: ${msg}` : "."}`,
     listFailed: (name, msg) => `${name}: nicht lesbar (${msg})`,
@@ -67,7 +70,7 @@ const TEXT = {
     detailsDone: (price, date) => [price ? `${price.toFixed(2).replace(".", ",")} €` : null, date ? `MHD ${date.split("-").reverse().join(".")}` : null].filter(Boolean).join(" · "),
     extraTitle: "Gescannt, nicht auf der Liste",
     scanAdded: (name, place) => `${name} → ${place}`,
-    scanUnknown: (name) => `${name || "Unbekannt"}: neu, wird am Ende angelegt`,
+    scanUnknown: (name) => `${name || "Unbekannt"}: unbekannt – unten anlegen`,
     scanFailed: "Scannen fehlgeschlagen.",
     recurring: "🔁 Wiederkehrend",
     recurringTitle: "Wiederkehrende Einkäufe",
@@ -100,6 +103,9 @@ const TEXT = {
     orderListed: (n) => `${n} auf die Einkaufsliste gesetzt.`,
   },
   en: {
+    storeAdd: "＋ Store",
+    moreButton: "More",
+    moreTitle: "More actions",
     addPlaceholder: "Onto the list …",
     addButton: "＋",
     addLabel: "Put on the shopping list",
@@ -117,7 +123,7 @@ const TEXT = {
     noList: "Choose a shopping list in the settings first.",
     check: "Tick off",
     added: (r) => `→ ${[r.area, r.compartment].filter(Boolean).join(" · ") || "stock"}${r.added > 1 ? ` (+${r.added})` : ""}`,
-    unknown: "new – added at the end",
+    unknown: "unknown – add it below",
     loading: "Loading the shopping lists …",
     loadFailed: (msg) => `The shopping lists could not be loaded${msg ? `: ${msg}` : "."}`,
     listFailed: (name, msg) => `${name}: cannot be read (${msg})`,
@@ -143,7 +149,7 @@ const TEXT = {
     detailsDone: (price, date) => [price ? `€${price.toFixed(2)}` : null, date ? `best before ${date}` : null].filter(Boolean).join(" · "),
     extraTitle: "Scanned, not on the list",
     scanAdded: (name, place) => `${name} → ${place}`,
-    scanUnknown: (name) => `${name || "Unknown"}: new, added at the end`,
+    scanUnknown: (name) => `${name || "Unknown"}: unknown – add it below`,
     scanFailed: "Scanning failed.",
     recurring: "🔁 Recurring",
     recurringTitle: "Recurring purchases",
@@ -176,6 +182,9 @@ const TEXT = {
     orderListed: (n) => `${n} put onto the shopping list.`,
   },
   fr: {
+    storeAdd: "＋ Magasin",
+    moreButton: "Plus",
+    moreTitle: "Autres actions",
     addPlaceholder: "Sur la liste …",
     addButton: "＋",
     addLabel: "Ajouter à la liste de courses",
@@ -193,7 +202,7 @@ const TEXT = {
     noList: "Choisissez d'abord une liste de courses dans les paramètres.",
     check: "Cocher",
     added: (r) => `→ ${[r.area, r.compartment].filter(Boolean).join(" · ") || "stock"}${r.added > 1 ? ` (+${r.added})` : ""}`,
-    unknown: "nouveau – ajouté à la fin",
+    unknown: "inconnu – à ajouter en bas",
     loading: "Chargement des listes de courses …",
     loadFailed: (msg) => `Les listes de courses n'ont pas pu être chargées${msg ? ` : ${msg}` : "."}`,
     listFailed: (name, msg) => `${name} : illisible (${msg})`,
@@ -219,7 +228,7 @@ const TEXT = {
     detailsDone: (price, date) => [price ? `${price.toFixed(2).replace(".", ",")} €` : null, date ? `à consommer avant le ${date}` : null].filter(Boolean).join(" · "),
     extraTitle: "Scanné, pas sur la liste",
     scanAdded: (name, place) => `${name} → ${place}`,
-    scanUnknown: (name) => `${name || "Inconnu"} : nouveau, ajouté à la fin`,
+    scanUnknown: (name) => `${name || "Inconnu"} : inconnu – à ajouter en bas`,
     scanFailed: "Le scan a échoué.",
     recurring: "🔁 Récurrent",
     recurringTitle: "Achats récurrents",
@@ -252,6 +261,9 @@ const TEXT = {
     orderListed: (n) => `${n} mis sur la liste de courses.`,
   },
   nl: {
+    storeAdd: "＋ Winkel",
+    moreButton: "Meer",
+    moreTitle: "Meer acties",
     addPlaceholder: "Op de lijst …",
     addButton: "＋",
     addLabel: "Op het boodschappenlijstje zetten",
@@ -269,7 +281,7 @@ const TEXT = {
     noList: "Kies eerst een boodschappenlijst in de instellingen.",
     check: "Afvinken",
     added: (r) => `→ ${[r.area, r.compartment].filter(Boolean).join(" · ") || "voorraad"}${r.added > 1 ? ` (+${r.added})` : ""}`,
-    unknown: "nieuw – achteraan toegevoegd",
+    unknown: "onbekend – hieronder toevoegen",
     loading: "Boodschappenlijsten worden geladen …",
     loadFailed: (msg) => `De boodschappenlijsten konden niet worden geladen${msg ? `: ${msg}` : "."}`,
     listFailed: (name, msg) => `${name}: niet leesbaar (${msg})`,
@@ -295,7 +307,7 @@ const TEXT = {
     detailsDone: (price, date) => [price ? `€ ${price.toFixed(2).replace(".", ",")}` : null, date ? `houdbaar tot ${date}` : null].filter(Boolean).join(" · "),
     extraTitle: "Gescand, niet op de lijst",
     scanAdded: (name, place) => `${name} → ${place}`,
-    scanUnknown: (name) => `${name || "Onbekend"}: nieuw, achteraan toegevoegd`,
+    scanUnknown: (name) => `${name || "Onbekend"}: onbekend – hieronder toevoegen`,
     scanFailed: "Scannen mislukt.",
     recurring: "🔁 Terugkerend",
     recurringTitle: "Terugkerende aankopen",
@@ -369,7 +381,8 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
     };
     bar.append(chip(t.storeAll, null));
     for (const store of data.stores || []) bar.append(chip(store.name, store.name));
-    const add = button("chip", "＋", () => {
+    // 6.9 (#225): say what ＋ adds
+    const add = button("chip", t.storeAdd, () => {
       const input = el("input");
       input.type = "text";
       input.maxLength = 60;
@@ -404,9 +417,10 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
     return shoppingTexts(this._hass).title;
   };
 
-  proto.loadShopping = async function loadShopping() {
+  proto.loadShopping = async function loadShopping({ keep = false } = {}) {
     const hass = this._hass;
     if (!hass || !hass.callWS) return;
+    const before = this._shopping;
     try {
       // 5.9 (#140): "I am at …" – only what is bought there, in that store's order
       if (this._shopStore === undefined) {
@@ -420,11 +434,75 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
     } catch (err) {
       this._shopping = { items: [], error: (err && err.message) || true };
     }
-    this._shopDone = {};
-    this._shopUnknown = [];
-    this._shopExtra = [];
+    if (keep && before && Array.isArray(before.items) && this._shopping && Array.isArray(this._shopping.items)) {
+      // 6.9 (#224): refreshed by itself – what was just ticked off here stays (with Price/date and Undo)
+      const uids = new Set(this._shopping.items.map((i) => i.uid));
+      this._shopping.items.push(...before.items.filter((i) => this._shopDone[i.uid] && !uids.has(i.uid)));
+    } else {
+      this._shopDone = {};
+      this._shopUnknown = [];
+      this._shopExtra = [];
+    }
+    this._shopSeen = this._shopListSig();
     this._sig = "";
     this._update();
+  };
+
+  /** 6.9 (#224): the lists' states – when they change elsewhere (another phone, the to-do app), reload. */
+  proto._shopListSig = function _shopListSig() {
+    const states = (this._hass && this._hass.states) || {};
+    const lists = Object.keys(states).filter((id) => id.startsWith("todo.")).sort();
+    return lists.map((id) => `${id}=${(states[id] || {}).state}`).join("|");
+  };
+
+  proto._shopOpenCount = function _shopOpenCount() {
+    const states = (this._hass && this._hass.states) || {};
+    return Object.keys(states).filter((id) => id.startsWith("todo.")).reduce((n, id) => n + (Number(states[id].state) || 0), 0);
+  };
+
+  proto._shopAutoRefresh = function _shopAutoRefresh() {
+    if (!this._shopping || this._shopRefreshing) return;
+    const sig = this._shopListSig();
+    if (this._shopSeen === undefined) this._shopSeen = sig;
+    if (sig === this._shopSeen) return;
+    this._shopSeen = sig;
+    const count = this._shopOpenCount();
+    const grew = this._shopCountSeen === undefined || count > this._shopCountSeen;
+    this._shopCountSeen = count;
+    // own ticks lower the count: no reload needed; something new on a list (or nothing ticked here): reload
+    if (!grew && Object.keys(this._shopDone || {}).length) return;
+    this._shopRefreshing = true;
+    setTimeout(async () => {
+      try {
+        await this.loadShopping({ keep: true });
+      } finally {
+        this._shopRefreshing = false;
+      }
+    }, 400);
+  };
+
+  /** 6.9 (#224): the rarely used buttons of the Shopping page, in one menu. */
+  proto.openShopMore = function openShopMore() {
+    const t = shoppingTexts(this._hass);
+    const item = (role, label, run) => {
+      const b = button("moreitem", label, () => {
+        this._closeDialog();
+        run();
+      });
+      b.dataset.role = role;
+      return b;
+    };
+    const list = el("div", "choices shopmore");
+    list.append(
+      item("shop-order", t.order, () => this.openOrder()),
+      item("shop-recurring", t.recurring, () => this.openRecurringDialog()),
+      item("shop-reload", t.reload, () => this.loadShopping()),
+    );
+    const buttons = el("div", "buttons");
+    buttons.append(button("cancel", t.close, () => this._closeDialog()));
+    this._form.replaceChildren(el("h2", "", t.moreTitle), list, buttons);
+    this._submit = null;
+    this._overlay.hidden = false;
   };
 
   proto._shopCheck = async function _shopCheck(item) {
@@ -664,10 +742,6 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
     const data = this._shopping;
     const frag = document.createDocumentFragment();
     const bar = el("div", "bar");
-    const recurring = button("", t.recurring, () => this.openRecurringDialog());
-    recurring.dataset.role = "shop-recurring";
-    const reload = button("", t.reload, () => this.loadShopping());
-    reload.dataset.role = "shop-reload";
     bar.append(el("span", "grow"));
     if (this._classic._hasBarcodeScanner && this._classic._hasBarcodeScanner()) {
       const scan = button("", t.scan, () => this._classic.scanBarcodeSeries((code) => this._shopScan(code)));
@@ -678,11 +752,12 @@ export function installShopping(Dashboard, { el, DOMAIN, todoLists, sectionNames
     const putAway = button("", t.putAway, () => this.openPutAwayChoice());
     putAway.dataset.role = "shop-putaway";
     bar.append(putAway);
-    // 6.6 (#176): prepare the next online order
-    const order = button("", t.order, () => this.openOrder());
-    order.dataset.role = "shop-order";
-    bar.append(order, recurring, reload);
+    // 6.9 (#224): order, recurring and refresh under "⋯" – the page refreshes itself
+    const more = button("", `⋯ ${t.moreButton}`, () => this.openShopMore());
+    more.dataset.role = "shop-more";
+    bar.append(more);
     frag.append(bar);
+    this._shopAutoRefresh();
     if (!data) {
       frag.append(el("p", "hint", t.loading));
       this._main.replaceChildren(frag);

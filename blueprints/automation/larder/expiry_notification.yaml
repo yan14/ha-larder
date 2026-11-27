@@ -35,9 +35,9 @@ blueprint:
       name: One push per entry with buttons
       description: >
         Instead of one summary: a push for each expiring entry (at most the number below) with the
-        buttons Used up · Thrown away · +2 days · On the list. Tapping one does it right away, without
+        buttons Used up · Thrown away · Best-before +2 days · On the list. Tapping one does it right away, without
         opening the app (Android shows the first three). The rest is counted in a last push.
-        Eine Push je Eintrag mit Knöpfen Verbraucht · Weggeworfen · +2 Tage · Auf die Liste.
+        Eine Push je Eintrag mit Knöpfen Verbraucht · Weggeworfen · MHD +2 Tage · Auf die Liste.
       default: false
       selector:
         boolean:

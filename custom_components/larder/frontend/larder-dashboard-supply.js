@@ -22,8 +22,14 @@ export const SECTION_NAMES = {
     bakery: "🥖 Brot & Backwaren",
     meat: "🥩 Fleisch, Wurst & Fisch",
     fridge: "🧀 Kühlregal",
-    dry: "🍝 Nudeln, Reis & Konserven",
-    breakfast: "☕ Frühstück, Kaffee & Süßes",
+    dry: "🫙 Öl, Soßen & Trockenware",
+    pasta: "🍝 Nudeln & Reis",
+    canned: "🥫 Konserven",
+    baking: "🧁 Backen (Mehl, Zucker …)",
+    spices: "🧂 Gewürze",
+    international: "🌏 Internationale Küche",
+    breakfast: "☕ Frühstück & Kaffee",
+    sweets: "🍫 Süßes & Snacks",
     drinks: "🥤 Getränke",
     frozen: "🧊 Tiefkühl",
     drugstore: "🧴 Drogerie & Haushalt",
@@ -35,8 +41,14 @@ export const SECTION_NAMES = {
     bakery: "🥖 Bakery",
     meat: "🥩 Meat, sausage & fish",
     fridge: "🧀 Chilled",
-    dry: "🍝 Pasta, rice & cans",
-    breakfast: "☕ Breakfast, coffee & sweets",
+    dry: "🫙 Oil, sauces & dry goods",
+    pasta: "🍝 Pasta & rice",
+    canned: "🥫 Canned food",
+    baking: "🧁 Baking (flour, sugar …)",
+    spices: "🧂 Spices",
+    international: "🌏 International food",
+    breakfast: "☕ Breakfast & coffee",
+    sweets: "🍫 Sweets & snacks",
     drinks: "🥤 Drinks",
     frozen: "🧊 Frozen",
     drugstore: "🧴 Drugstore & household",
@@ -48,8 +60,14 @@ export const SECTION_NAMES = {
     bakery: "🥖 Boulangerie",
     meat: "🥩 Viande, charcuterie et poisson",
     fridge: "🧀 Rayon frais",
-    dry: "🍝 Pâtes, riz et conserves",
-    breakfast: "☕ Petit-déjeuner, café et sucreries",
+    dry: "🫙 Huiles, sauces et épicerie",
+    pasta: "🍝 Pâtes et riz",
+    canned: "🥫 Conserves",
+    baking: "🧁 Pâtisserie (farine, sucre …)",
+    spices: "🧂 Épices",
+    international: "🌏 Cuisine du monde",
+    breakfast: "☕ Petit-déjeuner et café",
+    sweets: "🍫 Sucreries et snacks",
     drinks: "🥤 Boissons",
     frozen: "🧊 Surgelés",
     drugstore: "🧴 Droguerie et entretien",
@@ -61,8 +79,14 @@ export const SECTION_NAMES = {
     bakery: "🥖 Brood en banket",
     meat: "🥩 Vlees, vleeswaren en vis",
     fridge: "🧀 Koelvak",
-    dry: "🍝 Pasta, rijst en conserven",
-    breakfast: "☕ Ontbijt, koffie en snoep",
+    dry: "🫙 Olie, sauzen en droge waren",
+    pasta: "🍝 Pasta en rijst",
+    canned: "🥫 Conserven",
+    baking: "🧁 Bakken (meel, suiker …)",
+    spices: "🧂 Kruiden en specerijen",
+    international: "🌏 Wereldkeuken",
+    breakfast: "☕ Ontbijt en koffie",
+    sweets: "🍫 Snoep en snacks",
     drinks: "🥤 Dranken",
     frozen: "🧊 Diepvries",
     drugstore: "🧴 Drogisterij en huishouden",
@@ -73,6 +97,13 @@ export const SECTION_NAMES = {
 
 const TEXT = {
   de: {
+    ownTitle: "Eigene Abteilungen",
+    ownHint: "Für das, was dein Laden anders aufteilt – z. B. „Bio-Ecke“ oder „Getränkemarkt“. Auf der Karte eines Produkts wählst du die Abteilung.",
+    ownPlaceholder: "Neue Abteilung …",
+    ownAdd: "＋ Anlegen",
+    ownRename: "Umbenennen",
+    ownDelete: "Löschen",
+    ownDeleted: (name) => `„${name}“ gelöscht – die Produkte bekommen wieder ihren Vorschlag.`,
     title: "Notvorrat",
     intro: (p, d) => `Für ${p} ${p === 1 ? "Person" : "Personen"} und ${d} Tage, nach dem Beispielvorrat des BBK (Bundesamt für Bevölkerungsschutz und Katastrophenhilfe). Personen und Tage stellst du in den Einstellungen ein.`,
     covered: (n, d) => (n >= d ? `✅ Der Vorrat reicht für ${d} Tage.` : n > 0 ? `Der Vorrat reicht für etwa ${n} von ${d} Tagen.` : `Der Vorrat reicht noch keinen Tag (Ziel: ${d} Tage).`),
@@ -119,6 +150,13 @@ const TEXT = {
     cancel: "Abbrechen",
   },
   en: {
+    ownTitle: "Own sections",
+    ownHint: "For whatever your store divides differently – e.g. “organic corner” or “drinks market”. Choose the section on a product's card.",
+    ownPlaceholder: "New section …",
+    ownAdd: "＋ Add",
+    ownRename: "Rename",
+    ownDelete: "Delete",
+    ownDeleted: (name) => `“${name}” deleted – its products get their suggestion again.`,
     title: "Emergency supply",
     intro: (p, d) => `For ${p} ${p === 1 ? "person" : "persons"} and ${d} days, following the example supply of the German Federal Office of Civil Protection (BBK). Set persons and days in the settings.`,
     covered: (n, d) => (n >= d ? `✅ The supply lasts ${d} days.` : n > 0 ? `The supply lasts about ${n} of ${d} days.` : `The supply does not last a day yet (goal: ${d} days).`),
@@ -165,6 +203,13 @@ const TEXT = {
     cancel: "Cancel",
   },
   fr: {
+    ownTitle: "Rayons personnels",
+    ownHint: "Pour ce que ton magasin range autrement – p. ex. « coin bio ». Choisis le rayon sur la fiche d'un produit.",
+    ownPlaceholder: "Nouveau rayon …",
+    ownAdd: "＋ Ajouter",
+    ownRename: "Renommer",
+    ownDelete: "Supprimer",
+    ownDeleted: (name) => `« ${name} » supprimé – ses produits reprennent la suggestion.`,
     title: "Réserve d'urgence",
     intro: (p, d) => `Pour ${p} ${p === 1 ? "personne" : "personnes"} et ${d} jours, d'après la réserve type de l'Office fédéral allemand de protection civile (BBK). Personnes et jours se règlent dans les paramètres.`,
     covered: (n, d) => (n >= d ? `✅ La réserve tient ${d} jours.` : n > 0 ? `La réserve tient environ ${n} jours sur ${d}.` : `La réserve ne tient pas encore une journée (objectif : ${d} jours).`),
@@ -211,6 +256,13 @@ const TEXT = {
     cancel: "Annuler",
   },
   nl: {
+    ownTitle: "Eigen afdelingen",
+    ownHint: "Voor wat jouw winkel anders indeelt – bv. „biohoek”. Kies de afdeling op de kaart van een product.",
+    ownPlaceholder: "Nieuwe afdeling …",
+    ownAdd: "＋ Toevoegen",
+    ownRename: "Hernoemen",
+    ownDelete: "Verwijderen",
+    ownDeleted: (name) => `„${name}” verwijderd – de producten krijgen weer hun voorstel.`,
     title: "Noodvoorraad",
     intro: (p, d) => `Voor ${p} ${p === 1 ? "persoon" : "personen"} en ${d} dagen, volgens de voorbeeldvoorraad van het Duitse Bundesamt für Bevölkerungsschutz (BBK). Personen en dagen stel je in bij de instellingen.`,
     covered: (n, d) => (n >= d ? `✅ De voorraad is genoeg voor ${d} dagen.` : n > 0 ? `De voorraad is genoeg voor ongeveer ${n} van ${d} dagen.` : `De voorraad is nog geen dag genoeg (doel: ${d} dagen).`),
@@ -266,8 +318,18 @@ export function supplyTexts(hass) {
   return pickLang(TEXT, hass);
 }
 
+// 6.9 (#238): own store sections (key → name), from larder/settings or larder/sections
+let OWN_SECTIONS = {};
+export function setOwnSections(own) {
+  OWN_SECTIONS = own && typeof own === "object" ? { ...own } : {};
+}
+export function ownSections() {
+  return OWN_SECTIONS;
+}
+
 export function sectionNames(hass) {
-  return pickLang(SECTION_NAMES, hass);
+  const own = Object.fromEntries(Object.entries(OWN_SECTIONS).map(([k, v]) => [k, `🏷️ ${v}`]));
+  return { ...pickLang(SECTION_NAMES, hass), ...own };
 }
 
 export function installSupply(Dashboard, { el, DOMAIN }) {
@@ -373,10 +435,13 @@ export function installSupply(Dashboard, { el, DOMAIN }) {
   proto.openSectionsDialog = async function openSectionsDialog(store = null, onSaved = null) {
     const hass = this._hass;
     const t = supplyTexts(hass);
-    const names = sectionNames(hass);
+    let names = sectionNames(hass);
     let order = Object.keys(names);
     try {
-      order = (await hass.callWS({ type: `${DOMAIN}/sections` })).order || order;
+      const res = await hass.callWS({ type: `${DOMAIN}/sections` });
+      setOwnSections(res.own || {});
+      names = sectionNames(hass);
+      order = res.order || order;
     } catch {
       /* default order */
     }
@@ -405,11 +470,66 @@ export function installSupply(Dashboard, { el, DOMAIN }) {
           down.setAttribute("aria-label", t.down);
           down.dataset.role = "section-down";
           row.append(el("span", "name", `${i + 1}. ${names[key] || key}`), up, down);
+          // 6.9 (#238): own sections can be renamed and deleted (general order only, administrators)
+          if (!store && key in ownSections()) {
+            const rename = button("", "✏️", () => {
+              const input = el("input");
+              input.type = "text";
+              input.maxLength = 40;
+              input.value = ownSections()[key];
+              input.dataset.f = "section-rename";
+              const ok = button("", "✓", () => manage({ key, name: input.value.trim() }));
+              ok.dataset.role = "section-rename-save";
+              row.replaceChildren(input, ok);
+              input.focus();
+            });
+            rename.dataset.role = "section-rename";
+            rename.setAttribute("aria-label", t.ownRename);
+            const remove = button("", "✕", async () => {
+              const name = ownSections()[key];
+              if (await manage({ key, delete: true })) this.showNotice(t.ownDeleted(name));
+            });
+            remove.dataset.role = "section-delete";
+            remove.setAttribute("aria-label", t.ownDelete);
+            row.append(rename, remove);
+          }
           return row;
         }),
       );
     };
+    const manage = async (msg) => {
+      if (msg.name === "") return false;
+      try {
+        const res = await hass.callWS({ type: `${DOMAIN}/section_own`, ...msg });
+        setOwnSections(res.own || {});
+        names = sectionNames(hass);
+        // keep the order shown here, new ones where the server put them
+        const known = res.order || order;
+        order = [...order.filter((k) => known.includes(k)), ...known.filter((k) => !order.includes(k))];
+        draw();
+        return true;
+      } catch (err) {
+        this.showNotice((err && err.message) || String(err));
+        return false;
+      }
+    };
     draw();
+    let ownBox = null;
+    if (!store) {
+      const input = el("input");
+      input.type = "text";
+      input.maxLength = 40;
+      input.placeholder = t.ownPlaceholder;
+      input.dataset.f = "section-new";
+      const add = button("", t.ownAdd, async () => {
+        if (await manage({ name: input.value.trim() })) input.value = "";
+      });
+      add.dataset.role = "section-add";
+      const line = el("div", "putcode");
+      line.append(input, add);
+      ownBox = el("div", "ownsections");
+      ownBox.append(el("h3", "", t.ownTitle), el("p", "hint", t.ownHint), line);
+    }
     const store_save = async (value) => {
       await hass.callWS({ type: `${DOMAIN}/store_save`, name: store.name, order: value });
     };
@@ -444,6 +564,7 @@ export function installSupply(Dashboard, { el, DOMAIN }) {
       el("h2", "", store ? t.sectionsStoreTitle(store.name) : t.sectionsTitle),
       el("p", "hint", store ? t.sectionsStoreIntro(store.name) : t.sectionsIntro),
       list,
+      ...(ownBox ? [ownBox] : []),
       buttons,
     );
     this._submit = null;

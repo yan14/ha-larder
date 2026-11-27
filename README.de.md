@@ -21,7 +21,7 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 - 🧮 **[MHD-Schätzung](docs/de/best-before.md#mhd-schätzung)**: eingebaute Haltbarkeitstabelle, optional mit KI, die [aus deinen Korrekturen lernt](docs/de/best-before.md#gemerkte-schätzungen-verwalten)
 - 🍳 **[Rezepte](docs/de/kitchen.md#rezepte)** aus dem, was bald abläuft, ein Rezeptbuch, Rezepte vom Foto, ein [Wochenplan](docs/de/kitchen.md#wochenplan) mit Auftau-Erinnerung und ein [Wochenvorschlag](docs/de/kitchen.md#wochenvorschlag)
 - 🛒 **[Einkaufen](docs/de/kitchen.md#einkaufsliste)**: mehrere Listen, ein [Einkaufsmodus](docs/de/kitchen.md#einkaufsmodus) nach Abteilungen, in dem Abhaken einlagert, [wiederkehrende Einkäufe](docs/de/kitchen.md#wiederkehrende-einkäufe) und ein [Notvorrat-Check](docs/de/kitchen.md#notvorrat)
-- 🔔 **[Benachrichtigungen](docs/de/gut-zu-wissen.md#benachrichtigungen-welcher-blueprint-wofür)**: tägliche Zusammenfassung mit Knöpfen (verbraucht, weggeworfen, +2 Tage, auf die Liste) an mehrere Handys und Lautsprecher, Wochenrückblick, Monatsbericht, Erinnerungen für Medikamente und Rückrufe
+- 🔔 **[Benachrichtigungen](docs/de/gut-zu-wissen.md#benachrichtigungen-welcher-blueprint-wofür)**: tägliche Zusammenfassung mit Knöpfen (verbraucht, weggeworfen, MHD +2 Tage, auf die Liste) an mehrere Handys und Lautsprecher, Wochenrückblick, Monatsbericht, Erinnerungen für Medikamente und Rückrufe
 - 📊 **[Statistik](docs/de/dashboard.md#statistik)** über Gegessenes und Weggeworfenes (mit Wert), [Datenpflege](docs/de/dashboard.md#datenpflege), [Übersichts-Sensoren](docs/de/reference.md#übersichts-sensoren) und [Karten](docs/de/dashboard.md#karte-für-deine-dashboards) für eigene Dashboards, [Kalendereinträge](docs/de/kitchen.md#mhd-im-kalender)
 - 🌍 In Deutsch, Englisch, [Französisch und Niederländisch](docs/de/gut-zu-wissen.md#sprachen) verfügbar (Französisch und Niederländisch sind Übersetzungen ohne Muttersprachler – Korrekturen willkommen)
 
@@ -33,6 +33,8 @@ Home-Assistant-Integration für wiederverwendbare Vorratsdosen: Inhalt und Haltb
 
 ## Was ist neu?
 
+> **6.9:** **Abteilungen wie in deinem Laden** – *Nudeln & Reis*, *Konserven*, *Backen*, *Gewürze*, *Internationale Küche*, *Süßes & Snacks* und **eigene Abteilungen**; die Einkaufsseite aktualisiert sich selbst, Rezepte mit klarer KI-Box und beschrifteten Knöpfen, dazu viele kleine Formulierungen.
+>
 > **6.8:** **ruhigere Startseite, leichteres Befüllen** – die Startseite zeigt die zwei dringendsten Kästen und klappt den Rest ein, *Gegessen* / *Einfrieren* direkt an den Kacheln, Reparatur-Hinweise mit Links, eine kurze Erklärung und die Einkaufsliste gleich in den ersten Schritten, die Vakuum-Frage einmal und Einräumen per Name für Ware ohne Strichcode.
 >
 > **6.7:** **klarer für Neulinge** – ein Knopf *Einkauf einräumen* mit Scannen, Kassenbon/Rechnung und von Hand, Einstellungen in Abschnitten, Wörter auf den Knöpfen, die Lagerart jedes Bereichs, Datenpflege je Produkt, Tage in Worten (*morgen*, *in 3 Tagen*), Karten mit dem Inhalt als Titel und *Gegessen / Weggeworfen* unten, dazu *Auf die Liste* mit *Rückgängig* beim Einkaufen.

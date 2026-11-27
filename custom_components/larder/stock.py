@@ -12,6 +12,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 import logging
+import re
 from typing import Any
 import uuid
 
@@ -44,7 +45,7 @@ from .consumption import async_open_prices, forecast, price_of, suggested_minimu
 from .devices import device_of, entry_of
 from .entity import kind_of
 from .estimate import async_get_estimator, storage_context
-from .sections import SECTIONS, section_of, section_order
+from .sections import OWN_PREFIX, SECTIONS, is_section, section_key, section_of, section_order
 from .shopping import any_list, async_add_to_shopping_list, shopping_list_for
 from .singleton import async_singleton
 
@@ -134,6 +135,7 @@ class Stock:
         self.delivery: str | None = None  # 6.6 (#176/#177): delivery day of the next online order (ISO date)
         self.area_storage: dict[str, str] = {}  # 6.7 (#196): area id → storage kind chosen in the dashboard
         self.vacuum_asked = False  # 6.8 (#217): the household was asked whether it has a vacuum sealer
+        self.own_sections: dict[str, str] = {}  # 6.9 (#238): own store sections, key → name
         self._unsub = None
         self._unsub_daily = None
 
@@ -152,7 +154,10 @@ class Stock:
         self.ean_names = {str(k): str(v) for k, v in (data.get("ean_names") or {}).items()}
         self.lists = {str(k): str(v) for k, v in (data.get("lists") or {}).items() if str(v).startswith("todo.")}
         self.intervals = {k: v for k, v in (data.get("intervals") or {}).items() if isinstance(v, dict) and v.get("weeks")}
-        self.sections = {str(k): str(v) for k, v in (data.get("sections") or {}).items() if v in SECTIONS}
+        self.own_sections = {str(k): str(v) for k, v in (data.get("own_sections") or {}).items() if is_section(k) and v}
+        self.sections = {
+            str(k): str(v) for k, v in (data.get("sections") or {}).items() if v in SECTIONS or v in self.own_sections
+        }
         self.recurring = {k: v for k, v in (data.get("recurring") or {}).items() if isinstance(v, dict) and v.get("name")}
         self.price_history = {k: [p for p in v if isinstance(p, dict)] for k, v in (data.get("price_history") or {}).items() if isinstance(v, list)}
         self.recent = [r for r in data.get("recent") or [] if isinstance(r, dict) and r.get("content")]
@@ -206,6 +211,7 @@ class Stock:
             "delivery": self.delivery,
             "area_storage": self.area_storage,
             "vacuum_asked": self.vacuum_asked,
+            "own_sections": self.own_sections,
         }
 
     def set_delivery(self, day: date | None) -> None:
@@ -477,10 +483,36 @@ class Stock:
         key = product_key(content)
         if not key:
             return
-        if section in SECTIONS:
+        if section in SECTIONS or section in self.own_sections:
             self.sections[key] = section
         else:
             self.sections.pop(key, None)
+        self._save()
+        async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
+
+    def save_own_section(self, name: str, key: str | None = None) -> str:
+        """6.9 (#238): add an own store section (or rename one); returns its key."""
+        name = " ".join(name.split())[:40]
+        if key is None:
+            base = OWN_PREFIX + (re.sub(r"[^a-z0-9]+", "_", name.casefold()).strip("_")[:30] or "section")
+            key, n = base, 2
+            while key in self.own_sections:
+                key, n = f"{base}_{n}", n + 1
+        elif key not in self.own_sections:
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="move_invalid")
+        self.own_sections[key] = name
+        self._save()
+        async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
+        return key
+
+    def delete_own_section(self, key: str) -> None:
+        """Its products go back to the suggestion; the store orders forget it."""
+        if self.own_sections.pop(key, None) is None:
+            return
+        self.sections = {k: v for k, v in self.sections.items() if v != key}
+        for store in self.stores.values():
+            if store.get("order"):
+                store["order"] = [s for s in store["order"] if s != key]
         self._save()
         async_dispatcher_send(self.hass, SIGNAL_STOCK_CHANGED)
 
@@ -1555,7 +1587,7 @@ async def ws_stores(hass: HomeAssistant, connection: websocket_api.ActiveConnect
     {
         vol.Required("type"): f"{DOMAIN}/store_save",
         vol.Required("name"): vol.All(str, vol.Length(min=1, max=60)),
-        vol.Optional("order"): vol.Any(None, [vol.In(SECTIONS)]),
+        vol.Optional("order"): vol.Any(None, [section_key]),
         vol.Optional("delete", default=False): bool,
     }
 )
@@ -1777,7 +1809,7 @@ async def ws_replaced(hass: HomeAssistant, connection: websocket_api.ActiveConne
     {
         vol.Required("type"): f"{DOMAIN}/product_section",
         vol.Required("content"): vol.All(str, vol.Length(min=1, max=255)),
-        vol.Optional("section"): vol.Any(None, vol.In(SECTIONS)),
+        vol.Optional("section"): vol.Any(None, section_key),
     }
 )
 @websocket_api.async_response
@@ -1791,12 +1823,41 @@ async def ws_product_section(hass: HomeAssistant, connection: websocket_api.Acti
 @websocket_api.websocket_command({vol.Required("type"): f"{DOMAIN}/sections"})
 @websocket_api.async_response
 async def ws_sections(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
-    """Order of the store sections (settings)."""
-    connection.send_result(msg["id"], {"order": section_order(hass)})
+    """Order of the store sections (settings) and the own sections with their names (6.9)."""
+    stock = await async_get_stock(hass)
+    connection.send_result(msg["id"], {"order": section_order(hass), "own": dict(stock.own_sections)})
 
 
 @websocket_api.websocket_command(
-    {vol.Required("type"): f"{DOMAIN}/section_order", vol.Required("order"): [vol.In(SECTIONS)]}
+    {
+        vol.Required("type"): f"{DOMAIN}/section_own",
+        vol.Optional("key"): section_key,
+        vol.Optional("name"): vol.All(str, vol.Length(min=1, max=40)),
+        vol.Optional("delete", default=False): bool,
+    }
+)
+@websocket_api.require_admin
+@websocket_api.async_response
+async def ws_section_own(hass: HomeAssistant, connection: websocket_api.ActiveConnection, msg: dict[str, Any]) -> None:
+    """6.9 (#238): add, rename or delete an own store section (administrators)."""
+    stock = await async_get_stock(hass)
+    key = msg.get("key")
+    try:
+        if msg["delete"]:
+            if key:
+                stock.delete_own_section(key)
+        elif msg.get("name") and msg["name"].strip():
+            key = stock.save_own_section(msg["name"], key)
+        else:
+            raise HomeAssistantError(translation_domain=DOMAIN, translation_key="move_invalid")
+    except HomeAssistantError as err:
+        connection.send_error(msg["id"], "section_failed", str(err))
+        return
+    connection.send_result(msg["id"], {"key": key, "order": section_order(hass), "own": dict(stock.own_sections)})
+
+
+@websocket_api.websocket_command(
+    {vol.Required("type"): f"{DOMAIN}/section_order", vol.Required("order"): [section_key]}
 )
 @websocket_api.require_admin
 @websocket_api.async_response
@@ -1928,6 +1989,7 @@ def async_setup_stock_websocket(hass: HomeAssistant) -> None:
     websocket_api.async_register_command(hass, ws_product_section)
     websocket_api.async_register_command(hass, ws_sections)
     websocket_api.async_register_command(hass, ws_section_order)
+    websocket_api.async_register_command(hass, ws_section_own)
     websocket_api.async_register_command(hass, ws_running_low)
     websocket_api.async_register_command(hass, ws_running_low_action)
     domain_data[DATA_WS] = True

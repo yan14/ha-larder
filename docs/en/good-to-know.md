@@ -99,7 +99,7 @@ The switch at the top of the **Larder** page shows one side at a time. Areas bel
 
 | Blueprint | Sends |
 |---|---|
-| [Daily summary](kitchen.md#daily-summary) | what expires soon, optionally one push per entry with the buttons **Used up · Thrown away · +2 days · On the list** (and **🧊 Freeze** for what keeps in the freezer), recipe ideas, voice output |
+| [Daily summary](kitchen.md#daily-summary) | what expires soon, optionally one push per entry with the buttons **Used up · Thrown away · Best-before +2 days · On the list** (and **🧊 Freeze** for what keeps in the freezer), recipe ideas, voice output |
 | [Weekly review](kitchen.md#weekly-review) | last week eaten / thrown away (value), next week's expiring food, a recipe idea |
 | [Opened items](kitchen.md#opened-items) | once a week everything opened that runs out soon, with how long it has been open |
 | [Delivery day](kitchen.md#online-order) | on the delivery day of your online order, with **Put away** |

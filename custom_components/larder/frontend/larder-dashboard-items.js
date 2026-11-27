@@ -22,6 +22,7 @@ const UNITS = ["portions", "pieces", "slices", "grams", "milliliters"];
 
 const TEXT = {
   de: {
+    shopListHint: "Hier landet das Produkt, wenn es ausgeht. „Standardliste“ ist die Liste aus den Einstellungen.",
     howTitle: "So funktioniert Larder",
     howIntro: "Alles, was du lagerst, ist ein Eintrag mit Inhalt, Ort und MHD. Larder schätzt das MHD, sortiert nach Ablauf und setzt Leeres auf die Einkaufsliste. Es gibt diese Arten:",
     howEnd: "Tipp: Einfach anfangen – mit ＋ Hinzufügen oder 📥 Einkauf einräumen. Bereiche und Einstellungen lassen sich jederzeit ändern.",
@@ -211,6 +212,7 @@ const TEXT = {
     units: { portions: "Portionen", pieces: "Stück", slices: "Scheiben", grams: "Gramm", milliliters: "Milliliter" },
   },
   en: {
+    shopListHint: "This is where the product goes when it runs out. “Default list” is the list from the settings.",
     howTitle: "How Larder works",
     howIntro: "Everything you store is an entry with contents, place and best-before date. Larder estimates the date, sorts by expiry and puts what runs out on the shopping list. There are these kinds:",
     howEnd: "Tip: just start – with ＋ Add or 📥 Put the shopping away. Areas and settings can be changed any time.",
@@ -400,6 +402,7 @@ const TEXT = {
     units: { portions: "portions", pieces: "pieces", slices: "slices", grams: "grams", milliliters: "milliliters" },
   },
   fr: {
+    shopListHint: "C'est là que le produit arrive quand il est épuisé. « Liste par défaut » est la liste des réglages.",
     howTitle: "Comment fonctionne Larder",
     howIntro: "Tout ce que tu stockes est une entrée avec contenu, lieu et date. Larder estime la date, trie par péremption et met ce qui manque sur la liste de courses. Il y a ces types :",
     howEnd: "Astuce : commence simplement – avec ＋ Ajouter ou 📥 Ranger les courses. Pièces et réglages se changent à tout moment.",
@@ -589,6 +592,7 @@ const TEXT = {
     units: { portions: "portions", pieces: "pièces", slices: "tranches", grams: "grammes", milliliters: "millilitres" },
   },
   nl: {
+    shopListHint: "Hier komt het product als het op is. „Standaardlijst” is de lijst uit de instellingen.",
     howTitle: "Zo werkt Larder",
     howIntro: "Alles wat je bewaart is een item met inhoud, plek en houdbaarheidsdatum. Larder schat de datum, sorteert op houdbaarheid en zet wat op is op het boodschappenlijstje. Er zijn deze soorten:",
     howEnd: "Tip: begin gewoon – met ＋ Toevoegen of 📥 Boodschappen opbergen. Ruimtes en instellingen kun je altijd wijzigen.",
@@ -2229,7 +2233,8 @@ export function installItems(Dashboard, { el, isAdmin, listAreas, todoLists, sco
       el("h2", "", startReceipt ? t.receiptTitle : bag ? t.titleBag : hh ? t.titleHousehold : med ? t.titleMedicine : t.titlePack),
       field(t.area, area),
       field(t.compartment, compartment),
-      ...(shopList ? [field(t.shopList, shopList)] : []),
+      // 6.9 (#232): what the list is for
+      ...(shopList ? [field(t.shopList, shopList), el("p", "hint", t.shopListHint)] : []),
       rows,
       ...extras,
       status,

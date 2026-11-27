@@ -17,7 +17,7 @@ from .test_stock import _packs
 
 def test_item_actions() -> None:
     actions = item_actions({"cc": "AAAA", "kind": "container", "content": "Chili"}, "de")
-    assert [a["title"] for a in actions] == ["Verbraucht", "Weggeworfen", "+2 Tage", "Auf die Liste"]
+    assert [a["title"] for a in actions] == ["Verbraucht", "Weggeworfen", "MHD +2 Tage", "Auf die Liste"]
     assert actions[0]["action"] == "LARDER_EATEN_AAAA"
     assert item_actions({"cc": "V1", "kind": "voucher", "content": "Thalia"}, "en") == []
     assert parse_action("LARDER_PLUS2_HA-12") == ("PLUS2", "HA-12")
@@ -38,7 +38,7 @@ async def test_buttons_in_the_push_are_carried_out(hass: HomeAssistant, blueprin
     assert len(pushes) == 2  # one entry with buttons, the rest counted
     first = pushes[0]
     assert first["message"].startswith("Lachs")
-    assert [a["title"] for a in first["data"]["actions"]][:3] == ["Verbraucht", "Weggeworfen", "+2 Tage"]
+    assert [a["title"] for a in first["data"]["actions"]][:3] == ["Verbraucht", "Weggeworfen", "MHD +2 Tage"]
     assert first["data"]["tag"] == "larder-AAAA"
     assert "1 weitere" in pushes[1]["message"]
     # +2 days

@@ -25,7 +25,7 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN, KIND_PACK, PACK_KINDS
-from .sections import section_of, section_order
+from .sections import merge_order, section_of, section_order
 from .shopping import async_add_to_shopping_list, default_list, shopping_list_for
 from .stock import _known_product, async_add_known, async_find_by_code, async_get_stock, pack_entries, product_key
 
@@ -95,7 +95,7 @@ async def async_shopping_view(hass: HomeAssistant, store: str | None = None) -> 
     order = section_order(hass)
     skey = store_key(store)
     if skey and (own := (stock.stores.get(skey) or {}).get("order")):
-        order = [*own, *(s for s in order if s not in own)]
+        order = merge_order(own, order)  # 6.9: new sections behind their neighbour
     items: list[dict[str, Any]] = []
     # 5.3.2: which lists were read and how (the page says why it is empty instead of showing nothing)
     lists: list[dict[str, Any]] = []

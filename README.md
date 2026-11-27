@@ -21,7 +21,7 @@ Home Assistant integration for reusable food storage containers: note what is in
 - 🧮 **[Best-before estimate](docs/en/best-before.md#best-before-estimate)**: built-in shelf-life table, optionally with AI, that [learns from your corrections](docs/en/best-before.md#managing-remembered-estimates)
 - 🍳 **[Recipes](docs/en/kitchen.md#recipes)** from what expires soon, a recipe book, recipes from a photo, a [meal plan](docs/en/kitchen.md#meal-plan) with thaw reminder and a [week suggestion](docs/en/kitchen.md#week-suggestion)
 - 🛒 **[Shopping](docs/en/kitchen.md#shopping-list)**: several lists, a [shopping mode](docs/en/kitchen.md#shopping-mode) by store section where ticking off puts things into stock, [recurring purchases](docs/en/kitchen.md#recurring-purchases) and an [emergency supply check](docs/en/kitchen.md#emergency-supply)
-- 🔔 **[Notifications](docs/en/good-to-know.md#notifications-which-blueprint-for-what)**: a daily summary with buttons (used up, thrown away, +2 days, on the list) to several phones and speakers, a weekly review, a monthly report, reminders for medicines and recalls
+- 🔔 **[Notifications](docs/en/good-to-know.md#notifications-which-blueprint-for-what)**: a daily summary with buttons (used up, thrown away, best-before +2 days, on the list) to several phones and speakers, a weekly review, a monthly report, reminders for medicines and recalls
 - 📊 **[Statistics](docs/en/dashboard.md#statistics)** of what was eaten and thrown away (with its value), [data care](docs/en/dashboard.md#data-care), [overview sensors](docs/en/reference.md#overview-sensors) and [cards](docs/en/dashboard.md#card-for-your-dashboards) for your own dashboards, [calendar entries](docs/en/kitchen.md#best-before-dates-in-your-calendar)
 - 🌍 Available in English, German, [French and Dutch](docs/en/good-to-know.md#languages) (French and Dutch are translations without a native speaker – corrections welcome)
 
@@ -33,6 +33,8 @@ Home Assistant integration for reusable food storage containers: note what is in
 
 ## What's new
 
+> **6.9:** **store sections that fit your store** – *Pasta & rice*, *Canned*, *Baking*, *Spices*, *International food*, *Sweets & snacks* and your **own sections**; the Shopping page refreshes itself, recipes with a clear AI box and labelled buttons, and many small wording fixes.
+>
 > **6.8:** **calmer start page and easier filling** – the start page keeps the two most urgent boxes open and folds the rest, *Eaten* / *Freeze* right on the tiles, repair hints with links, a short explanation and the shopping list in the first steps, the vacuum question once, and putting away by name for goods without a barcode.
 >
 > **6.7:** **clearer for newcomers** – one *Put the shopping away* button with scan, receipt/invoice and by hand, settings in sections, words on the buttons, the storage kind of each area, data care per product, plain days (*tomorrow*, *in 3 days*), cards titled by their contents with *Eaten / Thrown away* at the bottom, and *Onto the list* with *Undo* on the Shopping page.

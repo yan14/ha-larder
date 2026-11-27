@@ -52,7 +52,7 @@ def test_suggested_sections() -> None:
     assert suggest_section("Vollkornbrot") == "bakery"
     assert suggest_section("Hackfleisch") == "meat"
     assert suggest_section("Milch") == "fridge"
-    assert suggest_section("Spaghetti") == "dry"
+    assert suggest_section("Spaghetti") == "pasta"  # 6.9 (#237): own section
     assert suggest_section("TK-Erbsen") == "frozen"
     assert suggest_section("Mineralwasser") == "drinks"
     assert suggest_section("Klopapier", "household") == "drugstore"

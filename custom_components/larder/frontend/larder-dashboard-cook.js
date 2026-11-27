@@ -19,11 +19,15 @@ function pickLang(table, hass) {
 
 const TEXT = {
   de: {
+    batchStepDish: "1. Gericht und Menge",
+    batchContainersStep: "2. Leere Dosen wählen",
+    batchSizesHead: "3. Größe der variablen Dosen",
     // 6.8 (#214): say what is free
     free: (list) => `Leere Dosen: ${list}`,
     freeNone: "Leere Dosen: keine",
     sizesTitle: "Behältergrößen",
-    sizesIntro: "Feste Größen stellst du auf der Karte einer Dose ein. Hier trägst du die losen Behälter ein, auf die Deckel mit variabler Größe passen.",
+    // 6.9 (#228): with an example
+    sizesIntro: "Hat eine Dose immer dieselbe Größe (z. B. 1 l), stellst du sie auf ihrer Karte ein. Manche Deckel passen auf verschieden große Behälter – z. B. ein Vakuumdeckel auf ein 0,5-l- und ein 1-l-Glas. Diese Dosen sind „variabel“; trage hier ein, wie viele lose Behälter welcher Größe du dafür hast (z. B. 3 × 0,5 l, 2 × 1 l). Beim Befüllen wählst du dann die Größe.",
     sizesLoose: "Lose Behälter",
     sizesSize: "Größe",
     sizesCount: "Anzahl",
@@ -66,10 +70,13 @@ const TEXT = {
     },
   },
   en: {
+    batchStepDish: "1. Dish and amount",
+    batchContainersStep: "2. Choose empty containers",
+    batchSizesHead: "3. Size of the variable containers",
     free: (list) => `Empty containers: ${list}`,
     freeNone: "Empty containers: none",
     sizesTitle: "Container sizes",
-    sizesIntro: "Set fixed sizes on the card of a container. Here you enter the loose boxes that lids with a variable size fit on.",
+    sizesIntro: "If a container always has the same size (e.g. 1 l), set it on its card. Some lids fit containers of different sizes – e.g. a vacuum lid on a 0.5 l and a 1 l jar. Those containers are “variable”; enter here how many loose containers of which size you have for them (e.g. 3 × 0.5 l, 2 × 1 l). When filling, you then choose the size.",
     sizesLoose: "Loose boxes",
     sizesSize: "Size",
     sizesCount: "Count",
@@ -112,10 +119,13 @@ const TEXT = {
     },
   },
   fr: {
+    batchStepDish: "1. Plat et quantité",
+    batchContainersStep: "2. Choisir les boîtes vides",
+    batchSizesHead: "3. Taille des boîtes variables",
     free: (list) => `Boîtes vides : ${list}`,
     freeNone: "Boîtes vides : aucune",
     sizesTitle: "Tailles des boîtes",
-    sizesIntro: "Les tailles fixes se règlent sur la fiche d'une boîte. Ici, vous saisissez les boîtes en vrac sur lesquelles s'adaptent les couvercles de taille variable.",
+    sizesIntro: "Si une boîte a toujours la même taille (p. ex. 1 l), règle-la sur sa fiche. Certains couvercles vont sur des récipients de tailles différentes – p. ex. un couvercle sous vide sur un bocal de 0,5 l et de 1 l. Ces boîtes sont « variables » ; indique ici combien de récipients de chaque taille tu as (p. ex. 3 × 0,5 l, 2 × 1 l). En remplissant, tu choisis alors la taille.",
     sizesLoose: "Boîtes en vrac",
     sizesSize: "Taille",
     sizesCount: "Nombre",
@@ -158,10 +168,13 @@ const TEXT = {
     },
   },
   nl: {
+    batchStepDish: "1. Gerecht en hoeveelheid",
+    batchContainersStep: "2. Lege dozen kiezen",
+    batchSizesHead: "3. Maat van de variabele dozen",
     free: (list) => `Lege dozen: ${list}`,
     freeNone: "Lege dozen: geen",
     sizesTitle: "Doosgroottes",
-    sizesIntro: "Vaste groottes stel je in op de kaart van een doos. Hier voer je de losse dozen in waar deksels met wisselende grootte op passen.",
+    sizesIntro: "Heeft een doos altijd dezelfde maat (bv. 1 l), stel die dan in op de kaart. Sommige deksels passen op bakjes van verschillende maten – bv. een vacuümdeksel op een pot van 0,5 l en 1 l. Die dozen zijn „variabel”; vul hier in hoeveel losse bakjes van welke maat je hebt (bv. 3 × 0,5 l, 2 × 1 l). Bij het vullen kies je dan de maat.",
     sizesLoose: "Losse dozen",
     sizesSize: "Grootte",
     sizesCount: "Aantal",
@@ -399,6 +412,8 @@ export function installCook(Dashboard, { el, isAdmin, DOMAIN }) {
     const qty = el("span", "qty");
     qty.append(total, unit);
     const list = el("div", "batchlist");
+    const sizeList = el("div", "batchsizes");
+    const sizeHead = el("h3", "", t.batchSizesHead);
     const options = [];
     for (const row of empties) {
       const attrs = (states[row.dev.entities.text] || {}).attributes || {};
@@ -409,6 +424,10 @@ export function installCook(Dashboard, { el, isAdmin, DOMAIN }) {
       const option = { id: row.id, box, size: attrs.size_variable ? null : attrs.size_fixed || null, variable: !!attrs.size_variable };
       line.append(box, el("span", "", [row.name, row.areaName, option.variable ? t.batchVariable : option.size].filter(Boolean).join(" · ")));
       if (option.variable && looseSizes.length) {
+        // 6.9 (#229): the size of a variable container is its own step below, only for chosen ones
+        const sizeLine = el("label", "field batchsize");
+        sizeLine.dataset.id = row.id;
+        sizeLine.hidden = true;
         const pick = el("select");
         pick.dataset.f = "batch-size";
         for (const s of ["", ...looseSizes]) {
@@ -423,7 +442,9 @@ export function installCook(Dashboard, { el, isAdmin, DOMAIN }) {
         });
         option.size = pick.value || null;
         option.pick = pick;
-        line.append(pick);
+        sizeLine.append(el("span", "", row.name), pick);
+        option.sizeLine = sizeLine;
+        sizeList.append(sizeLine);
       }
       box.addEventListener("change", () => sync());
       options.push(option);
@@ -441,6 +462,10 @@ export function installCook(Dashboard, { el, isAdmin, DOMAIN }) {
     };
     const sync = () => {
       const picked = chosen();
+      for (const o of options) if (o.sizeLine) o.sizeLine.hidden = !o.box.checked;
+      const sizesShown = options.some((o) => o.sizeLine && o.box.checked);
+      sizeHead.hidden = !sizesShown;
+      sizeList.hidden = !sizesShown;
       const parts = amounts();
       const want = parseInt(total.value, 10) || 0;
       const over = picked.length ? want - parts.reduce((a, q) => a + q, 0) : 0;
@@ -476,11 +501,14 @@ export function installCook(Dashboard, { el, isAdmin, DOMAIN }) {
     this._form.replaceChildren(
       el("h2", "", t.batchTitle),
       el("p", "hint", t.batchIntro),
+      el("h3", "", t.batchStepDish),
       field(t.batchDish, dish),
       field(t.batchTotal, qty),
-      el("h3", "", t.batchContainers),
+      el("h3", "", t.batchContainersStep),
       list,
       suggest,
+      sizeHead,
+      sizeList,
       preview,
       error,
       buttonsRow(button("cancel", t.cancel, () => this._closeDialog()), next),

@@ -285,7 +285,8 @@ const hass = {
       no_min: [{ device_id: "demo14", content: "Penne", place: "" }] } };
     if (msg.type === "larder/voucher_stats") return { count: 2, open_value: 55, lost_value: 15, redeemed_value: 20 };
     if (msg.type === "larder/voucher_code") return { code: "4711-0815-2026" };
-    if (msg.type === "larder/sections") return { order: ["produce", "bakery", "meat", "fridge", "dry", "breakfast", "drinks", "frozen", "drugstore", "pharmacy", "other"] };
+    if (msg.type === "larder/sections") return { order: ["produce", "bakery", "meat", "fridge", "dry", "pasta", "canned", "baking", "spices", "international", "own_bio", "breakfast", "sweets", "drinks", "frozen", "drugstore", "pharmacy", "other"], own: { own_bio: de ? "Bio-Ecke" : "Organic corner" } };
+    if (msg.type === "larder/section_own") return { key: "own_new", order: [], own: {} };
     if (msg.type === "larder/cook_again") return { shopping_list: true, items: q.get("view") === "start" ? [{ key: "b", content: de ? "Bolognese-Sauce" : "Bolognese sauce", count: 4, last: day(-12) }] : [] };
     if (msg.type === "call_service" && msg.service === "get_monthly_report") return { response: de
       ? { label: "Oktober 2026", empty: false, summary: "📦 14 befüllt, 12 geleert\n✅ 10 gegessen, 🗑 2 weggeworfen\nWeggeworfen: 17 % (Vormonat 25 %)\nAm häufigsten weggeworfen: Käse (2×)" }

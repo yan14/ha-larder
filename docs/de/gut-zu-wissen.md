@@ -99,7 +99,7 @@ Der Umschalter oben auf der Seite **Vorrat** zeigt jeweils eine Seite. Bereiche 
 
 | Blueprint | Schickt |
 |---|---|
-| [Tägliche Zusammenfassung](kitchen.md#tägliche-zusammenfassung) | was bald abläuft, auf Wunsch eine Push je Eintrag mit den Knöpfen **Verbraucht · Weggeworfen · +2 Tage · Auf die Liste** (und **🧊 Einfrieren** für Einfrierbares), Rezeptideen, Sprachausgabe |
+| [Tägliche Zusammenfassung](kitchen.md#tägliche-zusammenfassung) | was bald abläuft, auf Wunsch eine Push je Eintrag mit den Knöpfen **Verbraucht · Weggeworfen · MHD +2 Tage · Auf die Liste** (und **🧊 Einfrieren** für Einfrierbares), Rezeptideen, Sprachausgabe |
 | [Wochenrückblick](kitchen.md#wochenrückblick) | letzte Woche gegessen / weggeworfen (Wert), was nächste Woche abläuft, eine Rezeptidee |
 | [Angebrochenes](kitchen.md#angebrochenes) | einmal pro Woche alles Angebrochene, das bald abläuft, mit „seit … offen“ |
 | [Liefertag](kitchen.md#online-bestellung) | am Liefertag deiner Online-Bestellung, mit **Einräumen** |

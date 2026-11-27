@@ -3331,7 +3331,7 @@ test("Shopping mode (4.10): by store section, tick off into stock, unknown at th
   await flush();
   assert.equal($(el, "h1").textContent, "Einkaufen");
   const sections = $$(el, "main section.shop").map((s) => s.querySelector("h3").textContent);
-  assert.deepEqual(sections, ["🥦 Obst & Gemüse", "🍝 Nudeln, Reis & Konserven"]);
+  assert.deepEqual(sections, ["🥦 Obst & Gemüse", "🫙 Öl, Soßen & Trockenware"]);
   $(el, '[data-uid="u2"] [data-role="shop-check"]').click();
   await flush();
   await flush();
@@ -3347,6 +3347,7 @@ test("Shopping mode (4.10): by store section, tick off into stock, unknown at th
   assert.equal($(el, "form.dialog").querySelector('[data-i="content"]').value, "Bananen");
   $(el, "form.dialog button.cancel").click();
   // recurring: Friday
+  $(el, '[data-role="shop-more"]').click(); // 6.9 (#224): under ⋯
   $(el, '[data-role="shop-recurring"]').click();
   await flush();
   const form = $(el, "form.dialog");
@@ -3403,7 +3404,7 @@ test("Shopping mode (4.11): scan ticks off, price and date, scanned extras, rece
   assert.equal($(el, '[data-uid="u2"]').classList.contains("done"), true);
   assert.equal(await el._shopScan("2"), "Ketchup → Küche");
   assert.match($(el, '[data-role="shop-extra"]').textContent, /Ketchup/);
-  assert.equal(await el._shopScan("7394376616501"), "Hafermilch: neu, wird am Ende angelegt");
+  assert.equal(await el._shopScan("7394376616501"), "Hafermilch: unbekannt – unten anlegen");
   // price and date for the mustard
   $(el, '[data-uid="u2"] [data-role="shop-details"]').click();
   $(el, '[data-f="shop-price"]').value = "1,99";
@@ -4574,4 +4575,50 @@ test("6.8 (#216, #223): link to the areas for loose entries; put away by name", 
   link.click();
   await flush();
   assert.equal(el._view, "areas");
+});
+
+test("6.9 (#237, #238): new and own store sections in the order dialog", async () => {
+  const hass = makeHass(DOSES);
+  let own = { own_bio: "Bio-Ecke" };
+  const calls = [];
+  hass.callWS = (base => async (msg) => {
+    if (msg.type === `${D}/sections`) return { order: ["produce", "own_bio", "pasta", "other"], own };
+    if (msg.type === `${D}/section_own`) {
+      calls.push(msg);
+      own = msg.delete ? {} : { ...own, own_asia: msg.name };
+      return { key: "own_asia", order: ["produce", ...Object.keys(own), "pasta", "other"], own };
+    }
+    return base(msg);
+  })(hass.callWS);
+  const el = mount(hass);
+  await flush();
+  await el.openSectionsDialog();
+  const form = $(el, "form.dialog");
+  assert.deepEqual([...form.querySelectorAll(".sectionlist .name")].map((n) => n.textContent), ["1. 🥦 Obst & Gemüse", "2. 🏷️ Bio-Ecke", "3. 🍝 Nudeln & Reis", "4. 🛒 Sonstiges"]);
+  assert.ok(form.querySelector('[data-key="own_bio"] [data-role="section-delete"]'));
+  assert.equal(form.querySelector('[data-key="pasta"] [data-role="section-delete"]'), null);
+  form.querySelector('[data-f="section-new"]').value = "Asia";
+  form.querySelector('[data-role="section-add"]').click();
+  await flush();
+  assert.deepEqual(calls[0], { type: `${D}/section_own`, name: "Asia" });
+  assert.ok(form.querySelector('[data-key="own_asia"]'));
+  form.querySelector('[data-key="own_bio"] [data-role="section-delete"]').click();
+  await flush();
+  assert.deepEqual(calls[1], { type: `${D}/section_own`, key: "own_bio", delete: true });
+});
+
+test("6.9 (#224, #227, #230, #231): shopping ⋯ menu, AI box, reason for step 1, size on tiles", async () => {
+  const hass = makeHass(DOSES);
+  const el = mount(hass);
+  await flush();
+  el.setView("shopping");
+  await flush();
+  await flush();
+  assert.equal($(el, '[data-role="shop-reload"]'), null);
+  $(el, '[data-role="shop-more"]').click();
+  assert.deepEqual([...$(el, "form.dialog").querySelectorAll(".moreitem")].map((b) => b.dataset.role), ["shop-order", "shop-recurring", "shop-reload"]);
+  el._closeDialog();
+  const { TEXTS } = await import("../../custom_components/larder/frontend/larder-dashboard-strings.js");
+  assert.equal(TEXTS.de.startAreasFound(8), "8 Bereiche gefunden – fertig, ändern geht jederzeit.");
+  assert.equal(TEXTS.de.aiBoxTitle, "✨ KI-Ideen aus deinen Resten");
 });

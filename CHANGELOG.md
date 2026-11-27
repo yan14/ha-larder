@@ -3,6 +3,18 @@
 Release notes for every version, newest first. They are also used as the text of the GitHub releases
 (the workflow `release.yml` takes the section of the version in `manifest.json`).
 
+## 6.9.0
+
+Block 56: shopping, recipes and wording – the rest of the newcomer UX test, plus store sections that fit your store.
+
+- **More store sections** (#237): 🍝 *Pasta & rice*, 🥫 *Canned food*, 🧁 *Baking* (flour, sugar …), 🧂 *Spices*, 🌏 *International food* (Asian, Eastern European, Turkish …) and 🍫 *Sweets & snacks* (split from *Dry goods* and *Breakfast*). Products are sorted by kind, the row of the shelf-life table and keywords; keywords now match at word starts, so *Preiselbeeren* is no drink and *Schweinefleisch* no wine any more. In an order saved before, the new sections go behind their old neighbour; your own choice per product stays.
+- **Own store sections** (#238): add, rename and delete them under **More → 🏪 Store sections**; they appear in the order, at the stores and in the section choice on the card. A deleted one sends its products back to the suggestion. WebSocket `larder/section_own`, `own` in `larder/sections`, `own_sections` in `larder/settings`.
+- **Shopping page refreshes itself** (#224): when a list changes elsewhere; *Prepare the order*, *Recurring* and *Refresh* moved under **⋯ More**. What you just ticked off stays with *Price/date*.
+- **Wording on the Shopping page** (#225, #226): **＋ Store** instead of a bare ＋, *unknown – add it below* instead of *new – added at the end*.
+- **Recipes** (#227, #233): the AI choices sit in a box **✨ AI ideas from your leftovers**; the buttons say what they do (*☑ Containers*, *📷 Photo*, *🔗 Link*, *＋ Recipe*).
+- **Container sizes explained** (#228) with an example; **cook ahead** (#229) asks for the size of variable containers as a step of its own, only for the chosen ones.
+- **Small wording** (#230–#232, #234–#236): *Get started* says why step 1 is done (*8 areas found*); tiles show *Dose 8 (2 l)*; the shopping list in the add dialog explains what it is for; the label design options are folded; the export says *All entries*; the push button reads **Best-before +2 days**.
+
 ## 6.8.0
 
 Blocks 54 and 55: a calmer start page, filling and putting away without stumbling – from the newcomer UX test.

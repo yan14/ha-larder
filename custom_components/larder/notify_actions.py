@@ -35,10 +35,10 @@ EVENT_DONE = f"{DOMAIN}_notification_action_done"
 EXTEND_DAYS = 2
 
 TITLES = {
-    "de": {"EATEN": "Verbraucht", "THROWN": "Weggeworfen", "PLUS2": "+2 Tage", "SHOP": "Auf die Liste", "FREEZE": "🧊 Einfrieren"},
-    "en": {"EATEN": "Used up", "THROWN": "Thrown away", "PLUS2": "+2 days", "SHOP": "On the list", "FREEZE": "🧊 Freeze"},
-    "fr": {"EATEN": "Consommé", "THROWN": "Jeté", "PLUS2": "+2 jours", "SHOP": "Sur la liste", "FREEZE": "🧊 Congeler"},
-    "nl": {"EATEN": "Op", "THROWN": "Weggegooid", "PLUS2": "+2 dagen", "SHOP": "Op de lijst", "FREEZE": "🧊 Invriezen"},
+    "de": {"EATEN": "Verbraucht", "THROWN": "Weggeworfen", "PLUS2": "MHD +2 Tage", "SHOP": "Auf die Liste", "FREEZE": "🧊 Einfrieren"},
+    "en": {"EATEN": "Used up", "THROWN": "Thrown away", "PLUS2": "Best-before +2 days", "SHOP": "On the list", "FREEZE": "🧊 Freeze"},
+    "fr": {"EATEN": "Consommé", "THROWN": "Jeté", "PLUS2": "Date +2 jours", "SHOP": "Sur la liste", "FREEZE": "🧊 Congeler"},
+    "nl": {"EATEN": "Op", "THROWN": "Weggegooid", "PLUS2": "THT +2 dagen", "SHOP": "Op de lijst", "FREEZE": "🧊 Invriezen"},
 }
 
 

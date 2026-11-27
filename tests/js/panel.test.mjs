@@ -2248,9 +2248,9 @@ test("Card: store section with suggestion, own choice and back to automatic (4.7
   assert.equal(row.hidden, false);
   assert.equal(row.querySelector("label").textContent, "Abteilung");
   const select = row.querySelector("select");
-  assert.equal(select.options[0].textContent, "Automatisch (🍝 Nudeln, Reis & Konserven)");
+  assert.equal(select.options[0].textContent, "Automatisch (🫙 Öl, Soßen & Trockenware)");
   assert.equal(select.value, "");
-  assert.equal(select.options.length, 12);
+  assert.equal(select.options.length, 18); // 6.9 (#237): 17 sections + automatic
   select.value = "fridge";
   select.dispatchEvent(new Event("change"));
   select.value = "";
